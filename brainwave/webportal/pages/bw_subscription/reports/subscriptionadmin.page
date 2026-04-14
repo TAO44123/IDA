@@ -1,0 +1,380 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_cloud_pam/subscription/safepickers.page"
+import "/webportal/pages/bw_cloud_pam/subscription/safeownernotificationadmin.page"
+
+/* Nationalized labels here */
+bw_usersubscriptionadminNLS = NLS {
+	title [en "Subscription Administration" fr "Gestion des abonnements"]
+
+	subscribed [en "subscribed"fr "abonné"] 
+	subscribe [en "New Subscription" fr "Nouvel Abonnement"]
+	subscribe_tooltip[en "Subscribe to this report.\nOnce subscribed, the user will automatically receive the report by email on a regular basis." fr "Souscrire à ce rapport.\nUne fois souscrit l'utilisateur recevra automatiquement le rapport régulièrement par email"]
+	unsubscribe [en "Unsubscribe" fr "Désabonnement"]
+	unsubscribe_tooltip[en "Unsubscribe from this report.\nThe user will no longer receive this report by email." fr "Se désabonner de ce rapport.\nUne fois désabonné, l'utilisateur ne recevra plus ce rapport régulièrement par email"]
+	getreport [en "Get Report" fr "Récupérer le rapport"]
+	getreport_tooltip[en "Build and receive this report" fr "Générer et recevoir ce rapport"]
+	generating_flash [en "Report is being generated, you will receive it by email" fr "Le rapport est en cours de génération, vous allez le recevoir par mail"]
+	send [en "Send Report" fr "Envoyer le rapport"]
+	send_confirm [en "This will send the report by email to the manager now\nAre your sure?" fr "Cela va envoyer le rapport au responsable par email maintenant\nEtes-vous sûr?"]
+	send_tooltip[en "Send selected report by email to the manager now" fr "Envoie immédiatement le rapport sélectionné au responsable par email"]
+	send_flash [en "Sending report" fr "Envoi du rapport"]
+	sendall [en "Send All Reports" fr "Envoyer tous les rapports"]
+	sendall_confirm [en "This will send all reports by email to the managers now\nAre your sure?" fr "Cela va envoyer tous les rapports aux responsables par email maintenant\nEtes-vous sûr?"]
+	sendall_tooltip[en "Send all reports by email now" fr "Envoie immédiatement tous les rapports par email"]
+	sendall_flash [en "Sending reports" fr "Envoi de tous les rapports"]
+
+	subscriptionstatus [en "Subscription \nstatus" fr "Statut \nd'abonnement"]
+	
+	lang [en "en" fr "fr"]
+	
+	col_report [en "Report" fr "Rapport"]
+	col_subscribed [en "subscribed" fr "Abonné"]
+	
+	safe [en "CyberArk Safe" fr "Safes CyberArk"]
+}
+
+bw_usersubscriptionadmin = Page {
+	title: $bw_usersubscriptionadminNLS.title
+	icon:%collection_32.mail
+	large-icon:%collection_48.mail
+	tags:"admin"
+	feature:subscription_admin
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedapplication = Variable
+	selectedApplicationName = Variable
+	selectedapplicationsubscriptionuid = Variable
+	newapplication = Variable
+
+	selectedrepository = Variable
+	selectedRepositoryName = Variable
+	selectedrepositorysubscriptionuid = Variable
+	newrepository = Variable
+
+	selectedidentity = Variable
+	newidentity = Variable
+	currentIdentity = Variable { initial:Principal.uid }
+
+	
+	/* Datasets and records here */
+	applicationsubscriptions = Dataset {
+		view:bws_applicationusersubscriptions
+	}
+
+	repositorysubscriptions = Dataset {
+		view:bws_repositoryusersubscriptions
+	}
+	
+	addapplicationsubscription = TaskRecord(create "bw_subscription_addapplicationsubscriber")
+	addrepositorysubscription = TaskRecord(create "bw_subscription_addrepositorysubscriber")
+	removesubscription = TaskRecord(create "bw_subscription_removesubscription")
+
+	identityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(
+						selectedidentity to inuid,
+						True to inshowposition
+		)
+	)
+
+	applicationDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog(
+						selectedapplication to inuid
+		)
+	)
+	
+	doSubscribeApplication = NamedAction (
+		Dialog identityPicker(newidentity from outUid),
+		Dialog applicationPicker(newapplication from outUid),
+		Set newidentity to addapplicationsubscription.subscriber,
+		Set newapplication to addapplicationsubscription.application,
+		TaskComplete addapplicationsubscription wait-end timeout-seconds 30,
+		ReloadData(applicationsubscriptions)
+	)
+
+	doUnsubscribeApplication = NamedAction (
+		Set selectedapplicationsubscriptionuid to removesubscription.metadatauid,
+		TaskComplete removesubscription wait-end timeout-seconds 30,
+		ReloadData(applicationsubscriptions)
+	)
+
+	doSubscribeRepository = NamedAction (
+		Dialog identityPicker(newidentity from outUid),
+		Dialog repositoryPicker(newrepository from outUid),
+		Set newidentity to addrepositorysubscription.subscriber,
+		Set newrepository to addrepositorysubscription.repository,
+		TaskComplete addrepositorysubscription wait-end timeout-seconds 30,
+		ReloadData(repositorysubscriptions)
+	)
+
+	doUnsubscribeRepository = NamedAction (
+		Set selectedrepositorysubscriptionuid to removesubscription.metadatauid,
+		TaskComplete removesubscription wait-end timeout-seconds 30,
+		ReloadData(repositorysubscriptions)
+	)
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text:$application.concept
+		
+			ButtonGroup {
+				Button {
+					actions:ExecuteNamedAction doSubscribeApplication
+					text:$bw_usersubscriptionadminNLS.subscribe
+					tooltip:$bw_usersubscriptionadminNLS.subscribe_tooltip
+					image:%collection_16.mail
+				}
+				Button {
+					actions:ExecuteNamedAction doUnsubscribeApplication				
+					text:$bw_usersubscriptionadminNLS.unsubscribe
+					tooltip:$bw_usersubscriptionadminNLS.unsubscribe_tooltip
+					image:%collection_16.delete
+					disabled:StringPredicate(selectedapplicationsubscriptionuid) { when IsEmpty then True otherwise False } 
+				}
+				Button {
+					actions:Message "todo" // never displayed button, for layouting purposes
+					disabled:True
+					presentation:Link
+					text:''
+				}
+				Button {
+				    actions:
+						ExecuteNotifyRule bws_application with currentIdentity to identityuid, selectedapplication to applicationuid, selectedApplicationName to applicationname,
+						Flash $bw_usersubscriptionadminNLS.generating_flash
+						
+					text:$bw_usersubscriptionadminNLS.getreport
+					tooltip:$bw_usersubscriptionadminNLS.getreport_tooltip
+					image:%report_16.xls
+					disabled:StringPredicate(selectedapplication) { when IsEmpty then True otherwise False } 
+				}
+				Button {
+					actions:
+						Confirm $bw_usersubscriptionadminNLS.send_confirm, 
+						ExecuteNotifyRule bws_applicationowner with selectedapplicationsubscriptionuid to subscriptionuid,
+						Flash $bw_usersubscriptionadminNLS.send_flash
+					disabled:StringPredicate(selectedapplicationsubscriptionuid) { when IsEmpty then True otherwise False }
+					text:$bw_usersubscriptionadminNLS.send
+					tooltip:$bw_usersubscriptionadminNLS.send_tooltip
+					image:%collection_16.mail
+				}
+				Button {
+					actions:
+						Confirm $bw_usersubscriptionadminNLS.sendall_confirm, 
+						ExecuteNotifyRule bws_applicationowner, 
+						Flash $bw_usersubscriptionadminNLS.send_flash
+					text:$bw_usersubscriptionadminNLS.sendall
+					tooltip:$bw_usersubscriptionadminNLS.sendall_tooltip
+					image:%collection_16.mail
+				}
+			}
+
+			Table {
+				data:applicationsubscriptions
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				
+				Column {
+					column:hrcode
+					header:$identity.hrcode
+					actions:ExecuteNamedAction identityDetails
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:fullname
+					header:$identity.fullname
+					actions:ExecuteNamedAction identityDetails
+					width:300px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:mail
+					header:$identity.mail
+					actions:ExecuteNamedAction identityDetails
+					width:300px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:applicationdisplayname
+					header:$application.concept
+					actions:ExecuteNamedAction applicationDetails
+					selection:selectedApplicationName
+					width:160px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					header:$bw_usersubscriptionadminNLS.col_report
+					column:bw_subscription_application_subkey
+					filterable:True
+					sortable:True
+				}
+				Column {
+					header:$bw_usersubscriptionadminNLS.col_subscribed
+					column:bw_subscription_application_subscribed
+					sortable:True
+					initially-masked:True
+				}
+				Column {
+					column:uid
+					selection:selectedidentity
+					hidden:True
+				}
+				Column {
+					column:applicationuid
+					selection:selectedapplication
+					hidden:True
+				}
+				Column {
+					column:bw_subscription_application_uid
+					selection:selectedapplicationsubscriptionuid
+					hidden:True
+				}
+			}
+		}
+		TabItem {
+			text:$repository.concept
+		
+			ButtonGroup {
+				Button {
+					actions:ExecuteNamedAction doSubscribeRepository
+					text:$bw_usersubscriptionadminNLS.subscribe
+					tooltip:$bw_usersubscriptionadminNLS.subscribe_tooltip
+					image:%collection_16.mail
+				}
+				Button {
+					actions:ExecuteNamedAction doUnsubscribeRepository				
+					text:$bw_usersubscriptionadminNLS.unsubscribe
+					tooltip:$bw_usersubscriptionadminNLS.unsubscribe_tooltip
+					image:%collection_16.delete
+					disabled:StringPredicate(selectedrepositorysubscriptionuid) { when IsEmpty then True otherwise False } 
+				}
+				Button {
+					actions:Message "todo" // never displayed button, for layouting purposes
+					disabled:True
+					presentation:Link
+					text:''
+				}
+				Button {
+				    actions:
+						ExecuteNotifyRule bws_repository with currentIdentity to identityuid, selectedrepository to repositoryuid, selectedRepositoryName to repositoryname,
+						Flash $bw_usersubscriptionadminNLS.generating_flash
+						
+					text:$bw_usersubscriptionadminNLS.getreport
+					tooltip:$bw_usersubscriptionadminNLS.getreport_tooltip
+					image:%report_16.xls
+					disabled:StringPredicate(selectedrepository) { when IsEmpty then True otherwise False } 
+				}
+				Button {
+					actions:
+						Confirm $bw_usersubscriptionadminNLS.send_confirm, 
+						ExecuteNotifyRule bws_repositoryowner with selectedrepositorysubscriptionuid to subscriptionuid,
+						Flash $bw_usersubscriptionadminNLS.send_flash
+					disabled:StringPredicate(selectedrepositorysubscriptionuid) { when IsEmpty then True otherwise False }
+					text:$bw_usersubscriptionadminNLS.send
+					tooltip:$bw_usersubscriptionadminNLS.send_tooltip
+					image:%collection_16.mail
+				}
+				Button {
+					actions:
+						Confirm $bw_usersubscriptionadminNLS.sendall_confirm, 
+						ExecuteNotifyRule bws_repositoryowner, 
+						Flash $bw_usersubscriptionadminNLS.send_flash
+					text:$bw_usersubscriptionadminNLS.sendall
+					tooltip:$bw_usersubscriptionadminNLS.sendall_tooltip
+					image:%collection_16.mail
+				}
+			}
+
+			Table {
+				data:repositorysubscriptions
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				
+				Column {
+					column:hrcode
+					header:$identity.hrcode
+					actions:ExecuteNamedAction identityDetails
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:fullname
+					header:$identity.fullname
+					actions:ExecuteNamedAction identityDetails
+					width:300px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:mail
+					header:$identity.mail
+					actions:ExecuteNamedAction identityDetails
+					width:300px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:repositorydisplayname
+					header:$repository.concept
+					actions:ExecuteNamedAction applicationDetails
+					selection:selectedRepositoryName
+					width:160px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					header:$bw_usersubscriptionadminNLS.col_report
+					column:bw_subscription_repository_subkey
+					filterable:True
+					sortable:True
+				}
+				Column {
+					header:$bw_usersubscriptionadminNLS.col_subscribed
+					column:bw_subscription_repository_subscribed
+					sortable:True
+					initially-masked:True
+				}
+				Column {
+					column:uid
+					selection:selectedidentity
+					hidden:True
+				}
+				Column {
+					column:repositoryuid
+					selection:selectedrepository
+					hidden:True
+				}
+				Column {
+					column:bw_subscription_repository_uid
+					selection:selectedrepositorysubscriptionuid
+					hidden:True
+				}
+			}
+		}
+		TabItem {
+			text:$bw_usersubscriptionadminNLS.safe
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			IncludeFragment { 
+			fragment: bwpam_safeownernotificationadmin
+			}
+		}
+	}
+}

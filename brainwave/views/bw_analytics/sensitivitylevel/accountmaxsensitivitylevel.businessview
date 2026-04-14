@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa_accountmaxsensitivitylevel" displayname="accountmaxsensitivitylevel">
+	<Definition scriptfile="/views/bw_analytics/sensitivitylevel/accountmaxsensitivitylevel.javascript" name="D1608137787370">
+		<Component name="C1608137845472" type="innerview" x="375" y="71" w="300" h="50" title="all accounts">
+			<InnerView name="allaccounts"/>
+		</Component>
+		<Component name="C1608138251874" type="joinview" x="572" y="179" w="300" h="50" title="application" enable="{param.includeapplications.get()}">
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.app_uid.get()}"/>
+			<InnerView name="bwa_accountmaxapplicationsensitivitylevel" prefix="app_"/>
+		</Component>
+		<Link name="L1608138252378" source="C1608137845472" target="C1608138251874" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1608138753642" type="joinview" x="519" y="237" w="300" h="50" title="share" enable="{param.includeshares.get()}">
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.share_uid.get()}"/>
+			<InnerView name="bwa_accountmaxsharesensitivitylevel" prefix="share_"/>
+		</Component>
+		<Link name="L1608138754779" source="C1608138251874" target="C1608138753642" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1608138942918" type="joinview" x="615" y="334" w="300" h="50" title="repository" enable="{param.includerepositories.get()}">
+			<InnerView name="bwa_accountmaxrepositorysensitivitylevel" prefix="repo_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.repo_uid.get()}"/>
+		</Component>
+		<Link name="L1608138943487" source="C1608138753642" target="C1608138942918" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1608139281970" type="joinview" x="800" y="370" w="300" h="50" title="group" enable="{param.includegroups.get()}">
+			<InnerView name="bwa_accountmaxgroupsensitivitylevel" prefix="group_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.group_uid.get()}"/>
+		</Component>
+		<Link name="L1608139283501" source="C1608138942918" target="C1608139281970" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1608139399637" type="joinview" x="708" y="403" w="300" h="50" title="permission" enable="{param.includepermissions.get()}">
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.perm_uid.get()}"/>
+			<InnerView name="bwa_accountmaxpermsensitivitylevel" prefix="perm_"/>
+		</Component>
+		<Link name="L1608139400949" source="C1608139281970" target="C1608139399637" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1608139517096" type="joinview" x="634" y="588" w="300" h="50" title="folder" enable="{param.includefolders.get()}">
+			<InnerView name="bwa_accountmaxfoldersensitivitylevel" prefix="folder_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.folder_uid.get()}"/>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Link name="L1608139520683" source="C1608139399637" target="C1608139517096" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1608140103552" type="scriptview" x="681" y="543" w="300" h="50" title="max sensitivity level">
+			<Script onscriptread="compute"/>
+			<FilterList>
+				<Filter name="F1608141948517" expression="dataset.isEmpty(&apos;maxsensitivitylevel&apos;)" comment="no max sensitivity level found" type="Exclude"/>
+			</FilterList>
+			<ExcludeList>
+				<Exclude name="app_sensitivitylevel"/>
+				<Exclude name="app_uid"/>
+				<Exclude name="folder_sensitivitylevel"/>
+				<Exclude name="folder_uid"/>
+				<Exclude name="group_sensitivitylevel"/>
+				<Exclude name="group_uid"/>
+				<Exclude name="perm_sensitivitylevel"/>
+				<Exclude name="perm_uid"/>
+				<Exclude name="repo_sensitivitylevel"/>
+				<Exclude name="repo_uid"/>
+				<Exclude name="share_sensitivitylevel"/>
+				<Exclude name="share_uid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1608140108193" source="C1608139517096" target="C1608140103552" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="includeapplications" displayname="includeapplications" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="includefolders" displayname="includefolders" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="includegroups" displayname="includegroups" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="includepermissions" displayname="includepermissions" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="includerepositories" displayname="includerepositories" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="includeshares" displayname="includeshares" type="Boolean" defaultvalue="true"/>
+</View>

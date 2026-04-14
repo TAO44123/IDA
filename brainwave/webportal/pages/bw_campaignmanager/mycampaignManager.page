@@ -1,0 +1,615 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/default_mixins.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_campaignmanager/resources.page"
+import "/webportal/pages/bw_campaignmanager/campaignFragments.page"
+import "/webportal/pages/bw_campaignmanager/campaignManager.page"
+
+import "/webportal/pages/bw_timelinewidget/timeline.page"
+
+
+br_mycampaignManagerNLS = NLS {
+	title [en "My campaigns manager" fr "Mon gestionnaire de campagnes"]
+}
+
+br_mycampaignManagerGantt = Dialog {
+	title: $br_campaignManagerNLS.planning
+	width: 1300
+	height: 700
+	buttons:
+		[
+		ActionButton {
+			text: $br_campaignManagerNLS.downloadcompliancereport
+			actions:
+				DownloadComplianceReport selectedInstance
+			disabled:
+				Not AndPredicate {
+					HasComplianceReportPredicate ( selectedInstance )
+					FeaturePredicate bwmcm_candownloadcompliancereport
+					StringPredicate ( selectedStatus ) {
+						when "Completed" then True
+					}
+				}
+		}
+		OkButton 
+	]
+	
+	selectedInstance = Variable
+	selectedStatus = Variable
+	filter = Variable
+
+	gantt = Dataset {
+		view: br_mycampaignGantt with
+			Principal.uid to owneruid
+	}
+	nextgantt = Dataset {
+		view: br_myincomingcampaignGantt with
+			Principal.uid to owneruid
+	}
+	
+	allGantt = Dataset {
+		union: Union {
+			datasets: gantt, nextgantt
+			discriminator-column: discr
+		}
+		includes:
+			Eval "filter.isEmpty() || current.title.toLowerCase().indexOf(filter.get().toLowerCase())!=-1"
+	}
+	
+	Header {
+		value: $br_campaignManagerNLS.gantt
+	}
+	Edit {
+		variable: filter
+	}
+	IncludeHTMLWidget {
+		label: Label { break: True }
+		template: timeline
+		layout: Layout { grab: horizontal True vertical True hint: height 700 }
+		datasets: allGantt(_from, _to, label, group, description, itemStyle, instancerecorduid) to chartdata(from_ts, to_ts, label, group, description, itemstyle, id)
+		bindings:
+			value-of 'bottom' to orientationAxis,
+			value-of 'item' to selectable,
+			value-of True to fullHeight,
+			value-of True to showCurrentTime,
+			value-of True to navigationButtons,
+			value-of True to itemStack,
+			value-of True to hideTimeslots,
+			value-of True to hideTimeslotsTime
+		widget-events: {
+			when onclick then [
+				Set Current id to selectedInstance,
+				Set Current label to selectedStatus
+			]
+		}
+	}
+} 
+
+br_mycampaignManager = Page {
+	title: $br_mycampaignManagerNLS.title
+    feature: bwmcm_pageaccess
+    periodic-actions:
+    	PeriodicAction {
+    		disabled:
+    			Not BooleanPredicate ( update )
+    		period: 2
+    		actions:
+    			ReloadData ( campaignInstances ),
+				ReloadData ( campaigns ),
+				Set False to update
+    	}
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedCampaign = Variable
+	selectedProcessdefinitionid = Variable
+	selectedInstance = Variable
+	selectedProcessinstanceid = Variable
+	selectedTicketopen = Variable
+	active = Variable { type: String initial: "True"}
+	
+	update = Variable { type: Boolean initial: False }
+	
+	campaignStatus = Variable
+	
+	campaignDeleteStatus = Variable
+	/* Datasets and records here */
+	
+	availableCampaigns = Dataset {
+		pages: Pages {
+			tags: "campaign"
+		}
+	}
+	
+	campaigns = Dataset {
+		view: br_campaigns_bv with
+			active to active unless-empty,
+			Principal.uid to owneruid
+	}
+	campaign = Record {
+		view: br_campaign with
+			selectedCampaign to recorduid
+	}
+	campaignInstances = Dataset {
+		view: br_campaignInstances with
+			selectedCampaign to recorduid
+		disable-cache: True
+	}
+	
+	/* Page content */
+	Splitter {
+		disposition: Horizontal
+		size: 50%
+		Group {
+			title: $br_campaignManagerNLS.subtitle1		
+			Table {
+				data: campaigns
+				layout: Layout { grab: horizontal True vertical True }
+				configurable: True
+				show-filter: True
+				persist-configuration: True
+				Column {
+					column:recorduid
+					hidden:True
+					selection:selectedCampaign
+				}
+				Column {
+					column:processdefinitionid
+					hidden:True
+					selection:selectedProcessdefinitionid
+				}
+				Column {
+					column:code
+					header:$br_campaignManagerNLS.code
+					sortable:True
+					filterable:True
+					width:128px
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:title
+					header:$br_campaignManagerNLS.ctitle
+					sortable:True
+					filterable:True 
+					width:100%
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:description
+					header:$br_campaignManagerNLS.description
+					sortable:True filterable:True
+					width:100%
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:type
+					header:$br_campaignManagerNLS.type
+					sortable:True
+					filterable:True
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:ticket_status
+					header:$br_campaignManagerNLS.status
+					image:TemplateImageSelection (Current ticket_status) using campaignInstanceStatusIcon
+					text:Transform Current ticket_status using campaignInstanceStatusMapping
+					sortable:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:active
+					header:$br_campaignManagerNLS.active
+					sortable:True
+					filterable:True
+					text:Transform Current active using booleanDisplayMapping
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:ownerfullname
+					header:$br_campaignManagerNLS.owner
+					sortable:True
+					filterable:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:frequency
+					text:Transform Current frequency using campaignFrequencyMapping
+					header:$br_campaignManagerNLS.frequency
+					sortable:True
+					filterable:True
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:duration
+					header:$br_campaignManagerNLS.duration
+					sortable:True
+					filterable:True
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:lastexecutiondate
+					header:$br_campaignManagerNLS.lastexecutiondate
+					sortable:True
+					filterable:True
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:nextexecutiondate
+					header:$br_campaignManagerNLS.nextexecutiondate
+					sortable:True
+					filterable:True
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+				Column {
+					column:ticket_closedate
+					header:$br_campaignManagerNLS.lastclosingdate
+					sortable:True
+					initially-masked:True
+					styling:
+						BooleanStyling using BooleanPredicate (Current active) in {
+							when False then brcm_deactivatedCampaignStyle
+							when True then default
+						}
+				}
+			}
+			Flow {
+				disposition: Horizontal
+				layout: Layout { grab: horizontal True vertical False hint: height 32 }
+				Group {
+					ButtonGroup {
+						Button {
+							actions:
+								IntCase ( Count availableCampaigns ) { 
+									when > 0 then [
+										GoTo Page br_campaignManager_add
+									]
+									otherwise [
+										Message Error $br_campaignManagerNLS.notemplatefound
+									]
+								}
+							text: $br_campaignManagerNLS.addnewcampaign
+							disabled:
+								Not FeaturePredicate bwmcm_canaddcampaign
+						}
+						Button {
+							actions:
+								Dialog br_mycampaignManagerGantt
+							text: $br_campaignManagerNLS.planning
+						}
+					}
+				}
+				Group {
+					Combo {
+						variable: active
+						options:
+							Static {
+								Option {
+									text: $br_campaignManagerNLS.showactive
+									value: "True"
+								}
+								Option {
+									text: $br_campaignManagerNLS.showall
+									value: ""
+								}
+								Option {
+									text: $br_campaignManagerNLS.showdisabled
+									value: "False"
+								}
+							}
+					}
+				}				
+			}
+		}
+		ConditionalGroup {
+			IntCondition ( selectedCampaign ) {
+				when InvalidInteger then [
+					Header {
+						value: $br_campaignManagerNLS.detailhelp
+					}
+				] otherwise [
+					Group {
+						title: $br_campaignManagerNLS.dtitle	
+					    layout: Layout { grab: horizontal True vertical False hint: height 355 }
+						Text {
+							label: $br_campaignManagerNLS.dcode
+							value: campaign.code
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dctitle
+							value: campaign.title
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.ddescription
+							value: campaign.description
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dtype
+							value: campaign.type
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dstatus
+							value: Transform campaign.status using campaignStatusMapping
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dactive
+							value: Transform campaign.active using booleanDisplayMapping
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.downer
+							value: campaign.ownerfullname
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dfrequency
+							value: Transform campaign.frequency using campaignFrequencyMapping
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dduration
+							value: campaign.duration
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dlastexecutiondate
+							value: campaign.lastexecutiondate
+							compact: True
+						}		
+						Text {
+							label: $br_campaignManagerNLS.dnextexecutiondate
+							value: campaign.nextexecutiondate
+							compact: True
+						}
+						ButtonGroup {
+							Button {
+								actions:
+									Dialog br_campaignLaunchConfirmation(
+												campaign.title to campaignTitle,
+												campaign.processdefinitionid to selectedCampaignProcessDefId,
+												selectedCampaign to selectedCampaign),
+									CampaignExecute selectedCampaign status-variable campaignStatus
+										when-complete [
+											Flash Information $br_campaignManagerNLS.campaignstarted,
+											ReloadData (campaignInstances)
+										] when-failed [
+											Flash Error Concat( $br_campaignManagerNLS.error, campaignStatus)
+										],
+									Set True to update
+								text: $br_campaignManagerNLS.launchcampaign
+								disabled:
+									OrPredicate {
+										StringPredicate ( campaign.status ) {
+											when 'In Progress' then True
+										}
+										StringPredicate ( campaign.frequency ) {
+											when IsEmpty then False
+											otherwise True
+										}
+										Not BooleanPredicate ( campaign.active )
+										Not FeaturePredicate bwmcm_canlaunchcampaign
+									}
+							}
+							Button {
+								actions:
+									GoTo NewProcessPage selectedProcessdefinitionid with selectedCampaign to campaignId
+								text: $br_campaignManagerNLS.editcampaign
+								disabled:
+									Not FeaturePredicate bwmcm_caneditcampaign
+							}
+							Button {
+								actions:
+									GoTo CampaignCompliancePage selectedCampaign with campaign.code to campaigncode
+								text: $br_campaignManagerNLS.statuscampaign
+								disabled:
+									OrPredicate {
+										Not HasCampaignCompliancePage ( selectedCampaign )
+										Not FeaturePredicate bwmcm_canviewcampaignstatus
+									}
+							}
+							Button {
+								actions:
+									CampaignSetActive selectedCampaign True,
+									ReloadData ( campaigns )
+								tooltip: $br_campaignManagerNLS.setactive.tooltip
+								text: $br_campaignManagerNLS.setactive
+								hidden:
+									BooleanPredicate ( campaign.active )
+								disabled:
+									OrPredicate {
+										BooleanPredicate ( campaign.active )
+										Not FeaturePredicate bwmcm_canenablecampaign
+									}
+							}
+							Button {
+								actions:
+									CampaignSetActive selectedCampaign False,
+									ReloadData ( campaigns )
+								tooltip: $br_campaignManagerNLS.setinactive.tooltip
+								text: $br_campaignManagerNLS.setinactive
+								hidden:
+									Not BooleanPredicate ( campaign.active )
+								disabled:
+									OrPredicate {
+										Not BooleanPredicate ( campaign.active )
+										Not FeaturePredicate bwmcm_candisablecampaign
+									}
+							}
+							Button {
+								actions:
+									StringCase ( campaign.status ) {
+										when "In Progress"  then [
+										 	 Dialog br_campaignDeleteError(campaign.title to campaignTitle, $br_campaignDeleteError.description_inprogress to description)
+										 ] 
+										 otherwise [
+										 	Dialog br_campaignDeleteConfirmation(campaign.title to campaignTitle),
+										 	CampaignDelete selectedCampaign status-variable campaignDeleteStatus,
+										 	StringCase ( campaignDeleteStatus ) { 
+										 		when "Campaign is disabled but already in progress"	then										 		 
+										 			[ 
+										 				Dialog br_campaignDeleteError(campaign.title to campaignTitle, $br_campaignDeleteError.description_inprogress to description) 
+										 			]
+										 		when "Campaign is active" then
+									 				[ 
+									 					Dialog br_campaignDeleteError(campaign.title to campaignTitle, $br_campaignDeleteError.description_active to description) 
+									 				]
+										 		when "Campaign code does not exist"	then
+									 				[ 
+									 					Dialog br_campaignDeleteError(campaign.title to campaignTitle, $br_campaignDeleteError.description_exist to description) 
+									 				]
+										 		when "An error occurred" then
+									 				[ 
+									 					Dialog br_campaignDeleteError(campaign.title to campaignTitle, $br_campaignDeleteError.description_error to description) 
+									 				]
+									 		 	},
+									 		 	ReloadData ( campaigns )
+										   ]
+									}
+								tooltip: $br_campaignManagerNLS.delete.tooltip
+								text: $br_campaignManagerNLS.delete
+								hidden:
+									BooleanPredicate ( campaign.active )
+								disabled:
+									OrPredicate {
+										BooleanPredicate ( campaign.active )
+										Not FeaturePredicate bwcm_candisablecampaign
+									}
+							}
+						}
+					} // Enf of first conditionnal group
+					Group {
+						Table {
+							label: Label { value: $br_campaignManagerNLS.campaigninstances break: True }
+							data: campaignInstances
+							layout: Layout { grab: horizontal True vertical True }
+							show-filter: True
+							configurable: True
+							persist-configuration: True
+							Column{column:recorduid hidden:True selection:selectedInstance}			
+							Column{column:processinstanceid hidden:True selection:selectedProcessinstanceid}			
+							Column{column:status header:"" text:"" sortable:True width:22px image:TemplateImageSelection(Current status) using campaignInstanceStatusIcon}
+							Column{column:title header:$br_campaignManagerNLS.ititle sortable:True filterable:True width:320px}			
+							Column{column:description header:$br_campaignManagerNLS.idescription sortable:True filterable:True initially-masked:True}
+							Column{column:submissiondate header:$br_campaignManagerNLS.isubmission sortable:True filterable:True width:140px}
+							Column{column:duedate header:$br_campaignManagerNLS.iduedate sortable:True filterable:True  initially-masked:True width:140px}
+							Column{column:closedate header:$br_campaignManagerNLS.iclosedate sortable:True filterable:True  initially-masked:True width:140px}
+							Column{column:ticketopen header:$br_campaignManagerNLS.iinprogress sortable:True filterable:True selection:selectedTicketopen text:Transform Current ticketopen using booleanDisplayMapping}
+							Column{column:status2 text:Concat(Current currentprogress, '/', Current totalprogress) header:$br_campaignManagerNLS.istatus sortable:True filterable:True image:TemplateImageSelection(Ratio(Product(Current currentprogress,100), Current totalprogress,'{0,number,#}')) using br_campaignManagerPieProgress}
+							Column{column:^priority header:$br_campaignManagerNLS.ipriority sortable:True filterable:True  initially-masked:True}
+							Column{column:issuerfullname header:$br_campaignManagerNLS.iissuer sortable:True filterable:True  initially-masked:True width:196px}
+						}
+						ButtonGroup {
+							Button {
+								actions:
+									DownloadComplianceReport selectedInstance
+								text: $br_campaignManagerNLS.downloadcompliancereport
+								disabled:
+									OrPredicate {
+										Not HasComplianceReportPredicate ( selectedInstance )
+										Not FeaturePredicate bwmcm_candownloadcompliancereport
+									}
+							}
+							Button {
+								text: $br_campaignManagerNLS.jumptostatuspage
+								actions:
+									GoTo ProcessInfoPage selectedProcessinstanceid
+								disabled:
+									OrPredicate {
+										Not BooleanPredicate ( ProcessInfo ( process-id selectedProcessinstanceid, InfoPageDefined ) )
+										Not FeaturePredicate bwmcm_canjumptostatuspage
+									}
+								hidden:
+									Not BooleanPredicate ( selectedTicketopen ) 
+							}
+							Button {
+								text: $br_campaignManagerNLS.killcampaign
+								actions:
+									Confirm $br_campaignManagerNLS.killconfirm,
+									ProcessTerminate process-id selectedProcessinstanceid,
+									Flash Information $br_campaignManagerNLS.killconfirmed,
+									Set True to update
+								disabled:
+									OrPredicate {
+										Not BooleanPredicate ( selectedTicketopen )
+										Not FeaturePredicate bwmcm_cankillcampaign
+									}
+								hidden:
+									Not BooleanPredicate ( selectedTicketopen ) 
+							}
+							Button {
+								text: $br_campaignManagerNLS.jumptoreportpage
+								actions:
+									GoTo ProcessReportPage selectedProcessinstanceid
+								disabled:
+									OrPredicate {
+										Not BooleanPredicate ( ProcessInfo ( process-id selectedProcessinstanceid, ReportPageDefined ) )
+										Not FeaturePredicate bwmcm_canjumptoreportpage
+									}
+								hidden:
+									BooleanPredicate ( selectedTicketopen ) 
+							}
+						} 
+					} // End of Group
+				]
+			} 
+	   } // End of conditional group
+	}
+}

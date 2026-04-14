@@ -1,0 +1,138 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+
+fragmentRepositoryApplicationsNLS = NLS {
+	noownercode [en "Technical account" fr "Compte technique"]
+	pdescription [en "Permission description" fr "Description de la permission"]
+	empty [en "Repository accounts don't have access to applications" fr "Les comptes de ce référentiel n'ont pas d'accès à des applications"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository applications
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outapplicationuid </b>the application uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryApplications = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outapplicationuid = Variable
+
+	applications = Dataset {
+		view: bwf_repositoryapplications with inuid to uid
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outapplicationuid to inuid,
+													True to inshowaccounts,
+													True to inshowperorg,
+													True to inshowperjob,
+													inuid to inrepositoryuid
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(Count applications) {
+			when =0 then [
+				Header {
+					value:$fragmentRepositoryApplicationsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Table {
+					data:applications
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+
+					Column {
+						column:applicationuid
+						selection:outapplicationuid
+						hidden:True
+					}
+					
+					Column {
+						column:applicationcode
+						header:$application.code
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+
+					Column {
+						column:applicationdisplayname
+						header:$application.concept
+						width:100%
+						sortable:True
+						filterable:True
+
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,111 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/fragments/controls/control_details_tab.page"
+import "/webportal/pages/bw_fragments/control/details.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Details panel of the control browser. Display details and KPI on the selected control.
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>selectedControlCode</b> (in) The controlcode of the control you want details on</li>
+ * <li><b>selectedDiscrepancies</b> (in) The total number of discrepancies on the selected control</li>
+ * <li><b>selectedException</b> (in) The total number of exception on the selected control</li>
+ * <li><b>selectedDiscrepanciesTrend</b> (in) The trend of discrepancies on the selected control</li>
+ * <li><b>selectedExceptionTrend</b> (in) The trend of exception on the selected control</li>
+ * <li><b>entityDisplayed</b> (in) The entities controlled by the selected control</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_details_panel = PageFragment {
+	
+	/* Variables here */
+	selectedControlCode = Variable { type: String }
+	selectedDiscrepancies = Variable { type: String }
+	selectedException = Variable { type: String }
+	selectedDiscrepanciesTrend = Variable { type: String }
+	selectedExceptionTrend = Variable { type: String }
+	entityDisplayed = Variable { type: String }
+	
+	/* Datasets and records here */
+	control_data = Record {
+		view: bw_control_browser_get_control_from_code with
+			selectedControlCode to controlCode
+	}
+	
+	/* Page content */
+	Group {
+		title: $detailpanel.info
+		IncludeFragment {
+			layout: Layout { grab: horizontal True vertical False }
+			fragment: bw_control_browser_kpi_display with
+				value-of selectedControlCode to selectedControlCode,
+				value-of control_data.controlentity to selectedControlEntity, 
+				value-of selectedDiscrepancies to selectedDiscrepancies,
+				value-of selectedException to selectedException,
+				value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+				value-of selectedExceptionTrend to selectedExceptionTrend,
+				entityDisplayed binds-to entityDisplayed
+		}
+		IncludeFragment {
+			layout: Layout { grab: horizontal True vertical True }
+			fragment: fragmentControlDetails with
+				value-of selectedControlCode to incontrolcode
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Details tab of the control browser. Display details and KPI on the selected control.
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>selectedControlCode</b> (in) The controlcode of the control you want details on</li>
+ * <li><b>selectedDiscrepancies</b> (in) The total number of discrepancies on the selected control</li>
+ * <li><b>selectedException</b> (in) The total number of exception on the selected control</li>
+ * <li><b>selectedDiscrepanciesTrend</b> (in) The trend of discrepancies on the selected control</li>
+ * <li><b>selectedExceptionTrend</b> (in) The trend of exception on the selected control</li>
+ * <li><b>entityDisplayed</b> (in) The entities controlled by the selected control</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_details_tab = PageFragment {
+	enter-event:
+		Set control_data._hasRootCause to hasRootCause
+	
+	/* Variables here */
+	selectedControlCode = Variable { type: String }
+	selectedDiscrepancies = Variable { type: Integer }
+	selectedException = Variable { type: Integer }
+	selectedDiscrepanciesTrend = Variable { type: Integer }
+	selectedExceptionTrend = Variable { type: Integer }
+	entityDisplayed = Variable { type: String }
+	hasRootCause = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	control_data = Record {
+		view: bw_control_browser_get_control_from_code with
+			selectedControlCode to controlCode
+	}
+	
+	/* Page content */
+	Group {
+		IncludeFragment {
+			layout: Layout { grab: horizontal True vertical False }
+			fragment: bw_control_browser_kpi_display with
+				value-of selectedControlCode to selectedControlCode,
+				value-of control_data.controlentity to selectedControlEntity, 
+				value-of selectedDiscrepancies to selectedDiscrepancies,
+				value-of selectedException to selectedException,
+				value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+				value-of selectedExceptionTrend to selectedExceptionTrend,
+				entityDisplayed binds-to entityDisplayed
+		}
+		IncludeFragment {
+			layout: Layout { grab: horizontal True vertical True }
+			fragment: fragmentControlDetails_popup with
+				value-of selectedControlCode to incontrolcode
+		}
+	}
+}
+

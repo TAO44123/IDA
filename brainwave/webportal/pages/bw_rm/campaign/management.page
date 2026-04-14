@@ -1,0 +1,402 @@
+/* Import other pages here */
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_campaignmanager/resources.page"
+import "/webportal/pages/bw_campaignmanager/campaignManager.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+import "/webportal/pages/workflow/bw_task_manager/workflowAdministration.page"
+import "/webportal/pages/bw_rm/campaign/campaign_start.page"
+
+import "/webportal/pages/bw_rm/globalroles/globalroles_frag.page"
+import "/webportal/pages/bw_rm/campaign/perms_review_frag.page"
+import "/webportal/pages/bw_cloud_rolemining/stage/exportrolemining.page"
+
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_rolemining/resources/nls/stagechecks.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/dashboard.page"
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+bwpm_redbg = Style {
+	background:Color RGB(255, 160, 160)
+}
+
+bw_rm_status = StringMapping {
+	when '0' then $bw_rm_managementNLS.notstarted
+	when '1' then $bw_rm_managementNLS.inprogress
+	when '2' then $bw_rm_managementNLS.done
+	otherwise ''
+}
+
+bw_rm_ganttNLS = NLS {
+	title [en "Operational efficiency" fr "Efficacité opérationnelle"]
+	subtitle [en 'Finalized reviews to date' fr 'Revues finalisées à ce jour']
+}
+
+bw_rm_management = Page {
+	title: $bw_rm_managementNLS.title
+	enter-event:
+		Set reviewprocess.reviewfilterbyrule to reviewfilterbyrule, 
+		Set campaign.type to campaignType, 
+		Set campaign.frequency to campaignFrequency, 
+		Set campaign.startexecutiondate to campaignStartingDate
+	
+	/* Parameters here */
+	processId = Parameter {
+		type: String
+		mandatory: True
+		hidden: True
+	}
+	
+	/* Variables here */
+	reviewfilterbyrule = Variable
+	selectedReviewProcessId = Variable
+	selectedReviewTicket = Variable
+	selectedTaskId = Variable {multivalued:True}
+	reassignedIdentityUID = Variable
+	reassignedIdentityName = Variable
+	selectedEntityName = Variable
+	selectedReviewOpen = Variable
+	selectedActionTaskId = Variable
+	
+	campaignType = Variable
+	campaignFrequency = Variable
+	campaignStartingDate = Variable
+	
+	//selectedTab = Variable { type: Integer initial: 0 }
+	globalTabSelected = Variable { type: Boolean initial: False}
+	permcommentsTabSelected = Variable { type: Boolean initial: False}
+	
+	/* Datasets and records here */
+	reviewprocess = ProcessRecord(processId)
+
+	selectedProcessTasks = Dataset {
+		tasks: TaskFilter {
+			instance: selectedReviewProcessId
+			mode: Supervision
+			show-completed: False
+			show-error: True
+			hide-active: False
+		}
+	}
+
+	campaign = Record {
+		view: bw_rm_getcampaignbyprocessid with processId to processinstanceid
+	}
+
+	campaignticket = Record {
+		view: bw_rm_getticketbyprocessid with processId to processinstanceid
+	}
+
+	reviewtickets = Dataset {
+		view: bw_rm_orgsreview_md with campaignticket.recorduid to recorduid
+	}
+
+	countopenreviews = Record {
+		view: bw_rm_countopensubtickets with campaignticket.recorduid to recorduid
+	}
+
+	countclosedreviews = Record {
+		view: bw_rm_countclosedsubtickets with campaignticket.recorduid to recorduid
+	}
+
+	notstarted = Dataset {
+		view: bw_rm_getnotstartedsubtickets with campaignticket.recorduid to recorduid
+	}
+	
+	longest = Dataset {
+		view: bw_rm_getoldestsubtickets with campaignticket.recorduid to recorduid
+	}
+
+	shame = Dataset {
+		union: Union {
+			datasets:notstarted, longest
+			discriminator-column:discrim
+		}
+	}
+
+	fame = Dataset {
+		view: bw_rm_getclosedsubtickets with campaignticket.recorduid to recorduid
+		limit: 10
+	}
+
+	doTakeTask = NamedAction (
+		BooleanCase( selectedReviewOpen) {
+			when True then [
+				GoTo TaskPage selectedActionTaskId with True to fromPage
+			] when False then [
+				Message $bw_rm_managementNLS.msg.taskCompleted
+			]
+		}
+	)
+
+	/* Page content */
+	TabFolder {
+		//  selected-index: selectedTab
+		TabItem {
+			text: $bw_rm_managementNLS.management
+			Splitter {
+				disposition: Vertical
+				size: 40%
+				Flow {
+					disposition: Horizontal
+					Group {
+						title: $bw_rm_managementNLS.progress
+						IncludeHTMLWidget {
+							template: liquidGaugeIndicator
+							layout: Layout { hint: height 150 width 150 align: horizontal Center vertical Center }
+							label: Label {
+								break: True
+							}
+							bindings:
+								value-of countclosedreviews.val to count,
+								value-of Count reviewtickets to maxValue
+						}
+					}
+					Group {
+						title:$bw_rm_managementNLS.fame
+						Table {
+							data:fame
+							layout:Layout {grab: horizontal True vertical True}
+							Column {
+								column: custom1
+								header: $bw_rm_managementNLS.entity
+								width: 34%
+							}
+							Column {
+								column: actionactorfullname
+								header: $bw_rm_managementNLS.latestactor
+								width: 33%
+							}
+							Column {
+								column: actionenddate
+								header: $bw_rm_managementNLS.finishedworkingon
+								width: 33%
+							}
+						}
+					}
+					Group {
+						title: $bwcdrm_stagedashboardNLS.dashboard.actions
+						mixins: linksPanelMixin
+						Button {
+							actions: GoTo Page bwcdrm_export_rolemining
+							text: $bwcdrm_exportroleminingNLS.title
+							image: %steps_24.export
+						}
+					}
+				}
+				Group {
+					Table {
+						data: reviewtickets
+						layout:Layout{grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable: True
+						double-click:
+							ExecuteNamedAction doTakeTask
+						Column {
+							column: recorduid
+							hidden: True
+							selection: selectedReviewTicket
+						}
+						Column {
+							column: processinstanceid
+							hidden: True
+							selection: selectedReviewProcessId
+						}
+						Column {
+							column: ticketopen
+							width: 24px
+							header: ''
+							text: ''
+							sortable: True
+							image: BooleanImageSelection (Current ticketopen) { when False then "16/famfamfam_silk_icons_v013/accept.png" when True then "" }
+						}
+						Column {
+							column: ticketopen
+							hidden: True
+							selection: selectedReviewOpen
+						}
+						Column {
+							column: shortname
+							width: 50px
+							header: $bw_rm_managementNLS.code
+							initially-masked: False
+						}
+						Column {
+							column: orgdisplayname
+							header: $bw_rm_managementNLS.entity
+							sortable: True
+							filterable: True
+							width: 260px
+							selection: selectedEntityName
+							actions: Dialog bwf_organisationDetailsDialog ( Current uid to inuid, False to inshowteam )
+						}
+						Column {
+							column: currentstatus
+							header: $bw_rm_managementNLS.status
+							text: Transform Current currentstatus using bw_rm_status
+						}
+						Column {
+							column: currentprogress
+							header: $bw_rm_managementNLS.coverage
+							sortable: True
+							filterable: True
+							align: Right
+							text: Eval " ' ' + (current.totalprogress ? (current.currentprogress * 100 / current.totalprogress): 0) + '%' "
+							image: TemplateImageSelection( Eval " current.currentprogress * 100 / current.totalprogress" ) using br_campaignManagerPieProgress
+						}
+						Column {
+							column: nbmembers
+							width: 80px
+							header: $bw_rm_managementNLS.nbpeople
+							align: Right
+							sortable: True
+						}
+						Column {
+							column: nbrolecode
+							width:70px
+							header: $bw_rm_managementNLS.nbroles
+							align: Right 
+							styling: IntStyling(Current nbrolecode) { when =0 then bwpm_redbg }
+						}
+						Column {
+							column: nbidentities
+							width: 155px
+							header: $bw_rm_managementNLS.nbpeoplewithrole
+							align: Right
+							styling: IntStyling(Current nbidentities) { when =0 then bwpm_redbg }
+						}
+						Column {
+							column: actionactorfullname
+							header: $bw_rm_managementNLS.assignedTo
+							width: 128px
+						}
+						Column {
+							column: actionstartdate
+							header: $bw_rm_managementNLS.initialnotification
+							sortable: True
+							filterable: True
+							width: 136px
+						}
+						Column {
+							column: actionstartworkingdate
+							header: $bw_rm_managementNLS.startedworking
+							sortable: True
+							filterable: True
+							width: 136px
+						}
+						Column {
+							column: actionenddate
+							header: $bw_rm_managementNLS.finishedworkingon
+							sortable: True
+							filterable: True
+							width: 136px
+						}
+						Column {
+							column: closedate
+							header: $bw_rm_managementNLS.reviewclosed
+							sortable: True
+							filterable: True
+							width: 136px
+						}
+						Column {
+							column: actiontaskid
+							hidden: True
+							selection: selectedActionTaskId
+						}
+					}
+				}
+			}
+			ButtonGroup {
+				align:Right
+				Button {
+					actions:
+						Dialog identityPicker(reassignedIdentityUID from outUid, reassignedIdentityName from outDisplayname, True to inAllowMe),
+						Flash Concat($PAworkflowAdministration_NLS.taskreassignedto,reassignedIdentityName),
+						TransferData selectedProcessTasks(taskId) to (selectedTaskId),
+						TaskReassign task-id selectedTaskId to reassignedIdentityUID,
+						ReloadData (reviewtickets)
+					text: $bw_rm_managementNLS.reassigntask
+					disabled:
+						OrPredicate {
+							StringPredicate(selectedActionTaskId) { when IsEmpty then True }
+							Not BooleanPredicate (selectedReviewOpen)
+						}
+					feature: bw_rm_canreassigntask
+				}
+				Button {
+					actions:
+						ExecuteNamedAction doTakeTask
+					disabled:
+						OrPredicate {
+							Not BooleanPredicate(ProcessInfo(process-id selectedReviewProcessId, InfoPageDefined))
+							StringPredicate(selectedActionTaskId) { when IsEmpty then True }
+							Not BooleanPredicate (selectedReviewOpen)
+						}
+					text: $bw_rm_managementNLS.inspectcontent
+				}
+			}
+		}
+		// GLOBAL ROLES
+		TabItem {
+			activation-event: Set True to globalTabSelected
+			text: $bw_rm_managementNLS.globalRoles
+			IncludeFragment (rm_globalroles with globalTabSelected binds-to inEnabled, value-of True to inReadOnly )
+		}
+		// PERM COMMENTS
+		TabItem {
+			activation-event: Set True to permcommentsTabSelected
+			text: $bwrm_permcomments_NLS.permscomments.tab
+			IncludeFragment (rm_permcomments with permcommentsTabSelected binds-to inenabled )
+		}
+		TabItem {
+			text: $bw_rm_managementNLS.campaigninformation
+			Text {
+				value: campaign.code
+				label: $bw_rm_startNLS.campaignuniquecode
+			}
+			Text {
+				value: campaign.title
+				label: $bw_rm_startNLS.Campaigntitle
+			}
+			Text {
+				value: campaign.description
+				label: $bw_rm_startNLS.campaigndescription
+			}
+			Text {
+				value: campaign.ownerfullname
+				label: $bw_rm_startNLS.campaignowner
+			}
+			Combo {
+				label: Label {
+					value: $bw_rm_startNLS.campaignfrequency
+				}
+				variable: campaignFrequency
+				options: Static {
+					Option {text:$bw_rm_startNLS.adhoc value:""}
+					Option {text:$bw_rm_startNLS.daily value:"d"}
+					Option {text:$bw_rm_startNLS.weekly value:"w"}
+					Option {text:$bw_rm_startNLS.monthly value:"m"}
+					Option {text:$bw_rm_startNLS.quarterly value:"q"}
+					Option {text:$bw_rm_startNLS.semesterly value:"s"}
+					Option {text:$bw_rm_startNLS.yearly value:"y"}
+				}
+				disabled:True
+			}
+			DateTime {
+				variable: campaignStartingDate
+				label: $bw_rm_startNLS.campaignstartingdate
+				disabled: True
+				type: Date
+			}
+			Text {
+				value: campaign.duration
+				label: $bw_rm_startNLS.campaignduration
+			}
+		}
+	}
+}

@@ -1,0 +1,231 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+fragmentOrganisationAccountsNLS = NLS {
+	directonly [en "only this organisation" fr "seulement cette organisation"]
+	hierarchy [en "organisation hierarchy" fr "hiérarchie des organisations"]
+	employeetype [en "Employee type" fr "Type de contrat"]
+	trends [en "Changes" fr "Changements"]
+	deleted [ en "Deleted" fr "Supprimé" ]
+	modified [ en "Modified" fr "Modifié" ]
+	new [ en "New" fr "Nouveau" ]
+	nochanged [ en "none" fr "non" ]
+	removed [en "Removed" fr "Supprimé"]
+	identical [en "Identical" fr "Identique"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation accounts
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationAccounts = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inonlydirectselection = Variable { multivalued:False }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outaccountuid = Variable { type: String }
+	outaccountlogin = Variable
+	outrepositoryname = Variable
+	
+	
+	/* Datasets and records here */
+	accounts = Dataset {
+		view: bwf_org_accounts with
+			inuid to uid unless-empty,
+			inonlydirectselection to directonly
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid,
+												True to inshowowner,
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Checkbox {
+		variable:inonlydirectselection
+		text:$fragmentOrganisationAccountsNLS.directonly
+		tooltip:$bwfOrganisation.directonlytooltip
+	}
+	
+	Table {
+		data: accounts
+		layout: Layout { grab: horizontal True vertical True }
+		show-filter: True 
+		show-count: True
+		configurable: True
+		persist-configuration: True
+		double-click: ExecuteNamedAction goDetails
+		
+		
+		Column {
+			column:uid
+			hidden:True
+			selection: outaccountuid
+		}
+
+		Column {
+			column:identityhrcode
+			header:$pidentity.hrcode
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:identityfullname
+			header:$pidentity.fullname
+			sortable:True
+			filterable:True
+			width:160px
+		}
+		Column {
+			column:identitymail
+			header:$pidentity.mail
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:160px
+		}				
+		Column {
+			column:identityinternal
+			sortable:True
+			filterable:True
+			header:$pidentity.internal
+			initially-masked:True
+		}
+		Column {
+			column:identityactive
+			sortable:True
+			filterable:True
+			header:$pidentity.active
+			initially-masked:True
+		}
+		Column {
+			column:identitybwa_identityanalyticsdata_joborg
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$pidentity.joborg
+			width:160px
+		}
+		
+		Column {
+			column:identifier
+			header:$account.identifier
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:256px
+			
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:login
+			header:$account.login
+			sortable:True
+			filterable:True
+			selection:outaccountlogin
+			
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:username
+			header:$account.username
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:160px
+			
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:creationdate
+			header:$account.creationdate
+			sortable:True
+			filterable:True
+			width:160px
+		}
+		Column {
+			column:lastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			filterable:True
+			width:160px
+		}
+		Column {
+			column:repositorydisplayname
+			header:$repository.concept
+			sortable:True
+			filterable:True
+			selection:outrepositoryname
+			width: 100%
+		}
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}
+	}
+}

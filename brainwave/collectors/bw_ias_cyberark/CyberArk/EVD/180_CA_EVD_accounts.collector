@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA accounts" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039307292_1_nK3h2t7OMxIKLC8tluTePQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617040465054">
+		<Component name="C1617040465054" type="discoverysource" x="43" y="28" w="300" h="64" title="CA_EVD_secrets">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_FilesList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-FilesList.csv&apos;)}"/>
+		</Component>
+		<Component name="C1625489200158_1" type="asset" x="39" y="366" w="300" h="64" title="CA safe secrets">
+			<Asset key="id" error="true" event="AssetNullOrEmpty">
+				<Attribute name="displayname" attribute="EVD_filename"/>
+				<Attribute name="custom8" attribute="cc_lastreconciledtime"/>
+				<Attribute name="category" attribute="asset_category"/>
+				<Attribute name="custom1" attribute="cc_username"/>
+				<Attribute name="custom2" attribute="cc_address"/>
+				<Attribute name="custom3" attribute="cc_platformid"/>
+				<Attribute name="custom4" attribute="secrettype"/>
+				<Attribute name="custom5" attribute="cc_automaticmanagementenabled"/>
+				<Attribute name="custom6" attribute="cc_manualmanagementreason"/>
+				<Attribute name="custom7" attribute="cc_status"/>
+				<Attribute name="custom9" attribute="cc_lastverifiedtime"/>
+			</Asset>
+		</Component>
+		<Component name="C1625492468732_1" type="metadata" x="39" y="493" w="300" h="64" title="safe_to_secrets">
+			<Metadata schema="safe_to_secrets" key=" " application="EVD_safename" assetValue="id" asset="id">
+				<Attribute name="value1date" attribute="EVD_creationdate_formated"/>
+				<Attribute name="value2date" attribute="EVD_lastmodifieddate_formated"/>
+			</Metadata>
+		</Component>
+		<Link name="L1625492477457_1" source="C1625489200158_1" target="C1625492468732_1" priority="1"/>
+		<Component name="C1666616059540" type="joinfilter" x="47" y="132" w="300" h="64" title="Join with properties">
+			<Join source="C1666616081097" severalaction="all"/>
+			<Attributes>
+				<Attribute name="A1666618027946" attribute="_objectpropertyid" source="_objectpropertyid" multivalued="true"/>
+				<Attribute name="A1666618032884" attribute="_objectpropertyname" source="_objectpropertyname" multivalued="true"/>
+				<Attribute name="A1666618037951" attribute="_objectpropertyvalue" source="_objectpropertyvalue" multivalued="true"/>
+			</Attributes>
+			<Cache active="true" main="id" join="__KEY__"/>
+		</Component>
+		<Link name="L1666616069857" source="C1666616059540" target="C1624458065493_1" priority="1"/>
+		<Component name="C1666616081097" type="discoverysource" x="464" y="132" w="300" h="64" title="CA_EVD_ObjectProperties">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_ObjectProperties.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-ObjectProperties.csv&apos;)}"/>
+		</Component>
+		<Link name="L1666616094465" source="C1666616081097" target="C1666616059540" priority="1"/>
+		<Component name="C1624458065493_1" type="changefilter" x="43" y="258" w="300" h="64" title="Update">
+			<Actions function="readObjectProperties">
+				<Action name="U1624458106514" action="update" attribute="EVD_safename" newvalue="{&apos;SAFE_&apos; + dataset.EVD_safeid.get() + &apos;_&apos; + dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+				<Action name="U1625563460041" action="add" attribute="asset_category" type="String" multivalued="false" newvalue="ca_secret" errorexist="false"/>
+				<Action name="U1625649458776" action="update" attribute="id" newvalue="{dataset.id.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+				<Action name="U1635875283724" action="convertdate" oldname="EVD_creationdate" attribute="EVD_creationdate_formated" type="Date" multivalued="false" newvalue="{config.dateformat}" errorunknown="false" errorexist="false"/>
+				<Action name="U1635875322134" action="convertdate" oldname="EVD_lastmodifieddate" attribute="EVD_lastmodifieddate_formated" type="Date" multivalued="false" newvalue="{config.dateformat}" errorunknown="false" errorexist="false"/>
+			</Actions>
+			<Attributes>
+				<Attribute name="A1666622342461" attribute="cc_username" type="String" multivalued="false"/>
+				<Attribute name="A1666622351210" attribute="cc_address" type="String" multivalued="false"/>
+				<Attribute name="A1666622358956" attribute="cc_platformid" type="String" multivalued="false"/>
+				<Attribute name="A1666622371044" attribute="cc_automaticmanagementenabled" type="String" multivalued="false"/>
+				<Attribute name="A1666622385180" attribute="cc_manualmanagementreason" type="String" multivalued="false"/>
+				<Attribute name="A1666622394180" attribute="cc_status" type="String" multivalued="false"/>
+				<Attribute name="A1666622406789" attribute="cc_lastreconciledtime" type="String" multivalued="false"/>
+				<Attribute name="A1666622420896" attribute="cc_lastverifiedtime" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1666618163481" source="C1617040465054" target="C1666616059540" priority="1"/>
+		<Link name="L1666618164882" source="C1624458065493_1" target="C1625489200158_1" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="dateformat"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

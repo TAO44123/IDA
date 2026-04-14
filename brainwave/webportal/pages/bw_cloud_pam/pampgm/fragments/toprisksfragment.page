@@ -1,0 +1,81 @@
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_risk.page"
+import "/webportal/pages/bw_cloud_pam/resources/styles.page"
+
+bwcpam_pgm_risk_spinner = HTMLWidgetTemplate {
+	source-file: "static/bw_cloud_base/widgets/spinner/spinner.html"
+}
+
+pampgm_risk_toprisksfragment = PageFragment {
+	//mixins: dashboardMixin
+	
+	reftimeslotuid = Variable
+	
+	loading = Variable { type: Boolean }
+	
+	topriskaccounts = Dataset {
+		view: pampgm_risk_topriskaccount
+	}
+	
+	refresh = NamedAction (
+		ReloadData ( topriskaccounts )
+	)
+	
+	Group {
+		mixins: homePanelMixin
+		styling: cssRound
+		
+		Header { 
+			value: $bwcd_pam_ciso_risk_NLS.group.highrisk.title
+			icon: %status.risk
+		}
+		Spacer {
+			height: 13
+		}
+		TabFolder {
+			border: False
+			hidden: BooleanPredicate ( loading )
+			TabItem {
+				text: $account.concept
+				Table {
+					data: topriskaccounts
+					layout: Layout { grab: horizontal True vertical True indent: horizontal 0 vertical 10  }
+					initial-sort: risk descending
+					show-count: True
+					Column {
+						column: repocode
+						header: $repository.concept
+						width: 30%
+						sortable: True
+						filterable: True
+						actions: GoTo Activity Repository Detail with Current repouid to paramRepositoryUid
+					}
+					Column {
+						column: login
+						header: $account.login
+						width: 100%
+						sortable: True
+						filterable: True
+						actions: GoTo Activity Account (CAusers) Detail with Current uid to paramAccountUid
+					}
+					Column {
+						header: $bwcd_pam_ciso_risk_NLS.concept.risk
+						column: risk
+						sortable: True 
+						filterable: True
+						align:Left
+						fixed-width:True
+						width: 100px
+					}
+				}
+			}
+		}
+		IncludeHTMLWidget {
+			template: bwcpam_pgm_risk_spinner
+			layout: Layout { grab: horizontal True vertical True }
+			hidden: Not BooleanPredicate ( loading )
+		}
+	}
+}

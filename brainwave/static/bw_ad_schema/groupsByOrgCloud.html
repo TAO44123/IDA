@@ -1,0 +1,82 @@
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>Cloud</title>
+	<script src="jquery.min.js"></script>
+	<script src="wordcloud2.js"></script>
+	<script type="text/javascript" src="brainwave-view.js"></script>
+	<script type="text/javascript">
+
+		document.documentElement.style.overflow = 'hidden';
+
+		function createCloud() {
+
+			var allTokens = [];
+
+			$('body>ul>li').each(function () {
+				var word = $(this).attr("id");
+				var weight = $(this).text() * 100;
+				allTokens.push([word, weight]);
+			});
+
+			$('body>ul').hide();
+
+			var height = $(document).height();
+			var width = $(document).width();
+
+			$('#cloud').attr('height', height);
+			$('#cloud').attr('width', width);
+
+			WordCloud(document.getElementById('cloud'), {
+				list: allTokens,
+				gridSize: 13,
+				weightFactor: function (size) { // size of words
+					return size * 0.08;
+				},
+				color: function (word, weight) {
+					// palette blue color
+					if (weight > 800) {
+						return '#001F3F';
+					} else if (weight > 600) {
+						return '#003366';
+					} else if (weight > 400) {
+						return '#004080';
+					} else if (weight > 200) {
+						return '#0059b3';
+					} else {
+						return '#0073e6';
+					}
+				},
+				rotateRatio: 0, // horizontal word
+				shape: 'circle', // circular apparition
+				wait: 50, // progressiv
+				center: {
+					x: width / 2,
+					y: height / 2
+				}, // centrer les mots
+			});
+		}
+
+		$(window).ready(function () {
+			$('body').bwViewResolve(createCloud);
+		});
+
+	</script>
+
+</head>
+
+<body id="content">
+
+	<div class="brainwave-view" id="ad_groups_byorg" paramlist="uid,repositoryUid" format="ul" value="totalIdentities"
+		key="displayname"> Loading ... </div>
+
+	<div id="cloud-container">
+		<canvas id="cloud"></canvas>
+	</div>
+
+</body>
+
+</html>

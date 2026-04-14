@@ -1,0 +1,152 @@
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_iasreview/nls.page"
+
+/* CONSTANTS */
+
+// Review status values
+review_status_notReviewed = Constant { type: String value: "not reviewed" }
+review_status_toBeReviewed = Constant { type: String value: "to be reviewed" }
+review_status_reassign = Constant { type: String value: "reassign" }
+review_status_revoke = Constant { type: String value: "revoke" }
+review_status_update = Constant { type: String value: "update" }
+review_status_ok = Constant { type: String value: "ok" }
+review_status_removed = Constant { type: String value: "Access right removed during the campaign" }
+// Campaign status
+campaign_status_finalizing = Constant { type: String value: "finalizing" }
+// Reviewer Origin
+reviewer_origin_linemanager = Constant { type: String value: "linemanager" }
+reviewer_origin_applicationowner = Constant { type: String value: "applicationowner" }
+reviewer_origin_permissionowner = Constant { type: String value: "permissionowner" }
+reviewer_origin_accountowner = Constant { type: String value: "accountowner" }
+reviewer_origin_groupowner = Constant { type: String value: "groupowner" }
+reviewer_origin_repositoryowner = Constant { type: String value: "repositoryowner" }
+reviewer_origin_default = Constant { type: String value: "default" }
+reviewer_origin_safeowner = Constant { type: String value: "safeowner" }
+// Review types
+review_typeMode_list = Constant { type: String value: "list" }
+review_typeMode_group = Constant { type: String value: "grouped" }
+review_typeMode_pivot = Constant { type: String value: "pivot" }
+// Review campaign types
+campaign_type_rights = Constant { type: String value: "right" }
+campaign_type_account = Constant { type: String value: "account" }
+campaign_type_safe = Constant { type: String value: "safe" }
+campaign_type_members = Constant { type: String value: "groupmembers" }
+campaign_type_servers = Constant { type: String value: "servers" }
+
+/* MAPPINGS */
+
+remediationStatusImage = StringImageTemplate {
+	when "init" then "16/famfamfam_silk_icons_v013/add_black.png"
+	when "new" then "16/famfamfam_silk_icons_v013/add_black.png"
+	when "in progress" then "16/famfamfam_silk_icons_v013/basket_add.png"
+	when "done" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "won't fix" then "16/famfamfam_silk_icons_v013/cancel.png"
+	when "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+}
+
+remediationStatusMappingNLS = NLS {
+	new [en "new" fr "nouveau"]
+	inprogress [en "in progress" fr "en cours"]
+	done [en "done" fr "fait"]
+	wontfix [en "won't fix" fr "annulé"]
+	na [en "N/A" fr "N.D."]
+	empty [en "" fr ""]
+}
+remediationStatusMapping = StringMapping {
+//	when "new" then $remediationStatusMappingNLS.new
+//	when "in progress" then $remediationStatusMappingNLS.inprogress
+//	when "done" then $remediationStatusMappingNLS.done
+//	when "won't fix" then $remediationStatusMappingNLS.wontfix
+	when IsEmpty then $remediationStatusMappingNLS.empty
+	otherwise current
+}
+
+wizardheaderstyle = Style {
+	image-color: whiteNG
+	foreground: whiteNG
+	size: 16px
+}
+
+revieweroriginmapping = StringMapping {
+	when Constant reviewer_origin_linemanager then $bwaccess360_accessrightsreview.reviewer_origin.linemanager
+	when Constant reviewer_origin_applicationowner then $bwaccess360_accessrightsreview.reviewer_origin.applicationowner
+	when Constant reviewer_origin_permissionowner then $bwaccess360_accessrightsreview.reviewer_origin.permissionowner
+	when Constant reviewer_origin_accountowner then $bwaccess360_accessrightsreview.reviewer_origin.accountowner
+	when Constant reviewer_origin_groupowner then $bwaccess360_accessrightsreview.reviewer_origin.groupowner
+	when Constant reviewer_origin_repositoryowner then $bwaccess360_accessrightsreview.reviewer_origin.repositoryowner
+	when Constant reviewer_origin_default then $bwaccess360_accessrightsreview.reviewer_origin.byDefault
+	when Constant reviewer_origin_safeowner then $bwaccess360_accessrightsreview.reviewer_origin.safeowner
+	when IsEmpty then $remediationStatusMappingNLS.empty
+	otherwise current
+}
+
+remediationstatusmapping = StringMapping {
+	when "init" then "-1"
+	when "active" then "0"
+	when "active7days" then "0"
+	when "closed" then "1"
+	when "cancelled" then "2"
+	when "error" then "3"
+}
+
+access360analytics_reviewcampaignDate = StringService {
+	javascript-file: "/webportal/pages/bw_iasreview/reviewcampaign.javascript"
+	javascript-method: computeDate
+	nbdays = Input { type: Integer default: 90 }
+}
+
+// Initial notifications content
+mailcontents = EventService {
+	javascript-file: "/webportal/pages/bw_iasreview/review/application/parsejsonconf.javascript"
+	javascript-method: getMailContent
+	
+	reviewdefmduid = Input { type: String }
+	
+	// EN
+	cfg_en = Output { type: String }
+	cfgtitle_en = Output { type: String }
+	// FR
+	cfg_fr = Output { type: String }
+	cfgtitle_fr = Output { type: String }
+	// ES
+	cfg_es = Output { type: String }
+	cfgtitle_es = Output { type: String }
+	// Default / previous
+	cfg = Output { type: String }
+	cfgtitle = Output { type: String }
+	// To & Cc
+	cfgtocc = Output { type: String }
+	cfgtobcc = Output { type: String }
+}
+
+// Reminder notifications content
+reminderMailContents = EventService {
+	javascript-file: "/webportal/pages/bw_iasreview/review/application/parsejsonconf.javascript"
+	javascript-method: getReminderMailContent
+	
+	reviewdefmduid = Input { type: String }
+	
+	// EN
+	cfg_en = Output { type: String }
+	cfgtitle_en = Output { type: String }
+	// FR
+	cfg_fr = Output { type: String }
+	cfgtitle_fr = Output { type: String }
+	// ES
+	cfg_es = Output { type: String }
+	cfgtitle_es = Output { type: String }
+	// Default / previous
+	cfg = Output { type: String }
+	cfgtitle = Output { type: String }
+	// To & Cc
+	cfgtocc = Output { type: String }
+	cfgtobcc = Output { type: String }
+}
+
+// Missing reviewers source types
+bw_ias_review_missingReviewers_sourceStatus = Constant { type: String value: 'status' }
+bw_ias_review_missingReviewers_sourceToReview = Constant { type: String value: 'toReview' }

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="access360r_identityaccessrightsincommon" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="access rights in common" notes="" begindate="" enddate="">
+	<ViewParam name="totalnbidentities" displayname="totalnbidentities" type="Integer"/>
+	<ViewParam name="lowthreshold" displayname="lowthreshold" type="Integer"/>
+	<ViewParam name="lowvalue" displayname="lowvalue" type="Integer" defaultvalue="{1+(param.totalnbidentities.get()*param.lowthreshold.get())/100}"/>
+	<ViewParam name="applications" displayname="applications" type="String"/>
+	<ViewComputedAttribute name="nbexcludedidentities" displayname="nbexcludedidentities" type="Integer" expression="param.totalnbidentities.get()-dataset.nbidentity.get()"/>
+	<ViewComputedAttribute name="label" displayname="label" type="String" expression="dataset.permissiondisplayname.get()+&apos; - &apos;+dataset.applicationdisplayname.get()"/>
+	<ViewComputedAttribute name="percent" displayname="percent" type="Integer" expression="(dataset.nbidentity.get()*100)/param.totalnbidentities.get()"/>
+	<ViewComputedAttribute name="empty" displayname="empty" type="String" expression="&apos;&apos;"/>
+	<ViewSort name="sort" attribute1="A1617710107903_909" direction1="DESC"/>
+	<ViewAttribute name="A1617616727781_2411" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1617616729857_0" operation="isNull" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1617616732017_1" operation="isFalse" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1617617159975_2486" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="true" join="identityreconciliation">
+		<ViewAttribute name="A1617710107903_909" attribute="recorduid" alias="nbidentity" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1617710123588_0" reference="lowvalue" operation="ge" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1617710150496_912" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermissionright">
+		<ViewJoin name="J1617710154913_913" prefix="application" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="A1617710169298_914" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1617710182033_0" reference="applications" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1617710169869_915" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1617710179986_916" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1617718581295_1236" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1617718583288_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="Profile"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="A1617710338701_918" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1617710339263_919" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1617710339857_920" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1617710340381_921" attribute="permissiontype" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1617718275501_1215" attribute="bwa_permissionmetadata_sensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="A1617718279934_1216" attribute="bwa_permissionmetadata_descr" operator="or" removedfromprojection="false" globalfilter="true"/>
+	</ViewJoin>
+</View>

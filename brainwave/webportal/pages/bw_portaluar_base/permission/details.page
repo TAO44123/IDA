@@ -1,0 +1,378 @@
+import "/webportal/pages/resources/details_nls.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/permission/details.page"
+import "/webportal/pages/bw_fragments/permission/parentpaths.page"
+import "/webportal/pages/bw_fragments/permission/content.page"
+import "/webportal/pages/bw_fragments/permission/accounts.page"
+import "/webportal/pages/bw_fragments/permission/usages.page"
+import "/webportal/pages/bw_fragments/permission/controls.page"
+import "/webportal/pages/bw_fragments/permission/decisionhistory.page"
+import "/webportal/pages/bw_fragments/permission/perorg.page"
+import "/webportal/pages/bw_fragments/permission/perjob.page"
+import "/webportal/pages/bw_fragments/permission/analytics.page"
+import "/webportal/pages/bw_fragments/permission/coremodelsoddefects.page"
+import "/webportal/pages/bw_fragments/permission/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/permission/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/custom/permissionExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+permissionDetailsPageNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	permission [en "Permission" fr "Permission"]
+	content [en "Content" fr "Contenu"]
+	parentpaths [en "Parent paths" fr "Chemins parents"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Account" fr "Compte"]
+	groups [en "Groups" fr "Groupes"]
+	access [en "Access" fr "Accès"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	coremodelsoddefects [en "Core model SoD problems" fr "Problèmes de SoD interne"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	usages [en "Usages" fr "Usages"]
+	
+	accounts [en "Accounts" fr "Comptes"]
+	permissions [en "Permissions" fr "Permissions"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Permission usage" fr "Usage de la permissions"]
+	porigin [en "Permission origin" fr "Origine de la permission"]
+	
+	notexists [
+		en "This permission does not exist in the current timeslot, you should select a different timeslot"
+		fr "Cette permission n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+permissionDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (permission)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Permission Detail with permissionUid.uid to paramPermissionUid }
+	feature: permissiondetails_access
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Permission
+		mandatory: True
+	}
+	
+	permissionUid = Record {
+		view: br_permissionDetail_uid with recorduid to recorduid
+	}
+}
+
+permissionDetailsParkingPage = Page {
+	title: $permissionDetails.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( permission.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page permissionDetailsPage with-current-parameters
+		}
+	
+	paramPermissionUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	permission = Record {
+		view: bwf_permissionDetail with paramPermissionUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$permissionDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+permissionDetailsPage = Page {
+	title: $permissionDetails.title
+	dynamic-title: $permissionDetails.dynamictitle ($permissionDetails.detailtitle(Transform permission.displayname using isEmptyMapping, permission.displayname, permission.code ))
+	icon: %concept.permission
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( permission.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page permissionDetailsParkingPage with-current-parameters
+		}
+	enter-event:
+		IntCase(permission.bwa_permissionanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+		IntCase(permission.bwa_permissionanalytics_nbtheoretical) { when >0 then [ Set True to hastheoreticalrights ] },
+		IntCase(permission.bwa_permissionanalytics_nbsubpermission) { when >0 then [ Set True to hascontent ] },			
+		IntCase(permission.application_bwa_applicationanalytics_nbbusinessactivity) { when >0 then [ Set True to hasBusinessActivities ] },			
+		Set permission.bwa_permissionanalytics_isroot to isroot,
+		Set nbControls._total to nbdefects
+	
+	// Parameters Here
+	paramPermissionUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Variables Here
+	selectedPermissionUid = Variable {
+		type: String
+		initial: paramPermissionUid
+	}
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	nbdefects = Variable
+	nbover = Variable
+	nbcoremodelsoddefects = Variable
+	nbdecision = Variable
+	hascontent = Variable
+	hastheoreticalrights = Variable
+	hasusages = Variable { initial:False }
+	isroot = Variable { initial:True }
+	hasBusinessActivities = Variable
+	
+	showextended = Variable { initial:False }
+
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_model = Variable { initial:False multivalued:False type:Boolean }
+	active_codemodelsoddefect = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_permission = Variable { initial:False multivalued:False type:Boolean }
+	active_parentpaths = Variable { initial:False multivalued:False type:Boolean }
+	active_content = Variable { initial:False multivalued:False type:Boolean }
+	active_theoretical = Variable { initial:False multivalued:False type:Boolean }
+	active_overallocated = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_orgorigin = Variable { initial:False multivalued:False type:Boolean }
+	active_joborigin = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Record for concept details
+	permission = Record {
+		view: bwf_permissionDetail with selectedPermissionUid to uid
+	}
+	
+	// Number of control defects for current application (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_permissionallcontroldefects_nb with selectedPermissionUid to uid
+	}
+	
+	// Start of the Layout based on a 1-column Grid
+	Grid {
+		columns: GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$permissionDetailsPageNLS.details
+						activation-event: Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text:$permissionDetailsPageNLS.permission
+								activation-event: Set True to active_permission
+								IncludeFragment {
+									fragment:fragmentPermissionFullDetails with
+										value-of selectedPermissionUid to inuid,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdateowners,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_permission.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$permissionDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentPermissionExtendedDetails with value-of selectedPermissionUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$permissionDetailsPageNLS.parentpaths
+								hidden:BooleanPredicate(isroot)
+								activation-event: Set True to active_parentpaths
+
+								IncludeFragment {
+									fragment:fragmentPermissionParentPaths
+									with value-of selectedPermissionUid to inuid, value-of True to incanshowdetails, value-of Eval "active_detail.get() && active_parentpaths.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$permissionDetailsPageNLS.content
+								hidden:Not BooleanPredicate(hascontent)
+								activation-event: Set True to active_content
+
+								IncludeFragment {
+									fragment:fragmentPermissionContent
+									with value-of selectedPermissionUid to inuid, value-of True to incanshowdetails, value-of Eval "active_detail.get() && active_content.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$permissionDetailsPageNLS.model
+						activation-event: Set True to active_model
+						feature:Any(iam_license)
+						hidden: 
+							AndPredicate {
+								Not BooleanPredicate(hastheoreticalrights)
+								IntPredicate(nbover) { when >0 then False otherwise True }
+								IntPredicate(nbcoremodelsoddefects) { when >0 then False otherwise True }
+							}
+
+						TabFolder {
+							border:False
+							layout:Layout { indent: horizontal 0 vertical 6 }
+
+							TabItem {
+								text:$permissionDetailsPageNLS.theoretical
+								feature:iam_license
+								hidden:Not BooleanPredicate(hastheoreticalrights)
+								activation-event: Set True to active_theoretical
+
+								IncludeFragment {
+									fragment:fragmentPermissionTheoreticalRightsList
+									with value-of selectedPermissionUid to inuid, value-of True to incanshowdetails, value-of Eval "active_model.get() && active_theoretical.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$permissionDetailsPageNLS.overallocated
+								feature:iam_license
+								activation-event: Set True to active_overallocated
+								badge: Eval "nbover.get()>0?nbover.get():''"
+
+								IncludeFragment {
+									fragment:fragmentPermissionOverAllocationsList
+									with value-of selectedPermissionUid to inuid, nbover binds-to outnbproblems, value-of True to inenabled
+								}
+							}
+							TabItem {
+								text:$permissionDetailsPageNLS.coremodelsoddefects
+								feature:sod_license
+								hidden:
+									OrPredicate {
+										Not BooleanPredicate(hasBusinessActivities)
+										IntPredicate(nbcoremodelsoddefects) { when >0 then False otherwise True }
+									}
+								activation-event: Set True to active_codemodelsoddefect
+								badge: Eval "nbcoremodelsoddefects.get()>0?nbcoremodelsoddefects.get():''"
+
+								IncludeFragment {
+									fragment:fragmentPermissionCoreModelSoDdefect
+									with value-of selectedPermissionUid to inuid, nbcoremodelsoddefects binds-to outnbdefects, value-of True to incanshowdetails, value-of hasBusinessActivities to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$permissionDetailsPageNLS.access
+						activation-event: Set True to active_access
+
+						TabFolder {
+							border:False
+							TabItem {
+								text:$permissionDetailsPageNLS.accounts
+								activation-event: Set True to active_accounts
+
+								IncludeFragment {
+									fragment:fragmentPermissionAccounts
+									with value-of selectedPermissionUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$permissionDetailsPageNLS.oorigin
+								activation-event: Set True to active_orgorigin
+
+								IncludeFragment {
+									fragment:fragmentPermissionPerOrg
+									with value-of selectedPermissionUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_orgorigin.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$permissionDetailsPageNLS.jorigin
+								activation-event: Set True to active_joborigin
+
+								IncludeFragment {
+									fragment:fragmentPermissionPerJob
+									with value-of selectedPermissionUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_joborigin.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$permissionDetailsPageNLS.usages
+								activation-event: Set True to active_usages
+								hidden:Not BooleanPredicate(hasusages)
+
+								IncludeFragment {
+									fragment:fragmentPermissionUsages
+									with value-of selectedPermissionUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_usages.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text: $permissionDetailsPageNLS.controls
+						activation-event:
+							Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment: fragmentPermissionAllControlDefectsList with
+								value-of selectedPermissionUid to inuid,
+								value-of active_control to inenabled,
+								value-of True to incanshowdetails
+						}
+					}
+					TabItem {
+						text:$permissionDetailsPageNLS.analytics
+						activation-event: Set True to active_analytics
+
+						IncludeFragment {
+							fragment:fragmentPermissionAnalytics
+							with value-of selectedPermissionUid to inuid, value-of active_analytics to inenabled
+						}
+					}
+					TabItem {
+						text:$permissionDetailsPageNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event: Set True to active_decision
+
+						IncludeFragment {
+							fragment:fragmentPermissionDecisionHistory
+							with value-of selectedPermissionUid to inuid, nbdecision binds-to outnbdecision, value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

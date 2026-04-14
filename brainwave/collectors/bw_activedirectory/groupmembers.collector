@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="AD group members" scriptfile="/collectors/bw_activedirectory/AD.javascript" name="P1423145216418_7_ck3WchVa7VHGyZvyhbEZkg_pTsbz1IEBe4KPTb0YmOQ" startingpoint="C1423145222458">
+		<Component name="C1423145222458" type="discoverysource" x="247" y="30" w="200" h="64" title="AD_groupmembers" description="Note : domain users group is filtered through its SID, which is S-1-5-&lt;domain dependent part&gt;-513">
+			<Discovery file="/discovery/bw_activedirectory/groupmembers.discovery" datafile="{config.siloIteratedFileFullname.replace(&quot;ldifde_&quot;,&quot;&quot;)}"/>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Component name="C1423142620590_2" type="changefilter" x="662" y="160" w="200" h="64" title="add public variable">
+			<Actions>
+				<Action name="U1616447925422" action="update" attribute="member" newvalue="null" errorunknown="false"/>
+				<Action name="U1516269083463" action="multiadd" attribute="member" newvalue="{&apos;PUBLIC_&apos;+dataset._REPOSITORY_CODE_.get()}" duplicates="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1423145685313" type="groupmembers" x="247" y="374" w="200" h="64" title="Group members">
+			<Group code="objectguid" error="true" event="unknownGroupGUID"/>
+			<Content members="member" error="true" event="member not found"/>
+			<Domain isuniqueidentifier="true" repositorytype="repoType"/>
+			<Media code="_REPOSITORY_CODE_"/>
+		</Component>
+		<Link name="L1423146166049" source="C1447950909817" target="C1423145685313" priority="2" labelcustom="true" label="Standard group"/>
+		<Link name="L1423832513704" source="C1447950909817" target="C1423142620590_2" priority="1" labelcustom="true" label="Domain users" expression="dataset.objectsid.get().match(&apos;^(S-1-5-).*(-513)$&apos;) != null"/>
+		<Link name="L1424250952283" source="C1423142620590_2" target="C1423145685313" priority="1"/>
+		<Component name="C1447950909817" type="changefilter" x="247" y="160" w="200" h="64" title="repoType">
+			<Actions>
+				<Action name="U1447950989425" action="add" attribute="repoType" type="String" multivalued="false" newvalue="AD" errorexist="false"/>
+			</Actions>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1447950929437" source="C1423145222458" target="C1447950909817" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+		</Variables>
+	</Configuration>
+</Provisioning>

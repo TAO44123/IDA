@@ -1,0 +1,149 @@
+/* Import other pages here */
+import "/webportal/pages/bw_dsm/status/status_fragments.page"
+import "/webportal/pages/bw_dsm/services/services.page"
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+import "/webportal/pages/bw_dsm/resources/dsm_icons.page"
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+import "/webportal/pages/bw_dsm/cfg/ds_test.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+bwdsm_status = Page {
+	title: $dsm_status_NLS.title.page	
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	res = Variable
+	selectedDSName = Variable
+	
+	_connectorDescriptors = Dataset {
+     pages: Pages { hide-reports: True tags: "bwds_connector"	}
+  }
+	
+	/* Datasets and records here */
+	_datasources = Dataset {
+	   service: bwdsm_listDsCfg //with cat to category				
+   }
+   
+   datasources = Dataset {
+	  join: Join {
+	    primary-dataset: _datasources
+	    primary-column: type
+	    secondary-dataset: _connectorDescriptors
+	    secondary-column: name
+	    secondary-cardinality: optional
+	    secondary-prefix: desc_   
+	  }
+	}
+   			
+	Grid {
+		columns: GridColumn{ width: grow },GridColumn{ width: 250}
+		GridRow {
+			GridCell {
+			
+			  ButtonGroup {
+				   align: Right
+				   
+				   Button {
+			      		actions: Dialog bwdsm_testDsDialog(selectedDSName to code)
+						text:$bw_entitydatamanagementNLS.test
+						tooltip:$bw_entitydatamanagementNLS.testtooltip
+						image:%collection_16.bulb
+						disabled: Eval " selectedDSName.isEmpty()"
+					}
+				   
+				  	Button {
+					    actions:  Dialog bwdsm_uploadFileDialog ( selectedDSName to inCode)
+					    text: $dsm_status_NLS.button.upload
+					    disabled: Eval " selectedDSName.isEmpty()"
+				  	}
+				}
+				/* Page content */
+				Table {
+				  data: datasources
+				  layout: Layout { grab: horizontal True vertical True }
+				  label: Label { value: $dsm_status_NLS.title.next_status break: True}
+				  Column { column: id hidden: True} 
+					Column { column: name header: $dsm_cfg_NLS.main.header_name
+			    	 image: TemplateImageSelection( Current category) using dsm_ds_cat_IconMapping 
+			     		width: 150px
+			     		selection: selectedDSName
+			     }
+				  Column { column: desc_title header: $dsm_cfg_NLS.main.header_connector
+				    width: 200px
+				    }
+				  Column { column: category header: $dsm_cfg_NLS.main.header_category  
+			      text: Transform Current category using dsm_categoryMapping 
+			     }
+				 // Column { column: name header: $dsm_status_NLS.header.nextSchedule  }
+				 // Column { column: name header: $dsm_status_NLS.header.receivedFiles text: "??" }
+				 // Column { column: name header: $dsm_status_NLS.header.status text: "OK ??"}
+				}
+			}
+			GridCell {
+				IncludeFragment { fragment:dsm_status_panel inline: True}
+			}       		
+		}	
+	}
+	
+}
+
+
+bwdsm_uploadFileDialog = Dialog {
+
+  title: $dsm_upload_NLS.title1( inCode)
+  mixins: defaultPage
+  buttons: ActionButton {
+    actions: CloseDialog Ok
+    close: True
+    status: Ok
+    text: $dsm_upload_NLS.button_done
+  }
+  
+  inCode = Variable 
+  uploadedFilePath = Variable
+  fileName = Variable
+  zipFilePath = Variable
+  res = Variable
+  error = Variable
+  
+  Text {
+    value: $dsm_upload_NLS.msg_help1(inCode)
+    lines: 3
+    compact: True
+    layout: Layout { hint: height 50 }
+  }
+  
+
+  	  FileUpload {
+		    uploaded-filename: uploadedFilePath
+		    selected-filename: fileName
+		    text: $dsm_upload_NLS.button_single_file
+		    upload-complete-event: 
+		      Call bwdsm_zipFile ( uploadedFilePath to filepath, Concat(inCode, "/", fileName) to localfilepath, zipFilePath from zipfilepath , error from error ) ,     
+		      Call fileDelete(uploadedFilePath to filename),
+		      Set @bwdsm_uploadZipFile( zipFilePath to file , $dsm_upload_NLS.text_source1( Principal.fullname) to source) to res,
+		      Flash $dsm_upload_NLS.msg_done
+		}
+		
+		FileUpload {
+	    uploaded-filename: zipFilePath
+	    text: $dsm_upload_NLS.button_ZIP_file
+	    upload-complete-event:       
+	      Set @bwdsm_uploadZipFile( zipFilePath to file, $dsm_upload_NLS.text_source1(Principal.fullname) to source) to res,
+	      Flash $dsm_upload_NLS.msg_done
+	  }
+	  
+	 /*  Text {
+	    compact: True
+	    value: "TODO: Check file validity before uploading"
+	  }*/
+	  
+
+}
+bw_entitydatamanagementNLS = NLS {
+	test [en "Test datasource" fr "Tester la source de données"]
+	testtooltip [en "Test datasource mapping\nby providing a sample source file" fr "Tester le mapping de la source de données\nen fournissant un fichier d''exemple"]
+}
+

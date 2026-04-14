@@ -1,0 +1,295 @@
+import "/webportal/pages/bw_fragments/group/details.page"
+import "/webportal/pages/bw_fragments/group/accounts.page"
+import "/webportal/pages/bw_fragments/group/rights.page"
+import "/webportal/pages/bw_fragments/group/perjob.page"
+import "/webportal/pages/bw_fragments/group/perorg.page"
+import "/webportal/pages/bw_fragments/group/fsrights.page"
+import "/webportal/pages/bw_fragments/group/controls.page"
+import "/webportal/pages/bw_fragments/group/decisionhistory.page"
+import "/webportal/pages/bw_fragments/custom/groupExtendedDetails.page"
+import "/webportal/pages/bw_fragments/group/parentgroups.page"
+import "/webportal/pages/bw_fragments/group/childgroups.page"
+import "/webportal/pages/bw_fragments/group/cyberarkrights.page"
+
+bwf_groupDetailsDialogNLS = NLS {
+	title [en "Group detail" fr "Détails du groupe"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	parentgroups [en "Parent groups" fr "Groupes parents"]
+	childgroups [en "Child groups" fr "Groupes fils"]
+	accounts [en "Accounts" fr "Comptes"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	group [en "Group" fr "Groupe"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	controls [en "Controls" fr "Contrôles"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	cyberark.vault [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	cyberark.safe [en "CyberArk Safes" fr "Safes CyberArk"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Group details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>group uid</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, false by default</li>
+ * <li><b>inshowaccountsfororganisation </b>optional boolean, true to show accounts tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show applications tab, false by default</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show group origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show group origin per job tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inapplicationuids </b>optional string, filter those applications only</li>
+ * </ul>
+ * </span>
+ */
+bwf_groupDetailsDialog = Dialog {
+	title:$bwf_groupDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+
+	inuid = Variable
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowaccountsfororganisation = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowvaults = Variable { type:Boolean initial:False }
+	inshowsafes = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	incanupdateowners = Variable { type:Boolean initial:False }
+	incanupdatemetadata = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inapplicationuids = Variable { multivalued:True type:String}
+	
+
+	group = Record {
+		view: bwf_groupDetail with inuid to uid
+	}
+
+	IncludeDynamicFragment{
+		dynamic-name:Concat("bwf_groupDetailsFragment",group.repository_repositoryfamily) 
+		base-fragment:  bwf_groupDetailsFragment with  
+			inuid binds-to inuid, 
+			inshowaccounts binds-to inshowaccounts, 
+			inshowaccountsfororganisation binds-to inshowaccountsfororganisation, 
+			inshowapplications binds-to inshowapplications, 
+			inshowshares binds-to inshowshares, 
+			inshowvaults binds-to inshowvaults, 
+			inshowsafes binds-to inshowsafes, 
+			inshowperorg binds-to inshowperorg, 
+			inshowperjob binds-to inshowperjob, 
+			inshowcontrols binds-to inshowcontrols, 
+			inshowdecisionhistory binds-to inshowdecisionhistory, 
+			incanupdateowners binds-to incanupdateowners,
+			incanupdatemetadata binds-to incanupdatemetadata,
+			inorganisationuid binds-to inorganisationuid, 
+			inonlydirectselection binds-to inonlydirectselection, 
+			inapplicationuids binds-to inapplicationuids
+		layout:Layout { grab:horizontal True vertical True}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Group details base fragment
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>group uid</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, false by default</li>
+ * <li><b>inshowaccountsfororganisation </b>optional boolean, true to show accounts tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show applications tab, false by default</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show group origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show group origin per job tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inapplicationuids </b>optional string, filter those applications only</li>
+ * </ul>
+ * </span>
+ */
+bwf_groupDetailsFragment = PageFragment {
+	enter-event:IntCase(group.bwa_groupanalytics_nbapplication) { when >0 then [ Set True to hasapplications ] },
+				IntCase(group.bwa_groupanalytics_nbshare) { when >0 then [ Set True to hasshares ] }
+						
+	inuid = Variable
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowaccountsfororganisation = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowvaults = Variable { type:Boolean initial:False }
+	inshowsafes = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inapplicationuids = Variable { multivalued:True type:String}
+	incanupdateowners = Variable { type:Boolean initial:False }
+	incanupdatemetadata = Variable { type:Boolean initial:False }
+
+	nbdefects = Variable { private:True }
+	nbparent = Variable { type:Integer }
+	nbchildren = Variable { type:Integer }
+
+	hasapplications = Variable { type:Boolean initial:False }
+	hasshares = Variable { type:Boolean initial:False }
+
+	showextended = Variable { private:True initial:False }
+
+	active_group = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_parentgroups = Variable { initial:False multivalued:False type:Boolean }
+	active_childgroups = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_accountsfororganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_vaults = Variable { initial:False multivalued:False type:Boolean }
+	active_safes = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+
+	group = Record {
+		view: bwf_groupDetail with inuid to uid
+	}
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.group
+			activation-event: Set True to active_group
+			
+			IncludeFragment (fragmentGroupFullDetails with value-of inuid to inuid, value-of active_group to inenabled, value-of incanupdateowners to incanupdateowners, value-of incanupdatemetadata to incanupdatedescription )
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentGroupExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem {
+			text:$bwf_groupDetailsDialogNLS.parentgroups
+			activation-event:Set True to active_parentgroups
+			hidden:IntPredicate(nbparent) { when >0 then False otherwise True }
+		
+			IncludeFragment {
+				fragment:fragmentGroupParentGroups
+				with value-of inuid to inuid, value-of False to incanshowdetails, nbparent binds-to outnbparent, value-of active_parentgroups to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_groupDetailsDialogNLS.childgroups
+			activation-event:Set True to active_childgroups
+			hidden:IntPredicate(nbchildren) { when >0 then False otherwise True }
+		
+			IncludeFragment {
+				fragment:fragmentGroupChildGroups
+				with value-of inuid to inuid, value-of True to incanshowdetails, nbchildren binds-to outnbdirectchildren, value-of active_childgroups to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+			activation-event: Set True to active_accounts
+			
+			IncludeFragment (fragmentGroupAccountsSelection with value-of inuid to inuid,  
+							value-of True to incanshowdetails,
+							value-of active_accounts to inenabled )
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.accounts
+			hidden:Not BooleanPredicate(inshowaccountsfororganisation)
+			activation-event: Set True to active_accountsfororganisation
+			
+			IncludeFragment (fragmentGroupAccountsForOrg with value-of inuid to inuid,  
+							value-of True to incanshowdetails,
+							inorganisationuid binds-to inorganisationuid,
+							inonlydirectselection binds-to inonlydirectselection,
+							value-of active_accountsfororganisation to inenabled )
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.applications
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(hasapplications)
+					Not BooleanPredicate(inshowapplications)
+				}
+			activation-event: Set True to active_applications
+			
+			IncludeFragment (fragmentGroupRightsSelection with value-of inuid to inuid, value-of True to incanshowdetails, value-of inapplicationuids to inapplicationuids, value-of active_applications to inenabled )
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.shares
+			feature:unstructureddata_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(hasshares)
+					Not BooleanPredicate(inshowshares)
+				}
+			activation-event: Set True to active_shares
+			
+			IncludeFragment (fragmentGroupAllFSRightsList with value-of inuid to inuid,  value-of True to incanchangedepth, value-of active_shares to inenabled )
+		}
+		TabItem {
+			text: $bwf_groupDetailsDialogNLS.cyberark.vault
+			activation-event:Set True to active_vaults
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:Not BooleanPredicate(inshowvaults)
+			IncludeFragment {
+				fragment:fragmentGroupCAVaultsRights
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_vaults to inenabled
+			}
+		}
+		TabItem {
+			text: $bwf_groupDetailsDialogNLS.cyberark.safe
+			activation-event:Set True to active_safes
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:Not BooleanPredicate(inshowsafes)
+			IncludeFragment {
+				fragment:fragmentGroupCASafesRights
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_safes to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.oorigin
+			hidden:Not BooleanPredicate(inshowperorg)
+			activation-event: Set True to active_perorg
+			
+			IncludeFragment (fragmentGroupPerOrg with value-of inuid to inuid, value-of True to incanshowdetails,  value-of active_perorg to inenabled )
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.jorigin
+			hidden:Not BooleanPredicate(inshowperjob)
+			activation-event: Set True to active_perjob
+			
+			IncludeFragment (fragmentGroupPerJob with value-of inuid to inuid,value-of True to incanshowdetails,  value-of active_perjob to inenabled )
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentGroupAllControlDefectsList with value-of inuid to inuid,  nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_groupDetailsDialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+
+			IncludeFragment (fragmentGroupDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}	
+}

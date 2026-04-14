@@ -1,0 +1,86 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+fragmentSharePerProfileNLS = NLS {
+	perorg [en "folders" fr "répertoires"]
+	tooltip [en "{0} accounts with this folder,\n{1} accounts in total with the share\n(limited to 20 entries)" fr "{0} personnes avec ce répertoire\nsur un total de {1} personnes qui disposent de ce partage\n(limité à 20 entrées)"]
+	folderdepth [en "Folder depth" fr "Profondeur arborescence"]
+	top20 [en "Top 20" fr "Top 20"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display for a given share the number of people per folder as a dataviz (top 20)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inPermissionType </b>the permission types (Role by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentSharePerProfile = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inPermissionType = Variable {multivalued:True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+
+	perprofile = Dataset {
+		view: bwf_sharenbidentityperprofiles with
+			inuid to uid,
+			infolderdepth to folderdepth unless-empty
+		limit:20
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	total = Record {
+		view: bwf_sharenbtotalaccounts with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	Header {
+		value:$fragmentSharePerProfileNLS.perorg
+		styling:bigTitleStyle
+		tooltip:$fragmentSharePerProfileNLS.top20
+	}
+	Combo {
+		variable:infolderdepth
+		label:$fragmentSharePerProfileNLS.folderdepth
+		layout: Layout { hint:width 120 }
+		options:Static {
+			Option { value:1 text:"<=1" }
+			Option { value:2 text:"<=2" }
+			Option { value:3 text:"<=3" }
+			Option { value:4 text:"<=4" }
+			Option { value:5 text:"<=5" }
+			Option { value:6 text:"<=6" }
+			Option { value:7 text:"<=7" }
+			Option { value:8 text:"<=8" }
+			Option { value:9 text:"<=9" }
+		}
+	}	
+	Text {
+		iterate-on:perprofile
+		value:Current permissioncode
+		layout:Layout{grab:horizontal True vertical True}
+		compact:True
+		decorator:Decorator{width:Fill after:Bar{max-value:total.nbtotal value:Current nbaccounts width:200 higher-is-better:True tooltip:$fragmentSharePerProfileNLS.tooltip(Current nbaccounts,total.nbtotal) }  }
+		label:Label{ break:True }
+	}
+}

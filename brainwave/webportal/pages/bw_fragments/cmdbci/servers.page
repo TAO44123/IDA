@@ -1,0 +1,195 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+
+fragmentCmdbciServersNLS = NLS {
+	empty [en "CMDB CI element does not contain servers" fr "Cet élément CMDB CI ne contient pas de serveurs"]
+	gotodetail [en "Go to detail page" fr "Aller à la page de détail"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected cmdb CI servers
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the cmdbci uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * <li><b>incanredirectto </b>optional, boolean value, true to enable button to redirect to the selected item detail page (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outrepositoryuid </b>the repository uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentCmdbciServers = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:False changed-event:BooleanCase(inenabled) { when True then [ ExecuteNamedAction cacheCIs ] when False then [ ] } }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanredirectto = Variable { multivalued:False type:Boolean initial:False }
+	outrepositoryuid = Variable
+
+	allcis = Variable { type:String multivalued:True } // All sub CI elements including this one
+
+	repositories = Dataset {
+		view: bw_cmdbservers with allcis to uid
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	// dataset to retreive and cache all sub CI including this one
+	allSubCIDataset = Dataset {
+		view:bw_cmdbtopdown with inuid to uid
+	} 
+
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_repositoryDetailsDialog(outrepositoryuid to inuid,
+													True to inshowaccounts,
+													True to inshowperorg,
+													True to inshowapplications,
+													True to inshowcontrols,
+													True to inshowdecisionhistory,
+													True to inshowgroups,
+													True to inshowrights,
+													True to inshowshares,
+													True to inshowsharesrights,
+													True to inshowbusinessactivities,
+													True to inshowusages,
+													True to inshowperorg,
+													True to inshowperjob
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	cacheCIs = NamedAction (
+		TransferData allSubCIDataset(CI_uid) to (allcis)
+	)
+
+	ConditionalGroup {
+		IntCondition(Count repositories) {
+			when =0 then [
+				Header {
+					value:$fragmentCmdbciServersNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Table {
+					data:repositories
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					commands:Commands {
+						presentation:Icon
+						orientation:Vertical
+						position:After
+						Command {
+							actions:GoTo Activity Application Detail with outrepositoryuid to paramApplicationUid save-state
+							icon:%browsing_16.link
+							tooltip:$fragmentCmdbciServersNLS.gotodetail
+							disabled:
+							OrPredicate {
+								StringPredicate(outrepositoryuid) { when IsEmpty then True otherwise False }
+								Not BooleanPredicate(incanredirectto)	
+							}
+						}
+						Command {
+							actions:Message 'nop'
+							disabled:True
+						}
+					}
+					
+
+					Column {
+						column:repositoryuid
+						selection:outrepositoryuid
+						hidden:True
+					}
+					
+					Column {
+						column:repositorycode
+						header:$server.code
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+
+					Column {
+						column:repositorydisplayname
+						header:$server.concept
+						width:100%
+						sortable:True
+						filterable:True
+
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+
+					Column {
+						column:ci_displayname
+						header:$pcmdb.displayname
+						width:200px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:ci_type
+						header:$pcmdb.type
+						width:200px
+						sortable:True
+						filterable:True
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}

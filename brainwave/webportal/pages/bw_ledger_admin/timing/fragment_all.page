@@ -1,0 +1,248 @@
+
+import "/webportal/pages/bw_ledger_admin/timing/services.page"
+import "/webportal/pages/bw_ledger_admin/timing/dialogs.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+
+
+fragment_all = PageFragment {
+	mixins: timingMixin
+	
+	selectedTimeslotUid = Variable { type: String }
+	selectedParentTimeslotUid = Variable { type: String }
+	
+	labels = Variable { type: String multivalued: True }
+	values = Variable { type: String multivalued: True }
+	
+	timeslot = Record {
+		view: timeslot_timing with selectedTimeslotUid to uid
+	}
+	
+	allDetails = Dataset { columns: labels , values }
+	
+	
+	alltimelslots = Dataset {
+		view: timeslot_all
+	}
+	
+	alldetails = Dataset {
+		view: timeslot_details with selectedTimeslotUid to timeslot_uid
+		
+	}
+	
+	timeslotsteps = Dataset {
+		view: timeslots_steps with selectedTimeslotUid to timeslot_uid
+	}
+	
+	timeslotstepsall = Dataset {
+		view: timeslots_steps_all with selectedTimeslotUid to timeslot_uid
+	}
+	
+	displayData = Dataset {
+		union: Union {
+			datasets: timeslotsteps, timeslotstepsall discriminator-column: source
+		}
+	}
+	
+	hierarchy = HierarchicalData {
+		dataset: displayData 
+		connect: parent stepname to child parentstep
+		initial: parentstep IsNull
+	}
+	
+	loadAllDetails = NamedAction (
+		
+		MultivaluedAdd $context.displayname to labels, 	MultivaluedAdd Transform timeslot.ts_displayname using optionStringMapping to values,
+		MultivaluedAdd $context.importdate to labels, 		MultivaluedAdd Transform timeslot.ts_importdate using optionStringMapping to values,
+		MultivaluedAdd $context.commitdate to labels, 		MultivaluedAdd Transform timeslot.ts_commitdate using optionStringMapping to values,
+		MultivaluedAdd $context.status to labels, 			MultivaluedAdd Transform timeslot.ts_status using optionStringMapping to values,
+		MultivaluedAdd $context.portal to labels, 			MultivaluedAdd Transform timeslot.ts_portal using optionStringMapping to values,
+		MultivaluedAdd $context.productversion to labels, 	MultivaluedAdd Transform timeslot.ts_productversion using optionStringMapping to values,
+		MultivaluedAdd $context.configuration to labels, 	MultivaluedAdd Transform timeslot.ts_configuration using optionStringMapping to values,
+		MultivaluedAdd $context.optimizedrecon to labels, 	MultivaluedAdd Transform timeslot.ts_optimizedrecon using optionStringMapping to values,
+		MultivaluedAdd $context.multithread to labels, 	MultivaluedAdd Transform timeslot.ts_multithread using optionStringMapping to values,
+		MultivaluedAdd $context.projectpath to labels, 	MultivaluedAdd Transform timeslot.ts_projectpath using optionStringMapping to values,
+		MultivaluedAdd $context.osname to labels, 			MultivaluedAdd Transform timeslot.ts_osname using optionStringMapping to values,
+		MultivaluedAdd $context.osversion to labels, 		MultivaluedAdd Transform timeslot.ts_osversion using optionStringMapping to values,
+		MultivaluedAdd $context.javavendor to labels, 		MultivaluedAdd Transform timeslot.ts_javavendor using optionStringMapping to values,
+		MultivaluedAdd $context.javaversion to labels, 	MultivaluedAdd Transform timeslot.ts_javaversion using optionStringMapping to values,
+		MultivaluedAdd $context.maxmemoryinmb to labels, 	MultivaluedAdd Transform timeslot.ts_maxmemoryinmb using optionStringMapping to values,
+		MultivaluedAdd $context.availablecpus to labels, 	MultivaluedAdd Transform timeslot.ts_availablecpus using optionStringMapping to values,
+		MultivaluedAdd $context.usedcpus to labels, 		MultivaluedAdd Transform timeslot.ts_usedcpus using optionStringMapping to values,
+		MultivaluedAdd $context.databasetype to labels, 	MultivaluedAdd Transform timeslot.ts_databasetype using optionStringMapping to values,
+		MultivaluedAdd $context.databaseversion to labels,	MultivaluedAdd Transform timeslot.ts_databaseversion using optionStringMapping to values,
+		MultivaluedAdd $context.databaseurl to labels, 	MultivaluedAdd Transform timeslot.ts_databaseurl using optionStringMapping to values,
+		MultivaluedAdd $context.driverversion to labels, 	MultivaluedAdd Transform timeslot.ts_driverversion using optionStringMapping to values,
+		MultivaluedAdd $context.computername to labels, 	MultivaluedAdd Transform timeslot.ts_computername using optionStringMapping to values,
+		MultivaluedAdd $context.arguments to labels, 		MultivaluedAdd Transform timeslot.ts_arguments using optionStringMapping to values
+		
+	)
+	
+	Grid {
+		columns: GridColumn { width: 360px}, GridColumn{ width: 10px }, GridColumn { width: grow}, GridColumn{ width: 10px }
+		layout: Layout { grab: horizontal True vertical True  indent: horizontal 0 vertical 5}
+		GridRow{
+			GridCell {
+				Header { value: $timingfragmentall.header layout: Layout { indent: horizontal 18 vertical 0} }
+				
+				Spacer { height: 10}
+				
+				TemplateTable {
+					data: alltimelslots
+					layout: Layout { grab: horizontal True vertical True }
+					row-height: 55
+					show-lines: True
+					selection-changed-event: Unset labels , Unset values,  ExecuteNamedAction loadAllDetails
+					
+					ImageCell {
+						top: 5
+						left: 10
+						width: 32
+						height: 32
+						image: "bw_ledger_admin/time_32.png"
+	
+					}
+
+					TextCell {
+						column: displayname
+						top: 10
+						left: 60
+						height: 20
+						width: 300
+						styling: normalBoldText
+					}
+					
+					TextCell {
+						column: displayname
+						text: $timingfragmentall.labels.importdate
+						top: 30
+						left: 80
+						height: 20
+						width: 300
+						styling: normalText
+					}
+					
+					TextCell {
+						column: importdate
+						top: 30
+						left: 180
+						height: 20
+						width: 300
+						styling: normalText
+					}
+					
+					HiddenCell {
+						column: uid 
+						selection: selectedTimeslotUid
+					}
+					
+					HiddenCell {
+						column: parent_uid 
+						selection: selectedParentTimeslotUid
+					}
+					
+				}
+			}
+			GridCell { }
+			GridCell { 
+				//content
+				ConditionalGroup { 
+					StringCondition ( selectedTimeslotUid )
+					{
+						when IsEmpty then  [
+							Text { value: $timingpage.messages.selectformore styling: normalText compact: True }
+						]
+						
+						otherwise  [
+						
+							Header { value: $timingfragmentall.subheader layout: Layout { indent: horizontal 18 vertical 0} }
+				
+							Spacer { height: 2}
+							
+							
+							TabFolder {
+								layout: Layout { grab: horizontal True vertical True } 
+								
+								TabItem {
+									text:  $timingfragmentall.tabs.steps
+									
+
+									Group {
+										margins: Top 20 Bottom 10 Right 20 Left 5									
+										Tree {
+											data: hierarchy
+											layout: Layout { grab: horizontal True vertical True }
+											expand-level: All
+											show-filter: True
+											
+											Column { column: label width: 90px  filterable: True sortable: True header: $timing.stepname styling: normalBoldText}
+											Column { column: siloname width: 50% filterable: True sortable: True header: $timing.siloname }
+											Column { column: contextname width: 50%  filterable: True sortable: True header:  $timing.contextname }
+											Column { column: itemname  width: 100% filterable: True sortable: True header: $timing.itemname }
+											
+											Column { header: $timing.start column: startdate text: DateLDAP( Current startdate).value("yyyy-MM-dd HH:mm:ss") width: 130px align: Center }
+											Column { header: $timing.totaltime column: totaltime text: @fromatMs( Current totaltime to inMs, True to includeMs ) width: 88px }
+											Column { header: $timing.sqltime column: sqltime text: @fromatMs( Current sqltime to inMs, True to includeMs )  width: 85px }
+											Column { header: $timing.nbitems column: nbitems width: 50px align: Right }
+											Column { header: $timing.nbselect column: nbselect  width: 55px align: Right }
+											Column { header: $timing.nberrors column: nberrors width: 55px align: Right }
+										}
+									}
+								}
+								
+								TabItem {
+									text: $timingfragmentall.tabs.fulllist
+									
+									Group {
+										margins: Top 20 Bottom 10 Right 20 Left 5
+										Table {
+											data: alldetails
+											show-filter: True
+											
+											layout: Layout { grab: horizontal True vertical True }
+											Column { column: stepname width: 90px  filterable: True sortable: True header: $timing.stepname }
+											Column { column: siloname width: 50% filterable: True sortable: True header: $timing.siloname }
+											Column { column: contextname width: 50%  filterable: True sortable: True header: $timing.contextname }
+											Column { column: itemname  width: 100% filterable: True sortable: True header: $timing.itemname }
+											
+											Column { header: $timing.start column: startdate text: DateLDAP( Current startdate).value("yyyy-MM-dd HH:mm:ss") width: 130px align: Center }
+											Column { header: $timing.totaltime column: totaltime text: @fromatMs( Current totaltime to inMs, True to includeMs ) width: 88px }
+											Column { header: $timing.sqltime column: sqltime text: @fromatMs( Current sqltime to inMs, True to includeMs )  width: 85px }
+											Column { header: $timing.nbitems column: nbitems width: 50px align: Right }
+											Column { header: $timing.nbselect column: nbselect  width: 55px align: Right }
+											Column { header: $timing.nberrors column: nberrors width: 55px align: Right }
+								
+								
+										}
+									}
+								}
+								TabItem {
+									text: $timingfragmentall.tabs.context
+									
+									Group {
+										margins: Top 20 Bottom 10 Right 20 Left 5
+										Table {
+											data: allDetails
+											layout: Layout { grab: horizontal True vertical True }
+											hide-header: True
+											hide-lines: True 
+											
+											Column { column: labels  width: 200px styling: labelsst align: Right }
+											Column { column: values width: 10px styling: labelsst text: "" }
+											Column { column: values width: 10px styling: valuesst text: "" }
+											Column { column: values  width: 100% styling: valuesst  }
+										}
+									}
+								}
+							}
+						] 
+					}
+				}
+			}
+		}
+	}
+}

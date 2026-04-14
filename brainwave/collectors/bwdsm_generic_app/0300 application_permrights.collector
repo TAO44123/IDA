@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0300 application permrights" scriptfile="collectors/bwdsm_generic_app/0300 application_permrights.javascript" name="P1621091909007_lvVawJqjBA1RPEwvvmHQ_J5G6fgR29CvV1cfhEL1ZA_1" startingpoint="C1621091953457">
+		<Component name="C1621091953457" type="discoverysource" x="84" y="-100" w="300" h="64" title="accountspermissions">
+			<Discovery file="/discovery/bwdsm_generic_app/accountspermissions.discovery" datafile="{config.file}"/>
+			<Request>
+				<Sort name="S1" attribute="key"/>
+			</Request>
+		</Component>
+		<Component name="C1621090999054_1" type="changefilter" x="84" y="185" w="300" h="64" title="local variables">
+			<Actions>
+				<Action name="U1621091046654" action="add" attribute="REPOSITORY" type="String" multivalued="false" newvalue="{config.repositorycode}" errorexist="false"/>
+				<Action name="U1621091987738" action="add" attribute="APPLICATION" type="String" multivalued="false" newvalue="{config.applicationcode}" errorexist="false"/>
+				<Action name="U1621094490940" action="add" attribute="ALLACTIONS" type="String" multivalued="false" newvalue="{dataset.actiongranted.toString()}" errorexist="false"/>
+				<Action name="U1621094513762" action="add" attribute="ALLLIMITS" type="String" multivalued="false" newvalue="{dataset.limit.toString()}" errorexist="false"/>
+				<Action name="U1621094582497" action="update" attribute="ALLACTIONS" newvalue="{dataset.isEmpty(&apos;ALLACTIONS&apos;)?&apos;&apos;:dataset.ALLACTIONS.get().left(1000)}" errorunknown="false"/>
+				<Action name="U1621094605404" action="update" attribute="ALLLIMITS" newvalue="{dataset.isEmpty(&apos;ALLLIMITS&apos;)?&apos;&apos;:dataset.ALLLIMITS.get().left(1000)}" errorunknown="false"/>
+				<Action name="U1630050496227" action="update" attribute="ALLACTIONS" newvalue="{dataset.ALLACTIONS.get().equals(&apos;[]&apos;)?&apos;&apos;:dataset.ALLACTIONS.get()}" errorunknown="false"/>
+				<Action name="U1630050536308" action="update" attribute="ALLLIMITS" newvalue="{dataset.ALLLIMITS.get().equals(&apos;[]&apos;)?&apos;&apos;:dataset.ALLLIMITS.get()}" errorunknown="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1621091990333" source="C1621091953457" target="C1621094337752" priority="1"/>
+		<Component name="C1621091999881" type="permission" x="84" y="329" w="300" h="64" title="permission">
+			<Permission code="permissionid" application="APPLICATION" type="Role">
+				<Attribute name="displayname" attribute="permissionname"/>
+			</Permission>
+		</Component>
+		<Component name="C1621092035124" type="perimeter" x="84" y="470" w="300" h="64" title="create perimeter if needed">
+			<Perimeter code="perimetercode" application="APPLICATION">
+				<Attribute name="displayname" attribute="perimeterlabel"/>
+			</Perimeter>
+		</Component>
+		<Component name="C1621092071523" type="right" x="84" y="768" w="300" h="64" title="access right">
+			<Right account="identifier" application="APPLICATION" permission="permissionid" perimeter="perimetercode">
+				<Attribute name="action" attribute="ALLACTIONS"/>
+				<Attribute name="limit" attribute="ALLLIMITS"/>
+			</Right>
+		</Component>
+		<Link name="L1621092083228" source="C1621090999054_1" target="C1621091999881" priority="1"/>
+		<Link name="L1621092083993" source="C1621091999881" target="C1621092035124" priority="1" expression="(! dataset.isEmpty(&apos;perimetercode&apos;))"/>
+		<Link name="L1621092084886" source="C1621092035124" target="C1623512671614" priority="1"/>
+		<Link name="L1621092086409" source="C1621091999881" target="C1623512671614" priority="2"/>
+		<Component name="C1621094337752" type="groupfilter" x="84" y="34" w="300" h="64" title="group all actions and limits">
+			<Criteria expression="{dataset.key.get()}"/>
+			<Multivalued>
+				<Value name="M1621094406232" attribute="actiongranted" synchronised="true"/>
+				<Value name="M1621094411083" attribute="limit" synchronised="true"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1621094431996" source="C1621094337752" target="C1621090999054_1" priority="1"/>
+		<Component name="C1623512671614" type="routefilter" x="85" y="612" w="300" h="64" title="route">
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1623512703423" source="C1623512671614" target="C1621092071523" priority="1" expression="(dataset.isEmpty(&apos;externalaccount&apos;)) || (!dataset.externalaccount.get())" labelcustom="true" label="internal account"/>
+		<Component name="C1621092071523_1" type="right" x="463" y="884" w="300" h="64" title="external account access right">
+			<Right account="identifier" application="APPLICATION" permission="permissionid" perimeter="perimetercode">
+				<Attribute name="action" attribute="ALLACTIONS"/>
+				<Attribute name="limit" attribute="ALLLIMITS"/>
+			</Right>
+			<Domain repository="externalrepositoryid"/>
+		</Component>
+		<Link name="L1623512732320" source="C1623512671614" target="C1623513798097" priority="2"/>
+		<Component name="C1623513798097" type="scriptfilter" x="463" y="768" w="300" h="64" title="pick DN from login">
+			<Script onscriptwrite="write"/>
+		</Component>
+		<Link name="L1623513820888" source="C1623513798097" target="C1621092071523_1" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="file" description="file"/>
+			<Variable name="repositorycode" description="repository code"/>
+			<Variable name="applicationcode" description="application code"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

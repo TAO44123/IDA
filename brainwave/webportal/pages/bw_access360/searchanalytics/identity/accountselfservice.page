@@ -1,0 +1,97 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+/* Nationalized labels here */
+access360analytics_identityaccountselfserviceNLS = NLS {
+	title [en "Self-service Account Characteristics Analysis" fr "Analyse des caractéristiques des comptes en self-service"]
+	description [
+		en "This report presents the active accounts' characteristics in a dynamic pivot table. You can choose your dimensions to perform analysis based on the accounts' characteristics."
+		fr "Ce rapport présente les caractéristiques des comptes actifs sous la forme d'un tableau croisé dynamique éditable. Vous pouvez choisir les dimensions d'analyse sur la base des caractéristiques des comptes."
+	]
+	measure [en "Number of Accounts" fr "Nombre de comptes"]
+}
+
+access360analytics_identityaccountselfservice = Page {
+	title: $access360analytics_identityaccountselfserviceNLS.title
+	tags: "identity", "searchresults"
+	description:$access360analytics_identityaccountselfserviceNLS.description
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwsa_identityaccountselfservice
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_identity_FilterEdition(SerializeSearch search to identitySearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Identity Search with SerializeSearch search to identitySearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+	
+	/* Parameters here */
+	search = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	data = Dataset {
+		search: Search {
+			view:access360r_identityaccountinformation
+			definition:search
+		}
+	}
+	
+	/* Page content */
+	DynamicCrossTable {
+		data:data
+		layout:Layout { grab:horizontal True vertical True }
+	
+		dimensions:	Dim { value:identityuid label:identityfullname header:$identity.fullname },
+					Dim { value:identityuid label:identityhrcode header:$identity.hrcode },
+					Dim { value:identitymail label:identitymail header:$identity.mail },
+					Dim { value:identityinternal label:identityinternal header:$identity.internal },
+					Dim { value:jobtitlecode label:jobtitlecode header:$identity.jobtitlecode },
+					Dim { value:jobtitledisplayname label:jobtitledisplayname header:$identity.jobtitledisplayname },
+					Dim { value:organisationcode label:organisationcode header:$porganisation.code },
+					Dim { value:organisationshortname label:organisationshortname header:$porganisation.shortname },
+					Dim { value:organisationdisplayname label:organisationdisplayname header:$organisation.concept },
+
+					Dim { value:accountuid label:accountidentifier header:$paccount.identifier},
+					Dim { value:accountlogin label:accountlogin header:$paccount.login },
+					Dim { value:accountdontexpirepassword label:accountdontexpirepassword header:$paccount.dontexpirepassword },
+					Dim { value:accountlocked label:accountlocked header:$paccount.login },
+					Dim { value:accountpasswordcantchange label:accountpasswordcantchange header:$paccount.passwordcantchange },
+					Dim { value:accountpasswordexpired label:accountpasswordexpired header:$paccount.passwordexpired },
+					Dim { value:accountpasswordnotrequired label:accountpasswordnotrequired header:$paccount.passwordnotrequired },
+					Dim { value:accountprivilegedaccount label:accountprivilegedaccount header:$paccount.privilegedaccount },
+					Dim { value:accountservice label:accountservice header:$paccount.service },
+					Dim { value:accountsmartcardrequired label:accountsmartcardrequired header:$paccount.smartcardrequired },
+					Dim { value:accountusername label:accountusername header:$paccount.username },
+
+					Dim { value:repositoryuid label:repositorycode header:$prepository.code },
+					Dim { value:repositoryuid label:repositorydisplayname header:$repository.concept }
+			
+		measures:
+					Measure { value:accountuid header:$access360analytics_identityaccountselfserviceNLS.measure },
+					Measure { value:organisationuid header:$organisation.concept },
+					Measure { value:jobtitleuid header:$identity.jobtitledisplayname },
+					Measure { value:identityuid header:$identity.concept },
+					Measure { value:repositoryuid header:$repository.concept }
+	}
+}

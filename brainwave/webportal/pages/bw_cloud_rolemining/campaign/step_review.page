@@ -1,0 +1,258 @@
+/* Import other pages here */
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_rolemining/resources/nls/stagechecks.page"
+import "/webportal/pages/bw_cloud_rolemining/resources/nls/campaign_nls.page"
+import "/webportal/pages/bw_cloud_base/resources/services/dynamicrule_services.page"
+import "/webportal/pages/bw_cloud_rolemining/stage/cube_kpis.page"
+import "/webportal/pages/bw_cloud_rolemining/stage/fragments.page"
+import "/webportal/pages/bw_cloud_rolemining/campaign/detaildialogs.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+bwcdrm_scope_review = PageFragment {
+
+	mixins: dashboardMixin
+	
+	io_currentStep = Variable
+	in_readOnly = Variable { type: Boolean initial: False}
+	in_scopeOrganisations = Variable { multivalued: True}	
+	in_scopePermRule = Variable
+	in_scopePermRuleEditCounter = Variable 
+		
+		/* kpi vars */
+	nb_scopeOrgs= Variable { type: Integer } 
+	nb_scopeIdentities= Variable { type: Integer } 	
+	nb_scopePerms= Variable { type: Integer } 
+	nb_scopeIdentities_ext= Variable { type: Integer } 
+	nb_scopeAccounts_orphan= Variable { type: Integer } 
+	nb_scopeAccounts= Variable { type: Integer } 
+	nb_scopeOrgs_nomgr= Variable { type: Integer } 
+	nb_scopePerm_nodoc= Variable { type: Integer } 
+   
+	selectedSinglePermUID = Variable
+	selectedSingleAppUID = Variable
+	selectedSingleOrgUID = Variable
+
+	organisations = Dataset {
+		view: bwcrm_organisation_masterview with in_scopeOrganisations to uid
+	}
+	
+	permissionRuleResults = Dataset {
+      view: bwrm_permissions_inrules with in_scopePermRule to permRules, in_scopePermRuleEditCounter to inc
+    }
+    
+	   
+    doPermissionDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog ( selectedSinglePermUID to inuid, True to inshowperjob, True to inshowperorg )
+	)
+	
+	doApplicationDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog ( selectedSingleAppUID to inuid, True to inshowperjob, True to inshowperorg )
+	)
+	
+	doOrganisationDetails = NamedAction (
+		Dialog bwf_organisationDetailsDialog ( selectedSingleOrgUID to inuid, True to inshowteam, True to incanupdatemanagers )
+	)
+	
+	doPrevious = NamedAction (
+        Set "permissions" to io_currentStep
+    )
+   doFinish = NamedAction (      
+        FireFragmentEvent "finish"
+   )	
+	
+	Grid {	    
+		columns: GridColumn{ width: grow gap: 20 },GridColumn{ width: 450 gap: 20 }
+		layout: Layout { grab: horizontal True vertical True  }
+		GridRow {
+			GridCell {
+			    // Organisations table
+			   Image { 
+			     image: %concept.organisation
+			     text: $bwcdrm_scopeNLS.review.org_selected
+			     styling: stdText
+			   } 
+				Table {
+					data:organisations					
+					layout:Layout{grab:horizontal True vertical True}
+					show-count:False
+					show-filter:True
+					configurable:True
+						
+					Column {
+					  column:uid hidden:True	initially-masked:False	sortable:True filterable:True	
+					  selection: selectedSingleOrgUID
+					}					
+					Column {
+					  column:shortname header: $bw_rm_startwNLS.orgShortName	initially-masked:False	sortable:True	filterable:True
+					  actions: ExecuteNamedAction doOrganisationDetails	
+					}					
+					Column {
+					  column:code header: $bw_rm_startwNLS.orgCode initially-masked:True sortable:True filterable:True
+					  actions: ExecuteNamedAction doOrganisationDetails
+					}									
+					Column {
+					  column:displayname header:$bw_rm_startwNLS.orgHeader initially-masked:False sortable:True filterable:True
+					  actions: ExecuteNamedAction doOrganisationDetails
+					}					
+					Column {
+						column:organisationtypedisplayname header:$bw_rm_startwNLS.orgType initially-masked:False  sortable:True filterable:False
+					}					
+					Column { 
+					  column:people header:$bw_rm_startwNLS.orgPeople initially-masked:False align: Right sortable:True filterable:False
+					}
+				}
+		  }
+			GridCell {
+			   // org kpis 
+			  	Group {
+		            mixins: kpiVPanelMixin
+		            styling: cssRound
+
+		            Header {
+		              value: $bwcdrm_scopeNLS.review.organisations
+		              icon: %concept.organisation		              
+		            }
+		            IncludeFragment {  fragment:bwcdrm_kpi_eval with 		              
+		               value-of $bwcdrm_scopeNLS.review.org_selected to label 
+		               , value-of nb_scopeOrgs to val 
+		            }
+		    			IncludeFragment {  fragment:bwcdrm_kpi_eval with 		              
+		               value-of $bwcdrm_scopeNLS.review.nbpeople to label 
+		               , value-of nb_scopeIdentities to val 
+		            }
+		            IncludeFragment {  fragment:bwcdrm_kpi_eval with 
+		                value-of $bwcdrm_scopeNLS.review.orgnomgr to label  
+		               ,value-of nb_scopeOrgs_nomgr to val  
+		               ,value-of nb_scopeOrgs to total 
+		               , value-of 3 to warningThr 
+		               , value-of 5 to criticalThr
+		               , value-of True to showLink
+		               fragment-events: {
+		                  when "link" then [ Dialog bwcdrm_orgsNoMgrDetailDialog (  in_scopeOrganisations to in_orgs) ]  
+		               }		                
+		            } 
+		            IncludeFragment {  fragment:bwcdrm_kpi_eval with 
+		            value-of $bwcdrm_scopeNLS.review.contractors to label  
+		               , value-of nb_scopeIdentities_ext to val
+		               , value-of nb_scopeIdentities to total
+		               , value-of 15 to criticalThr
+				         , value-of 5 to warningThr 
+		               , value-of True to showLink
+		               fragment-events: {
+		                  when "link" then [ Dialog bwcdrm_identitiesExtDialog ( in_scopeOrganisations to in_orgs) ]  
+		               }
+		            } 
+		        }
+			}
+		}
+		GridRow {
+		   GridCell {
+				// Permissions table
+				Image { 
+			     image: %concept.permission
+			     text: $bwcdrm_scopeNLS.review.perm_selected
+			     styling: stdText
+			   }
+				Table {
+					data: permissionRuleResults
+					layout: Layout { grab: horizontal True vertical True }					
+					show-count:False
+					show-filter:True
+					configurable:True
+					
+					Column{
+					  column: displayname header: $bw_rm_startwNLS.permHeader sortable:True filterable:True
+					  actions: ExecuteNamedAction doPermissionDetails
+					  width: 100%
+					}
+					Column{ 
+					 column: app_displayname header: $bw_rm_startwNLS.appHeader sortable:True filterable:True
+					 actions: ExecuteNamedAction doApplicationDetails
+					 width: 40%
+					}			
+					Column { column: uid hidden: True selection: selectedSinglePermUID }
+					Column { column: app_uid hidden: True selection: selectedSingleAppUID }	  
+				}
+		   }
+			GridCell {
+			  //  perm kpis 
+			  
+		        Group {
+		            mixins: kpiVPanelMixin
+		            Header {
+		              value: $bwcdrm_scopeNLS.review.permissions
+		              icon: %concept.permission		              
+		            }
+
+					IncludeFragment {  fragment:bwcdrm_kpi_eval with 
+		               value-of $bwcdrm_scopeNLS.review.perm_selected to label 
+		               , value-of nb_scopePerms to val 
+		               , value-of Concat( '"',NonEmpty(@getDynamicRuleLabelByUid(in_scopePermRule to uid),in_scopePermRule),'"') to subtitle
+		            }
+		            IncludeFragment {  fragment:bwcdrm_kpi_eval with 
+		               value-of $bwcdrm_scopeNLS.review.perm_nodoc to label  
+		               , value-of nb_scopePerm_nodoc to val
+		               , value-of nb_scopePerms to total
+		               , value-of 40 to criticalThr 
+				       , value-of 20 to warningThr 
+		               , value-of True to showLink
+		               fragment-events: {
+		                  when "link" then [ Dialog bwcdrm_permsNoDocByAppDetailDialog ( in_scopePermRule to in_permRules) ]  
+		               }
+		            }	
+		            IncludeFragment { fragment:bwcdrm_kpi_eval with 
+		               value-of $bwcdrm_scopeNLS.review.orphan_accounts to label 
+		               , value-of nb_scopeAccounts_orphan to val
+		               , value-of nb_scopeAccounts to total
+		               , value-of 30 to criticalThr
+				       , value-of 20 to warningThr
+		               , value-of True to showLink
+		               fragment-events: {
+		                  when "link" then [ Dialog bwcdrm_orphanAccountsDetailDialog ( in_scopePermRule to in_permRules ) ]  
+		               }
+		            }
+		        }
+			
+			}     		
+		}
+	}
+	
+	ButtonGroup {
+      mixins: wizardButtonBarMixin
+      hidden: BooleanPredicate( in_readOnly)
+      Button {
+         text: $bwcdrm_wizardsNLS.button.previous
+         mixins: secondaryButtonMixin
+         actions: ExecuteNamedAction doPrevious
+      }
+      Button {
+        text: $bwcdrm_wizardsNLS.button.finish
+        styling: wizardButtonStyle , mainButtonStyle
+        actions: ExecuteNamedAction doFinish
+      }      
+    }
+	
+	kpi_mgr = IncludeFragment { inline: True
+	    fragment: bwcdrm_cube_kpis_manager with 
+	    value-of True to in_enable_scope  
+	   ,in_scopeOrganisations binds-to in_scopeOrganisations
+	   ,in_scopePermRule binds-to in_scopePermRule
+	   ,in_scopePermRuleEditCounter binds-to in_scopePermRuleEditCounter
+		,nb_scopeOrgs binds-to out_nb_scopeOrgs
+		,nb_scopeIdentities binds-to out_nb_scopeIdentities		
+		,nb_scopePerms binds-to out_nb_scopePerms
+		,nb_scopeIdentities_ext binds-to out_nb_scopeIdentities_ext
+		,nb_scopeAccounts_orphan binds-to out_nb_scopeAccounts_orphan
+		,nb_scopeAccounts binds-to out_nb_scopeAccounts
+		,nb_scopeOrgs_nomgr binds-to out_nb_scopeOrgs_nomgr
+		,nb_scopePerm_nodoc binds-to out_nb_scopePerm_nodoc
+							
+		layout: Layout { hint: width 0 height 0}
+	}
+	 
+}
+

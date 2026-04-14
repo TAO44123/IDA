@@ -1,0 +1,419 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Brainwave GRC" />
+  <meta name="keywords" content="Documentation" />
+  <title>Datasource Design</title>
+  <style type="text/css">
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+  <style type="text/css">body {
+margin: auto;
+padding-right: 1em;
+padding-left: 1em;
+max-width: 64em; color: black;
+font-family: Segoe UI,Roboto,sansserif;
+font-size: 100%;
+line-height: 140%;
+color: #333; }
+pre {
+border: 1px dotted gray;
+background-color: #ececec;
+color: #111111;
+padding: 0.5em;
+}
+code {
+font-family: monospace;
+}
+h1 a, h2 a, h3 a, h4 a, h5 a { text-decoration: none;
+color: #111111; }
+h1, h2, h3, h4, h5 { font-weight: bold;
+color: #111111; }
+h1 {
+font-size: 150%;
+border-bottom: 3px solid #111111 ;
+}
+h2 {
+font-size: 130%;
+border-bottom: 2px solid #111111 ;
+}
+h3 {
+font-size: 110%;
+border-bottom: 1px solid #111111 ;
+}
+h4 {
+font-style: italic;
+}
+h5 {
+font-style: italic;
+}
+th {
+border-bottom: 3px solid #ddd;
+}
+td {
+border-bottom: 1px solid #ddd;
+vertical-align: top;
+text-align: left;
+}
+h1.title {
+font-size: 200%;
+font-weight: bold;
+padding-top: 0.2em;
+padding-bottom: 0.2em;
+text-align: left;
+border: none;
+}
+dt code {
+font-weight: bold;
+}
+dd p {
+margin-top: 0;
+}
+#footer {
+padding-top: 1em;
+font-size: 70%;
+color: gray;
+text-align: center;
+}
+</style>
+  
+</head>
+<body>
+<div id="header">
+<h1 class="title">Datasource Design</h1>
+<h2 class="author">Brainwave GRC</h2>
+</div>
+<div id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#designing-a-datasource-descriptor">Designing a Datasource Descriptor</a>
+<ul>
+<li><a href="#descriptor-page-attributes-table">Descriptor page attributes table</a></li>
+<li><a href="#descriptor-page-metadata-attributes-table">Descriptor page metadata attributes table</a></li>
+</ul></li>
+<li><a href="#designing-configuration-options-ui">Designing Configuration Options UI</a>
+<ul>
+<li><a href="#serialization-services">Serialization services</a></li>
+<li><a href="#options-ui-fragment">Options UI Fragment</a></li>
+</ul></li>
+<li><a href="#enabling-column-mapping">Enabling column mapping</a></li>
+</ul>
+</div>
+<h1 id="introduction">Introduction</h1>
+<p>The new Datasource Management add-on provides an unified platform for defining and configuring the extraction and collection of data into Brainwave from various sources, directly from the web portal.</p>
+<p>This add-on introduces the concept of <strong>Datasource</strong> in order to normalize the configuration and processing of data to be collected inside Brainwave,</p>
+<p>A <strong>Datasource</strong> is a combination of a <strong>data collector</strong> and a <strong>channel</strong> to obtain the data to be collected.<br />
+- A <strong>data collector</strong> in Brainwave sense is an add-on that processes a set of data files in a specified format to feed the Brainwave Identity Ledger data model. Examples of data collectors are ActiveDirectory, CyberArk , Shared Folders, Google Drive, etc.<br />
+- A <strong>channel</strong> is a way to obtain the data to be collected. It ranges from a live connection to an LDAP server, a script that is run to extract data, to a mere data file that is manually dropped in a given location.</p>
+<p>In order for a datasource to be recognized by the Datasource Management add-on, you need to design a <strong>datasource descriptor</strong>.</p>
+<h1 id="designing-a-datasource-descriptor">Designing a Datasource Descriptor</h1>
+<p>A datasource descriptor provides information on the characteristics and capabilities of a datasource.</p>
+<ul>
+<li>basic information ( type, id, category, name, description, family, etc.)</li>
+<li>options information: list of option and configuration GUI</li>
+<li>mapping information</li>
+<li>addtional flags</li>
+</ul>
+<p>The datasource descriptor is a special <strong>Page</strong> file that needs to be included in the application project, either through the facet of the datasource, or externally anywhere in the project.</p>
+<p>Here is an example of a minimal datasource descriptor:</p>
+<pre><code>ds_activedirectory_file = Page {
+    title:  &quot;Microsoft Active Directory - file&quot;
+    tags: &quot;bwds_connector&quot; , &quot;file&quot; , &quot;csv&quot;, &quot;microsoft&quot;
+    description: &quot;Collects all provided LDIF files, etc ...&quot;
+    icon: &quot;bw_dsm/L/bw_activedirectory.png&quot;
+    large-icon: &quot;bw_dsm/XL/bw_activedirectory.png&quot;  
+     metadata: (     
+        fixedName -&gt; &quot;ad&quot;  ,  
+        category -&gt; &quot;infrastructure&quot;, 
+        family -&gt; &quot;LDAP&quot;,
+        collector -&gt; &quot;bw_activedirectory&quot;,
+        destPathVar -&gt; &quot;ad_sourceFolder&quot;,
+        filePattern -&gt; &quot;*.ldif&quot;,
+        hasMapping -&gt; False,
+        multiFile -&gt; True
+     )
+}</code></pre>
+<p>The characteristics of a datasource are provided either through standard attribute of a Page (eg. title, tags, icon, etc.) or through a list of metadata key -&gt; value pairs.</p>
+<h2 id="descriptor-page-attributes-table">Descriptor page attributes table</h2>
+<table>
+<colgroup>
+<col width="25%"></col>
+<col width="27%"></col>
+<col width="25%"></col>
+<col width="22%"></col>
+</colgroup>
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Mandatory?</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>id</strong></td>
+<td>mandatory</td>
+<td>unique identifier for the datasource throughout the system. the id should follow the following naming pattern: **ds_{collector}_{channel}**</td>
+<td>ds_activedirectory_file</td>
+</tr>
+<tr class="even">
+<td><strong>title</strong> *</td>
+<td>mandatory</td>
+<td>the label of the datasource as it will appear in the Datasource management GUI. The title should take the form {collector}-{channel}. title can be localized</td>
+<td>Microsoft Active Directory - file</td>
+</tr>
+<tr class="odd">
+<td><strong>tags</strong></td>
+<td>mandatory</td>
+<td>keywords that describe the datasource, so that it can be searched. You must include the special <strong>bwds_connector</strong> tag so that the page is recognized as a connector descriptor</td>
+<td>“bwds_connector” , “file” , “csv”, “microsoft”</td>
+</tr>
+<tr class="even">
+<td><strong>description</strong></td>
+<td>mandatory</td>
+<td>description of the purpose of this datasource to be displayed in the configuration GUI. The desciption must be up to 5 lines to fit in the GUI. You can force newlines using \n. description can be localized.</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><strong>icon</strong></td>
+<td>mandatory</td>
+<td>48x48 icon of the datasource , to be displayed in the wizard page. the icon must be located in /reports/icons folder of the project</td>
+<td>bw_dsm/L/bw_activedirectory.png</td>
+</tr>
+<tr class="even">
+<td><strong>large-icon</strong></td>
+<td>mandatory</td>
+<td>96x96 large icon of the datasource , to be displayed in the wizard selection page. the icon must be located in /reports/icons folder of the project</td>
+<td>bw_dsm/XL/bw_activedirectory.png</td>
+</tr>
+<tr class="odd">
+<td><strong>metadata</strong></td>
+<td>mandatory</td>
+<td>list of key-value pairs that describe addtional features of the datasource, in the form <code>metadata: ( key1 -&gt; value1, key2 -&gt; value2, ... )</code>. Metadata possible keys are described in the new table</td>
+<td><code>metadata: (   category -&gt; &quot;infrastructure&quot;,  family -&gt; &quot;LDAP&quot;,  multiFile -&gt; True )</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="descriptor-page-metadata-attributes-table">Descriptor page metadata attributes table</h2>
+<table>
+<colgroup>
+<col width="25%"></col>
+<col width="27%"></col>
+<col width="25%"></col>
+<col width="22%"></col>
+</colgroup>
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Mandatory?</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>category</strong> *</td>
+<td>mandatory</td>
+<td>category of the datasource. must be one of the following values: <strong>infrastructure</strong>, <strong>identity</strong>, <strong>application</strong>, <strong>cloud</strong></td>
+<td>category -&gt; “application”</td>
+</tr>
+<tr class="even">
+<td><strong>family</strong></td>
+<td>optional</td>
+<td>sub-category of the datasource</td>
+<td>LDAP</td>
+</tr>
+<tr class="odd">
+<td><strong>collector</strong></td>
+<td>mandatory</td>
+<td>name of the collector facet.</td>
+<td>“bwdsm_generic_hr”</td>
+</tr>
+<tr class="even">
+<td><strong>action</strong></td>
+<td>optional</td>
+<td>name of the script to execute to extract the data, if available</td>
+<td>“activedirectory”</td>
+</tr>
+<tr class="odd">
+<td><strong>destPathVar</strong></td>
+<td>mandatory</td>
+<td>name of the configuration variable that holds the location of imported files in the project</td>
+<td>“ad_sourceFolder”</td>
+</tr>
+<tr class="even">
+<td><strong>hasDestDir</strong></td>
+<td>optional</td>
+<td>flag indicating whether data files should be copied to a subfolder of import files. If set to true, the configuration UI will prompt for the sub folder name. Defaults to False</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><strong>multiFile</strong></td>
+<td>optional</td>
+<td>boolean flag indicating whether the collect accepts multiple files. must match the <em>iterate over files</em> silo flag. Default is False</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><strong>filePattern</strong></td>
+<td>mandatory</td>
+<td>file pattern of the data files. Same syntax as iterated silos</td>
+<td>&quot;*.ldif&quot;</td>
+</tr>
+<tr class="odd">
+<td><strong>hasMapping</strong></td>
+<td>mandatory</td>
+<td>boolean flag indicating whether a mapping can be applied to the data file, enabling Mapping in the configuration UI. Defaults to False. when set to True, the imodel* metadata attributes must be also set</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><strong>imodelcolumns</strong></td>
+<td>optional</td>
+<td>semi-column separated list of expected model columns for the mapping</td>
+<td>“hrcode;givenname;surname;altname”</td>
+</tr>
+<tr class="odd">
+<td><strong>imodelcolumnsmandatory</strong></td>
+<td>optional</td>
+<td>semi-column separated list of boolean values indicating whether a model column is mandatory</td>
+<td>“False;False;True”</td>
+</tr>
+<tr class="even">
+<td><strong>imodelcolumnsdescription</strong></td>
+<td>optional</td>
+<td>semi-column separated list of column descriptions for the model columns. Can be localized</td>
+<td>“Employee ID number;First name;Last name;Alternative or maiden name”</td>
+</tr>
+<tr class="odd">
+<td><strong>imodelcolumnsexample</strong></td>
+<td>optional</td>
+<td>semi-column separated list of value examples for model columns</td>
+<td>“ID0000183;Denis;GEOFFRAY;JACOB;Denis GEOFFRAY”</td>
+</tr>
+<tr class="even">
+<td><strong>imodelcolumnstype</strong></td>
+<td>optional</td>
+<td>semi-column separated list of value types for the model column. Allowed types are: String, Boolean, Date; Number</td>
+<td>“String;Boolean;Date”</td>
+</tr>
+</tbody>
+</table>
+<h1 id="designing-configuration-options-ui">Designing Configuration Options UI</h1>
+<p>Some datasources may have additional user-configurable options. For example, a query-based datasource will have options for the URL and credentials to connect to, An application permission rights datasource options might include the name and description of the Application to create in the Identity Ledger.</p>
+<p>In order to design configuration UI for your datasource, carry out the following steps: - create two services for serializing and deserializing the options - create a dynamic page fragment to hold the configuration UI. The fragment name must be exactly <code>{page_name}_cfg.</code><br />
+In the above example, the <code>ds_activedirectory_file</code> datasource configuration fragment would be named <code>ds_activedirectory_file_cfg</code>.</p>
+<h2 id="serialization-services">Serialization services</h2>
+<p>Create two services for serializing and deserializing the options. Names do not matter, but they must be unique application wide.</p>
+<p><strong>Deserialization service</strong>: this service is in charge of transforming the JSON string into individual variables that will hold the option values. - the option names must be passed to the service as a comma separated list String. Order does not matter. We recommand to use a Constant so that the same value can be passed to both services - The service must have an Ouput parameter per option.</p>
+<p><strong>Serialization service</strong>: this service is in charge of transforming back the option variables into a JSON string. - the option names must be passed to the service as a comma separated list String into the <code>varnames</code> parameter. Order does not matter. We recommand to use a Constant so that the same value can be passed to both services. - the service must have an Input parameter per option. - if some options values need to be encrypted, add two parameters to your service: <code>secretnames</code> and <code>secreddsname</code>. you must then pass the options names to encrypt (as comma separated string) to the service into the <code>secretnames</code> parameter. You must also pass the name of the datasource (contained in the <code>dsname</code> variable) to the <code>secreddsname</code> parameter of the service. It will be used to build a key for storing the encrypted values in the vault.</p>
+<h2 id="options-ui-fragment">Options UI Fragment</h2>
+<p>The option fragment is displayed in the datasource configuration wizard options page. The fragment is in charge of providing the configuration UI, serializing/deserializing the options values and making any required validation.</p>
+<p>The fragment has 3 mandatory variables: - dsname : input variable will contain the id of the datasource. Used for encrypting secret options - edit : boolean variable. False if creating the datasource, True if editing an existing datasource - options : in/out string variable containing a JSON representation of the options.</p>
+<p>Below is a code template for a datasource with 4 options ( ldapurl, domain, login and password) , one of which being encrypted (password). Copy and adapt this code to your own datasource</p>
+<p><strong>Datasource code template</strong></p>
+<pre><code>ad_ldap_params = Constant { value: &quot;login,password,domain,ldapurl&quot; }
+
+deserializeOptions_adp = EventService {
+  javascript-file: &quot;/webportal/pages/bw_dsm/cfg/ds_cfg.javascript&quot;
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant ad_ldap_params }
+  options = Input
+  login = Output { }
+  password = Output { }
+  domain = Output { }  
+  ldapurl = Output { }
+}
+
+serializeOptions_adp = StringService {
+  javascript-file: &quot;/webportal/pages/bw_dsm/cfg/ds_cfg.javascript&quot;
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant ad_ldap_params }
+  secretnames = Input { default: &quot;password&quot;}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+  login = Input { }
+  password = Input { }
+  domain = Input { } 
+  ldapurl = Input { }
+}
+
+ds_activedirectory_ldap_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options. value updated when doCommit is called */
+  // custom
+  ldapurl = Variable { initial: &quot;ldap://&quot;}
+  login = Variable
+  password = Variable
+  domain = Variable
+  
+   doInit = NamedAction(
+     Call deserializeOptions_adp ( options to options, ldapurl from ldapurl, login from login, password from password, domain from domain)
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_adp ( dsname to secretdsname, 
+          ldapurl to ldapurl, login to login, password to password, domain to domain   ) to options
+   )
+   
+  Edit { 
+     label: &quot;URL&quot;
+     variable: ldapurl
+     match: &quot;ldap:\\/\\/.+&quot;
+     not-empty:True
+  }
+  Edit { 
+     label: &quot;Login&quot;
+     variable: login
+     not-empty:True
+  }
+  Edit { 
+     label: &quot;Password&quot;
+     variable: password
+     not-empty:True
+     password-mode: True
+  }
+  Edit { 
+     label: &quot;Domain&quot;
+     variable: domain
+     not-empty:True
+     tooltip: &quot;Name of the domain to create in the Identity Ledger&quot;
+  } 
+}</code></pre>
+<h1 id="enabling-column-mapping">Enabling column mapping</h1>
+<p>To enable column mapping for your datasource, you need to carry out the following steps: - set <strong>hasMapping</strong> to True in the datasource metadata descriptor - set <strong>imodelcolumns</strong> , <strong>imodelcolumnsmandatory</strong> , <strong>imodelcolumnstype</strong>, <strong>imodelcolumnsdescription</strong> and <strong>imodelcolumnsexample</strong> to semi-column separated list of values. All 5 lists must have the same cardinality.</p>
+<p>Here is a example code of the descriptor page for a datasource with mapping enabled:</p>
+<pre><code>ds_generic_hr_csv = Page {
+    title: $ds_generic_hr_csv_NLS.title
+    tags: &quot;bwds_connector&quot; 
+    description: $ds_generic_hr_csv_NLS.description
+    icon: &quot;bw_dsm/L/bw_genericapp.png&quot;
+    large-icon: &quot;bw_dsm/XL/bw_genericapp.png&quot;
+    metadata: (  
+     category -&gt; &quot;identity&quot;, 
+     collector -&gt; &quot;bwdsm_generic_hr&quot;,
+     destPathVar -&gt; &quot;bw_generic_hr_sourceFolder&quot;, 
+     filePattern -&gt; &quot;*.csv&quot;,
+     multiFile -&gt; False  ,
+     hasMapping -&gt; True,
+    imodelcolumns -&gt; &quot;hrcode;givenname;surname;altname;fullname&quot;,
+    imodelcolumnsmandatory -&gt;&quot;False;False;False;False;True&quot;,
+     imodelcolumnsdescription -&gt; &quot;Employee ID number;First name;Last name;Alternative or maiden name;Complete name&quot;,
+     imodelcolumnsexample -&gt; &quot;ID0000183;Denis;GEOFFRAY;JACOB;Denis GEOFFRAY&quot;,
+     imodelcolumnstype -&gt; &quot;String;String;String;String;String&quot;
+   )    
+}</code></pre>
+<div id="footer">
+  © 2010-2020 <a href="https://documentation.brainwavegrc.com/">Brainwave GRC</a>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360_resourceremediationforcampaign" displayname="resourceremediationforcampaign">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/application/resourceremediationforcampaign.javascript" name="D1647879238160">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1647879238159" title="app">
+			<InnerView name="bwaccess360_applicationremediationforcampaign">
+				<Param name="F1647879350441" viewparam="campaignid" viewparamvalue="{param.campaignid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1647879244227" type="unionview" x="600" y="247" w="300" h="50" title="repo">
+			<InnerView name="bwaccess360_repositoryremediationforcampaign">
+				<Param name="F1647879356789" viewparam="campaignid" viewparamvalue="{param.campaignid.get()}"/>
+			</InnerView>
+			<Union discriminatorcolumn="discr" primary_discriminator="app" secondary_discriminator="repo"/>
+			<FilterList>
+				<Filter name="F1647879303442" expression="dataset.targetuid.get()" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Link name="L1647879244415" source="C1647879238159" target="C1647879244227" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1647879307660" type="note" x="359" y="19" w="300" h="50" title="tech owners with pending actions"/>
+		<Component name="C1692778856241_1" type="joinview" x="580" y="246" w="300" h="50" title="active delegations">
+			<InnerView name="bwaccess360_activedelegations"/>
+			<Join jointype="left" key1="{dataset.targetuid.get()}" key2="{dataset.delegatoruid.get()}"/>
+			<ViewComputedAttribute name="uid" displayname="uid" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetuid.get():dataset.delegateeuid.get()"/>
+			<ViewComputedAttribute name="hrcode" displayname="hrcode" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targethrcode.get():dataset.delegateehrcode.get()"/>
+			<ViewComputedAttribute name="fullname" displayname="fullname" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetfullname.get():dataset.delegateefullname.get()"/>
+			<ViewComputedAttribute name="mail" displayname="mail" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetmail.get():dataset.delegateemail.get()"/>
+			<ViewComputedAttribute name="preferredlanguage" displayname="preferredlanguage" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetpreferredlanguage.get():dataset.delegateepreferredlanguage.get()"/>
+			<ViewComputedAttribute name="isdelegated" displayname="isdelegated" type="Boolean" expression="!dataset.isEmpty(&apos;delegateeuid&apos;)"/>
+		</Component>
+		<Link name="L1692780966494" source="C1647879244227" target="C1692778856241_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="campaignid" displayname="campaignid" type="String"/>
+</View>

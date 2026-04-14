@@ -1,0 +1,713 @@
+
+import "/webportal/pages/bw_ledger_admin/timing/services.page"
+import "/webportal/pages/bw_ledger_admin/timing/dialogs.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+/*thinBar = PageFragment {
+	enter-event:	
+					ExecuteNamedAction calculate,
+					MultivaluedAdd v1 to values, MultivaluedAdd "" to labels,
+					MultivaluedAdd v2 to values, MultivaluedAdd "" to labels,
+					MultivaluedAdd v3 to values, MultivaluedAdd "" to labels,
+					MultivaluedAdd v4 to values, MultivaluedAdd "" to labels,
+					MultivaluedAdd v5 to values, MultivaluedAdd "" to labels,
+					MultivaluedAdd v6 to values, MultivaluedAdd "" to labels
+					
+					
+	
+	collect = Parameter { type: Integer }
+	activation = Parameter { type: Integer }
+	reconciliation = Parameter { type: Integer }
+	controls = Parameter { type: Integer }
+	
+	
+	total = Variable { type: Integer }
+	max = Variable { type: Integer }
+	
+	
+	values = Variable { multivalued: True }
+	labels = Variable { multivalued: True }
+	
+	v1 = Variable { type: Integer }
+	v2 = Variable { type: Integer }
+	v3 = Variable { type: Integer }
+	v4 = Variable { type: Integer }
+	v5 = Variable { type: Integer }
+	v6 = Variable { type: Integer }
+	aux = Variable { type: Integer }
+	
+	data = Dataset { columns: values , labels }
+	
+	calculate = NamedAction (
+		Unset v1,Unset v2,Unset v3,Unset v4,Unset v5,Unset v6,Unset aux,
+		
+		Set Ratio ( Product( collect, 100 ) , max ) to v1,
+		Set Ratio ( Product( activation, 100 ) , max ) to v2,
+		Set Ratio ( Product( reconciliation, 100 ) , max ) to v3,
+		Set Ratio ( Product( controls, 100 ) , max ) to v4,
+		
+		Set Sum ( collect, aux ) to aux, Set Sum ( activation, aux ) to aux, Set Sum ( reconciliation, aux ) to aux, Set Sum ( controls, aux ) to aux, 
+		Set Difference( total, aux ) to aux,
+		
+		Set Ratio ( Product( aux , 100 ) , max ) to v5, 
+		
+		Set Ratio ( Difference( max , total ) , max ) to v6,
+		
+		Set @truncateToInt ( v1 to inputVar ) to v1,
+		Set @truncateToInt ( v2 to inputVar ) to v2,
+		Set @truncateToInt ( v3 to inputVar ) to v3,
+		Set @truncateToInt ( v4 to inputVar ) to v4,
+		Set @truncateToInt ( v5 to inputVar ) to v5,
+		Set @truncateToInt ( v6 to inputVar ) to v6
+		
+	)
+	
+	
+	Chart {
+		file: "charts/bw_ledger_admin/smallbar"
+		
+		data: data
+		
+		series:  (Current labels) as String in "category" , ( Current values ) as Integer in "value"
+		label: Label {
+			break: True
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+			indent:  horizontal 0 vertical 0
+		}
+	}
+	
+}*/
+
+fragment_timeslots = PageFragment {
+	mixins: timingMixin
+	enter-event:
+		Set selectedTimeslot.parent_uid to selectedTimeslotUid_prev, 
+		Call paginationLimits ( latestTimeslot.uid to timeslotUid,  5 to itemPerPage , 15 to maxItems, pages from limitDates, maxElapsed from maxValue ),
+		ExecuteNamedAction fillStepsVars,
+		TransferData alltimeslotsChart ( uid ) to (in_ts_uid),
+		Set @produceJSON ( in_ts_uid to uids , selectedstepchart to step ) to json
+		
+		
+	initial = Parameter { type: String }
+
+	// Variables for the service produceJSON (chart)
+	in_ts_uid = Variable { type: String multivalued: True  }
+	json= Variable { type: String }
+	steps_category = Variable { type:  String multivalued: True }
+	steps_values = Variable { type: Integer multivalued: True }
+	
+	// Variables used for pagination
+	pages = Variable { type: String multivalued: True }
+	selectedPage = Variable { type: String multivalued: False}
+	maxElapsed = Variable { type: Integer multivalued: False }
+	
+	// Variables associated with the step timings
+	elapsedTotal = Variable { type: Integer initial: 0 }
+	elapsedAcum = Variable { type: Integer initial: 0 }
+	elapsedCollect = Variable { type: Integer initial: 0 }
+	elapsedActivation = Variable { type: Integer initial: 0 }
+	elapsedReconciliation = Variable { type: Integer initial: 0 }
+	elapsedControl = Variable { type: Integer initial: 0 }
+	elapsedOthers = Variable { type: Integer initial: 0 }
+	
+	elapsedTotal_prev = Variable { type: Integer initial: 0 }
+	elapsedAcum_prev = Variable { type: Integer initial: 0 }
+	elapsedCollect_prev = Variable { type: Integer initial: 0 }
+	elapsedActivation_prev = Variable { type: Integer initial: 0 }
+	elapsedReconciliation_prev = Variable { type: Integer initial: 0 }
+	elapsedControl_prev = Variable { type: Integer initial: 0 }
+	elapsedOthers_prev = Variable { type: Integer initial: 0 }
+	
+	// Selection variables
+	selectedTimeslotUid = Variable { type: String initial: initial }
+	selectedTimeslotUid_prev = Variable { type: String initial: initial }
+	selectedstepchart = Variable { type: String multivalued: False initial: "Total"}
+	
+	// bar custom colors
+	customcolors = Variable { initial: ["#8ea5cc,#324f7f,#b1cfff,#659fff,#59677f" ] }
+
+	// Pagination datasets
+	allPagesStart = Dataset { columns: pages }
+	currentPage = Dataset {
+		view: timeslot_all with selectedPage to startwith
+		limit: 5
+	}
+	firstOfCurrent = Record {
+		view: timeslot_all with selectedPage to startwith
+	}
+	
+	
+	// Datasets for chart
+	alltimeslotsChart = Dataset {
+		view: timeslot_all
+		limit: 15
+	}
+	
+	// Records that holds latest and selectes timeslots
+	latestTimeslot = Record { view: timeslot_all }
+	selectedTimeslot = Record {
+		view: timeslot_timing with selectedTimeslotUid to uid
+	}
+	
+	// Dataset with the stats on the selected timeslot
+	stat = Dataset {
+		service: srv_timeslot_count_diff with selectedTimeslotUid to timeslotUid
+	}
+	
+	// Dataset used for the steps chart
+	stepsChart = Dataset {
+		columns: steps_category, steps_values
+	}
+	
+	stepsKeys = Dataset {
+		values: [ 	
+					( key -> "Total" , label -> $steps.total ),
+					( key -> "Collect" , label -> $steps.collect ) ,
+					( key -> "Activation" , label -> $steps.activation ) ,
+					( key -> "Reconciliation" , label -> $steps.reconciliation ) ,
+					( key -> "Control" , label -> $steps.controls )
+				]			
+	}
+	
+	//*****************************************************************************
+	
+	fillStepsVars = NamedAction (
+		
+		Unset elapsedTotal, 			Set @elapsedTime ( selectedTimeslotUid to timeslotUid, False to formatTime ) to elapsedTotal,
+		Unset elapsedCollect, 			Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Collect" to step, False to formatTime) to elapsedCollect,
+		Unset elapsedActivation, 		Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Activation" to step, False to formatTime) to elapsedActivation,
+		Unset elapsedReconciliation,	Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Reconciliation" to step, False to formatTime) to elapsedReconciliation,
+		Unset elapsedControl, 			Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Control" to step, False to formatTime) to elapsedControl,
+		Unset elapsedAcum, Set Sum ( elapsedControl, Sum ( Sum ( elapsedCollect, elapsedActivation), elapsedReconciliation)) to elapsedAcum,
+		Unset elapsedOthers, Set Difference ( elapsedTotal, elapsedAcum  ) to elapsedOthers,
+		
+		
+		Unset elapsedTotal_prev, 			Set @elapsedTime ( selectedTimeslotUid_prev to timeslotUid, False to formatTime ) to elapsedTotal_prev,
+		Unset elapsedCollect_prev, 			Set @elapsedTime ( selectedTimeslotUid_prev to timeslotUid, "Collect" to step, False to formatTime) to elapsedCollect_prev,
+		Unset elapsedActivation_prev, 		Set @elapsedTime ( selectedTimeslotUid_prev to timeslotUid, "Activation" to step, False to formatTime) to elapsedActivation_prev,
+		Unset elapsedReconciliation_prev,	Set @elapsedTime ( selectedTimeslotUid_prev to timeslotUid, "Reconciliation" to step, False to formatTime) to elapsedReconciliation_prev,
+		Unset elapsedControl_prev, 			Set @elapsedTime ( selectedTimeslotUid_prev to timeslotUid, "Control" to step, False to formatTime) to elapsedControl_prev,
+		Unset elapsedAcum_prev, Set Sum ( elapsedControl_prev, Sum ( Sum ( elapsedCollect_prev, elapsedActivation_prev), elapsedReconciliation_prev)) to elapsedAcum_prev,
+		Unset elapsedOthers_prev, Set Difference ( elapsedTotal_prev, elapsedAcum_prev  ) to elapsedOthers_prev,
+			
+		Unset steps_category,
+		MultivaluedAdd $steps.collect to steps_category,
+		MultivaluedAdd $steps.activation to steps_category,
+		MultivaluedAdd $steps.reconciliation to steps_category,
+		MultivaluedAdd $steps.controls to steps_category,
+		MultivaluedAdd $steps.others to steps_category,
+		
+		Unset steps_values,
+		MultivaluedAdd elapsedCollect to steps_values,
+		MultivaluedAdd elapsedActivation to steps_values,
+		MultivaluedAdd elapsedReconciliation to steps_values,
+		MultivaluedAdd elapsedControl to steps_values,
+		MultivaluedAdd elapsedOthers to steps_values
+	)
+	
+	
+	Grid {
+		columns: GridColumn { width: 500px}, GridColumn{ width: 10px }, GridColumn { width: grow}, GridColumn{ width: 10px }
+		layout: Layout { grab: horizontal True vertical True  indent: horizontal 0 vertical 5}
+		GridRow {
+			GridCell {
+			
+				Header { value: $timingfragmenttimeslots.header layout: Layout { indent: horizontal 18 vertical 0}}
+				
+				Spacer { height: 2 }
+				
+				Tiles {
+					columns: 1
+					layout: Layout { grab: horizontal True vertical True indent: horizontal 0 vertical 0}
+					gap:0
+					insets:0
+					tile-height: 100
+					
+					TileGroup {
+						iterate-on: currentPage
+						
+						Tile {
+							
+							Grid {
+								columns: GridColumn { width: 12}, GridColumn { width: grow },GridColumn { width: 40 }
+								gap: 0
+								insets:0
+								
+								GridRow {
+									height: 3
+									hidden: Not SameValuePredicate ( Current uid , selectedTimeslotUid )
+									
+									GridCell {}
+									GridCell {
+										span: 2
+										background: Color HEX ( #3c3c3c )
+									}
+								}
+								
+								GridRow {
+									height: 3
+									hidden: SameValuePredicate ( Current uid , selectedTimeslotUid )
+									
+									GridCell {}
+									GridCell {
+										span: 2
+										background: Color RGB (240,240,240)
+									}
+								}
+											
+								GridRow {
+									height: 70
+									GridCell {
+										span: 2
+										
+										
+										Grid {
+											columns: GridColumn {width:45} , GridColumn {width:grow}
+											gap: 0
+											insets: 0
+											background: Color RGB (240,240,240)
+											layout: Layout { indent: horizontal 12 vertical 0}
+											
+											GridRow {
+												GridCell {
+													Image {
+														layout: Layout { indent: horizontal 0 vertical 10}
+														image: "bw_ledger_admin/time_32.png"
+													}
+												}
+												
+												GridCell {
+													Grid {
+														columns: GridColumn { width: grow }, GridColumn { width: 80px}, GridColumn { width: 85px}
+														gap:0
+														insets: 0
+														
+														
+														
+														GridRow {
+															height: 10
+														}
+														
+														GridRow {
+															height: 30
+															
+															GridCell {
+																span: 3
+																Text {
+																	compact: True 
+																	value: Current displayname
+																	styling: bigLabel
+																}
+															}
+														}
+														
+														GridRow {
+															height: grow
+															
+															GridCell {
+																Text {
+																	compact: True 
+																	layout: Layout { indent:  horizontal 20 vertical 0}
+																	value: Current importdate
+																	styling: normalText
+																}
+															}
+															GridCell {
+																Text {
+																	compact: True 
+																	layout: Layout { indent: horizontal 0 vertical 3}
+																	align: Right
+																	value: $timingfragmenttimeslots.labels.totaltime
+																	styling: normalText
+																}
+															}
+															GridCell {
+																Text {
+																	compact: True 
+																	layout: Layout { indent: horizontal 0 vertical 0}
+																	value: @fromatMs ( Current totaltime to inMs, False to includeMs )
+																	styling: mediumNumber
+																}
+															}
+														}
+													}
+												
+												}
+											}	
+										}
+									}
+									GridCell {
+									
+										background: Color RGB (240,240,240)
+										
+										Button {
+											actions: Set Current uid to selectedTimeslotUid , Set Current parent_uid to selectedTimeslotUid_prev, ExecuteNamedAction fillStepsVars
+											layout: Layout { indent: horizontal 0 vertical 24 }
+											hidden: Not SameValuePredicate ( Current uid , selectedTimeslotUid )
+											image: "bw_ledger_admin/selected_20.png"
+											presentation: Link
+										}
+										
+										Button {
+											actions: Set Current uid to selectedTimeslotUid , Set Current parent_uid to selectedTimeslotUid_prev, ExecuteNamedAction fillStepsVars
+											layout: Layout { indent: horizontal 0 vertical 24 }
+											hidden: SameValuePredicate ( Current uid , selectedTimeslotUid )
+											image: "bw_ledger_admin/unselected_20.png"
+											presentation: Link
+										}
+									}
+								}
+								GridRow {
+									height: 10
+									GridCell {
+										span: 3
+
+										Browser {
+											layout: Layout { grab: horizontal True vertical True hint: height 10 }
+											static: "static/bw_ledger_admin/thinbar.html"
+												with @elapsedTime ( Current uid to timeslotUid, "Collect" to step, False to formatTime) to collect,
+												     @elapsedTime ( Current uid to timeslotUid, "Activation" to step, False to formatTime) to activation,
+												     @elapsedTime ( Current uid to timeslotUid, "Reconciliation" to step, False to formatTime) to reconciliation,
+												     @elapsedTime ( Current uid to timeslotUid, "Control" to step, False to formatTime) to control,
+												     @elapsedTime ( Current uid to timeslotUid, False to formatTime) to total,
+												     maxElapsed to max
+										}
+									}
+								}
+								GridRow {
+									height: grow
+								}
+							}
+						}
+					}
+				}
+				
+				SetNavigator {
+					data: allPagesStart
+					align: Center 
+					selection-changed-event: Set firstOfCurrent.uid to selectedTimeslotUid, Set firstOfCurrent.parent_uid to selectedTimeslotUid_prev , ExecuteNamedAction fillStepsVars
+					
+					column: pages
+					selection: selectedPage
+					
+					show-count: True
+					count-width: 40
+					label: $timingfragmenttimeslots.labels.pages
+					label-width: 80
+					
+					
+					
+					show-first: True
+					show-last: True 
+					
+				}
+				
+				Spacer { height: 10 }
+				
+				/* 
+				TemplateTable {
+					data: alltimeslots
+					layout: Layout { grab: horizontal True vertical True }
+					show-lines: True
+					selection-changed-event: ExecuteNamedAction fillStepsVars
+				
+					row-height: 80 
+					
+					ImageCell {
+						top: 25
+						left: 10
+						width: 32
+						height: 32
+						image: "bw_ledger_admin/time_32.png"
+	
+					}
+					TextCell {
+						column: displayname
+						styling: bigLabel
+						left: 60
+						width: 400
+						top: 15
+						height: 20
+					}
+					
+					TextCell {
+						column: importdate
+						styling: normalText
+						left: 80
+						width: 200
+						top: 43
+						height: 20
+					}
+					
+					TextCell {
+						top: 43
+						right: 25
+						column: importdate
+						styling: normalText
+						height:20
+						width: 120
+						text: "Total time"
+					}
+					
+					TextCell {
+						top: 41
+						right: 10
+						column: importdate
+						styling: mediumNumber
+						height:20
+						width: 75
+						text: @elapsedTime ( Current uid to timeslotUid ) 
+					}
+					
+					
+					HiddenCell {
+						column: uid
+						selection: selectedTimeslotUid
+					}
+						
+				}
+				* */
+				
+				
+				
+			}
+			GridCell { }
+			GridCell {
+			
+				
+				Grid {
+					columns: GridColumn { group: g1 width: grow }, GridColumn { group: g1 width: grow }
+					gap:0
+					insets: 0
+					
+					GridRow {
+						height: 30
+						GridCell { 
+							Header { value: $timingfragmenttimeslots.subheader.overview }
+						}
+						GridCell {
+							Combo { 
+								options: Dynamic { data: stepsKeys text: Current label value: Current key }
+								modify-event: Set @produceJSON ( in_ts_uid to uids , selectedstepchart to step ) to json
+								variable: selectedstepchart
+								layout: Layout { hint: width 200 align: horizontal End vertical Beginning }
+							}
+						}
+					}
+					
+					GridRow {
+						GridCell{
+							span: 2
+							Browser {
+								layout: Layout { hint: height 184 }
+								static: "static/bw_ledger_admin/timeschart.html" with json to data, $timingfragmenttimeslots.labels.chart.average to avglbl
+							}
+						}
+					}
+					
+					GridRow{
+						height: 30px
+						
+						GridCell {
+							span: 2
+							
+							Spacer { height: 10 }
+							Header { value: $timingfragmenttimeslots.subheader.details }
+							Spacer { height: 4 }
+						}
+					}
+					
+					GridRow {
+						height: 60px
+						GridCell{
+							span: 2
+							IncludeHTMLWidget {
+								template: treemapChart
+								datasets: stepsChart ( steps_category , steps_category, steps_values ) to chartdata (  label ,code, count )
+								layout: Layout { grab: horizontal True vertical False hint: height 50}
+								bindings: value-of customcolors to customColors, value-of True to centerLabel, value-of False to showTooltipValue
+							}
+						}
+					}
+					GridRow {
+						height: 55px
+						
+						GridCell{
+							span: 2
+							
+							Tiles {
+								columns: 5
+								layout: Layout { grab: horizontal True vertical False  indent: horizontal 7 vertical 0}
+								background: Color RGB (240,240,240)
+								tile-height: 55
+								
+								Tile { 
+
+									Header { value: $steps.collect align: Center styling: headerLight }
+									Text { value: @fromatMs ( elapsedCollect to inMs) compact: True align: Center styling: mediumNumber 
+										layout: Layout{ align: horizontal Center vertical Beginning indent: horizontal 25 vertical 0}
+										decorator: Decorator {
+											width: 80
+											gap: 10
+											after: Image { image: TemplateImageSelection ( Difference( elapsedCollect, elapsedCollect_prev) ) using evolutionNeutroIcons width: 16 }
+										}
+									}
+									Spacer { height: 1 }
+								}
+								Tile {
+
+									Header { value: $steps.activation align: Center styling: headerLight }
+									Text { value: @fromatMs ( elapsedActivation to inMs) compact: True align: Center styling: mediumNumber 
+										layout: Layout{ align: horizontal Center vertical Beginning indent: horizontal 25 vertical 0}
+										decorator: Decorator {
+											width: 80
+											gap: 10
+											after: Image { image: TemplateImageSelection ( Difference( elapsedActivation, elapsedActivation_prev) ) using evolutionNeutroIcons width: 16 }
+										}
+									}
+									Spacer { height: 1 }
+								}
+								Tile { 
+
+									Header { value: $steps.reconciliation align: Center styling: headerLight }
+									Text { value: @fromatMs ( elapsedReconciliation to inMs) compact: True align: Center styling: mediumNumber 
+										layout: Layout{ align: horizontal Center vertical Beginning indent: horizontal 25 vertical 0}
+										decorator: Decorator {
+											width: 80
+											gap: 10
+											after: Image { image: TemplateImageSelection ( Difference( elapsedReconciliation, elapsedReconciliation_prev) ) using evolutionNeutroIcons width: 16 }
+										}
+									}
+									Spacer { height: 1 }
+								}
+								Tile { 
+
+									Header { value: $steps.controls align: Center styling: headerLight }
+									Text { value: @fromatMs ( elapsedControl to inMs) compact: True align: Center styling: mediumNumber 
+										layout: Layout{ align: horizontal Center vertical Beginning indent: horizontal 25 vertical 0}
+										decorator: Decorator {
+											width: 80
+											gap: 10
+											after: Image { image: TemplateImageSelection ( Difference( elapsedControl, elapsedControl_prev) ) using evolutionNeutroIcons width: 16 }
+										}
+									}
+									Spacer { height: 1 }
+								}
+								Tile { 
+
+									Header { value: $steps.others align: Center styling: headerLight }
+									Text { value: @fromatMs ( elapsedOthers to inMs) compact: True align: Center styling: mediumNumber 
+										layout: Layout{ align: horizontal Center vertical Beginning indent: horizontal 25 vertical 0}
+										decorator: Decorator {
+											width: 80
+											gap: 10
+											after: Image { image: TemplateImageSelection ( Difference( elapsedOthers, elapsedOthers_prev) ) using evolutionNeutroIcons width: 16 }
+										}
+									}
+									Spacer { height: 1 }
+								}
+							}
+						}
+					}
+					GridRow {
+						height: grow 2
+						GridCell {
+							span: 2
+							Spacer { height: 15}
+						}
+					}
+					GridRow {
+						height: grow 10
+						GridCell {
+							Group {
+								layout: Layout { indent: horizontal 7 vertical 0 }
+								margins: Left 30 Top 30 Bottom 20
+								background: Color RGB (240,240,240)
+								Text { label: $timeslotTableHeader.timeslotDescription value: Transform selectedTimeslot.ts_displayname using optionStringMapping compact: True }
+								Text { layout: Layout { indent: horizontal 0 vertical 8 }  lines: 2 label: $timingfragmenttimeslots.labels.status value: Transform Transform selectedTimeslot.ts_status using timeslotFullStatus using optionStringMapping compact: True  }
+								Text { layout: Layout { indent: horizontal 0 vertical 8 }  label: $timingfragmenttimeslots.labels.creationdate value: Transform selectedTimeslot.ts_importdate using optionStringMapping compact: True  }
+								Text { layout: Layout { indent: horizontal 0 vertical 8 }  label: $timingfragmenttimeslots.labels.commitdate value: Transform selectedTimeslot.ts_commitdate using optionStringMapping compact: True  }
+								Text { layout: Layout { indent: horizontal 0 vertical 8 }  label: $timingfragmenttimeslots.labels.productversion value: Transform selectedTimeslot.ts_productversion using optionStringMapping compact: True  }
+								
+							}
+							Spacer { height: 10}
+						}
+						GridCell {
+							Table {	   
+								layout:Layout{grab: horizontal True vertical True indent: horizontal 20 vertical 0}
+								label: Label {
+								  break: True
+								}
+								data:stat								
+								Column {
+									header:$timeslotCountTab.timeslotEntities	
+									column:entity						
+									image: Transform Current entity using timeslotCountTabIcons
+									text:Transform Current entity using timeslotCountTabLabel									 
+									width: 50%
+								}
+								Column {
+									header:$timeslotCountTab.timeslotCount	
+									column:count
+									width: 25%
+								}
+								Column {
+									header:$timeslotCountTab.timeslotDifferences
+									column:diff
+									width: 25%																		
+								}
+							}
+							Spacer { height: 5}
+						}
+					}
+					GridRow {
+						height: 10px
+						GridCell {
+							Button {
+						        text: $timingfragmenttimeslots.labels.action.showmore
+						        layout: Layout {  hint: width 120 align: horizontal End vertical Beginning indent: horizontal 0 vertical 6 } 
+						        actions: Dialog timeslotFullInfo (selectedTimeslotUid to uid)
+						        align: Center
+						        tooltip: $timingfragmenttimeslots.labels.action.showmore.tooltip
+							}  
+						}
+						GridCell {
+						
+							
+							
+							Button {
+						        text: $timingfragmenttimeslots.labels.action.showmore
+						        layout: Layout {  hint: width 120 align: horizontal End vertical Beginning indent: horizontal 0 vertical 6 } 
+						        actions: GoTo Page timeslot_statistics with selectedTimeslotUid to timeslotuidParam
+						        tooltip:$navigation.gotoStatistics 
+						      }   
+						      
+						      Text {
+								layout: Layout { indent: horizontal 15 vertical 0 hint: height 15}
+								align: Right
+								value: $timeslotCountTab.timeslotParentcontain (Transform selectedTimeslot.parent_displayname using timeslotNA)
+								compact: True
+							}
+						}
+					}
+					GridRow {
+						height: grow 1
+						GridCell {
+							span: 2
+							Spacer { height: 5}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+}

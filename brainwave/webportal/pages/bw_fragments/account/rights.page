@@ -1,0 +1,1550 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentAccountRightsNLS = NLS {
+	description [en "description" fr "description"]
+	alias [en "alias" fr "alias"]
+	slevel [en "sensitivity level" fr "niveau de sensibilité"]
+	sreason [en "sensitivity reason" fr "raison de sensibilité"]
+	lastmodifiedby [en "last modified by" fr "dernière modification par"]
+	lastmodificationdate [en "last modification date" fr "date de dernière modification"]
+	trends [en "Changes" fr "Changements"]
+	empty [en "Account does not have permissions" fr "Ce compte n'a pas de permissions"]
+	filteredforapp [en "filtered to {0}" fr "filtré sur {0}"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * List account rights in a form of a Tree with lazy loading
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types for direct rights (set to Role by default)</li>
+ * <li><b>inapplicationtypes </b>optional, multivalued filtering of the permission types (set to Profile by default)</li>
+ * <li><b>inapplicationuids </b>optional, multivalued filtering on some applications only</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid </b>selected permission uid</li>
+ * <li><b>outSelectedpermissioncode </b>selected permission code</li>
+ * <li><b>outSelectedpermissionname </b>selected permission name</li>
+ * <li><b>outSelectedapplicationname </b>selected application name</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountRightsHierarchy = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inpermissiontypes = Variable { multivalued:True type:String  initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+	inapplicationtypes = Variable { multivalued:True type:String initial:['Profile'] }
+	inapplicationuids= Variable { multivalued:True type:String }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationname = Variable
+	
+	/* Datasets here */
+	accountRights = HierarchicalData {
+		 roots-view: bwf_directrights with
+		 	inuid to uid,
+			inpermissiontypes to permissiontypes unless-empty, 
+			inapplicationtypes to applicationtypes unless-empty, 
+			inapplicationuids to applicationuids unless-empty
+		 attribute: permissionuid
+		 children-view: bwf_subrights with 
+			inapplicationtypes to applicationtypes unless-empty, 
+			inapplicationuids to applicationuids unless-empty
+		 parameter: parentuid
+		 max-level: 5
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	application = Record {
+		view: br_applicationDetail with inapplicationuids to uid
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outSelectedpermissionuid to inuid, 
+												False to inshowaccounts,
+												False to inshowcontrols,
+												True to inshowperjob,
+												True to inshowperorg,
+												False to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentAccountRightsNLS.filteredforapp(application.displayname)
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False } 
+	}
+	Tree {
+		data:accountRights
+		layout:Layout {grab:horizontal True vertical True}
+		configurable:True
+		persist-configuration:True
+		double-click:ExecuteNamedAction goDetails
+		expand-level:1
+		
+		Column {
+			column:permissionuid
+			selection:outSelectedpermissionuid
+			hidden:True
+		}	
+		Column {
+			column:permissiondisplayname
+			sortable:True
+			filterable:True
+			header:$permission.displayname
+			width:100%
+			selection:outSelectedpermissionname
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}	
+		Column {
+			column:permissioncode
+			sortable:True
+			filterable:True
+			header:$permission.code
+			width:96px
+			initially-masked:True
+			selection:outSelectedpermissioncode
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}	
+		Column {
+			column:permissiondescription
+			sortable:True
+			filterable:True
+			header:$fragmentAccountRightsNLS.description
+			width:160px
+			initially-masked:True
+		}	
+		Column {
+			column:permissionalias
+			sortable:True
+			initially-masked:True
+			filterable:True
+			header:$fragmentAccountRightsNLS.alias
+			width:128px
+		}	
+		Column {
+			column:permissionsensitivitylevel
+			sortable:True
+			initially-masked:True
+			header:$fragmentAccountRightsNLS.slevel
+			width:96px
+		}	
+		Column {
+			column:permissionsensitivityreason
+			sortable:True
+			initially-masked:True
+			header:$fragmentAccountRightsNLS.sreason
+			width:128px
+		}	
+		Column {
+			column:permissiontype
+			sortable:True
+			filterable:True
+			header:$permission.permissiontype
+			width:96px
+		}	
+		Column {
+			column:permissionlastmodifiedby
+			sortable:True
+			initially-masked:True
+			header:$fragmentAccountRightsNLS.lastmodifiedby
+			width:128px
+		}	
+		Column {
+			column:permissionlastmodifydate
+			text:DateLDAP(Current permissionlastmodifydate).value
+			sortable:True
+			header:$fragmentAccountRightsNLS.lastmodificationdate
+			width:160px
+			initially-masked:True
+		}	
+		Column {
+			column:applicationcode
+			sortable:True
+			initially-masked:True
+			filterable:True
+			header:$papplication.code
+			width:128px
+		}	
+		Column {
+			column:applicationdisplayname
+			sortable:True
+			filterable:True
+			header:$papplication.displayname
+			width:128px
+			selection:outSelectedapplicationname
+		}	
+		Column {
+			column:applicationtype
+			sortable:True
+			initially-masked:True
+			filterable:True
+			header:$papplication.applicationtype
+			width:128px
+		}	
+		Column {
+			column:rightaction
+			sortable:True
+			initially-masked:True
+			filterable:True
+			header:$right.action
+			width:96px
+		}	
+		Column {
+			column:rightdisplayname
+			sortable:True
+			filterable:True
+			header:$right.displayname
+			width:128px
+			initially-masked:True
+		}	
+		Column {
+			column:rightlimit
+			sortable:True
+			header:$right.limit
+			width:96px
+			initially-masked:True
+		}	
+		Column {
+			column:rightfromgroup
+			sortable:True
+			initially-masked:True
+			header:$right.fromgroup
+			width:64px
+		}	
+		Column {
+			column:rightindirect
+			sortable:True
+			initially-masked:True
+			header:$right.indirect
+			width:64px
+		}	
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * List direct account rights in a form of a Table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types (set to Role by default)</li>
+ * <li><b>inapplicationtypes </b>optional, multivalued filtering of the permission types (set to Profile by default)</li>
+ * <li><b>inapplicationuids </b>optional, multivalued filtering on some applications only</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid </b>selected permission uid</li>
+ * <li><b>outSelectedpermissioncode </b>selected permission code</li>
+ * <li><b>outSelectedpermissionname </b>selected permission name</li>
+ * <li><b>outSelectedapplicationname </b>selected application name</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountDirectRightsList = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inpermissiontypes = Variable { multivalued:True type:String initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+	inapplicationtypes = Variable { multivalued:True type:String initial:['Profile'] }
+	inapplicationuids= Variable { multivalued:True type:String }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationname = Variable
+	
+	/* Datasets here */
+	rights = Dataset {
+		view: bwf_directrights with
+			inuid to uid,
+			inpermissiontypes to permissiontypes unless-empty, 
+			inapplicationtypes to applicationtypes unless-empty, 
+			inapplicationuids to applicationuids unless-empty
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	application = Record {
+		view: br_applicationDetail with inapplicationuids to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	account = Record {
+		view: bwf_account with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outSelectedpermissionuid to inuid, 
+												False to inshowaccounts,
+												False to inshowcontrols,
+												True to inshowperjob,
+												True to inshowperorg,
+												False to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentAccountRightsNLS.filteredforapp(application.displayname)
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False } 
+	}
+	ConditionalGroup {
+		IntCondition(Count rights) {
+			when =0 then [
+				Header {
+					value:$fragmentAccountRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				ConditionalGroup {
+					IntCondition(account.bwa_accountanalytics_nbperimeter) {
+						when >0 then [
+							Table {
+								data:rights
+								configurable:True
+								show-count:True
+								show-filter:True
+								layout:Layout {grab: horizontal True vertical True }
+								double-click:ExecuteNamedAction goDetails
+								
+								Column {
+									column:permissionuid
+									selection:outSelectedpermissionuid
+									hidden:True
+								}	
+								Column {
+									column:permissioncode
+									sortable:True
+									filterable:True
+									header:$permission.code
+									width:96px
+									initially-masked:True
+									selection:outSelectedpermissioncode
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondisplayname
+									sortable:True
+									filterable:True
+									header:$permission.displayname
+									width:100%
+									selection:outSelectedpermissionname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondescription
+									sortable:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.description
+									initially-masked:True
+									width:160px
+								}	
+								Column {
+									column:permissionalias
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.alias
+									width:128px
+								}	
+								Column {
+									column:permissionsensitivitylevel
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.slevel
+									width:96px
+								}	
+								Column {
+									column:permissionsensitivityreason
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.sreason
+									width:128px
+								}	
+								Column {
+									column:permissiontype
+									sortable:True
+									filterable:True
+									header:$permission.permissiontype
+									width:96px
+								}	
+								Column {
+									column:permissionlastmodifiedby
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.lastmodifiedby
+									width:128px
+								}	
+								Column {
+									column:permissionlastmodifydate
+									text:DateLDAP(Current permissionlastmodifydate).value
+									sortable:True
+									header:$fragmentAccountRightsNLS.lastmodificationdate
+									width:160px
+									initially-masked:True
+								}	
+								Column {
+									column:rightperimetercode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.perimetercode
+									width:128px
+								}
+								Column {
+									column:rightperimeterdisplayname
+									sortable:True
+									filterable:True
+									header:$right.perimeterdisplayname
+									width:128px
+								}
+								Column {
+									column:applicationcode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.code
+									width:128px
+								}	
+								Column {
+									column:applicationdisplayname
+									sortable:True
+									filterable:True
+									header:$papplication.displayname
+									width:128px
+									selection:outSelectedapplicationname
+								}	
+								Column {
+									column:applicationtype
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.applicationtype
+									width:128px
+								}	
+								Column {
+									column:rightaction
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.action
+									width:96px
+								}	
+								Column {
+									column:rightdisplayname
+									sortable:True
+									filterable:True
+									header:$right.displayname
+									width:128px
+									initially-masked:True
+								}	
+								Column {
+									column:rightlimit
+									sortable:True
+									header:$right.limit
+									width:96px
+									initially-masked:True
+								}	
+								Column {
+									column:rightfromgroup
+									sortable:True
+									initially-masked:True
+									header:$right.fromgroup
+									width:64px
+								}	
+								Column {
+									column:rightindirect
+									sortable:True
+									initially-masked:True
+									header:$right.indirect
+									width:64px
+								}	
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+						otherwise [
+							Table {
+								data:rights
+								configurable:True
+								show-count:True
+								show-filter:True
+								layout:Layout {grab: horizontal True vertical True }
+								persist-configuration:True
+								double-click:ExecuteNamedAction goDetails
+								
+								Column {
+									column:permissionuid
+									selection:outSelectedpermissionuid
+									hidden:True
+								}	
+								Column {
+									column:permissioncode
+									sortable:True
+									filterable:True
+									header:$permission.code
+									width:96px
+									initially-masked:True
+									selection:outSelectedpermissioncode
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondisplayname
+									sortable:True
+									filterable:True
+									header:$permission.displayname
+									width:100%
+									selection:outSelectedpermissionname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondescription
+									sortable:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.description
+									initially-masked:True
+									width:160px
+								}	
+								Column {
+									column:permissionalias
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.alias
+									width:128px
+								}	
+								Column {
+									column:permissionsensitivitylevel
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.slevel
+									width:96px
+								}	
+								Column {
+									column:permissionsensitivityreason
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.sreason
+									width:128px
+								}	
+								Column {
+									column:permissiontype
+									sortable:True
+									filterable:True
+									header:$permission.permissiontype
+									width:96px
+								}	
+								Column {
+									column:permissionlastmodifiedby
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.lastmodifiedby
+									width:128px
+								}	
+								Column {
+									column:permissionlastmodifydate
+									text:DateLDAP(Current permissionlastmodifydate).value
+									sortable:True
+									header:$fragmentAccountRightsNLS.lastmodificationdate
+									width:160px
+									initially-masked:True
+								}	
+								Column {
+									column:applicationcode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.code
+									width:128px
+								}	
+								Column {
+									column:applicationdisplayname
+									sortable:True
+									filterable:True
+									header:$papplication.displayname
+									width:128px
+									selection:outSelectedapplicationname
+								}	
+								Column {
+									column:applicationtype
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.applicationtype
+									width:128px
+								}	
+								Column {
+									column:rightaction
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.action
+									width:96px
+								}	
+								Column {
+									column:rightdisplayname
+									sortable:True
+									filterable:True
+									header:$right.displayname
+									width:128px
+									initially-masked:True
+								}	
+								Column {
+									column:rightlimit
+									sortable:True
+									header:$right.limit
+									width:96px
+									initially-masked:True
+								}	
+								Column {
+									column:rightfromgroup
+									sortable:True
+									initially-masked:True
+									header:$right.fromgroup
+									width:64px
+								}	
+								Column {
+									column:rightindirect
+									sortable:True
+									initially-masked:True
+									header:$right.indirect
+									width:64px
+								}	
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * List direct assigned account rights (not through groups) in a form of a Table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types (set to Role by default)</li>
+ * <li><b>inapplicationtypes </b>optional, multivalued filtering of the permission types (set to Profile by default)</li>
+ * <li><b>inapplicationuids </b>optional, multivalued filtering on some applications only</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid </b>selected permission uid</li>
+ * <li><b>outSelectedpermissioncode </b>selected permission code</li>
+ * <li><b>outSelectedpermissionname </b>selected permission name</li>
+ * <li><b>outSelectedapplicationname </b>selected application name</li>
+ * <li><b>outhasrights </b>true if account has rights (of application type Profile)</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountDirectRightsNotGroupList = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inpermissiontypes = Variable { multivalued:True type:String initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+	inapplicationtypes = Variable { multivalued:True type:String initial:['Profile'] }
+	inapplicationuids= Variable { multivalued:True type:String }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationname = Variable
+	
+	/* Datasets here */
+	rights = Dataset {
+		view: bwf_directrightsnotgroups with
+			inuid to uid,
+			inpermissiontypes to permissiontypes unless-empty, 
+			inapplicationtypes to applicationtypes unless-empty, 
+			inapplicationuids to applicationuids unless-empty
+		trend: Trend {
+		 	join-column:permissionuid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )	 	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	application = Record {
+		view: br_applicationDetail with inapplicationuids to uid
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	account = Record {
+		view: bwf_account with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outSelectedpermissionuid to inuid, 
+												False to inshowaccounts,
+												False to inshowcontrols,
+												True to inshowperjob,
+												True to inshowperorg,
+												False to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentAccountRightsNLS.filteredforapp(application.displayname)
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False } 
+	}
+	ConditionalGroup {
+		IntCondition(Count rights) {
+			when =0 then [
+				Header {
+					value:$fragmentAccountRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				ConditionalGroup {
+					IntCondition(account.bwa_accountanalytics_nbperimeter) {
+						when >0 then [
+							Table {
+								data:rights
+								configurable:True
+								show-count:True
+								show-filter:True
+								layout:Layout {grab: horizontal True vertical True }
+								double-click:ExecuteNamedAction goDetails
+								
+								Column {
+									column:permissionuid
+									selection:outSelectedpermissionuid
+									hidden:True
+								}	
+								Column {
+									column:permissioncode
+									sortable:True
+									filterable:True
+									header:$permission.code
+									width:96px
+									initially-masked:True
+									selection:outSelectedpermissioncode
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondisplayname
+									sortable:True
+									filterable:True
+									header:$permission.displayname
+									width:100%
+									selection:outSelectedpermissionname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondescription
+									sortable:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.description
+									initially-masked:True
+									width:160px
+								}	
+								Column {
+									column:permissionalias
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.alias
+									width:128px
+								}	
+								Column {
+									column:permissionsensitivitylevel
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.slevel
+									width:96px
+								}	
+								Column {
+									column:permissionsensitivityreason
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.sreason
+									width:128px
+								}	
+								Column {
+									column:permissiontype
+									sortable:True
+									filterable:True
+									header:$permission.permissiontype
+									width:96px
+								}	
+								Column {
+									column:permissionlastmodifiedby
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.lastmodifiedby
+									width:128px
+								}	
+								Column {
+									column:permissionlastmodifydate
+									text:DateLDAP(Current permissionlastmodifydate).value
+									sortable:True
+									header:$fragmentAccountRightsNLS.lastmodificationdate
+									width:160px
+									initially-masked:True
+								}	
+								Column {
+									column:applicationcode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.code
+									width:128px
+								}	
+								Column {
+									column:applicationdisplayname
+									sortable:True
+									filterable:True
+									header:$papplication.displayname
+									width:128px
+									selection:outSelectedapplicationname
+								}	
+								Column {
+									column:applicationtype
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.applicationtype
+									width:128px
+								}	
+								Column {
+									column:rightaction
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.action
+									width:96px
+								}	
+								Column {
+									column:rightdisplayname
+									sortable:True
+									filterable:True
+									header:$right.displayname
+									width:128px
+									initially-masked:True
+								}	
+								Column {
+									column:rightlimit
+									sortable:True
+									header:$right.limit
+									width:96px
+									initially-masked:True
+								}	
+								Column {
+									column:rightfromgroup
+									sortable:True
+									initially-masked:True
+									header:$right.fromgroup
+									width:64px
+								}	
+								Column {
+									column:rightindirect
+									sortable:True
+									initially-masked:True
+									header:$right.indirect
+									width:64px
+								}	
+								Column {
+									column:rightperimetercode
+									sortable:True
+									filterable:True
+									header:$right.perimetercode
+									width:128px
+									initially-masked:True
+								}	
+								Column {
+									column:rightperimeterdisplayname
+									sortable:True
+									filterable:True
+									header:$right.perimeterdisplayname
+									width:128px
+								}	
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+						otherwise [
+							Table {
+								data:rights
+								configurable:True
+								show-count:True
+								show-filter:True
+								layout:Layout {grab: horizontal True vertical True }
+								persist-configuration:True
+								double-click:ExecuteNamedAction goDetails
+								
+								Column {
+									column:permissionuid
+									selection:outSelectedpermissionuid
+									hidden:True
+								}	
+								Column {
+									column:permissioncode
+									sortable:True
+									filterable:True
+									header:$permission.code
+									width:96px
+									initially-masked:True
+									selection:outSelectedpermissioncode
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondisplayname
+									sortable:True
+									filterable:True
+									header:$permission.displayname
+									width:100%
+									selection:outSelectedpermissionname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondescription
+									sortable:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.description
+									initially-masked:True
+									width:160px
+								}	
+								Column {
+									column:permissionalias
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.alias
+									width:128px
+								}	
+								Column {
+									column:permissionsensitivitylevel
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.slevel
+									width:96px
+								}	
+								Column {
+									column:permissionsensitivityreason
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.sreason
+									width:128px
+								}	
+								Column {
+									column:permissiontype
+									sortable:True
+									filterable:True
+									header:$permission.permissiontype
+									width:96px
+								}	
+								Column {
+									column:permissionlastmodifiedby
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.lastmodifiedby
+									width:128px
+								}	
+								Column {
+									column:permissionlastmodifydate
+									text:DateLDAP(Current permissionlastmodifydate).value
+									sortable:True
+									header:$fragmentAccountRightsNLS.lastmodificationdate
+									width:160px
+									initially-masked:True
+								}	
+								Column {
+									column:applicationcode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.code
+									width:128px
+								}	
+								Column {
+									column:applicationdisplayname
+									sortable:True
+									filterable:True
+									header:$papplication.displayname
+									width:128px
+									selection:outSelectedapplicationname
+								}	
+								Column {
+									column:applicationtype
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$papplication.applicationtype
+									width:128px
+								}	
+								Column {
+									column:rightaction
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.action
+									width:96px
+								}	
+								Column {
+									column:rightdisplayname
+									sortable:True
+									filterable:True
+									header:$right.displayname
+									width:128px
+									initially-masked:True
+								}	
+								Column {
+									column:rightlimit
+									sortable:True
+									header:$right.limit
+									width:96px
+									initially-masked:True
+								}	
+								Column {
+									column:rightfromgroup
+									sortable:True
+									initially-masked:True
+									header:$right.fromgroup
+									width:64px
+								}	
+								Column {
+									column:rightindirect
+									sortable:True
+									initially-masked:True
+									header:$right.indirect
+									width:64px
+								}	
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]					
+					}
+				}
+			]
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * List all account rights in a form of a Table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types (set to empty by default)</li>
+ * <li><b>inapplicationtypes </b>optional, multivalued filtering of the permission types (set to Role by default)</li>
+ * <li><b>inapplicationuids </b>optional, multivalued filtering on some applications only</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid </b>selected permission uid</li>
+ * <li><b>outSelectedpermissioncode </b>selected permission code</li>
+ * <li><b>outSelectedpermissionname </b>selected permission name</li>
+ * <li><b>outSelectedapplicationname </b>selected application name</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountAllRightsList = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inpermissiontypes = Variable { multivalued:True type:String  }
+	inapplicationtypes = Variable { multivalued:True type:String }
+	inapplicationuids= Variable { multivalued:True type:String }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationname = Variable
+	
+	/* Datasets here */
+	rights = Dataset {
+		view: bwf_allrights with
+			inuid to uid,
+			inpermissiontypes to permissiontypes unless-empty, 
+			inapplicationtypes to applicationtypes unless-empty, 
+			inapplicationuids to applicationuids unless-empty
+		trend: Trend {
+		 	join-column:permissionuid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	application = Record {
+		view: br_applicationDetail with inapplicationuids to uid
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outSelectedpermissionuid to inuid, 
+												False to inshowaccounts,
+												False to inshowcontrols,
+												True to inshowperjob,
+												True to inshowperorg,
+												False to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentAccountRightsNLS.filteredforapp(application.displayname)
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False } 
+	}
+	ConditionalGroup {
+		IntCondition(Count rights) {
+			when =0 then [
+				Header {
+					value:$fragmentAccountRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:rights
+					configurable:True
+					show-count:True
+					show-filter:True
+					layout:Layout {grab: horizontal True vertical True }
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+					
+					Column {
+						column:permissionuid
+						selection:outSelectedpermissionuid
+						hidden:True
+					}	
+					Column {
+						column:permissioncode
+						sortable:True
+						filterable:True
+						header:$permission.code
+						width:96px
+						initially-masked:True
+						selection:outSelectedpermissioncode
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}	
+					Column {
+						column:permissiondisplayname
+						sortable:True
+						filterable:True
+						header:$permission.displayname
+						width:100%
+						selection:outSelectedpermissionname
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}	
+					Column {
+						column:permissiondescription
+						sortable:True
+						filterable:True
+						header:$fragmentAccountRightsNLS.description
+						width:160px
+						initially-masked:True
+					}	
+					Column {
+						column:permissionalias
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentAccountRightsNLS.alias
+						width:128px
+					}	
+					Column {
+						column:permissionsensitivitylevel
+						sortable:True
+						initially-masked:True
+						header:$fragmentAccountRightsNLS.slevel
+						width:96px
+					}	
+					Column {
+						column:permissionsensitivityreason
+						sortable:True
+						initially-masked:True
+						header:$fragmentAccountRightsNLS.sreason
+						width:128px
+					}	
+					Column {
+						column:permissiontype
+						sortable:True
+						filterable:True
+						header:$permission.permissiontype
+						width:96px
+					}	
+					Column {
+						column:permissionlastmodifiedby
+						sortable:True
+						initially-masked:True
+						header:$fragmentAccountRightsNLS.lastmodifiedby
+						width:128px
+					}	
+					Column {
+						column:permissionlastmodifydate
+						text:DateLDAP(Current permissionlastmodifydate).value
+						sortable:True
+						header:$fragmentAccountRightsNLS.lastmodificationdate
+						width:160px
+						initially-masked:True
+					}	
+					Column {
+						column:applicationcode
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$papplication.code
+						width:128px
+					}	
+					Column {
+						column:applicationdisplayname
+						sortable:True
+						filterable:True
+						header:$papplication.displayname
+						width:128px
+						selection:outSelectedapplicationname
+					}	
+					Column {
+						column:applicationtype
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$papplication.applicationtype
+						width:128px
+					}	
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}
+
+
+fragmentAccountRightsSelectionNLS = NLS {
+	direct [en "Permissions" fr "Permissions"]
+	notgroups [en "Directly assigned (not through groups)" fr "Assigné directement (sans passer par des groupes)"]
+	_all [en "All permissions" fr "Toutes les permissions"]
+	hierarchy [en "Permission hierarchy" fr "Hiérarchie des permissions"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * List all rights in various forms
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types for direct rights panel (set to Role by default)</li>
+ * <li><b>inapplicationtypes </b>optional, multivalued filtering of the application types (set to Profile by default)</li>
+ * <li><b>inapplicationuids </b>optional, multivalued filtering on some applications only</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid </b>selected permission uid</li>
+ * <li><b>outSelectedpermissioncode </b>selected permission code</li>
+ * <li><b>outSelectedpermissionname </b>selected permission name</li>
+ * <li><b>outSelectedapplicationname </b>selected application name</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountRightsSelection = PageFragment {
+	enter-event: ExecuteNamedAction updateActiveFlags
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inpermissiontypes = Variable { multivalued:True type:String initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+	inapplicationtypes = Variable { multivalued:True type:String initial:['Profile'] }
+	inapplicationuids= Variable { multivalued:True type:String }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationname = Variable
+
+	selection = Variable { private:True }
+
+	active_direct = Variable { initial:False multivalued:False type:Boolean }
+	active_notgroups = Variable { initial:False multivalued:False type:Boolean }
+	active_all = Variable { initial:False multivalued:False type:Boolean }
+	active_hierarchy = Variable { initial:False multivalued:False type:Boolean }
+
+	updateActiveFlags = NamedAction (
+		StringCase(selection) {
+			when "direct" then [
+				Set True to active_direct
+			]		
+			when "notgroups" then [
+				Set True to active_notgroups
+			]		
+			when "all" then [
+				Set True to active_all
+			]		
+			when "hierarchy" then [
+				Set True to active_hierarchy
+			]		
+		}
+	)
+
+	Combo {
+		variable:selection
+		layout: Layout { hint: width 300 }
+		modify-event:ExecuteNamedAction updateActiveFlags
+		options:Static {
+			Option { value:"direct" text:$fragmentAccountRightsSelectionNLS.direct }
+			Option { value:"notgroups" text:$fragmentAccountRightsSelectionNLS.notgroups }
+			Option { value:"all" text:$fragmentAccountRightsSelectionNLS._all }
+			Option { value:"hierarchy" text:$fragmentAccountRightsSelectionNLS.hierarchy }
+		}
+	}
+
+	ConditionalGroup {
+		StringCondition(selection) {
+			when "direct" then [
+				IncludeFragment (fragmentAccountDirectRightsList with 	value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																		value-of inpermissiontypes to inpermissiontypes,
+																		value-of inapplicationtypes to inapplicationtypes,
+																		value-of inapplicationuids to inapplicationuids,
+																	outSelectedpermissionuid binds-to outSelectedpermissionuid, 
+																	outSelectedpermissioncode binds-to outSelectedpermissioncode, 
+																	outSelectedpermissionname binds-to outSelectedpermissionname,
+																	outSelectedapplicationname binds-to outSelectedapplicationname,
+																	value-of Eval "inenabled.get()&&active_direct.get()" to inenabled
+																	) 
+			]	
+			when "notgroups" then [
+				IncludeFragment (fragmentAccountDirectRightsNotGroupList with 	value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																		value-of inpermissiontypes to inpermissiontypes,
+																		value-of inapplicationtypes to inapplicationtypes,
+																		value-of inapplicationuids to inapplicationuids,
+																	outSelectedpermissionuid binds-to outSelectedpermissionuid, 
+																	outSelectedpermissioncode binds-to outSelectedpermissioncode, 
+																	outSelectedpermissionname binds-to outSelectedpermissionname,
+																	outSelectedapplicationname binds-to outSelectedapplicationname,
+																	value-of Eval "inenabled.get()&&active_notgroups.get()" to inenabled
+																	) 
+			]	
+			when "all" then [
+				IncludeFragment (fragmentAccountAllRightsList with 	value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																		value-of inapplicationuids to inapplicationuids,
+																	outSelectedpermissionuid binds-to outSelectedpermissionuid, 
+																	outSelectedpermissioncode binds-to outSelectedpermissioncode, 
+																	outSelectedpermissionname binds-to outSelectedpermissionname,
+																	outSelectedapplicationname binds-to outSelectedapplicationname,
+																	value-of Eval "inenabled.get()&&active_all.get()" to inenabled
+																	) 
+			]	
+			when "hierarchy" then [
+				IncludeFragment (fragmentAccountRightsHierarchy with value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																		value-of inpermissiontypes to inpermissiontypes,
+																		value-of inapplicationtypes to inapplicationtypes,
+																		value-of inapplicationuids to inapplicationuids,
+																	outSelectedpermissionuid binds-to outSelectedpermissionuid, 
+																	outSelectedpermissioncode binds-to outSelectedpermissioncode, 
+																	outSelectedpermissionname binds-to outSelectedpermissionname,
+																	outSelectedapplicationname binds-to outSelectedapplicationname,
+																	value-of Eval "inenabled.get()&&active_hierarchy.get()" to inenabled
+																	) 
+			]	
+		}
+	}	
+}

@@ -1,0 +1,97 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/analytics_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+
+// Links for explorers
+import "/webportal/pages/bw_ad_schema/explorers/explore_access.page"
+
+/* Nationalized labels here */
+privilegedFromAccountsNLS = NLS {
+	title [en "AD ACL privileges" fr "Droits ACL d'administration d'AD"]
+	privilegedAccount [en "from account" fr "depuis le compte"]
+	privilegedGroup [en "from group" fr "depuis le groupe"]
+	dn [en "On AD container with the DN:" fr "Sur le container avec le DN:"]
+	acl [en "Account ACLs on AD objects" fr "ACLs du compte sur les objets AD"]
+	aclrights [en "ACLs rights" fr "Droits ACL"]
+}
+
+
+privilegedFromAccounts = Page {
+	title: $privilegedFromAccountsNLS.title
+	tags: "ADreports", "account" priority 1000, "byuid"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature: browsing_accountdetail
+	mixins: simpleReport
+		
+	/* Parameters here */
+	uid = Parameter { label:"Concept Uid" type:String }
+	paramSearchMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: False
+	}
+	
+	// Related to Search Navigator	
+	accountSearch = SearchDefinition {
+		entity: Account
+		simple-mode-rule: br_account_simple_search
+	}
+	
+		/* Variables here */
+	currentAccount = Variable { type: String initial: uid }
+	selectedContainerDomainUid = Variable { type: String }
+	hideIndirect = Variable { type: Boolean initial: True }
+				
+	/* Datasets and records here */
+	
+	accountaclsearch = Dataset {
+		view: adacl_accountacls with currentAccount to accountUids, hideIndirect to hideInherited
+	}
+	groupaclsearch = Dataset {
+		view: adacl_groupacls with currentAccount to accountUids, hideIndirect to hideInherited
+	}
+	allfoundacls = Dataset{
+		union: Union { datasets: accountaclsearch discriminator $account.concept, groupaclsearch discriminator $group.concept discriminator-column: type }
+	}	
+	
+	/* Page content */
+
+
+	Group {
+		Text {
+			value: $privilegedFromAccountsNLS.acl
+			}
+			
+		
+				Checkbox{
+					variable: hideIndirect
+					layout: Layout { align: horizontal End vertical Beginning }
+					text: $analytics_moredetailsNLS.tabs.priliveges.label.hideinherited
+					styling: xSmallTextStyle
+				}
+				Table {
+					data: allfoundacls
+					show-filter: True
+					show-count: True
+					configurable: True
+					commands: Command {
+						actions: GoTo Page ad_schema_explorer with selectedContainerDomainUid to selectedDomainParam
+						disabled: StringPredicate ( selectedContainerDomainUid) { when IsEmpty then True otherwise False}
+						icon: "16/audit/group_16.png"
+						tooltip: $analytics_moredetailsNLS.message.exploredomain
+					}
+					
+					Column { column: type header: $analytics_moredetailsNLS.tabs.privileges.table.heardes.type width: 5%}
+					Column { column: domain_displayname header: $ad_domain.concept width: 10%}
+					Column { column: action header: $privilegedFromAccountsNLS.aclrights width: 15%}
+					Column { column: perm_dn header: $privilegedFromAccountsNLS.dn width: 40%}
+					Column { column: account_login header: $privilegedFromAccountsNLS.privilegedAccount width: 15%}
+					Column { column: group_displayname header: $privilegedFromAccountsNLS.privilegedGroup width: 15%}
+					Column { column: domain_uid hidden: True selection: selectedContainerDomainUid }
+				}
+			}
+		}

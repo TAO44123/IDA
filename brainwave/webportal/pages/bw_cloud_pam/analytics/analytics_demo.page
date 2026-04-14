@@ -1,0 +1,158 @@
+/* Import other pages here */
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_cloud_pam/resources/fakedata.page"
+import "/webportal/pages/bw_cloud_pam/resources/mapping.page"
+
+bwcpam_analytics_dashboard_fake = Page {
+	title: "Progress Graph"
+	mixins: dashboardMixin	
+	
+	selectedDate = Variable 
+	
+
+	linechartdata = Dataset  {
+		values: [			
+( date -> "01/01/2021", category -> "identifiés", count -> 6000),
+( date -> "08/01/2021", category -> "identifiés", count -> 6000),
+( date -> "15/01/2021", category -> "identifiés", count -> 6000),
+( date -> "22/01/2021", category -> "identifiés", count -> 6200),
+( date -> "29/01/2021", category -> "identifiés", count -> 6200),
+( date -> "05/02/2021", category -> "identifiés", count -> 7000),
+( date -> "12/02/2021", category -> "identifiés", count -> 7000),
+( date -> "19/02/2021", category -> "identifiés", count -> 9000),
+( date -> "26/02/2021", category -> "identifiés", count -> 8900),
+( date -> "05/03/2021", category -> "identifiés", count -> 9200),
+( date -> "12/03/2021", category -> "identifiés", count -> 9300),
+( date -> "19/03/2021", category -> "identifiés", count -> 9300),
+( date -> "26/03/2021", category -> "identifiés", count -> 9600),
+( date -> "31/03/2021", category -> "identifiés", count -> 10200),
+
+( date -> "01/01/2021", category -> "embarquement", count -> 0),
+( date -> "08/01/2021", category -> "embarquement", count -> 0),
+( date -> "15/01/2021", category -> "embarquement", count -> 1200),
+( date -> "22/01/2021", category -> "embarquement", count -> 1400),
+( date -> "29/01/2021", category -> "embarquement", count -> 4800),
+( date -> "05/02/2021", category -> "embarquement", count -> 5000),
+( date -> "12/02/2021", category -> "embarquement", count -> 5100),
+( date -> "19/02/2021", category -> "embarquement", count -> 5200),
+( date -> "26/02/2021", category -> "embarquement", count -> 7000),
+( date -> "05/03/2021", category -> "embarquement", count -> 7200),
+( date -> "12/03/2021", category -> "embarquement", count -> 8000),
+( date -> "19/03/2021", category -> "embarquement", count -> 8800),
+( date -> "26/03/2021", category -> "embarquement", count -> 8850),
+( date -> "31/03/2021", category -> "embarquement", count -> 8900),
+
+( date -> "01/01/2021", category -> "dans CyberArk", count -> 0),
+( date -> "08/01/2021", category -> "dans CyberArk", count -> 0),
+( date -> "15/01/2021", category -> "dans CyberArk", count -> 1000),
+( date -> "22/01/2021", category -> "dans CyberArk", count -> 1200),
+( date -> "29/01/2021", category -> "dans CyberArk", count -> 2000),
+( date -> "05/02/2021", category -> "dans CyberArk", count -> 2000),
+( date -> "12/02/2021", category -> "dans CyberArk", count -> 2000),
+( date -> "19/02/2021", category -> "dans CyberArk", count -> 4600),
+( date -> "26/02/2021", category -> "dans CyberArk", count -> 4700),
+( date -> "05/03/2021", category -> "dans CyberArk", count -> 4700),
+( date -> "12/03/2021", category -> "dans CyberArk", count -> 7000),
+( date -> "19/03/2021", category -> "dans CyberArk", count -> 7000),
+( date -> "26/03/2021", category -> "dans CyberArk", count -> 7150),
+( date -> "31/03/2021", category -> "dans CyberArk", count -> 7280)
+	]
+}
+
+milestons_ds = Dataset {
+  values: [ 
+  	( date -> "1/1/2021", label -> "Début du programme" ),
+  	( date -> "22/1/2021", label -> "Fin déploiement Fin App" ),
+  	( date -> "1/2/2021", label -> "Echéance périmètre Apps Finance" ),
+  	( date -> "18/2/2021", label -> "Echéance périmètre réseau" ),
+  	( date -> "31/3/2021", label -> "Echéance programme" )
+  ]
+}
+
+selectionInfo = Dataset {
+  union: Union { datasets: linechartdata discriminator-column: xx }
+  includes: Eval "current.date == selectedDate.get()"
+}
+
+	/* Services
+	 * getCurrentProgram
+	 * listScopes
+	 * listMilestones
+	 * + metadata
+	 * 
+	 */
+		
+
+	// gray background container 
+	Group {
+		
+		layout: Layout { grab:horizontal True vertical True  }
+		styling: cssPageDashboard
+		
+		Grid {
+			columns: GridColumn{ width: grow},GridColumn{ width: 300 }
+			GridRow {
+				GridCell {
+				// left chart panel
+					Group {
+						styling: cssRound
+						//layout: Layout { grab: horizontal True vertical True }	
+						
+						IncludeHTMLWidget {
+							layout: Layout { grab: horizontal True vertical True }	
+							template: multilineChart
+							datasets: linechartdata ( category, category, date, date, count ) to chartdata ( category, categorycode, label, code , count )
+							bindings:
+								value-of "Evolution de l'embarquement des comptes" to title,
+								value-of 18 to titleFontSize,
+								value-of True to showLegend,
+								value-of True to maintainAspectRatio,
+								value-of "bottom" to legendPosition,
+								value-of "#A6A6A6,#D48856,#78A15C" to customColors
+							widget-events: {
+								when onclick then [
+									Set Current code to selectedDate
+								]
+							}
+						}	
+						ButtonGroup {
+						  align: Right
+						  Button { text: "Exporter..." actions: Flash "TODO Export"}
+						}								
+					}					
+				}
+				GridCell {
+				  // info
+					Group {
+						styling: cssRound		
+						Header { value:  "Détail"}	
+						Text { value: selectedDate label: "Date"}
+						Table {
+						  data: selectionInfo
+						  label: Label { value: "" break: True}
+						  hide-header: True
+						  hide-lines: True
+						  layout: Layout { grab: horizontal True vertical True }
+						  Column { column: category width: 150px }
+						  Column { column: count align: Right}
+						}   	
+					}  
+					Group {
+						styling: cssRound		
+						Header { value:  "Dates clés"}	
+						Table {
+						  data: milestons_ds
+						  layout: Layout { grab: horizontal True vertical True }
+						  Column { column: date }
+						  Column { column: label width: 100%}
+						}   	   	
+					}     		
+				}	
+		}	
+
+	}
+}
+}

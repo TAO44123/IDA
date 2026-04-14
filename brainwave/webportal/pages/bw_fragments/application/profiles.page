@@ -1,0 +1,271 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+fragmentApplicationProfilesNLS = NLS {
+	noownercode [en "technical account" fr "compte technique"]
+	pdescription [en "permission description" fr "description de la permission"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected application rights at a "Role" level
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inPermissionType </b>the permission type ('Role' by defaut)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * <li><b>outpermissionuid </b>the permission uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationProfiles = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inPermissionType = Variable {multivalued:True}
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+	outpermissionuid = Variable
+
+	profiles = Dataset {
+		view: bwf_applicationprofiles with
+			inuid to uid,
+			inPermissionType to permissiontype unless-empty
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	Table {
+		data:profiles
+		layout:Layout {grab: horizontal True vertical True}
+		configurable:True
+		show-count:True
+		show-filter:True
+		persist-configuration:True
+		
+		Column {
+			column:permissionuid
+			hidden:True
+			selection:outpermissionuid
+		}
+
+		Column {
+			column:permissioncode
+			header:$ppermission.code
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:permissiondisplayname
+			header:$ppermission.displayname
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:permissiondescription
+			header:$fragmentApplicationProfilesNLS.pdescription
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:action
+			header:$right.action
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:limit
+			header:$right.limit
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:accountuid
+			hidden:True
+			selection:outaccountuid
+		}
+		
+		Column {
+			column:accountlogin
+			header:$account.login
+			sortable:True
+			filterable:True
+			selection:outaccountlogin
+		}
+
+		Column {
+			column:accountgivenname
+			header:$account.givenname
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:accountsurname
+			header:$account.surname
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:accountusername
+			header:$account.username
+			sortable:True
+			filterable:True
+			width:160px
+		}
+
+		Column {
+			column:accountdisabled
+			header:$account.disabled
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:accountcreationdate
+			header:$account.creationdate
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:accountlastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:repositoryuid
+			hidden:True
+			selection:outrepositoryuid
+		}
+		Column {
+			column:repositorydisplayname
+			header:$repository.concept
+			sortable:True
+			filterable:True
+			selection:outrepositoryname
+		}
+		Column {
+			column:noownercode
+			sortable:True
+			filterable:True
+			header:$fragmentApplicationProfilesNLS.noownercode
+		}
+		Column {
+			column:identityhrcode
+			sortable:True
+			filterable:True
+			header:$pidentity.hrcode
+			initially-masked:True
+		}
+		Column {
+			column:identityfullname
+			sortable:True
+			filterable:True
+			header:$pidentity.fullname
+			width:160px
+		}
+		Column {
+			column:identitymail
+			sortable:True
+			filterable:True
+			header:$pidentity.mail
+			initially-masked:True
+		}
+		Column {
+			column:identityinternal
+			sortable:True
+			filterable:True
+			header:$pidentity.internal
+			initially-masked:True
+		}
+		Column {
+			column:identityactive
+			sortable:True
+			filterable:True
+			header:$pidentity.active
+			initially-masked:True
+		}
+		Column {
+			column:identitybwa_identityanalyticsdata_joborg
+			header:$pidentity.joborg
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:160px
+		}				
+	}
+}
+
+fragmentApplicationProfilesCrosstabGrayStyle = Style {
+	background:Color grey
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected application rights at a "Role" level as a crosstab
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inPermissionType </b>the permission type ('Role' by defaut)</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationProfilesCrosstab = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inPermissionType = Variable {multivalued:True}
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+	outpermissionuid = Variable
+
+	profiles = Dataset {
+		view: bwf_applicationprofiles with
+			inuid to uid,
+			inPermissionType to permissiontype unless-empty
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	CrossTable {
+		data:profiles
+		layout: Layout {grab:horizontal True vertical True}
+	
+		columns:Dim {value:permissiondisplayname header:$permission.concept}
+		rows:Dim {value:accountlogin header:$account.login}, Dim{value:accountusername header:$account.username}
+		cell-content:CellContent {text:'X' align:Center styling:fragmentApplicationProfilesCrosstabGrayStyle}
+	}
+}

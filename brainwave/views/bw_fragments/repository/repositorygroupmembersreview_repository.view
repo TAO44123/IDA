@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwf_repositorygroupmembersreview_repository" prefix="accountgrouplink" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="accountgroup" displayname="repository group members review" notes="" begindate="" enddate="">
+	<ViewParam name="campaignid" displayname="campaign id" type="String">
+		<Value name="0" data="21260"/>
+	</ViewParam>
+	<ViewParam name="revieweruid" displayname="reviewer uid" type="String">
+		<Value name="0" data="ID0000032_1695217113945_228"/>
+	</ViewParam>
+	<ViewParam name="includedcampaigns" displayname="includedcampaigns" type="String"/>
+	<ViewParam name="notreviewedonly" displayname="filterbynotreviewedonly" type="Boolean"/>
+	<ViewParam name="filterrepository" displayname="filter repository" type="String"/>
+	<ViewParam name="filteraccountable" displayname="filter accountable" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="filtergroup" displayname="filter group" type="String"/>
+	<ViewSqlFilter name="F1697626066590" expression="dataset.revieweruid=param.revieweruid OR  dataset.accountableuid=param.revieweruid" enabled="param.filteraccountable.get()==false"/>
+	<ViewComputedAttribute name="isheader" displayname="isheader" type="String" expression="&apos;3&apos;"/>
+	<ViewComputedAttribute name="id" displayname="id" type="String" expression="dataset.isEmpty(&apos;repositorydisplayname&apos;)?dataset.repositorycode.get():dataset.repositorydisplayname.get()"/>
+	<ViewComputedAttribute name="parentid" displayname="parentid" type="String" expression="&apos;&apos;"/>
+	<ViewSort name="sort" attribute1="1697625985010_1647" attribute2="1697625967264_1633"/>
+	<ViewAttribute name="A1697625501072_1436" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1697625564137_1507" prefix="review" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+		<ViewAttribute name="1697625578192_1519" attribute="status" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.notreviewedonly.get()">
+			<ViewAttributeFilter name="F1626445051749_0" reference="" operation="eq" ignoreifempty="false">
+				<Value name="0" data="to be reviewed"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewJoin name="J1626349948708_454" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketaction">
+			<ViewJoin name="J1626349950948_455" prefix="campaign" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+				<ViewAttribute name="1697625592650_1539" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1628339918734_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="ADHOC_UAR"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+				<ViewAttribute name="1697625592650_1540" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1697625618638_0" reference="campaignid" operation="eq" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="1697625592650_1541" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1697625644530_0" reference="includedcampaigns" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="1697625592651_1542" attribute="custom1" alias="reviewtype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1697615939592_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="groupmembers"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1659089111228_1264" prefix="accountable" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.filteraccountable.get()==false" join="accountable">
+			<ViewAttribute name="1697625692264_1554" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewJoin name="J1673268471197_1420" prefix="reviewer" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="actor">
+			<ViewAttribute name="1697625723046_1561" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false" enabled="param.isEmpty(&apos;filteraccountable&apos;) || param.filteraccountable.get()==true">
+				<ViewAttributeFilter name="F1697625739135_0" reference="revieweruid" operation="eq" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewJoin name="J1697625795792_1567" prefix="group" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="group">
+		<ViewAttribute name="1697625967246_1630" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1697625967264_1631" attribute="sid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1697625967264_1632" attribute="guid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1697625967264_1633" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1697626032789_0" reference="filtergroup" operation="eq" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewAttribute name="1697625967281_1634" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1697625967286_1635" attribute="grouptype" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1697625967290_1636" attribute="dynamic" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1697625967296_1637" attribute="bwa_groupmetadata_descr" alias="groupdescription" displayname="group description" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="1697625967301_1638" attribute="bwa_groupmetadata_sensitivitylevel" alias="groupsensitivitylevel" displayname="group sensitivity level" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="1697625967305_1639" attribute="bwa_groupmetadata_sensitivityreason" alias="groupsensitivityreason" displayname="group sensitivity reason" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewJoin name="J1697615755711_594" prefix="repository" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+			<ViewAttribute name="1697625985010_1646" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1697625996048_0" reference="filterrepository" operation="eq" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="1697625985010_1647" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1697625985010_1648" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1697625985010_1649" attribute="repositorytype" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1697625985010_1650" attribute="repositoryfamily" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+</View>

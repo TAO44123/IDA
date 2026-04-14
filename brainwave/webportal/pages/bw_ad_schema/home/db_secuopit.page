@@ -1,0 +1,620 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+
+// Pages to link
+import "/webportal/pages/bw_ad_schema/dashboard/access.page"
+import "/webportal/pages/bw_ad_schema/dashboard/quality.page"
+import "/webportal/pages/bw_ad_schema/dashboard/risk.page"
+import "/webportal/pages/bw_ad_schema/analytics/analytics_gpo_passwords.page"
+
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+
+
+/* Nationalized labels here */
+ad_secuopit_dashboardNLS = NLS {
+	title [en "Active Directory Analysis - Overview Dashboard" fr "Analyse Active Directory - Tableau de bord de synthèse"]
+	dyntitle [en "{0} Active Directory Analysis - Overview Dashboard" fr "Analyse Active Directory - Tableau de bord de synthèse pour {0}"]
+	description [
+		en "This analysis presents the synthesis of the situation of the current Active Directory repository. You can drill-down the KPIs by clicking on them."
+		fr "Cette analyse présente la synthèse de la situation sur le référentiel Active Directory. Vous pouvez accéder au détail des KPIs en cliquant dessus."
+	]
+	
+	objects.header [en "Active Directory Objects" fr "Objets Active Directory"]
+	objects.domains [en "Domains" fr "Domaines"]
+	objects.domains.tooltip [en "AD Domains" fr "Domaines AD"]
+	objects.ou [en "OU" fr "OU"]
+	objects.ou.tooltip [en "Organizational Units" fr "Unités Organisationnelles" ]
+	objects.containers [en "Containers" fr "Conteneurs"]
+	objects.containers.tooltip [en "Object Containers" fr "Conteneurs d'objets"]
+	
+	resources.header [en "Resources" fr "Ressources"]
+	resources.groups [en "Groups" fr "Groupes"]
+	resources.groups.tooltip[en "Total Groups" fr "Nombre de groupes"]
+	resources.accounts [en "Accounts" fr "Comptes"]
+	resources.accounts.tooltip [en "Total Accounts" fr "Nombre de comptes"]
+	resources.activeaccounts [en "Active Accounts" fr "Comptes actifs"]
+	resources.activeaccounts.tootltip [en "Total Active Accounts" fr "Nombre de comptes actifs"]
+	
+	hr.header [ en "Identities" fr "Identités"]
+	hr.identities [ en "Identities" fr "Identités" ]
+	hr.identities.tooltip [ en "Total Identities" fr "Nombre d'identités" ]
+	hr.recon [en "Reconciled" fr "Réconciliés"]
+	hr.recon.tootltip [ en "Total of Identities Reconciled" fr "Nombre d'identités réconciliés"]
+	
+	access.header [en "AD Privileged Accounts" fr "Comptes à privilèges d'AD"]
+	access.text [en "Total Issues" fr "nombre de problèmes"]
+	access.tooltip [ en "Total of Access Related Issues" fr "Nombre de problèmes d'accès"]
+	
+	risk.header [en "Security Risks" fr "Risques de sécurité"]
+	risk.text [en "Total Issues" fr "nombre de problèmes"]
+	risk.tooltip [en "Total of Identified Risks" fr "Nombre de risques identifiés"]
+	
+	quality.header [en "Data Quality" fr "Qualité des données"]
+	quality.text [en "Total Issues" fr "nombre de problèmes"]
+	quality.tooltip [en "Total of Data Quality Issues" fr "Nombre de problèmes de qualité des données"]
+	
+	reconciliation.header [en "Account Reconciliation" fr "Réconciliation"]
+	reconciliation.orphans [en "Orphaned Accounts" fr "Comptes orphelins"]
+	reconciliation.reconciled [en "Reconciled Accounts" fr "Comptes réconciliés"]
+	reconciliation.noowners [en "No Owner Accounts" fr "Comptes sans propriétaire"]
+	
+	reconciliation.chart.orphan [en "Orphaned" fr "Orphelins"]
+	reconciliation.chart.noowner [en "No Owner" fr "Sans propriétaire"]
+	reconciliation.chart.reconciled [en "Reconciled" fr "Réconciliés"]
+	
+	nonemptygroup [en  "Non-empty Security Groups" fr  "Groupes de sécurité non vides"]
+	accountsingroups [en "Accounts in Security Groups" fr "Comptes dans les groupes de sécurité"]
+	
+	accountslocaladmin [en "Accounts with Local Admin Rights" fr "Comptes avec droits d'administration locaux"]
+}
+
+ad_secuopit_dashboard = Page {
+	title: $ad_secuopit_dashboardNLS.title
+	dynamic-title: $ad_secuopit_dashboardNLS.dyntitle(repository.displayname)
+	description: $ad_secuopit_dashboardNLS.description
+
+	mixins: dashboardTransparentMixin
+	enter-event: Set uid to domainsCriteria , 
+					ExecuteNamedAction riskCalcul , ExecuteNamedAction qualityCalcul , ExecuteNamedAction accessCalcul
+	background: Color white
+
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	
+	
+	/* selection and filtering variables */
+	domainsCriteria = Variable { type: String multivalued: True }
+	
+	/* risk quality indicators variables */
+	totalRisk = Variable { type: Integer }
+	totalRisk_prev = Variable { type: Integer }
+	totalQuality = Variable { type: Integer }
+	totalQuality_prev = Variable { type: Integer }
+	totalAccess = Variable { type: Integer }
+	totalAccess_prev = Variable { type: Integer }
+	
+	
+	/* variables for the chart */
+	reconStatus 	= Variable { multivalued: True }
+	reconTotal 		= Variable { multivalued: True }
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with domainsCriteria to uid	
+	}
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+	/* datasets related to risk */
+	groupAlmostPublicThreshold			= Record { view: ad_group_threshold with 50 to percentage, domainsCriteria to domains unless-empty }
+	groupAlmostPublicThreshold_prev		= Record { view: ad_group_threshold with 50 to percentage, domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	accountLeaver 						= Dataset { view: ad_account_leaver with domainsCriteria to domains unless-empty  }
+	accountLeaver_prev					= Dataset { view: ad_account_leaver with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountPasswordnotchanged 			= Dataset { view: ad_account_passnotchanged with domainsCriteria to domains unless-empty  }
+	accountPasswordnotchanged_prev		= Dataset { view: ad_account_passnotchanged with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountPasswordnoexpire 			= Dataset { view: ad_account_passnoexpire with domainsCriteria to domains unless-empty  }
+	accountPasswordnoexpire_prev		= Dataset { view: ad_account_passnoexpire with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountPasswordnotrequired 			= Dataset { view: ad_account_passnotrequired with domainsCriteria to domains unless-empty  }
+	accountPasswordnotrequired_prev		= Dataset { view: ad_account_passnotrequired with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountSrvPasswordnotrequired		= Dataset { view: ad_account_srvpassnotrequired with domainsCriteria to domains unless-empty  }
+	accountSrvPasswordnotrequired_prev	= Dataset { view: ad_account_srvpassnotrequired with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	groupPublic 						= Dataset { view: ad_group_public with domainsCriteria to domains unless-empty  }
+	groupPublic_prev					= Dataset { view: ad_group_public with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	groupAlmostPublic 					= Dataset { view: ad_group_almostpublic with groupAlmostPublicThreshold.threshold to threshold unless-empty, domainsCriteria to domains unless-empty  }
+	groupAlmostPublic_prev				= Dataset { view: ad_group_almostpublic with groupAlmostPublicThreshold_prev.threshold to threshold unless-empty, domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	
+	/* datasets related to quality */
+	accountDisabled 			= Dataset { view: ad_account_disabled with domainsCriteria to domains unless-empty  }
+	accountDisabled_prev		= Dataset { view: ad_account_disabled with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountInactive 			= Dataset { view: ad_account_inactive with domainsCriteria to domains unless-empty  }
+	accountInactive_prev		= Dataset { view: ad_account_inactive with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	accountOrphan 				= Dataset { view: ad_account_orphan with domainsCriteria to domains unless-empty   }
+	accountOrphan_prev			= Dataset { view: ad_account_orphan with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	accountService 				= Dataset { view: ad_account_service with domainsCriteria to domains unless-empty   }
+	accountService_prev			= Dataset { view: ad_account_service with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	accountDisabledNoou			= Dataset { view: ad_account_disabled_noou with domainsCriteria to domains unless-empty   }
+	accountDisabledNoou_prev	= Dataset { view: ad_account_disabled_noou with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	groupEmpty 					= Dataset { view: ad_group_empty with domainsCriteria to domains unless-empty   }
+	groupEmpty_prev				= Dataset { view: ad_group_empty with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	groupDisabled 				= Dataset { view: ad_group_disabled with domainsCriteria to domains unless-empty   }
+	groupDisabled_prev			= Dataset { view: ad_group_disabled with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	groupCyclic 				= Dataset { view: ad_group_cyclic with domainsCriteria to domains unless-empty   }
+	groupCyclic_prev			= Dataset { view: ad_group_cyclic with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	
+	/* datasets related to access */
+	accountAdmins 						= Dataset { view: ad_account_adminright with domainsCriteria to domains unless-empty  }
+	accountAdmins_prev					= Dataset { view: ad_account_adminright with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountEditadmin 					= Dataset { view: ad_account_editadmin with domainsCriteria to domains unless-empty  }
+	accountEditadmin_prev				= Dataset { view: ad_account_editadmin with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountResetpass 					= Dataset { view: ad_account_resetpass with domainsCriteria to domains unless-empty  }
+	accountResetpass_prev				= Dataset { view: ad_account_resetpass with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountUsercontrol					= Dataset { view: ad_account_usercontrol with domainsCriteria to domains unless-empty  }
+	accountUsercontrol_prev				= Dataset { view: ad_account_usercontrol with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	
+	/* datasets used for statistics */
+	domains 				= Dataset { view: ad_alldomains with domainsCriteria to domains unless-empty  }
+	domains_prev 			= Dataset { view: ad_alldomains with domainsCriteria to domains unless-empty timeslot: FromPage(-1)}
+	accounts 				= Dataset { view: ad_allaccounts with domainsCriteria to domains unless-empty  }
+	accounts_prev 			= Dataset { view: ad_allaccounts with domainsCriteria to domains unless-empty timeslot: FromPage(-1)}
+	accountsActive 			= Dataset { view: ad_activeaccounts with domainsCriteria to domains unless-empty  }
+	accountsActive_prev 	= Dataset { view: ad_activeaccounts with domainsCriteria to domains unless-empty timeslot: FromPage(-1)}
+	groups 					= Dataset { view: ad_groups with domainsCriteria to domains unless-empty  }
+	groups_prev 			= Dataset { view: ad_groups with domainsCriteria to domains unless-empty timeslot: FromPage(-1)}
+	organisationunits 		= Dataset { view: ad_organisationunits with domainsCriteria to domains unless-empty }
+	organisationunits_prev 	= Dataset { view: ad_organisationunits with domainsCriteria to domains unless-empty  timeslot: FromPage(-1) }
+	containers 				= Dataset { view: ad_containers with domainsCriteria to domains unless-empty }
+	containers_prev 		= Dataset { view: ad_containers with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	identities				= Dataset { view: ad_allidentities }
+	identities_prev			= Dataset { view: ad_allidentities timeslot: FromPage(-1) }
+	identitiesRecon			= Dataset { view: ad_identities_recon with domainsCriteria to domains unless-empty }
+	identitiesRecon_prev	= Dataset { view: ad_identities_recon with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	
+	
+	/* datasets for the reconciliation chart */
+	
+	reconOrphan 		= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty , "true" to active}
+	reconOrphan_prev 	= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty , "true" to active timeslot: FromPage(-1) }
+	reconRecon 			= Dataset { view: ad_recon_total with domainsCriteria to domains unless-empty, "true" to active }
+	reconRecon_prev 	= Dataset { view: ad_recon_total with domainsCriteria to domains unless-empty, "true" to active timeslot: FromPage(-1) }
+	reconNoowner 		= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty, "true" to active }
+	reconNoowner_prev 	= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty, "true" to active timeslot: FromPage(-1)}
+
+	/* datasets for the security groups */
+	nbaccountsinsecuritygroups = Record { view:ad_nbaccountsinsecuritygroups with domainsCriteria to domains unless-empty}
+	nbaccountsinsecuritygroups_prev = Record { view:ad_nbaccountsinsecuritygroups with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)}
+	nbsecuritygroupswithaccounts = Record { view:ad_nbsecuritygroupswithaccounts with domainsCriteria to domains unless-empty}
+	nbsecuritygroupswithaccounts_prev = Record { view:ad_nbsecuritygroupswithaccounts with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)}
+
+	
+	/* datasets for gpo information */
+	accountLocalAdmin		= Dataset { view: ad_local_admins with domainsCriteria to domains unless-empty }
+	accountLocalAdmin_prev	= Dataset { view: ad_local_admins with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	
+	/* datasets for password policies information */
+	passwordPolicies			= Dataset { view: ad_password_policies with domainsCriteria to domains unless-empty }
+	passwordPolicies_prev		= Dataset { view: ad_password_policies with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	passwordMinimumLen			= Record  { view: ad_password_minlen   with domainsCriteria to domains unless-empty }
+	passwordMinimumLen_prev		= Record  { view: ad_password_minlen   with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	passwordMaximimAge			= Record  { view: ad_password_maxage   with domainsCriteria to domains unless-empty }
+	passwordMaximum_prev		= Record  { view: ad_password_maxage   with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	
+	/* NamedActions here */
+	
+	riskCalcul = NamedAction ( 
+		Unset totalRisk,
+		Set Sum ( totalRisk, Count accountLeaver ) to totalRisk,
+		Set Sum ( totalRisk, Count accountPasswordnotchanged ) to totalRisk,
+		Set Sum ( totalRisk, Count accountPasswordnoexpire ) to totalRisk,
+		Set Sum ( totalRisk, Count accountPasswordnotrequired ) to totalRisk,
+		Set Sum ( totalRisk, Count accountSrvPasswordnotrequired ) to totalRisk,
+		Set Sum ( totalRisk, Count groupPublic ) to totalRisk,
+		Set Sum ( totalRisk, Count groupAlmostPublic ) to totalRisk,
+		
+		Unset totalRisk_prev,
+		Set Sum ( totalRisk_prev, Count accountLeaver_prev ) to totalRisk_prev,
+		Set Sum ( totalRisk_prev, Count accountPasswordnotchanged_prev ) to totalRisk_prev,
+		Set Sum ( totalRisk_prev, Count accountPasswordnoexpire_prev ) to totalRisk_prev,
+		Set Sum ( totalRisk_prev, Count accountPasswordnotrequired_prev ) to totalRisk_prev,
+		Set Sum ( totalRisk_prev, Count accountSrvPasswordnotrequired_prev ) to totalRisk_prev,
+		Set Sum ( totalRisk_prev, Count groupPublic_prev ) to totalRisk_prev,
+		Set Sum ( totalRisk_prev, Count groupAlmostPublic_prev ) to totalRisk_prev
+	)
+	
+	qualityCalcul = NamedAction (
+		Unset totalQuality,
+		Set Sum ( totalQuality, Count accountDisabled ) to totalQuality,
+		Set Sum ( totalQuality, Count accountInactive ) to totalQuality,
+		Set Sum ( totalQuality, Count accountOrphan ) to totalQuality,
+		Set Sum ( totalQuality, Count accountService ) to totalQuality,
+		Set Sum ( totalQuality, Count accountDisabledNoou ) to totalQuality,
+		Set Sum ( totalQuality, Count groupEmpty ) to totalQuality,
+		Set Sum ( totalQuality, Count groupDisabled ) to totalQuality,
+		Set Sum ( totalQuality, Count groupCyclic ) to totalQuality,
+		
+		Unset totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count accountDisabled_prev ) to totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count accountInactive_prev ) to totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count accountOrphan_prev ) to totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count accountService_prev ) to totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count accountDisabledNoou_prev ) to totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count groupEmpty_prev ) to totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count groupDisabled_prev ) to totalQuality_prev,
+		Set Sum ( totalQuality_prev, Count groupCyclic_prev ) to totalQuality_prev, 
+		
+		Unset reconStatus, Unset reconTotal,
+		MultivaluedAdd $ad_secuopit_dashboardNLS.reconciliation.chart.reconciled to reconStatus,
+		MultivaluedAdd $ad_secuopit_dashboardNLS.reconciliation.chart.noowner to reconStatus,
+		MultivaluedAdd $ad_secuopit_dashboardNLS.reconciliation.chart.orphan to reconStatus,
+		MultivaluedAdd Count reconRecon to reconTotal,
+		MultivaluedAdd Count reconNoowner to reconTotal,
+		MultivaluedAdd Count reconOrphan to reconTotal
+	)
+	
+	accessCalcul = NamedAction (
+		Unset totalAccess,
+		Set Sum ( totalAccess, Count accountAdmins ) to totalAccess,
+		Set Sum ( totalAccess, Count accountEditadmin ) to totalAccess,
+		Set Sum ( totalAccess, Count accountResetpass ) to totalAccess,
+		Set Sum ( totalAccess, Count accountUsercontrol ) to totalAccess,
+		
+		Unset totalAccess_prev,
+		Set Sum ( totalAccess_prev, Count accountAdmins_prev ) to totalAccess_prev,
+		Set Sum ( totalAccess_prev, Count accountEditadmin_prev ) to totalAccess_prev,
+		Set Sum ( totalAccess_prev, Count accountResetpass_prev ) to totalAccess_prev,
+		Set Sum ( totalAccess_prev, Count accountUsercontrol_prev ) to totalAccess_prev
+	)
+	
+	/* Page content */
+	
+	Grid {
+		fill: Both 
+		gap:0
+		insets:0
+		columns: GridColumn { width: 0 }, GridColumn { width: grow }
+		layout: Layout {  grab: horizontal True vertical True }
+		
+		
+		GridRow{
+			GridCell {}
+			
+			GridCell {
+	
+				// Section 1 : Headers and main values
+				Grid {
+					gap: 0
+					columns:    GridColumn { width: grow 1 },
+								GridColumn {width: 110 }, GridColumn{width: 110 }, GridColumn { width: 110 },  // Active Directory Objects
+								GridColumn { width: grow 1 },
+								GridColumn {width: 110 }, GridColumn{ width: 110 }, GridColumn { width: 130 },  // Collected Resources
+								GridColumn { width: grow 1 },
+								GridColumn {width: 110 }, GridColumn{width: 110 },  // HR information
+								GridColumn { width: grow 1 }
+								
+					mixins: headersMixins
+					layout: Layout { grab: horizontal True vertical False indent: horizontal 10 vertical 20 }
+					
+					// Headers Row
+					GridRow {
+						height: 30
+						GridCell {}
+						GridCell {
+							span:3
+							Text { value: $ad_secuopit_dashboardNLS.objects.header mixins: grayCenteredHeaderMixin }
+							
+						}
+						GridCell {}
+						GridCell {
+							span:3
+							Text { value: $ad_secuopit_dashboardNLS.resources.header mixins: grayCenteredHeaderMixin }
+						}
+						GridCell {}
+						GridCell {
+							span:2
+							Text { value: $ad_secuopit_dashboardNLS.hr.header mixins: grayCenteredHeaderMixin }
+						}
+					}
+					
+					// Values Row
+					GridRow {
+						height: 80
+						GridCell {}
+						
+						// Total Domains
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count domains to currentValue , 
+															value-of Count domains_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.objects.domains to text , 
+															value-of $ad_secuopit_dashboardNLS.objects.domains.tooltip to toolTip,
+															value-of True to disableclick  )  
+						}
+						
+						// Total OUs
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count organisationunits to currentValue , 
+															value-of Count organisationunits_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.objects.ou to text , 
+															value-of $ad_secuopit_dashboardNLS.objects.ou.tooltip to toolTip,
+															value-of True to disableclick   )  
+						}
+						
+						// Total Containers
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count containers to currentValue , 
+															value-of Count containers_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.objects.containers to text , 
+															value-of $ad_secuopit_dashboardNLS.objects.containers.tooltip to toolTip,
+															value-of True to disableclick   )  
+						}
+						
+						GridCell {}
+						
+						// Total groups
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count groups to currentValue , 
+															value-of Count groups_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.resources.groups to text , 
+															value-of $ad_secuopit_dashboardNLS.resources.groups.tooltip to toolTip,
+															value-of True to disableclick   )  
+						}
+						
+						// Total accounts
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count accounts to currentValue , 
+															value-of Count accounts_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.resources.accounts to text , 
+															value-of $ad_secuopit_dashboardNLS.resources.accounts.tooltip to toolTip,
+															value-of True to disableclick   )  
+						}
+						
+						// Total active accounts
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count accountsActive  to currentValue , 
+															value-of Count accountsActive_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.resources.activeaccounts to text , 
+															value-of $ad_secuopit_dashboardNLS.resources.activeaccounts.tootltip to toolTip,
+															value-of True to disableclick   )  
+						}
+						GridCell {}
+						
+						// Total identities
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count identities to currentValue , 
+															value-of Count identities_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.hr.identities to text , 
+															value-of $ad_secuopit_dashboardNLS.hr.identities.tooltip to toolTip,
+															value-of True to disableclick   )  
+						}
+						
+						// Total identities reconciled with an account
+						GridCell {
+							IncludeFragment ( bigKPI with 	value-of Count identitiesRecon to currentValue , 
+															value-of Count identitiesRecon_prev to previousValue, 
+															value-of $ad_secuopit_dashboardNLS.hr.recon to text , 
+															value-of $ad_secuopit_dashboardNLS.hr.recon.tootltip to toolTip,
+															value-of True to disableclick   )  
+						}
+						
+						GridCell {}
+					}
+				}
+				
+				Grid {
+					columns: GridColumn { width:120 },GridColumn { width: grow }
+					mixins: separatorBar
+					GridRow {
+						GridCell {
+							Text { value: '' mixins: whiteCenteredHeaderMixin layout: Layout { indent: horizontal 0 vertical 8 } }
+						}
+						GridCell {
+						}
+					}
+				}
+				
+				// Section 2 : Global KPIs
+				Grid {
+					columns: GridColumn { group: a }, GridColumn { width: grow group: b }, GridColumn{ width: grow group: b }, GridColumn{width: grow group: b }, GridColumn{width: grow group: b }, GridColumn{ group: a}
+					layout: Layout{ grab: horizontal True vertical False hint: height 200 }
+					
+					GridRow {
+						height: 40
+					}
+					
+					GridRow {
+						GridCell {}
+						GridCell {
+							IncludeFragment {
+								fragment: mainKPI with 	value-of "bw_ad_schema/32/ad_access_32.png" to icon,
+														value-of "warning" to iconType,
+														totalAccess binds-to currentValue,
+														totalAccess_prev binds-to previousValue,
+														value-of $ad_secuopit_dashboardNLS.access.header to title,
+														value-of $ad_secuopit_dashboardNLS.access.text to text,
+														value-of $ad_secuopit_dashboardNLS.access.tooltip to tooltip
+								fragment-events: {
+									when "bigkpiOnClick" then [ GoTo Page ad_dashboard_access with domainsCriteria to filterByDomains, uid to uid ]
+								}
+							}
+						}
+						GridCell {
+							IncludeFragment { 
+								fragment: mainKPI with 	value-of "bw_ad_schema/32/ad_risk_32.png" to icon,
+														value-of "issue" to iconType,
+														totalRisk binds-to currentValue,
+														totalRisk_prev binds-to previousValue,
+														value-of $ad_secuopit_dashboardNLS.risk.header to title,
+														value-of $ad_secuopit_dashboardNLS.risk.text to text,
+														value-of $ad_secuopit_dashboardNLS.risk.tooltip to tooltip
+								fragment-events: {
+									when "bigkpiOnClick" then [ GoTo Page ad_dashboard_risk with domainsCriteria to filterByDomains, uid to uid ]
+								}
+							}
+						}
+						GridCell {
+							IncludeFragment {
+								fragment: mainKPI with 	value-of "bw_ad_schema/32/ad_quality_32.png" to icon, 
+														value-of "warning" to iconType,
+														totalQuality binds-to currentValue,
+														totalQuality_prev binds-to previousValue,
+														value-of $ad_secuopit_dashboardNLS.quality.header to title,
+														value-of $ad_secuopit_dashboardNLS.quality.text to text,
+														value-of $ad_secuopit_dashboardNLS.quality.tooltip to tooltip
+								fragment-events: {
+									when "bigkpiOnClick" then [ GoTo Page ad_dashboard_quality with domainsCriteria to filterByDomains, uid to uid ]
+								}
+							}
+						}
+						GridCell {
+							IncludeFragment {
+								fragment: gpoSummary with 	value-of Count passwordPolicies to nbgpo,
+															value-of Count passwordPolicies_prev to previousNbgpo,
+															value-of passwordMinimumLen.minimum_password_length to minlen,
+															value-of passwordMinimumLen_prev.minimum_password_length  to previousMinlen,
+															value-of passwordMaximimAge.maximum_password_age to maxage,
+															value-of passwordMaximum_prev.maximum_password_age to previousMaxage
+															
+								fragment-events: {
+									when "gpoOnClick" then [ GoTo Page analytics_gpo_passwords with domainsCriteria to filterByDomains, uid to uid ]
+								}
+							}
+						}
+						GridCell {}
+					}
+					GridRow {
+						height: grow
+					}
+				}
+				
+				
+				
+				// Section 3 : More info
+				Grid {
+					columns: GridColumn { width: grow 1 }, GridColumn { width: grow 1 }, GridColumn { width: grow 2 }
+					layout: Layout{ grab: horizontal True vertical True }
+					
+					GridRow { height: grow 1 GridCell {}  }  
+					GridRow {
+						GridCell {
+							IncludeFragment ( donutChart with value-of $ad_secuopit_dashboardNLS.reconciliation.header to title ,  reconStatus binds-to labels , reconTotal binds-to values )	
+						}
+						GridCell {
+						
+							Grid {
+								columns: GridColumn {}
+								
+								GridRow { height: 50 GridCell {} }
+								
+								GridRow {
+									height: 50
+									GridCell {
+										IncludeFragment {
+											fragment: singleKPI with
+												value-of Count reconOrphan to currentValue,
+												value-of Count reconOrphan_prev to previousValue,
+												value-of $ad_secuopit_dashboardNLS.reconciliation.orphans to text,
+												value-of "ad_dashboard_recon" to pageToLink,
+												domainsCriteria binds-to domainsParam
+										}
+									}
+								}
+								
+								GridRow {
+									height: 50
+									GridCell {						
+										IncludeFragment {
+											fragment: singleKPI with
+												value-of Count reconRecon to currentValue,
+												value-of Count reconRecon_prev to previousValue,
+												value-of $ad_secuopit_dashboardNLS.reconciliation.reconciled to text,
+												value-of "ad_dashboard_recon" to pageToLink,
+												domainsCriteria binds-to domainsParam
+										}
+									}
+								}
+								
+								GridRow {
+									height: 50
+									GridCell {
+										IncludeFragment {
+											fragment: singleKPI with
+												value-of Count reconNoowner to currentValue,
+												value-of Count reconNoowner_prev to previousValue,
+												value-of $ad_secuopit_dashboardNLS.reconciliation.noowners to text,
+												value-of "ad_dashboard_recon" to pageToLink,
+												domainsCriteria binds-to domainsParam
+										}
+									}
+								}
+								
+								
+								GridRow { height: grow GridCell {} }
+							}	
+						}
+						GridCell {
+						
+							Grid {
+								columns: GridColumn {}
+								
+								GridRow { height: 50 GridCell {} }
+								
+								GridRow {
+									height: 50
+									GridCell {
+										IncludeFragment {
+											fragment: singleKPI with
+												value-of nbsecuritygroupswithaccounts.nb to currentValue,
+												value-of nbsecuritygroupswithaccounts_prev.nb to previousValue,
+												value-of $ad_secuopit_dashboardNLS.nonemptygroup to text,
+												value-of "ad_securitygroupsdashboard" to pageToLink,
+												domainsCriteria binds-to domainsParam
+										}
+									}
+								}
+								
+								GridRow {
+									height: 50
+									GridCell {						
+										IncludeFragment {
+											fragment: singleKPI with
+												value-of nbaccountsinsecuritygroups.nb to currentValue,
+												value-of nbaccountsinsecuritygroups_prev.nb to previousValue,
+												value-of $ad_secuopit_dashboardNLS.accountsingroups to text,
+												value-of "ad_accountsecuritygroup" to pageToLink,
+												domainsCriteria binds-to domainsParam
+										}
+									}
+								}
+								
+								GridRow {
+									height: 50
+									GridCell {						
+										IncludeFragment {
+											fragment: singleKPI with
+												value-of Count accountLocalAdmin to currentValue,
+												value-of Count accountLocalAdmin_prev to previousValue,
+												value-of $ad_secuopit_dashboardNLS.accountslocaladmin to text,
+												value-of "analytics_account_localadmin" to pageToLink,
+												domainsCriteria binds-to domainsParam
+										}
+									}
+								}
+								
+								
+								GridRow { height: grow GridCell {} }
+							}	
+						}
+					}
+					GridRow { height: grow 5 GridCell {}  }  
+				}
+			}
+		}
+	}
+}
+

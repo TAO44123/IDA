@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa_permissionnb" displayname="permissionnb">
+	<Definition scriptfile="/views/bw_analytics/permissionnb/permissionnb.javascript" name="D1574756946674">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1574756946673" title="nb accounts">
+			<InnerView name="bwa_permissionnbaccounts"/>
+		</Component>
+		<Component name="C1595859296239" type="unionview" x="574" y="312" w="300" h="50" title="nb folder accounts">
+			<InnerView name="bwa_foldernbaccounts"/>
+			<Union primary_discriminator="right" secondary_discriminator="folder" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1595859787731" source="C1574756946673" target="C1595859296239" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1574756959323_3" type="joinview" x="565" y="212" w="300" h="50" title="nb folder identity">
+			<InnerView name="bwa_foldernbidentity" prefix="folder_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.folder_uid.get()}"/>
+		</Component>
+		<Link name="L1595860229224" source="C1595859296239" target="C1574756959323_3" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1574756959323_4" type="joinview" x="568" y="222" w="300" h="50" title="nb identity">
+			<InnerView name="bwa_permissionnbidentity" prefix="right_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.right_uid.get()}"/>
+			<ViewComputedAttribute name="nbidentity" displayname="nbidentity" type="Integer" expression="(!dataset.isEmpty(&apos;right_nbidentity&apos;)&amp;&amp;dataset.right_nbidentity.get()&gt;0)?dataset.right_nbidentity.get():dataset.folder_nbidentity.get()"/>
+			<ExcludeList>
+				<Exclude name="folder_uid"/>
+				<Exclude name="folder_nbidentity"/>
+				<Exclude name="right_nbidentity"/>
+				<Exclude name="right_uid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1595860231597" source="C1574756959323_3" target="C1574756959323_4" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+</View>

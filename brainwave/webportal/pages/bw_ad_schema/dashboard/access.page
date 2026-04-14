@@ -1,0 +1,361 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dashboards_nls.page"
+
+import "/webportal/pages/bw_ad_schema/explorers/explore_managed.page"
+
+
+ad_dashboard_access = Page {
+	title: $ad_dashboard_accessNLS.title
+	dynamic-title: $ad_dashboard_accessNLS.dyntitle(repository.displayname)
+	description: $ad_dashboard_accessNLS.description
+
+	mixins: dashboardPageMixin
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+
+	enter-event: Set uid to domainsCriteria
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	filterByDomains = Parameter {
+		type: String
+		multivalued: True
+		hidden:True
+	}
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	
+	/* selection and filtering variables */
+	domainsCriteria = Variable { type: String multivalued: True }
+	selectedHelp = Variable { type: String }
+	managedCriteria = Variable { type:  Boolean }
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with uid to uid	
+	}
+
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+	accountAdmins 						= Dataset { view: ad_account_adminright with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty  }
+	accountAdmins_prev					= Dataset { view: ad_account_adminright with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	accountEditadmin 					= Dataset { view: ad_account_editadmin with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty  }
+	accountEditadmin_prev				= Dataset { view: ad_account_editadmin with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	accountResetpass 					= Dataset { view: ad_account_resetpass with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty  }
+	accountResetpass_prev				= Dataset { view: ad_account_resetpass with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	accountUsercontrol					= Dataset { view: ad_account_usercontrol with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty  }
+	accountUsercontrol_prev				= Dataset { view: ad_account_usercontrol with domainsCriteria to domains unless-empty, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	
+	accountAdmins_rec 					= Dataset { view: ad_account_adminright with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty  }
+	accountAdmins_rec_prev				= Dataset { view: ad_account_adminright with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	accountEditadmin_rec 				= Dataset { view: ad_account_editadmin with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty  }
+	accountEditadmin_rec_prev			= Dataset { view: ad_account_editadmin with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	accountResetpass_rec 				= Dataset { view: ad_account_resetpass with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty  }
+	accountResetpass_rec_prev			= Dataset { view: ad_account_resetpass with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	accountUsercontrol_rec				= Dataset { view: ad_account_usercontrol with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty  }
+	accountUsercontrol_rec_prev			= Dataset { view: ad_account_usercontrol with domainsCriteria to domains unless-empty, "true" to recentlyused, managedCriteria to managed unless-empty timeslot: FromPage(-1)  }
+	
+	/* Totals datasets */
+	accounts 				= Dataset { view: ad_activeaccounts with domainsCriteria to domains unless-empty  }
+	
+	/* Page content */
+	
+	Grid {
+		fill: Both 
+		gap:0
+		insets:0
+		columns: GridColumn { width: 0 }, GridColumn { width: grow }
+		layout: Layout {  grab: horizontal True vertical True }
+		
+		
+		GridRow{
+			GridCell {}
+			
+			GridCell {
+				// Page content
+				
+				Grid {
+					columns: GridColumn {width: 33 }, GridColumn {width: 60}, GridColumn { width: 5} , GridColumn { width: 500 }
+					layout: Layout { align: horizontal Beginning vertical Beginning grab: horizontal False vertical False indent: horizontal 0 vertical 5 }
+					fill: Horizontal 
+					
+					GridRow {
+						GridCell {}
+						
+						GridCell {
+							Button {
+								image: "bw_ad_schema/others/toggle_off.png"
+								presentation: Link
+								actions: BooleanCase ( managedCriteria ) { when True then [ Unset managedCriteria] when False then [ Set True to managedCriteria ]}
+								hidden: BooleanPredicate ( managedCriteria ) 
+								tooltip: $ad_dashboard_accessNLS.filter.managed_only.tooltip.activate
+							}
+							Button {
+								image: "bw_ad_schema/others/toggle_on.png"
+								presentation: Link
+								actions: BooleanCase ( managedCriteria ) { when True then [ Unset managedCriteria] when False then [ Set True to managedCriteria ]}
+								hidden: Not BooleanPredicate ( managedCriteria ) 
+								tooltip: $ad_dashboard_accessNLS.filter.managed_only.tooltip.deactivate
+							}
+					
+						}
+						
+						GridCell { 
+							Button { actions: Set "managedFilter" to selectedHelp image: "bw_ad_schema/others/small_info.png"  presentation: Link} 
+						}
+						
+						GridCell {
+							Text {
+								layout: Layout { indent: horizontal 0 vertical 8 }
+								value: $ad_dashboard_accessNLS.filter.managed_only.text
+								styling: normalGrayText
+							}
+						}
+					}
+				}
+		
+				Grid { 
+					layout: Layout { indent: horizontal 0 vertical 10 }
+					columns: GridColumn { width: grow 3 }  ,GridColumn { width: grow 1}, GridColumn { width: 320}
+					GridRow { height: 8 GridCell { span: 3 } }
+					GridRow {
+						GridCell { }
+						GridCell {
+						
+							IncludeFragment {
+								fragment: deDetailsHeaders with
+									value-of $ad_dashboard_accessNLS.kpi.headers.total to  firstHeader,
+									value-of $ad_dashboard_accessNLS.kpi.headers.recentlyused to secondHeader
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_accessNLS.kpi.label.account_adminright to label,
+									value-of Count accountAdmins to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_accessNLS.kpi.label.global.totalaccounts to valueOverString,
+									value-of Count accountAdmins_prev to previousValue,
+									value-of Count accountAdmins_rec to secondCurrentValue,
+									value-of Count accountAdmins_rec_prev to secondPreviousValue,
+									value-of "analytics_account_adminright" to pageToLink,
+									value-of managedCriteria to managedFilter,
+									value-of "warning" to trendType,
+									value-of True to infoAvailable,
+									value-of domainsCriteria to domainFilter
+								fragment-events: { when "helpMe" then [ Set "adminRights" to selectedHelp ] }
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_accessNLS.kpi.label.account_editadmin to label,
+									value-of Count accountEditadmin to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_accessNLS.kpi.label.global.totalaccounts to valueOverString,
+									value-of Count accountEditadmin_prev to previousValue,
+									value-of Count accountEditadmin_rec to secondCurrentValue,
+									value-of Count accountEditadmin_rec_prev to secondPreviousValue,
+									value-of "analytics_account_editadmin" to pageToLink,
+									value-of managedCriteria to managedFilter,
+									value-of "warning" to trendType,
+									value-of True to infoAvailable,
+									value-of domainsCriteria to domainFilter
+								fragment-events: { when "helpMe" then [ Set "editAdmin" to selectedHelp ] }
+							}
+							IncludeFragment {
+								fragment: dbDetailsItemBig with
+									value-of $ad_dashboard_accessNLS.kpi.label.account_resetpass to label,
+									value-of Count accountResetpass to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_accessNLS.kpi.label.global.totalaccounts to valueOverString,
+									value-of Count accountResetpass_prev to previousValue,
+									value-of Count accountResetpass_rec to secondCurrentValue,
+									value-of Count accountResetpass_rec_prev to secondPreviousValue,
+									value-of "analytics_account_resetpass" to pageToLink,
+									value-of managedCriteria to managedFilter,
+									value-of "warning" to trendType,
+									value-of True to infoAvailable,
+									value-of domainsCriteria to domainFilter
+								fragment-events: { when "helpMe" then [ Set "resetPass" to selectedHelp ] }
+							}
+							IncludeFragment {
+								fragment: dbDetailsItemBig with
+									value-of $ad_dashboard_accessNLS.kpi.label.account_usercontrol to label,
+									value-of Count accountUsercontrol to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_accessNLS.kpi.label.global.totalaccounts to valueOverString,
+									value-of Count accountUsercontrol_prev to previousValue,
+									value-of Count accountUsercontrol_rec to secondCurrentValue,
+									value-of Count accountUsercontrol_rec_prev to secondPreviousValue,
+									value-of "analytics_account_usercontrol" to pageToLink,
+									value-of managedCriteria to managedFilter,
+									value-of "warning" to trendType,
+									value-of True to infoAvailable,
+									value-of domainsCriteria to domainFilter
+								fragment-events: { when "helpMe" then [ Set "editUsercontrol" to selectedHelp ] }
+							}
+						}
+						GridCell {
+							
+							ConditionalGroup {
+								layout: Layout { grab: horizontal True vertical True }
+								
+								StringCondition ( selectedHelp ) 
+								{
+									when "adminRights" then
+									[
+										Group {
+											mixins: alertInfoGroup
+											layout: Layout { hint: width 300 height 320 }
+											
+											Group {	
+												Group {
+													Button {
+														actions: Unset selectedHelp
+														image: "bw_ad_schema/others/small_close.png"
+														tooltip: $adschema_help.buttons.close.tooltip
+													}
+													Header {
+														value: $ad_dashboard_accessNLS.kpi.label.account_adminright
+													}
+													Text {
+														value: $adschema_help.access.admin_rights lines: 25 
+													}
+													OpenURL {
+														url: $adschema_help.access.admin_rights.linkurl
+														text: $adschema_help.access.admin_rights.link
+													}
+												}
+											}
+										}
+									]
+									
+									when "editAdmin" then
+									[
+										Group {
+											mixins: alertInfoGroup
+											layout: Layout { hint: width 300 height 220 }
+											
+											Group {
+												Group {
+													Button {
+														actions: Unset selectedHelp
+														image: "bw_ad_schema/others/small_close.png"
+														tooltip: $adschema_help.buttons.close.tooltip
+													}
+													Header {
+														value: $ad_dashboard_accessNLS.kpi.label.account_editadmin
+													}
+													Text {
+														value: $adschema_help.access.edit_admin lines: 25 
+													}
+													OpenURL {
+														url: $adschema_help.access.edit_admin.linkurl
+														text: $adschema_help.access.edit_admin.link
+													}
+												}
+											}
+										}
+									]
+									
+									when "resetPass" then
+									[
+										Group {
+											mixins: alertInfoGroup
+											layout: Layout { hint: width 300 height 220 }
+											
+											Group {
+												Group {
+													Button {
+														actions: Unset selectedHelp
+														image: "bw_ad_schema/others/small_close.png"
+														tooltip: $adschema_help.buttons.close.tooltip
+													}
+													Header {
+														value: $ad_dashboard_accessNLS.kpi.label.account_resetpass
+													}
+													Text {
+														value: $adschema_help.access.reset_pass lines: 25 
+													}
+													OpenURL {
+														url: $adschema_help.access.reset_pass.linkurl
+														text: $adschema_help.access.reset_pass.link
+													}
+												}
+											}
+										}
+									]
+									
+									when "editUsercontrol" then
+									[
+										Group {
+											mixins: alertInfoGroup
+											layout: Layout { hint: width 300 height 240 }
+											
+											Group {
+												Group {
+													Button {
+														actions: Unset selectedHelp
+														image: "bw_ad_schema/others/small_close.png"
+														tooltip: $adschema_help.buttons.close.tooltip
+													}
+													Header {
+														value: $ad_dashboard_accessNLS.kpi.label.account_usercontrol
+													}
+													Text {
+														value: $adschema_help.access.edit_usercontrol lines: 25 
+													}
+													OpenURL {
+														url: $adschema_help.access.edit_usercontrol.linkurl
+														text: $adschema_help.access.edit_usercontrol.link
+													}
+												}
+											}
+										}
+									]
+									
+									when "managedFilter" then 
+									[
+										Group {
+											mixins: alertInfoGroup
+											layout: Layout { hint: width 300 height 240 }
+											
+											Group {
+												Group {
+													Button {
+														actions: Unset selectedHelp
+														image: "bw_ad_schema/others/small_close.png"
+														tooltip: $adschema_help.buttons.close.tooltip
+													}
+													Header {
+														value: $adschema_help.access.managed_filter_title
+													}
+													Text {
+														value: $adschema_help.access.managed_filter lines: 25 
+													}
+													Link {
+														target: Page ad_managed_explorer
+														value: $adschema_help.access.managed_explorer_link
+													}
+												}
+											}
+										}
+									]
+								}
+							}
+						}
+					}
+					GridRow {
+						height: grow 
+						GridCell { span: 3}
+					}
+				}
+			}
+		}
+	}
+}

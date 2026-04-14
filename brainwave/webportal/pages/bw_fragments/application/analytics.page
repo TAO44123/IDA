@@ -1,0 +1,111 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+fragmentApplicationAnalyticsNLS = NLS {
+	empty [en "No analytics available" fr "Pas d'analyse disponible"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the analytics for a given application
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationAnalytics = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	application = Record {
+		view: br_applicationDetail with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	relatedLinksTiles = Dataset {
+		pages: Pages{tags: "application" and "byuid" }
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	extTypeRelatedLinksTiles = Dataset {
+		pages: Pages{tags: "applicationext" and "byuid" and application.applicationtype}
+		disabled:Not BooleanPredicate(inenabled)
+	}	
+
+	extFamilyRelatedLinksTiles = Dataset {
+		pages: Pages{tags: "applicationext" and "byuid" and application.applicationfamily}
+		disabled:Not BooleanPredicate(inenabled)
+	}	
+
+	allRelatedLinksTiles = Dataset {
+		union:Union {
+			datasets:relatedLinksTiles, extTypeRelatedLinksTiles, extFamilyRelatedLinksTiles
+			discriminator-column:discr
+		}
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	ConditionalGroup {
+		IntCondition(Count allRelatedLinksTiles) {
+			when =0 then [
+				Header {
+					value:$fragmentApplicationAnalyticsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:allRelatedLinksTiles
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with application.recorduid to recorduid, application.uid to uid save-state
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with application.recorduid to recorduid, application.uid to uid save-state
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with application.recorduid to recorduid, application.uid to uid save-state
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+}

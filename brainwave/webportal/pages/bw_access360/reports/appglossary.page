@@ -1,0 +1,567 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/reports/teamnls.page"
+
+import "/webportal/pages/bw_fragments/application/details.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/bw_fragments/permission/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+appglossary360NLS = NLS {
+	title [en "Managed applications glossary" fr "Gestion du glossaire des applications gérées"]
+	dyntitle [en "Managed applications glossary for {0}" fr "Gestion du glossaire des applications gérées par {0}"]
+	description [
+		en "This analysis helps you to manage your applications and application permission glossary. Description and sensitivity level."
+		fr "Cette analyse vous aide à gérer le glossaire de vos applications. Description et niveau de sensibilité."
+	]
+}
+
+aartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+aartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+aartimeline_highlightmodified360 = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+aarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+appglossary360detail = Page {
+	title: $appglossary360NLS.title
+	description:$appglossary360NLS.description
+	tags: "identityext" priority 200, "byuid" , "analytics", "applicationmanager"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_appglossary
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page appglossary360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+appglossary360hp = Page {
+	title: $appglossary360NLS.title
+	description:$appglossary360NLS.description
+	tags: "myapp_access360" priority 1
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_appglossary
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page appglossary360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+appglossary360 = Page {
+	title: $appglossary360NLS.title
+	dynamic-title: $appglossary360NLS.dyntitle(identity.fullname)
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	description:$appglossary360NLS.description
+	feature:bwa360_appglossary
+	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedpermissions = Variable { multivalued:True }
+	selectedpermission = Variable
+	selectedpermissionsensitivitylevel = Variable
+	selectedpermissionsensitivityreason = Variable
+	selectedpermissiondescription = Variable
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	application = Record {
+		view:bwf_applicationDetail with UserVariable session_selectedApplicationsTeam360 to uid
+	}
+	
+	managedapps = Dataset {
+		view:enduser360_managedapplications with uid to uid
+	}
+	permissions = Dataset {
+		view:access360_applicationpermissions with UserVariable session_selectedApplicationsTeam360 to uid
+	}
+	
+	editpermission = NamedAction (
+		Dialog bwfPermissionDetailsMetadata_Dialog(	selectedpermission to paramPermissionUid,
+													selectedpermissionsensitivitylevel to sensitivitylevel,
+													selectedpermissionsensitivityreason to sensitivityreason,
+													selectedpermissiondescription to description), 
+												ReloadData (permissions)	
+	)
+	
+	batcheditpermission = NamedAction (
+		Dialog bwfPermissionDetailsBatchMetadata_Dialog(selectedpermissions to permissions), 
+												ReloadData (permissions)	
+	)
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical False hint:height 40 } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					layout:Layout { hint: width 200 }
+					variable:UserVariable session_selectedApplicationsTeam360
+					options:Dynamic {
+						data:managedapps
+						text:Current resourcename
+						value:Current resourceuid
+					}
+					label:$session_selectedApplicationsTeam360NLS.label
+					tooltip:$session_selectedApplicationsTeam360NLS.tooltip
+					allow-none:False
+				}
+				
+			}
+			GridCell {
+			}
+			GridCell {
+			}
+		}
+	}
+	
+	Separator {
+		width:1
+	}
+
+	IncludeFragment {
+		fragment:appglossary360Fragment with UserVariable session_selectedApplicationsTeam360 binds-to applicationuid
+	}	
+}
+
+access360r_application_accessrights360NLS = NLS {
+	title [en "Glossary management" fr "Gestion du glossaire"]
+	dyntitle [en "{0} glossary management" fr "Gestion du glossaire pour {0}"]
+	description [
+		en "This analysis helps you to manage the application glossary such as permissions description and sensitivity levels"
+		fr "Cette analyse vous permet de gérer le glossaire de l'application tel que la description et le niveau de sensibilité des permissions qui la compose"
+	]
+	onlyempty [	en "Only permissions without description"
+				fr "Seulement les permissions sans description"
+	]
+}
+
+access360r_application_appglossary360 = Page {
+	title: $access360r_application_accessrights360NLS.title
+	dynamic-title: $access360r_application_accessrights360NLS.dyntitle(application.displayname)
+	description:$access360r_application_accessrights360NLS.description
+	tags: "application" priority 100, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+
+	application = Record {
+		view:bwf_applicationDetail with uid to uid
+	}
+
+	IncludeFragment {
+		fragment:appglossary360Fragment with value-of uid to applicationuid
+	}	
+}
+
+access360analytics_application_appglossary360NLS = NLS {
+	title [en "Permission glossary management" fr "Gestion du glossaire des permissions"]
+	description [
+		en "This analysis helps you to manage your permissions glossary. Description and sensitivity level."
+		fr "Cette analyse vous aide à gérer le glossaire de vos permissions. Description et niveau de sensibilité."
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+}
+access360analytics_application_appglossary360= Page {
+	title: $access360analytics_application_appglossary360NLS.title
+	description: $access360analytics_application_appglossary360NLS.description
+	tags: "permission", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+
+	/* Parameters here */
+	search = SearchDefinition {
+		entity: Permission
+		simple-mode-rule: br_permission_simple_search
+	}
+	
+
+	selectedpermissions = Variable { multivalued:True }
+	selectedpermission = Variable
+	selectedpermissionsensitivitylevel = Variable
+	selectedpermissionsensitivityreason = Variable
+	selectedpermissiondescription = Variable
+	
+	onlyemptydescription = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	permissions = Dataset {
+		search:Search {
+			view:access360_applicationpermissions with onlyemptydescription to withoutdescriptiononly
+			definition:search
+		}
+	}
+	
+	editpermission = NamedAction (
+		Dialog bwfPermissionDetailsMetadata_Dialog(	selectedpermission to paramPermissionUid,
+													selectedpermissionsensitivitylevel to sensitivitylevel,
+													selectedpermissionsensitivityreason to sensitivityreason,
+													selectedpermissiondescription to description), 
+												ReloadData (permissions)	
+	)
+	
+	batcheditpermission = NamedAction (
+		Dialog bwfPermissionDetailsBatchMetadata_Dialog(selectedpermissions to permissions), 
+												ReloadData (permissions)	
+	)
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn { fill:True width: grow }, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint:height 38 }
+		GridRow {
+			GridCell {
+				ButtonGroup {
+					Button {
+						actions:ExecuteNamedAction batcheditpermission, 
+								Unset selectedpermissions
+						text:$appglossary360FragmentNLS.bulk
+			            image:%collection_16.pencil
+			            disabled:StringPredicate(selectedpermissions) { when IsEmpty then True otherwise False }
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:onlyemptydescription
+					modify-event: Unset selectedpermissions
+					text:$access360r_application_accessrights360NLS.onlyempty
+				}
+			}
+		}
+	}
+	Table {
+		data:permissions
+		layout: Layout { grab: horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		label:Label { break:True value:$permission.concept }
+		checkboxes:permissionuid to selectedpermissions
+		
+		Column {
+			column:applicationdisplayname
+			tooltip:Current applicationdisplayname
+			header:$application.concept
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:permissioncode
+			header:$permission.code
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction editpermission
+		}
+		Column {
+			column:permissiondisplayname
+			tooltip:Current permissiondisplayname
+			header:$permission.displayname
+			width:260px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction editpermission
+		}
+		Column {
+			column:permissionpermissiontype
+			header:$permission.permissiontype
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:permissionsensitivitylevel
+			text:Transform Current permissionsensitivitylevel using bwfPermissionSensitivityLevelMapping
+			header:$permission.sensitivitylevel
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedpermissionsensitivitylevel
+		}
+		Column {
+			column:permissionsensitivityreason
+			tooltip:Current permissionsensitivityreason
+			header:$permission.sensitivityreason
+			width:200px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedpermissionsensitivityreason
+			initially-masked:True
+		}
+		Column {
+			column:permissiondescription
+			tooltip:Current permissiondescription
+			header:$permission.description
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:selectedpermissiondescription
+		}
+		Column {
+			column:permissionuid
+			hidden:True
+			selection:selectedpermission
+		}
+	}
+	Text {
+		value:$appglossary360FragmentNLS.limit
+		compact:True
+		styling:warningFieldStyle
+		hidden:IntPredicate(Count permissions) { when =1000 then False otherwise True }
+	}
+}
+appglossary360FragmentNLS = NLS {
+	bulk [en "Bulk update" fr "Mise à jour en masse"]
+	limit [
+		en "Table limited to 1000 permissions, please consider filtering the table to look for hidden permissions"
+		fr "Affichage limité à 1000 permissions, veuillez utiliser les capacités de filtrage du tableau pour rechercher des permissions"
+	]
+}
+appglossary360Fragment = PageFragment {
+	/* Parameters here */
+    applicationuid = Variable
+
+	/* Variables here */
+	selectedpermissions = Variable { multivalued:True }
+	selectedpermission = Variable
+	selectedpermissionsensitivitylevel = Variable
+	selectedpermissionsensitivityreason = Variable
+	selectedpermissiondescription = Variable
+	
+	onlyemptydescription = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	application = Record {
+		view:bwf_applicationDetail with applicationuid to uid
+	}
+	
+	permissions = Dataset {
+		view:access360_applicationpermissions with applicationuid to uid, onlyemptydescription to withoutdescriptiononly
+		limit:1000
+	}
+	
+	editpermission = NamedAction (
+		Dialog bwfPermissionDetailsMetadata_Dialog(	selectedpermission to paramPermissionUid,
+													selectedpermissionsensitivitylevel to sensitivitylevel,
+													selectedpermissionsensitivityreason to sensitivityreason,
+													selectedpermissiondescription to description), 
+												ReloadData (permissions)	
+	)
+	
+	batcheditpermission = NamedAction (
+		Dialog bwfPermissionDetailsBatchMetadata_Dialog(selectedpermissions to permissions), 
+												ReloadData (permissions)	
+	)
+	
+	/* Page content */
+
+	Flow {
+		disposition:Horizontal
+		layout: Layout { grab: horizontal True vertical False hint: height 110 }
+		Group {
+			Text {
+				label:$application.code
+				value:application.code
+				compact:True
+			}
+			Text {
+				label:$application.displayname
+				value:application.displayname
+				compact:True
+			}
+			Text {
+				label:$application.applicationfamily
+				value:application.applicationfamily
+				compact:True
+			}
+		}
+		Group {
+			Text {
+				label:$fragmentApplicationDetailsNLS.category
+				value:application.category
+				compact:True
+			}
+			Text {
+				label:$application.sensitivityreason
+				value:application.sensitivityreason
+				compact:True
+			}
+			Text {
+				label:$application.sensitivitylevel
+				value:Transform application.sensitivitylevel using bwfApplicationSensitivityLevelMapping
+				compact:True
+			}
+			Text {
+				label:$application.description
+				tooltip:application.description
+				value:application.description
+				compact:True
+					commands:Commands { position: After orientation: Horizontal 
+									Command{	actions:Dialog bwfApplicationDetailsMetadata_Dialog(applicationuid to paramApplicationUid, application.sensitivitylevel to sensitivitylevel, 
+																									application.sensitivityreason to sensitivityreason, 
+																									application.description to description, 
+																									application.category to category,
+																									application.applicationtype to applicationtype), 
+														ReloadData (application)
+					                        	icon:%collection_16.pencil
+					                        	tooltip:$fragmentApplicationDetailsNLS.updatemetadata
+					                       }
+					                  }
+			}
+		}
+	}
+
+
+	Separator {
+		width:1
+	}
+
+	Grid {
+		columns:GridColumn { fill:True width: grow }, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint:height 38 }
+		GridRow {
+			GridCell {
+				ButtonGroup {
+					Button {
+						actions:ExecuteNamedAction batcheditpermission
+						text:$appglossary360FragmentNLS.bulk
+			            image:%collection_16.pencil
+			            disabled:StringPredicate(selectedpermissions) { when IsEmpty then True otherwise False }
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:onlyemptydescription
+					text:$access360r_application_accessrights360NLS.onlyempty
+				}
+			}
+		}
+	}
+	Table {
+		data:permissions
+		layout: Layout { grab: horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		label:Label { break:True value:$permission.concept }
+		checkboxes:permissionuid to selectedpermissions
+		
+		Column {
+			column:permissioncode
+			header:$permission.code
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction editpermission
+		}
+		Column {
+			column:permissiondisplayname
+			tooltip:Current permissiondisplayname
+			header:$permission.displayname
+			width:260px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction editpermission
+		}
+		Column {
+			column:permissionpermissiontype
+			header:$permission.permissiontype
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:permissionsensitivitylevel
+			text:Transform Current permissionsensitivitylevel using bwfPermissionSensitivityLevelMapping
+			header:$permission.sensitivitylevel
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedpermissionsensitivitylevel
+		}
+		Column {
+			column:permissionsensitivityreason
+			tooltip:Current permissionsensitivityreason
+			header:$permission.sensitivityreason
+			width:200px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedpermissionsensitivityreason
+			initially-masked:True
+		}
+		Column {
+			column:permissiondescription
+			tooltip:Current permissiondescription
+			header:$permission.description
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:selectedpermissiondescription
+		}
+		Column {
+			column:permissionuid
+			hidden:True
+			selection:selectedpermission
+		}
+	}
+	Text {
+		value:$appglossary360FragmentNLS.limit
+		compact:True
+		styling:warningFieldStyle
+		hidden:IntPredicate(Count permissions) { when =1000 then False otherwise True }
+	}
+}

@@ -1,0 +1,198 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/fragments/asset/asset_details_table.page"
+import "/webportal/pages/bw_controls_browser/fragments/root_causes/root_cause_details_table.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_controls_browser/fragments/asset/asset_exceptions.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_controls_browser/details_panel.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Template of detailed page for control on assets
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlType</b> (in) the designed control type</li>
+ * <li><b>controlCode</b> (in) the designed control code</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_control_on_assets = PageFragment {
+	
+	/* Variables here */
+	filter = Variable { type: String }
+	controlCode = Variable { type: String }
+	controlType = Variable { type: String }
+	selectedAssetUid = Variable { type: String }
+	selectedAssetUids = Variable { type: String multivalued: True }
+	selectedExceptionAssetUid = Variable { type: String }
+	selectedExceptionAssetUids = Variable { type: String multivalued: True }
+	sensitivityCriteria = Variable { type: String multivalued: True }
+	loadDetailsTab = Variable { type: Boolean initial: False }
+	loadReconTab = Variable { type: Boolean initial: False }
+	loadGroupsTab = Variable { type: Boolean initial: False }
+	loadRootcauseTab = Variable { type: Boolean initial: False }
+	hasRootCause = Variable { type: Boolean initial: False }
+	nbExceptions = Variable { type: Integer }
+	updateRequired = Variable { type: Boolean }
+	useExceptions = Variable { type: Boolean }
+	// KPI information
+	selectedDiscrepancies = Variable { type: Integer }
+	selectedException = Variable { type: Integer }
+	selectedDiscrepanciesTrend = Variable { type: Integer }
+	selectedExceptionTrend = Variable { type: Integer }
+	
+	/* Datasets and records here */
+	control_root_cause = Dataset {
+		view: bw_control_browser_all_root_cause with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	reload = NamedAction (
+		ExecuteFragmentNamedAction exceptions.reload,
+		ExecuteFragmentNamedAction discrepancies.reload
+	)
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text: $detailpanel.control
+			IncludeFragment {
+				fragment: bw_control_browser_details_tab with
+					value-of controlCode to selectedControlCode,
+					value-of selectedDiscrepancies to selectedDiscrepancies,
+					value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					value-of selectedException to selectedException,
+					value-of selectedExceptionTrend to selectedExceptionTrend,
+					hasRootCause binds-to hasRootCause
+			}
+		}
+		TabItem {
+			text: $bw_control_browser.assets
+			ButtonGroup {
+				layout: Layout { align: horizontal End vertical End }
+				Button {
+					actions:
+						StringCase ( selectedAssetUids ) {
+							when IsEmpty then [
+								Dialog createControlExceptionDialog (
+									controlCode to controlcode,
+									selectedAssetUid to targetuids,
+									controlType to controlresulttype
+								)
+							] otherwise [
+								Dialog createControlExceptionDialog (
+									controlCode to controlcode,
+									selectedAssetUids to targetuids,
+									controlType to controlresulttype
+								)
+							]
+						},
+						Set True to updateRequired,
+						ExecuteNamedAction reload,
+						Unset selectedAssetUids
+					presentation: Button
+					text: $detailspages.addexception
+					tooltip: $detailspages.addexceptionTt
+					image: %collection_16.add_user
+					feature: bw_control_browser_exceptions
+					disabled:
+						AndPredicate {
+							StringPredicate ( selectedAssetUid ) {
+								when IsEmpty then True
+							}
+							StringPredicate ( selectedAssetUids ) {
+								when IsEmpty then True
+							}
+						}
+				}
+			}
+			Group {
+				discrepancies = IncludeFragment {
+					fragment: bw_control_browser_asset_details_table with 
+						value-of controlCode to controlCode,
+						value-of useExceptions to useExceptions,
+						selectedAssetUid binds-to selectedAssetUid,
+						selectedAssetUids binds-to selectedAssetUids
+				}
+			}
+		}
+		TabItem {
+			text: $detailspages.exception
+			badge: nbExceptions
+			feature: bw_control_browser_exceptions
+			hidden:
+				IntPredicate (nbExceptions) {
+					when =0 then True
+				}
+			ButtonGroup {
+				layout: Layout { align: horizontal End vertical End }
+				Button {
+					actions:
+						StringCase ( selectedExceptionAssetUids ) {
+							when IsEmpty then [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionAssetUid to targetuid,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							] otherwise [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionAssetUids to targetuids,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							]
+						},
+						Set True to updateRequired,
+						ExecuteNamedAction reload,
+						Unset selectedExceptionAssetUids
+					presentation: Button
+					text: $detailspages.removeexception
+					image: %collection_16.remove_user
+					disabled:
+						AndPredicate {
+							StringPredicate ( selectedExceptionAssetUid ) {
+								when IsEmpty then True
+							}
+							StringPredicate ( selectedExceptionAssetUids ) {
+								when IsEmpty then True
+							}
+						}
+				}
+			}
+			exceptions = IncludeFragment {
+				fragment: bw_control_browser_asset_exceptions with
+					value-of controlCode to controlCode,
+					nbExceptions binds-to nbExceptions,
+					selectedExceptionAssetUid binds-to selectedAssetUid,
+					selectedExceptionAssetUids binds-to selectedAssetUids
+			}
+		}
+		TabItem {
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			text: $rootcause.concept
+			IncludeFragment {
+				fragment: bw_control_browser_root_cause with
+					value-of controlCode to controlCode
+			}
+		}
+		TabItem {
+			text: $detailspages.analytics 
+			hidden:
+				IntPredicate ( hasRootCause ) {
+				when =0 then True
+			}
+			IncludeFragment {
+				fragment: bw_control_browser_asset_details_table_with_root_cause with 
+					value-of controlCode to controlCode
+			}
+		}
+	}
+}

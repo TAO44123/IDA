@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="main sailpointidnow" name="P1751457685734_L9lmFaa20El7Y6ZiG3xg" startingpoint="start">
+		<Component name="start" type="library/components/start.component" x="356" y="48" w="300" h="64" title="start"/>
+		<Component name="C1751457685734_1" type="callfilter" x="356" y="134" w="300" h="64" title="00_repositories">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/00_repositories.collector"/>
+		</Component>
+		<Component name="C1751457685734_2" type="callfilter" x="356" y="238" w="300" h="64" title="01_applications">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/01_applications.collector"/>
+		</Component>
+		<Component name="C1751457685734_3" type="callfilter" x="356" y="741" w="300" h="64" title="02_accounts">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/02_accounts.collector"/>
+		</Component>
+		<Component name="C1751457685734_4" type="callfilter" x="356" y="881" w="300" h="64" title="03_idnow_roles">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/03_idnow_roles.collector"/>
+		</Component>
+		<Component name="C1751457685734_5" type="callfilter" x="356" y="990" w="300" h="64" title="04_idnow_roles_metadata">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/04_idnow_roles_metadata.collector"/>
+		</Component>
+		<Link name="Ltart" source="start" target="C1751457685734_1" priority="1"/>
+		<Link name="L1751457685734_1" source="C1751457685734_1" target="C1751457685734_2" priority="1"/>
+		<Link name="L1751457685734_2" source="C1751457685734_2" target="C1752764775766" priority="1"/>
+		<Link name="L1751457685734_3" source="C1751457685734_3" target="C1751457685734_4" priority="1" expression="config.bw_sailpointidnow_extendschema == &apos;false&apos;" labelcustom="true" label="Schema extension deactivated"/>
+		<Link name="L1751457685734_4" source="C1751457685734_4" target="C1751457685734_5" priority="1"/>
+		<Component name="C1751458264157" type="callfilter" x="356" y="1133" w="300" h="64" title="05_idnow_roles_members">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/05_idnow_roles_members.collector"/>
+		</Component>
+		<Link name="L1751458277093" source="C1751457685734_5" target="C1751458264157" priority="1"/>
+		<Component name="C1751966756716" type="callfilter" x="776" y="808" w="300" h="64" title="06_source_attributes_accounts">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/06_source_attributes_accounts.collector"/>
+		</Component>
+		<Link name="L1751966768047" source="C1751457685734_3" target="C1751966756716" priority="2" expression="config.bw_sailpointidnow_extendschema == &apos;true&apos;" labelcustom="true" label="Schema extension activated"/>
+		<Link name="L1751966769343" source="C1751966756716" target="C1751457685734_4" priority="1"/>
+		<Component name="C1752053598985" type="callfilter" x="356" y="1248" w="300" h="64" title="07_accessprofiles">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/07_accessprofiles.collector"/>
+		</Component>
+		<Link name="L1752053613337" source="C1751458264157" target="C1752053598985" priority="1"/>
+		<Component name="C1752053619714" type="callfilter" x="356" y="1371" w="300" h="64" title="08_entitlements">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/08_entitlements.collector"/>
+		</Component>
+		<Link name="L1752053631947" source="C1752053598985" target="C1752053619714" priority="1"/>
+		<Component name="C1752053633262" type="callfilter" x="356" y="1491" w="300" h="64" title="09_entitlements_accesprofiles_link">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/09_entitlements_accesprofiles_link.collector"/>
+		</Component>
+		<Link name="L1752053644937" source="C1752053619714" target="C1752053633262" priority="1"/>
+		<Component name="C1752053658539" type="callfilter" x="356" y="1616" w="300" h="64" title="10_roles_accessprofiles_link">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/10_roles_accessprofiles_link.collector"/>
+		</Component>
+		<Link name="L1752053669731" source="C1752053633262" target="C1752053658539" priority="1"/>
+		<Component name="C1752764696526" type="repository" x="356" y="508" w="300" h="64" title="IdentityNow default repo">
+			<Media type="A" code="idnow_id" label="idnow_id" repositorytype="_repotype"/>
+			<Repository>
+				<Attribute name="repositoryfamily" attribute="_repotype"/>
+			</Repository>
+		</Component>
+		<Component name="C1752764700227" type="application" x="356" y="638" w="300" h="64" title="IdentityNow default app">
+			<Application key="idnow_id" type="Profile">
+				<Attribute name="displayname" attribute="idnow_id"/>
+			</Application>
+			<Media code="idnow_id"/>
+		</Component>
+		<Link name="L1752764708262" source="C1752764696526" target="C1752764700227" priority="1"/>
+		<Link name="L1752764708945" source="C1752764700227" target="C1751457685734_3" priority="1"/>
+		<Component name="C1752764775766" type="changefilter" x="356" y="382" w="300" h="64" title="IdenitityNow id">
+			<Actions>
+				<Action name="U1752764808976" action="add" attribute="idnow_id" type="String" multivalued="false" newvalue="IdentityNow" errorexist="false"/>
+				<Action name="U1752764882036" action="add" attribute="_repotype" type="String" multivalued="false" errorexist="false" newvalue="SailPoint IdentityNow"/>
+			</Actions>
+		</Component>
+		<Link name="L1752764784545" source="C1752764775766" target="C1752764696526" priority="1"/>
+		<Component name="C1753112757313" type="callfilter" x="356" y="1763" w="300" h="64" title="12_roles_entitlements_link">
+			<Line provisioningfile="/collectors/bw_sailpointidnow/12_roles_entitlements_link.collector"/>
+		</Component>
+		<Link name="L1753112774751" source="C1752053658539" target="C1753112757313" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

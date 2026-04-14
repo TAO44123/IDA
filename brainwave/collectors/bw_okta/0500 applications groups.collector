@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0500 applications groups" scriptfile="/collectors/bw_okta/0500 applications groups.javascript" name="P1741094888285" startingpoint="C1741098795963">
+		<Component name="C1741098795963" type="discoverysource" x="94" y="50" w="300" h="64" title="applicationsgroups">
+			<Discovery file="/discovery/bw_okta/applicationsgroups.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-10)}/applicationsgroups.csv"/>
+		</Component>
+		<Component name="C1741098807006" type="changefilter" x="94" y="205" w="300" h="64" title="update">
+			<Actions>
+				<Action name="U1741287248423" action="siloname" newvalue="{config.paramSiloName}"/>
+				<Action name="U1741287715796" action="add" attribute="SILO" type="String" multivalued="false" newvalue="{config.paramSiloName}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1741098821451" type="permission" x="94" y="527" w="300" h="64" title="okta permission">
+			<Permission code="groupid" application="applicationid" type="Role" apperror="true" appevent="OKTAAPPNOTFOUND">
+				<Attribute name="displayname" attribute="groupname"/>
+			</Permission>
+		</Component>
+		<Component name="C1741098831662" type="right" x="94" y="686" w="300" h="64" title="right">
+			<Right account="groupid" application="applicationid" permission="groupid" permerror="true" error="true" event="OKTAGROUPNOTFOUND" permevent="OKTAPERMNOTFOUND" apperror="true" appevent="OKTAAPPNOTFOUND"/>
+		</Component>
+		<Link name="L1741098841541" source="C1741098795963" target="C1741098807006" priority="1"/>
+		<Link name="L1741098843604" source="C1741098821451" target="C1741098831662" priority="1"/>
+		<Component name="C1741098902497" type="discoverysource" x="594" y="351" w="300" h="64" title="groups">
+			<Discovery file="/discovery/bw_okta/groups.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-10)}/groups.csv"/>
+		</Component>
+		<Component name="C1741098921102" type="joinfilter" x="94" y="360" w="300" h="64" title="get group">
+			<Join source="C1741098902497"/>
+			<Cache active="true" main="groupid" join="id"/>
+			<Attributes>
+				<Attribute name="A1741099016521" attribute="groupname" source="name" type="String" multivalued="false"/>
+				<Attribute name="A1741099025553" attribute="groupdescription" source="description" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1741098928645" source="C1741098807006" target="C1741098921102" priority="1"/>
+		<Link name="L1741098929956" source="C1741098902497" target="C1741098921102" priority="1"/>
+		<Link name="L1741098931023" source="C1741098921102" target="C1741098821451" priority="1"/>
+		<Component name="C1741099037907" type="metadata" x="596" y="682" w="300" h="64" title="add permission description">
+			<Metadata schema="bwa_permissionmetadata" key=" " permission1="groupid" permission1Application="applicationid" error="true" event="NOTFOUND"/>
+		</Component>
+		<Link name="L1741099043939" source="C1741098821451" target="C1741099037907" priority="2" expression="(! dataset.isEmpty(&apos;groupdescription&apos;))"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="paramSiloName" description="paramSiloName"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

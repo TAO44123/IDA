@@ -1,0 +1,364 @@
+/* Import other pages here */
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_comparison/permission_comparison.page"
+
+/* Nationalized labels here */
+access360r_application_similarprofileNLS = NLS {
+	title [en "Similar Profile Analysis" fr "Analyse des profils similaires"]
+	dyntitle [en "{0} Similar Profile Analysis" fr "Analyse des profils similaires pour {0}"]
+	Similarity_threshold [en "Similarity Threshold" fr "Seuil de similarité"]
+	Similarity_threshold_tooltip [en "Filter the results based on the given similarity threshold\nall result under the threshold will be filtered" fr "Filtrer les résultats sur la base du seuil de similarité configuré\ntous les résultats sous le seuil seront filtrés"]
+	nbmemberthreshold [en "Minimum Number of Accounts" fr "Nombre de comptes minimum"]
+	nbmemberthreshold_tooltip [	en "Minimum number of accounts to consider\nall results with a number of joint accounts under the threshold\nwon't be considered" 
+								fr "Nombre de comptes minimum à considérer\ntous les résultats avec un nombre de comptes commun inférieur au seuil\nseront exclus des résultats"]
+	apply [en 'Apply Filter' fr 'Appliquer le filtre']
+	analysis [en 'Analysis' fr 'Analyse']
+	refprofile [en 'Reference Profile' fr 'Profil de référence']
+	profile [en 'Profile' fr 'Profil']
+	details [en 'Details' fr 'Détails']
+	empty [en "{0} does not contain any profile" fr "{0} ne contient pas de profils"]
+	noresults [en "No results found, try to refine the filtering parameters" fr "Pas de résultats, essayez d'affiner les paramètres de filtrage"]
+	compareprofiles [en 'Compare Profiles Content' fr 'Comparer le contenu des profils']
+	refprofilecodeheader [en "Reference Profile Code" fr "Code profil de référence"]
+	refprofileheader [en "Reference Profile" fr "Profil de référence"]
+	profiledetailtooltip [en "Display Profile Details" fr "Afficher les détails du profil"]
+	compprofilecodeheader [en "Profile Comparison Code" fr "Code profil de comparaison"]
+	compprofileheader [en "Comparison Profile" fr "Profil de comparaison"]
+	nbaccountscommonheader [en "Number of Accounts\nin Common" fr "Nombre de comptes\nen commun"] 
+	similarityheader [en "Similarity \n(percentage)" fr "Similarité \n(pourcentage)"]
+	similaritytooltip [	en "100% means the reference profile accounts and the comparison profile accounts are the same\nthe higher the percentage, the greater the opportunity to merge those profiles"
+						fr "100% signifie que les comptes du profil de référence et les comptes du profil de comparaison sont les mêmes\nplus le pourcentage est élevé, plus vous avez de chances de pouvoir fusionner ces profils" ]
+	pt_tooltip [en "{0}% similarity\nwith {1} accounts in common" fr "{0}% de similarité\navec {1} comptes en commun"]
+
+	included [en "Included in \nComparison Profile" fr "Inclus dans \nle profil de comparaison"]
+	includedtooltip [	en "Yes means the reference profile accounts are all\nincluded in the comparison profile\ntherefore reference profile can be considered as a subprofile\nof the comparison profile"
+						fr "Oui signifie que tous les comptes du profil de référence\nsont inclus dans le profil de comparaison\nle profil de référence peut donc être considéré comme étant un sous profil\ndu profil de comparaison" ]
+	includedpercent [en "Inclusion Factor \n(percentage)" fr "facteur d'inclusion \n(pourcentage)"]
+	includedpercenttooltip [	en "100% means the reference profile accounts are all\nincluded in the comparison profile\ntherefore reference profile can be considered as a subprofile\nof the comparison profile"
+								fr "Oui signifie que tous les comptes du profil de référence\nsont inclus dans le profil de comparaison\nle profil de référence peut donc être considéré comme étant un sous profil\ndu profil de comparaison" ]
+	description [
+		fr "Ce rapport permet d'analyser les similitudes entre les profils applicatifs. Un calcul est effectué afin d'identifier le nombre de comptes actifs en commun entre les profils. Les résultats sont présentés sous la forme d'un tableau croisé dynamique. Il est aussi possible de présenter les résultats sous forme de liste afin de faciliter l'export des résultats. Quelque soit le mode d'affichage retenu, il est possible d'obtenir des détails sur les 'profils applicatifs' ainsi que d'identifier les comptes en commun et les comptes spécifiques de chaque profil."
+		en "This report allows you to analyze the similarities between application profiles. A calculation is performed to identify the number of active accounts in common between the profiles. The results are presented in the form of a pivot table. It is also possible to present the results in a list format in order to facilitate the export of results. Regardless of the display mode selected, it is possible to obtain details on the 'application profiles' as well as to identify the common accounts and the specific accounts of each profile."
+	]
+}
+
+green1style = Style {
+	background:Color RGB(0, 203, 178)
+}
+green2style = Style {
+	background:Color RGB(0, 178, 140)
+}
+green3style = Style {
+	background:Color RGB(0, 153, 102)
+	foreground:white
+}
+green4style = Style {
+	background:Color RGB(0, 128, 64)
+	foreground:white
+}
+
+similarStyle = IntStylingTemplate {
+	when >80 then green4style
+	when >60 then green3style
+	when >40 then green2style
+	when >20 then green1style
+}
+
+clusterBuckets = IntMapping {
+	when = 100 then 'A'
+	when >= 90 then 'B'
+	when >= 90 then 'C'
+	when >= 90 then 'D'
+	when >= 90 then 'E'
+	when >= 90 then 'F'
+	otherwise 'G'
+}
+
+inclusionMapping = IntMapping {
+	when = 100 then $yesnoNLS.yes
+	otherwise $yesnoNLS.no
+}
+
+access360r_application_similarprofile = Page {
+	title: $access360r_application_similarprofileNLS.title
+	dynamic-title: $access360r_application_similarprofileNLS.dyntitle(application.displayname)
+	description:$access360r_application_similarprofileNLS.description
+	tags: "application" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	enter-event:Set 80 to similarityThreshold, Set 80 to currentsimilarityThreshold  
+	feature: All(bwa_applicationsimilarprofile, Any(governance_license, compliance_license))
+		
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+	similarityThreshold = Variable { type:Integer }
+	nbmembersThreshold = Variable { initial:20 type:Integer }
+
+	currentsimilarityThreshold = Variable { type:Integer }
+	currentnbmembersThreshold = Variable { initial:20 type:Integer }
+	
+	/* Variables here */
+	prof1 = Variable
+	prof2 = Variable
+
+	ptprofile1 = Variable
+	ptprofile2 = Variable
+	
+	selectedTab = Variable
+	
+	/* Datasets and records here */
+	application = Record {
+		view:bwf_applicationDetail with uid to uid
+	}
+
+	similarprofile = Dataset {
+		view:bwaccess360r_application_similarprofilemembersbv with uid to uid, currentsimilarityThreshold to threshold, currentnbmembersThreshold to nbmembersThreshold
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:500
+			}
+		]
+	}
+
+	similarprofiledetails = Dataset {
+		view:bwaccess360r_application_similarprofilemembersbv with uid to uid, currentsimilarityThreshold to threshold, currentnbmembersThreshold to nbmembersThreshold, True to dedup
+		disabled:
+		OrPredicate {
+			StringPredicate(selectedTab) { when "DETAILS" then False otherwise True }
+		}
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:500
+			}
+		]
+	}
+
+	profile1detail = NamedAction (
+		Dialog bwf_permissionDetailsDialog(
+								prof1 to inuid,
+								True to inshowaccounts,
+								True to inshowperorg,
+								True to inshowperjob)
+	)
+
+	profile2detail = NamedAction (
+		Dialog bwf_permissionDetailsDialog(
+								prof2 to inuid,
+								True to inshowaccounts,
+								True to inshowperorg,
+								True to inshowperjob)
+	)
+
+	profilecomparison = NamedAction (
+		Dialog bwc_permission_comparison_dialog(prof1 to inuid, prof2 to inotheruid)
+	)
+	
+	/* Page content */
+	ConditionalGroup {
+		IntCondition(1) { // todo : detect apps without any profile
+			when >0 then [
+				Grid {
+					columns:GridColumn,GridColumn,GridColumn {width:grow},GridColumn
+					layout:Layout {grab:horizontal True vertical False hint:height 40}
+					GridRow {
+						GridCell {
+							Combo {
+								variable:similarityThreshold
+								label:$access360r_application_similarprofileNLS.Similarity_threshold
+								tooltip:$access360r_application_similarprofileNLS.Similarity_threshold_tooltip
+								allow-none:False
+								options:Static {
+									Option { value:100 text:"100%" }
+									Option { value:90 text:"90%" }
+									Option { value:80 text:"80%" }
+									Option { value:70 text:"70%" }
+									Option { value:60 text:"60%" }
+									Option { value:50 text:"50%" }
+									Option { value:40 text:"40%" }
+									Option { value:30 text:"30%" }
+									Option { value:20 text:"20%" }
+									Option { value:10 text:"10%" }
+								}
+							}
+						}
+						GridCell {
+							Spinner {
+								variable:nbmembersThreshold
+								minimum:5
+								maximum:1000
+								label:$access360r_application_similarprofileNLS.nbmemberthreshold
+								tooltip:$access360r_application_similarprofileNLS.nbmemberthreshold_tooltip
+							}
+						}
+						GridCell {
+						}
+						GridCell {
+							Button {
+								actions:Set nbmembersThreshold to currentnbmembersThreshold, Set similarityThreshold to currentsimilarityThreshold
+								text:$access360r_application_similarprofileNLS.apply
+							}
+						}
+					}
+				}
+				TabFolder {
+					TabItem {
+						text:$access360r_application_similarprofileNLS.analysis		
+						activation-event:Set "ANALYSIS" to selectedTab
+					
+						ConditionalGroup {
+							IntCondition(Count similarprofile) {
+								when =0 then [
+									Header {
+										value:$access360r_application_similarprofileNLS.noresults					
+									}					
+								]
+								otherwise [
+									CrossTable {
+										data:similarprofile		
+										multi-selection:False
+										cluster-sortable:True
+										layout:Layout {cell-width:32px  grab: horizontal True vertical True}
+										rows:Dim { value:profile1uid label:profile1displayname header:$access360r_application_similarprofileNLS.refprofile selection:ptprofile1 header-click:prof1 }
+										columns:Dim { value:profile2uid label:profile2displayname header:$access360r_application_similarprofileNLS.profile selection:ptprofile2 header-click:prof2 }
+										cell-content:CellContent { text:Current similarity cluster-value:Transform Current similarity using clusterBuckets styling:StylingTemplateSelection (Current similarity) using similarStyle align:Right tooltip:$access360r_application_similarprofileNLS.pt_tooltip(Current similarity, Current nbaccount) } 
+										row-header-click:ExecuteNamedAction profile1detail
+										column-header-click:ExecuteNamedAction profile2detail
+									}
+									ButtonGroup {
+										Button {
+											actions:Set ptprofile1 to prof1, Set ptprofile2 to prof2, ExecuteNamedAction profilecomparison
+											text:$access360r_application_similarprofileNLS.compareprofiles					
+											disabled:
+												OrPredicate {
+													StringPredicate(ptprofile1) { when IsEmpty then True otherwise False }
+													StringPredicate(ptprofile2) { when IsEmpty then True otherwise False }
+												}		
+										}
+									}
+								]				
+							}
+						}
+					}
+					TabItem {
+						text:$access360r_application_similarprofileNLS.details		
+						activation-event:Set "DETAILS" to selectedTab
+					
+						Table {
+							data:similarprofiledetails			
+							layout:Layout {grab: horizontal True vertical True}
+							configurable:True
+							persist-configuration:True
+							persist-configuration-key:uid
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:profile1uid
+								selection:prof1
+								hidden:True
+							}
+							Column {
+								column:profile1code
+								actions:ExecuteNamedAction profile1detail
+								header:$access360r_application_similarprofileNLS.refprofilecodeheader
+								width:300px
+								initially-masked:True
+								sortable:True
+								filterable:True
+								tooltip:$access360r_application_similarprofileNLS.profiledetailtooltip
+							}
+							Column {
+								column:profile1displayname
+								actions:ExecuteNamedAction profile1detail
+								header:$access360r_application_similarprofileNLS.refprofileheader
+								width:300px
+								sortable:True
+								filterable:True
+								tooltip:$access360r_application_similarprofileNLS.profiledetailtooltip
+							}
+							Column {
+								column:profile2uid
+								selection:prof2
+								hidden:True
+							}
+							Column {
+								column:profile2code
+								actions:ExecuteNamedAction profile2detail
+								header:$access360r_application_similarprofileNLS.compprofilecodeheader
+								width:300px
+								initially-masked:True
+								sortable:True
+								filterable:True
+								tooltip:$access360r_application_similarprofileNLS.profiledetailtooltip
+							}
+							Column {
+								column:profile2displayname
+								actions:ExecuteNamedAction profile2detail
+								header:$access360r_application_similarprofileNLS.compprofileheader
+								width:300px
+								sortable:True
+								filterable:True
+								tooltip:$access360r_application_similarprofileNLS.profiledetailtooltip
+							}
+							Column {
+								column:nbaccount
+								header:$access360r_application_similarprofileNLS.nbaccountscommonheader
+								actions:ExecuteNamedAction profilecomparison
+								tooltip:$access360r_application_similarprofileNLS.compareprofiles
+								width:100px
+								align:Right 
+								sortable:True
+							}
+							Column {
+								column:similarity
+								width:100px
+								header:$access360r_application_similarprofileNLS.similarityheader
+								styling:StylingTemplateSelection (Current similarity) using similarStyle 
+								sortable:True
+								align:Right 
+								tooltip:$access360r_application_similarprofileNLS.similaritytooltip
+							}
+							Column {
+								column:included
+								text:Transform Current included using inclusionMapping
+								width:160px
+								header:$access360r_application_similarprofileNLS.included
+								sortable:True
+								align:Right 
+								tooltip:$access360r_application_similarprofileNLS.includedtooltip
+							}
+							Column {
+								column:included
+								width:160px
+								header:$access360r_application_similarprofileNLS.includedpercent
+								sortable:True
+								align:Right 
+								tooltip:$access360r_application_similarprofileNLS.includedpercenttooltip
+								initially-masked:True
+							}
+						}
+						ButtonGroup {
+							Button {
+								actions:ExecuteNamedAction profilecomparison
+								text:$access360r_application_similarprofileNLS.compareprofiles
+								disabled:
+									OrPredicate {
+										StringPredicate(prof1) { when IsEmpty then True otherwise False }
+										StringPredicate(prof2) { when IsEmpty then True otherwise False }
+									}		
+							}
+						}
+					}
+				}
+			]
+			otherwise [
+				Header {
+					value: $access360r_application_similarprofileNLS.empty( application.displayname )
+				}
+			]
+		} 
+	}
+}

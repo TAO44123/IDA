@@ -1,0 +1,499 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/mixins.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_cloud_pam/permission/CApermissionDetails.page"
+import "/webportal/pages/bw_cloud_pam/resources/globals.page"
+
+fragmentSafeRightsNLS = NLS {
+	sensitivitylevel[en "sensitivity level" fr "niveau sensibilité"]
+	sensitivityreason[en "sensitivity reason" fr "raison sensibilité"]
+	description[en "permission description" fr "description permission"]
+	showpredefined [ en "Show predefined CyberArk users" fr "Afficher les utilisateurs CyberArk prédéfinis"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected application rights
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>inPermissionType </b>the permission type for permission counter ('Role' by defaut)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outpermissionuid </b>the selected permision uid</li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentSafeRights = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanreconcile = Variable { multivalued:False type:Boolean initial:True }
+	inPermissionType = Variable
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outpermissionuid = Variable
+//	outpermissionname = Variable
+
+	data = Dataset {
+		view:bwf_casaferights with inuid to uid, UserVariable PAM_SHOW_PREDEFINED to showpredefined unless-empty
+		 trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		 }
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	application = Record {
+		view:bwf_applicationDetail with inuid to uid
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												incanreconcile to incanreconcile,
+												True to inshowowner,
+												False to inshowgroups,
+												True to inshowapplications,
+												False to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												inuid to inapplicationuids,
+												inPermissionType to inpermissiontypes
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_CApermissionDetailsDialog(
+					outpermissionuid to inuid,
+					outaccountuid to inaccountuids,
+					True to inshowaccountrights,
+					True to inshowaccounts,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+		
+	Checkbox {
+		variable: UserVariable PAM_SHOW_PREDEFINED
+		text: $fragmentSafeRightsNLS.showpredefined
+	}
+	ConditionalGroup {
+		IntCondition(application.bwa_applicationanalytics_nbperimeter) {
+			when >0 then [ // with perimeter
+				Table {
+					data:data
+					layout:Layout { grab:horizontal True vertical True }
+					show-count:True
+					show-filter:True
+					configurable:True
+					double-click:ExecuteNamedAction goDetails
+					disabled:IntPredicate(application.bwa_applicationanalytics_nbperimeter) { when >0 then False otherwise True } 					
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:accountidentifier
+						initially-masked:True
+						header:$account.identifier
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlogin
+						filterable:True
+						sortable:True
+						header:$account.login
+						selection:outaccountlogin
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountusername
+						filterable:True
+						sortable:True
+						header:$account.username
+						width:160px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlastlogindate
+						sortable:True
+						header:$account.lastlogindate
+						width:120px
+					}
+					Column {
+						column:accountcreationdate
+						initially-masked:True
+						sortable:True
+						header:$account.creationdate
+						width:160px
+					}
+					Column {
+						column:noownercode
+						filterable:True
+						sortable:True
+						header:$reconciliation.noownercode
+					}
+					Column {
+						column:identityhrcode
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$pidentity.hrcode
+					}
+					Column {
+						column:identityfullname
+						filterable:True
+						sortable:True
+						header:$pidentity.fullname
+						width:160px
+					}
+					Column {
+						column:identitymail
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$pidentity.mail
+						width:160px
+					}
+					Column {
+						column:identityinternal
+						initially-masked:True
+						sortable:True
+						header:$pidentity.internal
+					}
+					Column {
+						column:identityactive
+						initially-masked:True
+						sortable:True
+						header:$pidentity.active
+					}
+					Column {
+						column:identitybwa_identityanalyticsdata_joborg
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$pidentity.joborg
+						width:160px
+					}
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+					Column {
+						column:permissioncode
+						filterable:True
+						sortable:True
+						initially-masked:True
+						header:$ppermission.code
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails						
+					}
+					Column {
+						column:permissiondisplayname
+						filterable:True
+						sortable:True
+						header:$ppermission.displayname
+						width:150px
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+//						selection:outpermissionname
+					}
+					Column {
+						column:permissionpermissiontype
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$ppermission.permissiontype
+					}
+					Column {
+						column:permissionsensitivitylevel
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$fragmentSafeRightsNLS.sensitivitylevel
+					}
+					Column {
+						column:permissionsensitivityreason
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$fragmentSafeRightsNLS.sensitivityreason
+					}
+					Column {
+						column:permissiondescription
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$fragmentSafeRightsNLS.description
+						width:160px
+					}
+					Column {
+						column:action
+						filterable:True
+						sortable:True
+						header:$right.action
+						width:100px
+						initially-masked:True
+					}
+					Column {
+						column:limit
+						filterable:True
+						sortable:True
+						header:$right.limit
+						width:100px
+						initially-masked:True
+					}
+					Column {
+						column:perimetercode
+						filterable:True
+						sortable:True
+						header:$right.perimetercode
+						width:100px
+						initially-masked:True
+					}
+					Column {
+						column:perimeterdisplayname
+						filterable:True
+						sortable:True
+						header:$right.perimeterdisplayname
+						width:100%
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]		
+			otherwise [ // without perimeter
+				Table {
+					data:data
+					layout:Layout { grab:horizontal True vertical True }
+					show-count:True
+					show-filter:True
+					configurable:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					disabled:IntPredicate(application.bwa_applicationanalytics_nbperimeter) { when >0 then True otherwise False } 					
+					
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:accountidentifier
+						initially-masked:True
+						header:$account.identifier
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlogin
+						filterable:True
+						sortable:True
+						header:$account.login
+						selection:outaccountlogin
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountusername
+						filterable:True
+						sortable:True
+						header:$account.username
+						width:160px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlastlogindate
+						sortable:True
+						header:$account.lastlogindate
+						width:120px
+					}
+					Column {
+						column:accountcreationdate
+						initially-masked:True
+						sortable:True
+						header:$account.creationdate
+						width:160px
+					}
+					Column {
+						column:noownercode
+						filterable:True
+						sortable:True
+						header:$reconciliation.noownercode
+					}
+					Column {
+						column:identityhrcode
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$pidentity.hrcode
+					}
+					Column {
+						column:identityfullname
+						filterable:True
+						sortable:True
+						header:$pidentity.fullname
+						width:160px
+					}
+					Column {
+						column:identitymail
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$pidentity.mail
+						width:160px
+					}
+					Column {
+						column:identityinternal
+						initially-masked:True
+						sortable:True
+						header:$pidentity.internal
+					}
+					Column {
+						column:identityactive
+						initially-masked:True
+						sortable:True
+						header:$pidentity.active
+					}
+					Column {
+						column:identitybwa_identityanalyticsdata_joborg
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$pidentity.joborg
+						width:160px
+					}
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+					Column {
+						column:permissioncode
+						filterable:True
+						sortable:True
+						header:$ppermission.code
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails						
+					}
+					Column {
+						column:permissiondisplayname
+						filterable:True
+						sortable:True
+						header:$ppermission.displayname
+						width:100%
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails						
+//						selection:outpermissionname
+					}
+					Column {
+						column:permissionpermissiontype
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$ppermission.permissiontype
+					}
+					Column {
+						column:permissionsensitivitylevel
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$fragmentSafeRightsNLS.sensitivitylevel
+					}
+					Column {
+						column:permissionsensitivityreason
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$fragmentSafeRightsNLS.sensitivityreason
+					}
+					Column {
+						column:permissiondescription
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$fragmentSafeRightsNLS.description
+						width:160px
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}	
+	
+	

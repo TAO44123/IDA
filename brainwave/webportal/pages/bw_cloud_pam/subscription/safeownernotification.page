@@ -1,0 +1,243 @@
+/* Import other pages here */
+//import "/webportal/pages/styles/styles.page"
+//import "/webportal/pages/resources/concepts_nls.page"
+//import "/webportal/pages/bw_fragments/lib/icons.page"
+//import "/webportal/pages/bw_fragments/application/resources.page"
+//import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+//
+//import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_pam/subscription/safepickers.page"
+import "/webportal/pages/bw_cloud_pam/subscription/safeownernotificationadmin.page"
+
+/* Nationalized labels here */
+bwpam_safeownernotificationNLS = NLS {
+	title [en "My Reports Notification About My Safes" fr "Souscription aux rapports sur mes safes"]
+	description [
+		en "This page is used to subscribe to managed safes reports and analytics notification per email. You can both download those reports and subscribe to those reports. When a subscription is made, the report will be sent by email on a regular basis."
+		fr "Cette page est utilisée pour souscrire aux rapports concernant les safes gérés. Vous pouvez à la fois télécharger ces rapports et vous abonner à ces derniers. Une fois abonné, vous recevrez ces rapports régulièrement par email."
+	]
+	
+	subscribed [en "subscribed"fr "abonné"] 
+	subscribe [en "Subscribe" fr "Abonnement"]
+	subscribe_tooltip[en "Subscribe to this report.\nOnce subscribed, you will automatically receive this report by email on a regular basis." fr "Souscrire à ce rapport.\nUne fois souscrit vous recevrez automatiquement ce rapport régulièrement par email"]
+	unsubscribe [en "Unsubscribe" fr "Désabonnement"]
+	unsubscribe_tooltip[en "Unsubscribe from this report.\nYou will no longer receive this report by email." fr "Se désabonner de ce rapport.\nUne fois désabonné, vous ne recevrez plus ce rapport régulièrement par email"]
+	editsubscription [en "Modify" fr "Modifier"]
+	editsubscription_tooltip  [en "Edit subscription to modify the safes perimeter." fr "Editer la souscription pour modifier le périmètre de safes."]
+	getreport [en "Build Report" fr "Générer le rapport"]
+	getreport_tooltip[en "Build and get this report" fr "Générer et récupérer ce rapport"]
+	generating_flash [en "Report is being generated, you will receive it by email" fr "Le rapport est en cours de génération, vous allez le recevoir par mail"]
+
+	subscriptionstatus [en "Subscription\nstatus" fr "Statut\nd'abonnement"]
+	
+	lang [en "en" fr "fr"]
+	
+	col_report [en "Report" fr "Rapport"]
+	col_subscribed [en "Subscribed" fr "Abonné"]
+	col_safe [en "Safes" fr "Safes"]	
+}
+
+
+subscribedMapping = StringMapping {
+	when IsEmpty then ""
+	otherwise $bwpam_safeownernotificationNLS.subscribed
+}
+
+subscribedImage = StringImageTemplate {
+	when IsEmpty then ""
+	otherwise %report_16.xls
+}
+
+
+
+bwpam_safeownernotificationdetail = Page {
+	title: $bwpam_safeownernotificationNLS.title
+	description:$bwpam_safeownernotificationNLS.description
+	tags: "identityext" priority 200, "byuid" , "browsing", "applicationmanager"
+	feature: All(pam_license, Any(governance_license, compliance_license),Any(pamnotification_canselfdownload, pamnotification_canselfsubscribe))
+	icon: "16/details/printable_16.png" large-icon: "48/details/printable_48.png"
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page bwpam_safeownernotification with-current-parameters
+	}
+
+//    org = Parameter { type: String hidden: True }
+//    uid = Parameter { type: String hidden: True }
+}
+
+bwpam_safeownernotificationdetailhp = Page {
+	title: $bwpam_safeownernotificationNLS.title
+	description:$bwpam_safeownernotificationNLS.description
+	tags: "my_access360" priority 10
+	feature:All(pam_license, Any(governance_license, compliance_license),Any(pamnotification_canselfdownload, pamnotification_canselfsubscribe))
+	icon: "16/details/printable_16.png" large-icon: "48/details/printable_48.png"
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page bwpam_safeownernotification with-current-parameters
+	}
+}
+
+
+bwpam_safeownernotification = Page {
+	title: $bwpam_safeownernotificationNLS.title
+	icon: "16/details/printable_16.png" large-icon: "48/details/printable_48.png"
+	description:$bwpam_safeownernotificationNLS.description
+	feature:All(pam_license, Any(governance_license, compliance_license),Any(pamnotification_canselfdownload, pamnotification_canselfsubscribe))
+	
+	/* Parameters here */
+//    org = Parameter { type: String hidden: True }
+//    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedsafes = Variable { multivalued: True }
+	selectedsafesubscriptionuid = Variable
+	updatedsafes = Variable { multivalued: True }
+	currentIdentity = Variable { initial:Principal.uid }
+	newsafes = Variable { multivalued: True }
+	
+	// ///////////////////////////////	
+	reportsubscriptioncheck = Record {
+		view:bwpam_safeownersubscriptionsall with currentIdentity to subscriber
+	}
+
+	safesubscriptions = Dataset {
+		view:bwpam_safeownersubscriptionsall with currentIdentity to subscriber
+	}
+	
+	// ///////////////////////////////	
+	
+	addsafesubscription = TaskRecord(create "bwpam_notification_addsafesubscriber" in-timeslot PageTimeslot.PrevUID)
+	removesubscription = TaskRecord(create "bw_subscription_removesubscription" in-timeslot PageTimeslot.PrevUID)
+
+	safeListDetails = NamedAction (
+		Dialog SafeListDialog(
+						currentIdentity  to inIdUid, 
+						selectedsafesubscriptionuid to inNotifUid
+		)
+	)
+	
+	doSubscribeSafe = NamedAction (
+		Dialog ownedsafeMultiPicker(newsafes from outUid, currentIdentity to inIncludedOwnerUid unless-empty),
+		Set Principal.uid to addsafesubscription.subscriber,
+		Set newsafes to addsafesubscription.insafes,
+		TaskComplete addsafesubscription wait-end timeout-seconds 30,
+		ReloadData(safesubscriptions),
+		ReloadData(reportsubscriptioncheck)
+	)
+
+	EditSubscribeSafe = NamedAction (
+		Dialog ownedsafeMultiPicker(selectedsafes to outUid, currentIdentity to inIncludedOwnerUid unless-empty, updatedsafes from outUid),	
+		Set Principal.uid to addsafesubscription.subscriber,
+		Set updatedsafes to addsafesubscription.insafes,
+		TaskComplete addsafesubscription wait-end timeout-seconds 30,
+		ReloadData(safesubscriptions),
+		ReloadData(reportsubscriptioncheck)
+	)
+
+	doUnsubscribeSafe = NamedAction (
+		Set selectedsafesubscriptionuid to removesubscription.metadatauid,
+		TaskComplete removesubscription wait-end timeout-seconds 30,
+		ReloadData(safesubscriptions),
+		ReloadData(reportsubscriptioncheck)
+	)
+	
+	Group {
+		ButtonGroup {
+			Button {
+				actions:ExecuteNamedAction doSubscribeSafe
+				text:$bwpam_safeownernotificationNLS.subscribe
+				tooltip:$bwpam_safeownernotificationNLS.subscribe_tooltip
+				image:%collection_16.mail
+				disabled:
+				OrPredicate {				
+				Not FeaturePredicate pamnotification_canselfsubscribe		
+				StringPredicate(reportsubscriptioncheck.bwpam_notification_safes_subscribed) { when True then True otherwise False}				
+				}
+			}
+			Button {
+				actions:ExecuteNamedAction EditSubscribeSafe				
+				text:$bwpam_safeownernotificationNLS.editsubscription
+				tooltip:$bwpam_safeownernotificationNLS.editsubscription_tooltip
+				image:%collection_16.pencil
+				disabled:
+				OrPredicate {
+					Not FeaturePredicate pamnotification_canselfsubscribe				
+					StringPredicate(selectedsafesubscriptionuid) { when IsEmpty then True otherwise False }
+				} 
+			}				
+			Button {
+				actions:ExecuteNamedAction doUnsubscribeSafe				
+				text:$bwpam_safeownernotificationNLS.unsubscribe
+				tooltip:$bwpam_safeownernotificationNLS.unsubscribe_tooltip
+				image:%collection_16.delete
+				disabled:
+				OrPredicate {
+					Not FeaturePredicate pamnotification_canselfsubscribe				
+					StringPredicate(selectedsafesubscriptionuid) { when IsEmpty then True otherwise False }
+				} 
+			}
+			Button {
+				actions:Message "todo" // never displayed button, for layouting purposes
+				disabled:True
+				presentation:Link
+				text:''
+			}
+			Button {
+				actions:
+					Confirm $bwpam_safeownernotificationadminNLS.send_confirm, 
+					ExecuteNotifyRule bwpam_safeowner with selectedsafesubscriptionuid to subscriptionuid,
+					Flash $bwpam_safeownernotificationadminNLS.send_flash
+				disabled:StringPredicate(selectedsafesubscriptionuid) { when IsEmpty then True otherwise False }
+				text:$bwpam_safeownernotificationadminNLS.send
+				tooltip:$bwpam_safeownernotificationadminNLS.send_tooltip
+				image:%collection_16.mail
+			}			
+		}
+
+		Table {
+			data:safesubscriptions
+			layout: Layout { grab: horizontal True vertical True }
+			show-filter:True
+			configurable:True
+			
+				Column {
+					header:$bwpam_safeownernotificationNLS.col_report
+					column:bwpam_notification_safes_subkey
+					width:160px					
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:mail
+					header:$identity.mail
+					width:300px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					header:$bwpam_safeownernotificationNLS.col_subscribed
+					column:bwpam_notification_safes_subscribed
+					sortable:True
+				}
+				Column {
+					column:bwpam_notification_safes_uid
+					selection:selectedsafesubscriptionuid
+					hidden:True
+				}
+				Column {
+					column:safes
+					header:$bwpam_safeownernotificationNLS.col_safe
+					actions:ExecuteNamedAction safeListDetails 
+					width:160px
+					filterable:True
+					sortable:True
+				}					
+		}
+	}	
+}

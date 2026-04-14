@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360_ticketreviewcampaignsentries_bv" displayname="Ticket review campaigns entries bv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/ticketreviewcampaignsentries_bv.javascript" name="D1720516372323">
+		<Component type="innerview" x="30" y="10" w="331" h="64" name="C1720516372322" title="Retrieve ticket review information">
+			<InnerView name="bwaccess360_ticketreviewcampaignsentries">
+				<Param name="F1720517058035" viewparam="campaignid" viewparamvalue="{param.campaignid.get()}"/>
+				<Param name="F1720517066126" viewparam="filterprocessed" viewparamvalue="{param.filterprocessed.get()}"/>
+				<Param name="F1720517074304" viewparam="status" viewparamvalue="{param.status}"/>
+				<Param name="F1720517087548" viewparam="ticketreviewrecorduids" viewparamvalue="{param.ticketreviewrecorduids}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1720516413718" type="joinview" x="30" y="70" w="488" h="114" title="Retrieve remediation infos for access/safe rights" enable="{param.reviewtype.get() == &apos;right&apos; || param.reviewtype.get() == &apos;safe&apos;}">
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.right_ticketreviewrecorduid.get()}"/>
+			<InnerView name="bwaccess360_accessticketreviewcampaignsentries">
+				<Param name="F1763046947078" viewparam="ticketreviewrecorduids" viewparamvalue="{param.ticketreviewrecorduids}"/>
+			</InnerView>
+			<ExcludeList>
+				<Exclude name="accountuid"/>
+				<Exclude name="permissionuid"/>
+				<Exclude name="right_ticketreviewrecorduid"/>
+				<Exclude name="right_ticketreviewcomment"/>
+				<Exclude name="applicationbwr_remediation_application_instancecode"/>
+				<Exclude name="applicationbwr_remediation_application_type"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1720516413981" source="C1720516372322" target="C1720516413718" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1720519752747" type="joinview" x="30" y="180" w="488" h="114" title="Retrieve remediation infos for accounts" enable="{param.reviewtype.get() == &apos;account&apos;}">
+			<InnerView name="bwaccess360_repositoryaccountsticketreviewcampaignsentries">
+				<Param name="F1763046957126" viewparam="ticketreviewrecorduids" viewparamvalue="{param.ticketreviewrecorduids}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.account_ticketreviewrecorduid.get()}"/>
+			<ExcludeList>
+				<Exclude name="account_ticketreviewrecorduid"/>
+				<Exclude name="account_ticketreviewcomment"/>
+				<Exclude name="repositorybwr_remediation_repository_instancecode"/>
+				<Exclude name="repositorybwr_remediation_repository_type"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1720519753198" source="C1720516413718" target="C1720519752747" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1720520121032" type="joinview" x="30" y="290" w="490" h="114" enable="{param.reviewtype.get() == &apos;groupmembers&apos;}" title="Retrieve remediation infos for group members">
+			<InnerView name="bwaccess360_repositorygroupmembersticketreviewcampaignsentries">
+				<Param name="F1763046966697" viewparam="ticketreviewrecorduids" viewparamvalue="{param.ticketreviewrecorduids}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.repositorygroupmembers_ticketreviewrecorduid.get()}"/>
+			<ExcludeList>
+				<Exclude name="groupuid"/>
+				<Exclude name="repositorygroupmembers_ticketreviewcomment"/>
+				<Exclude name="repositorygroupmembers_ticketreviewrecorduid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1720520121654" source="C1720519752747" target="C1720520121032" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="campaignid" displayname="campaign id" type="String"/>
+	<ViewParam name="status" displayname="status" type="String"/>
+	<ViewParam name="ticketreviewrecorduids" displayname="ticketreviewrecorduids" type="Integer"/>
+	<ViewParam name="filterprocessed" displayname="filterprocessed" type="Boolean" defaultvalue="false"/>
+	<ViewParam name="reviewtype" displayname="Review type" type="String"/>
+</View>

@@ -1,0 +1,466 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Navigation hi&eacute;rarchique</title>
+    <script src="echarts.min.js"></script>
+    <script src="bw_pages.js"></script>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: roboto, sans-serif;
+            font-size: 13px;
+            text-align: center;
+            background-color: #FFFFFF;
+        }
+
+        input,
+        select {
+            font-size: 0.9em;
+        }
+
+        table {
+            margin-top: -10px;
+            margin-left: 7px;
+        }
+
+        h4 {
+            font-family: "roboto, sans-serif";
+            font-size: 13px;
+            text-decoration: none;
+            color: #333333;
+        }
+
+        a {
+            color: #23A4FF;
+            cursor: pointer;
+        }
+
+        #container {
+            margin: 0 auto;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #content {
+            position: relative;
+            margin: auto;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        #log {
+            position: absolute;
+            top: 10px;
+            font-size: 13px;
+            color: #333333;
+        }
+
+        #breadcrumb {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 8px 15px;
+            border-radius: 3px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+
+        #breadcrumb span {
+            cursor: pointer;
+            margin: 0 5px;
+            color: #23A4FF;
+        }
+
+        #breadcrumb span[style*="font-weight: bold"] {
+            cursor: default;
+            color: #333 !important;
+        }
+
+        #breadcrumb span:hover:not([style*="font-weight: bold"]) {
+            text-decoration: underline;
+        }
+    </style>
+
+    <script>
+        HConf = {
+            viewName: 'br_organisationtreeview',
+            startCond: '_startwithattr=parent_code&_startwithop=isnull&_startwithvalue=none',
+            continueCond: '_startwithattr=code&_startwithop=eq&_startwithvalue=',
+            connection: '_connectbyprior=recorduid&_connectby=parent_recorduid',
+            columns: 'code(id),displayname(name),shortname(data.shortname),organisationtypedisplayname(data.type),recorduid(data.recorduid),uid(data.uid),managerfullname(data.managerfullname),nbdirectmembers(data.nbdirectmembers),nbtotalmembers(data.nbtotalmembers)',
+            maxLevel: 8,
+            // Create HTML tooltip for organization nodes
+            createTooltipHtml: function (node) {
+                var html = '<ul>';
+                html += '<li><b>Code: </b>' + node.id + '</li>';
+                html += '<li><b>Shortname: </b>' + node.data.shortname + '</li>';
+                html += '<li><b>Type: </b>' + node.data.type + '</li>';
+                html += '<li><b>Members: </b>' + node.data.nbtotalmembers + '</li>';
+                html += '<li><b>Direct members: </b>' + node.data.nbdirectmembers + '</li>';
+                html += '<li><b>Name: </b><a onclick="openOrganisationDetails(\'' + node.data.uid + '\');">' + node.name + '</a></li>';
+                if (node.data.managerfullname != null) {
+                    html += '<li><b>Managers: </b>' + node.data.managerfullname + '</li>';
+                }
+                html += '</ul>';
+                return html;
+            }
+        };
+
+        //  get URL GET parameter by name
+        function getParameterByName(name) {
+            var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+            return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+        }
+
+        function updateConf() {
+            var startCode = getParameterByName('code');
+            if (startCode != null) {
+                HConf.startCond = '_startwithattr=code&_startwithop=eq&_startwithvalue=' + startCode;
+            }
+            var timeslot = getParameterByName('timeslot');
+            if (timeslot != null) {
+                HConf.startCond = '_timeslot=' + timeslot + '&' + HConf.startCond;
+                HConf.continueCond = '_timeslot=' + timeslot + '&' + HConf.continueCond;
+            }
+        }
+
+        function getRightSize() {
+            document.getElementById("content").style.height = document.documentElement.clientHeight + "px";
+            document.getElementById("content").style.width = document.documentElement.clientWidth + "px";
+        }
+
+        function openOrganisationDetails(uid) {
+            Pages.sendEvent("organisation_details", { organisationuid: uid });
+        }
+    </script>
+    <script>
+        var myChart = null;
+        var initDone = false;
+        var fullTreeData = null;
+        var currentFocusNode = null;
+        var nodesMap = {};
+
+        function rowToItem(row) {
+            return {
+                name: row.displayname,
+                id: row.code,
+                data: {
+                    shortname: row.shortname,
+                    type: row.organisationtypedisplayname,
+                    recorduid: row.recorduid,
+                    uid: row.uid,
+                    managerfullname: row.managerfullname,
+                    nbdirectmembers: row.nbdirectmembers,
+                    nbtotalmembers: row.nbtotalmembers
+                },
+                children: []
+            };
+        }
+
+        function deepCopyNode(node, forceCollapsed) {
+            var copy = {
+                name: node.name,
+                id: node.id,
+                data: Object.assign({}, node.data),
+                children: []
+            };
+
+            if (node.children && node.children.length > 0) {
+                copy.collapsed = forceCollapsed !== undefined ? forceCollapsed : (node.collapsed !== undefined ? node.collapsed : true);
+                copy.children = node.children.map(function (child) {
+                    return deepCopyNode(child, forceCollapsed);
+                });
+            }
+
+            return copy;
+        }
+
+        function findNodeById(node, targetId) {
+            if (node.id === targetId) {
+                return node;
+            }
+
+            if (node.children) {
+                for (var i = 0; i < node.children.length; i++) {
+                    var found = findNodeById(node.children[i], targetId);
+                    if (found) return found;
+                }
+            }
+
+            return null;
+        }
+
+        function findParentNode(node, targetId, parent) {
+            if (node.id === targetId) {
+                return parent;
+            }
+
+            if (node.children) {
+                for (var i = 0; i < node.children.length; i++) {
+                    var found = findParentNode(node.children[i], targetId, node);
+                    if (found) return found;
+                }
+            }
+
+            return null;
+        }
+
+        function getPathToNode(node, targetId, path) {
+            if (!node) return null;
+            path = path || [];
+            path.push({ id: node.id, name: node.name });
+            if (node.id === targetId) {
+                return path;
+            }
+            if (node.children) {
+                for (var i = 0; i < node.children.length; i++) {
+                    var p = getPathToNode(node.children[i], targetId, path.slice());
+                    if (p) return p;
+                }
+            }
+            return null;
+        }
+
+        function expandToDepth(node, maxVisibleLevels, depth) {
+            depth = depth || 0;
+            if (!node) return;
+
+            if (node.children && node.children.length > 0) {
+                node.collapsed = depth < (maxVisibleLevels - 1) ? false : true;
+                for (var i = 0; i < node.children.length; i++) {
+                    expandToDepth(node.children[i], maxVisibleLevels, depth + 1);
+                }
+            }
+        }
+
+        function createFocusedTree(focusNodeId) {
+            if (!focusNodeId || !fullTreeData || fullTreeData.length === 0) {
+                return fullTreeData;
+            }
+
+            var focusNode = findNodeById(fullTreeData[0], focusNodeId);
+            if (!focusNode) return fullTreeData;
+
+            var focusedCopy = deepCopyNode(focusNode, true);
+            focusedCopy.collapsed = false;
+
+            return [focusedCopy];
+        }
+
+        function updateBreadcrumb() {
+            var breadcrumb = document.getElementById('breadcrumb');
+            var html = '';
+
+            var path = [];
+            if (currentFocusNode && fullTreeData && fullTreeData.length > 0) {
+                for (var i = 0; i < fullTreeData.length; i++) {
+                    path = getPathToNode(fullTreeData[i], currentFocusNode);
+                    if (path) break;
+                }
+            } else if (fullTreeData && fullTreeData.length === 1) {
+                path = [{ id: fullTreeData[0].id, name: fullTreeData[0].name }];
+            } else if (fullTreeData && fullTreeData.length > 1) {
+                path = [];
+            }
+
+            if (fullTreeData && fullTreeData.length > 1 && path.length === 0) {
+                html = '<span style="color: #333; font-weight: bold;">&nbsp;</span>';
+            } else {
+                path.forEach(function (node, idx) {
+                    if (idx === path.length - 1) {
+                        html += '<span style="color: #333; font-weight: bold;">' + node.name + '</span>';
+                    } else {
+                        html += '<span onclick="navigateToNode(\'' + node.id + '\')">' + node.name + '</span> > ';
+                    }
+                });
+            }
+
+            breadcrumb.innerHTML = html;
+        }
+
+        function navigateToNode(nodeId) {
+            currentFocusNode = nodeId || null;
+            updateTreeDisplay();
+        }
+
+        function updateTreeDisplay() {
+            var treeData = createFocusedTree(currentFocusNode);
+
+            if (treeData && treeData.length > 0) {
+                expandToDepth(treeData[0], 3);
+            }
+
+            myChart.clear();
+
+            var option = {
+                tooltip: {
+                    trigger: 'item',
+                    triggerOn: 'mousemove',
+                    enterable: true,
+                    hideDelay: 100,
+                    textStyle: {
+                        align: 'left'
+                    },
+                    formatter: function (params) {
+                        if (params.data.id && params.data.id.startsWith('virtual_root_')) {
+                            return '';
+                        }
+                        return HConf.createTooltipHtml(params.data);
+                    }
+                },
+                series: [{
+                    type: 'tree',
+                    data: treeData,
+                    top: '10%',
+                    left: '20%',
+                    bottom: '5%',
+                    right: '25%',
+                    symbolSize: 10,
+                    edgeShape: 'polyline',
+                    edgeForkPosition: '63%',
+                    initialTreeDepth: 3,
+                    lineStyle: {
+                        width: 2
+                    },
+                    label: {
+                        backgroundColor: '#fff',
+                        position: 'left',
+                        verticalAlign: 'middle',
+                        align: 'right',
+                        formatter: function (params) {
+                            if (params.data.id && params.data.id.startsWith('virtual_root_')) {
+                                return '';
+                            }
+                            return params.data.name;
+                        }
+                    },
+                    leaves: {
+                        label: {
+                            position: 'right',
+                            verticalAlign: 'middle',
+                            align: 'left'
+                        }
+                    },
+                    emphasis: {
+                        focus: 'descendant'
+                    },
+                    expandAndCollapse: true,
+                    animationDuration: 550,
+                    animationDurationUpdate: 750,
+                    animation: true,
+                    animationEasing: 'cubicOut',
+                    animationEasingUpdate: 'cubicOut',
+                    itemStyle: {
+                        opacity: 1
+                    }
+                }]
+            };
+
+            myChart.setOption(option);
+            updateBreadcrumb();
+        }
+
+        function handleNodeClick(params) {
+            if (params.data.id && params.data.id.startsWith('virtual_root_')) {
+                return;
+            }
+
+            if (params.data.children && params.data.children.length > 0) {
+                var clickedNodeId = params.data.id;
+                if (currentFocusNode !== clickedNodeId) {
+                    currentFocusNode = clickedNodeId;
+                    updateTreeDisplay();
+                }
+            }
+        }
+
+        function init() {
+            myChart = echarts.init(document.getElementById('content'));
+
+            myChart.on('click', handleNodeClick);
+
+            Pages.fetchDataset("orgdataset", function (rows) {
+                nodesMap = {};
+                var rootNodes = [];
+
+                for (var i = 0; i < rows.length; i++) {
+                    var row = rows[i];
+                    nodesMap[row.recorduid] = {
+                        name: row.displayname,
+                        id: row.code,
+                        collapsed: true,
+                        data: {
+                            shortname: row.shortname,
+                            type: row.organisationtypedisplayname,
+                            recorduid: row.recorduid,
+                            uid: row.uid,
+                            managerfullname: row.managerfullname,
+                            nbdirectmembers: row.nbdirectmembers,
+                            nbtotalmembers: row.nbtotalmembers,
+                            parent_recorduid: row.parent_recorduid
+                        },
+                        children: []
+                    };
+                }
+
+                for (var i = 0; i < rows.length; i++) {
+                    var row = rows[i];
+
+                    if (row.parent_recorduid == null || row.parent_code == null) {
+                        rootNodes.push(nodesMap[row.recorduid]);
+                    } else if (nodesMap[row.parent_recorduid]) {
+                        var parent = nodesMap[row.parent_recorduid];
+
+                        if (!parent.children.some(child => child.data.recorduid === row.recorduid)) {
+                            parent.children.push(nodesMap[row.recorduid]);
+                        }
+                    }
+                }
+
+                fullTreeData = rootNodes;
+
+                if (fullTreeData.length > 0) {
+                    fullTreeData[0].collapsed = false;
+                    expandToDepth(fullTreeData[0], 3);
+                    
+                    currentFocusNode = fullTreeData[0].id;
+                }
+
+                updateTreeDisplay();
+            });
+
+            window.addEventListener('resize', function () {
+                getRightSize();
+                if (myChart) myChart.resize();
+            });
+        }
+
+        Pages.listenInitDone(function () {
+            initDone = true;
+            updateConf();
+            getRightSize();
+            init();
+        });
+    </script>
+</head>
+
+<body>
+    <div id="container">
+        <div id="breadcrumb"></div>
+        <div id="content"></div>
+        <div id="log"></div>
+    </div>
+</body>
+
+</html>

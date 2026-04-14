@@ -1,0 +1,88 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+selfrevokerequest_startNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel process creation ?" fr "Annuler la création du processus ?"]
+	//complete.buttontext [en "Start process" fr "Initier le processus"]
+	complete.buttontext [en "Confirm" fr "Confirmer"]
+	complete.confirm [en "Start process ?" fr "Démarrer le processus ?"]
+	complete.flashmessage [en "Process started" fr "Processus démarré"]
+	title [en "Start" fr "Start"]
+	_application [en "application" fr "application"]
+}
+
+
+selfrevokerequest_start = Page {
+	title: $selfrevokerequest_startNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	
+	/* variables here */
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord (create "revoke_access_app_request")
+	
+	applicationDataset = Dataset {
+		view: workflow_applicationdisplayname_all
+	}
+	
+	
+	/* Page content */
+	MultiEdit {
+	label: $selfrevokerequest_startNLS._application
+		
+	add-dialog: applicationPicker(task.application to inExcludedUidList) returning outUid
+	Element {
+			variable: task.application
+			filterable: True
+			display: Display {
+				data: applicationDataset match uid
+				value: Current displayname
+			}
+		}
+	 }
+	
+	//MultiEdit {
+	//label: $selfrevokerequest_startNLS._application
+	//Element {
+	//variable: task.application
+	//filterable: True
+	//display: Display { value: task.application }
+	// }
+	//}
+		
+	Group {
+		title: $selfrevokerequest_startNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		ButtonGroup {
+			Button { 
+				text: $selfrevokerequest_startNLS.cancel.buttontext
+				actions: Confirm $selfrevokerequest_startNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: False
+				
+				text: $selfrevokerequest_startNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $selfrevokerequest_startNLS.complete.confirm, TaskComplete task, Flash Information $selfrevokerequest_startNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+}
+

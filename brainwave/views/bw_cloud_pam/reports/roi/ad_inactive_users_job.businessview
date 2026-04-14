@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_ad_inactive_users_job" displayname="ad inactive users job">
+	<Definition scriptfile="/views/bw_cloud_pam/reports/roi/users_distribution.javascript" name="D1627416043592">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1627416043592" title="Inactive">
+			<InnerView name="bwpam_inactive_ad_users_job">
+				<Param name="F1638380892080" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1627416051288" type="joinview" x="753" y="289" w="300" h="50" title="Active">
+			<InnerView name="bwpam_active_ad_users" prefix="active_">
+				<Param name="F1638380760568" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+			<Join jointype="difference" key1="{dataset.key.get()}" key2="{dataset.active_key.get()}"/>
+		</Component>
+		<Link name="L1627416051425" source="C1627416043592" target="C1627416051288" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1627420163570" type="scriptview" x="872" y="237" w="300" h="50" title="Agregate">
+			<Script onscriptread="onReadJob"/>
+			<Attributes>
+				<Attribute name="A1627421188219" attribute="jobdisplayname" type="String" multivalued="false"/>
+				<Attribute name="A1627421198446" attribute="nb_users" type="Number" multivalued="false"/>
+				<Attribute name="A1627460947902" attribute="jobuid" type="String" multivalued="false"/>
+			</Attributes>
+			<ExcludeList>
+				<Exclude name="identifier"/>
+				<Exclude name="jobtitledisplayname"/>
+				<Exclude name="key"/>
+				<Exclude name="active_user_type"/>
+				<Exclude name="active_key"/>
+				<Exclude name="user_type"/>
+				<Exclude name="active_identifier"/>
+				<Exclude name="jobtitleuid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627420163714" source="C1627416051288" target="C1627420163570" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewSort name="sort" attribute1="nb_users" direction1="DESC"/>
+	<ViewParam name="vault_code" displayname="vault_code"/>
+</View>

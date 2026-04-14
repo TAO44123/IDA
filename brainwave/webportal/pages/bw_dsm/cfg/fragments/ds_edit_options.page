@@ -1,0 +1,90 @@
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/bw_dsm/cfg/fragments/ds_cfg_base.page"
+ import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+
+// Configure Options Fragment
+dsm_cfg_options = PageFragment {
+   post-render-event: ExecuteNamedAction doInit
+   //events
+   // changed :  selected connector has changed 
+ 
+    inConnector = Variable
+    fixedName = Variable 
+    edit = Variable { type: Boolean }
+    outCanNext = Variable { type: Boolean  }    
+    options = Variable // in out
+    name = Variable 
+    description = Variable
+    destDir = Variable
+    enabled = Variable  // in out 
+    optValid = Variable { type: Boolean initial: True private: True
+      changed-event: ExecuteNamedAction doUpdateCanNext
+    }   
+    
+    connector_desc = Record {
+		  page: inConnector
+	 }
+	 
+	 existing_ds = Record {
+	   view: bwdsm_getdatasource_def_mduid with name to code
+	   disabled:  Eval "edit.get() || !fixedName.isEmpty()"  
+	 }
+	 	 
+	 doInit = NamedAction (
+	  StringCase ( fixedName) {
+	    when IsEmpty then []
+	    otherwise [
+	      Set fixedName to name
+	    ]
+	  },
+	  ExecuteNamedAction doUpdateCanNext
+	 )  
+	 
+	doUpdateCanNext = NamedAction (
+	   Set Eval " !name.isEmpty() && existing_ds.uid == null && optValid.get()" to outCanNext,
+	   FireFragmentEvent "changed"
+	)   
+	  
+	 doCommitNext = NamedAction (
+	    ExecuteFragmentNamedAction optFrag.doCommit, // will serialize options and set options
+	    // patch options
+	    Set @patchOptions( options to options, connector_desc.action to action) to options
+	 ) 
+	 
+	 	 
+    Edit {
+	   variable: name
+	   label: $dsm_cfg_options_NLS.label_name
+	   match:"[0-9a-zA-Z_]+"
+	   modify-event: ExecuteNamedAction doUpdateCanNext
+	   disabled:  Eval "edit.get() || !fixedName.isEmpty()"  
+	 }
+	 Edit {
+	   variable: description
+	   multi-lines: True
+	   layout: Layout { hint: height 30 }
+	   label: $dsm_cfg_options_NLS.label_description
+	 }
+	 
+	 Edit {
+	   variable: destDir
+	   match: "[0-9a-zA-Z_]+"
+	   label: $dsm_cfg_options_NLS.label_dir
+	   tooltip: $dsm_cfg_options_NLS.label_dir_TT
+	   hidden: Not BooleanPredicate ( connector_desc.hasDestDir) 
+	 }		
+	 			 
+	 				 
+	 Group {
+	   title: "Options"
+	  	// dynamic options UI
+    	optFrag = IncludeDynamicFragment ( Concat( inConnector , "_cfg" ) dsm_cfg_base with options binds-to options, edit binds-to edit, name binds-to dsname, optValid binds-to outValid  )  
+	 }
+			    
+    //Checkbox {
+	 //   variable: enabled label: "Datasource is active" //TONLS
+	 //}						     					   	    
+
+ 
+}
+

@@ -1,0 +1,1104 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ''
+	otherwise current
+}
+
+access360analytics_account_GroupsincommonNLS = NLS {
+	title [en "Groups in Common" fr "Groupes en commun"]
+	dyntitle [en "Groups with more than {0}% of Accounts in Common" fr "Groupes avec plus de {0}% de comptes en commun"]
+	directrightsonly [en "Only Direct Rights" fr "seulement les droits directs"]
+	description [
+		en "This analytics highlight the groups in common for the selected accounts. You can display perform the analysis on direct accounts groups or on all accounts groups. It is possible to modify the columns or to export the results."
+		fr "Cette analyse met en évidence les groupes en commun parmi les comptes sélectionnés. Vous pouvez limiter l'analyse aux groupes directs ou à l'ensemble des groupes des comptes. Il est possible de modifier les colonnes ou d'exporter les résultats"
+	]
+	multicombotooltip [en "Click to Configure the Filter" fr "Cliquez pour configurer le filtre"]
+	sensitivitylevel [en "Group Sensitivity Level" fr "Niveau de sensibilité du groupe"]
+	
+	directonly [en "Direct Groups Only" fr "Seulement les groupes directs"]
+	directonlytooltip [en "Only Display Direct Account-Group Links" fr "Affiche seulement les associations comptes-groupes directes"]
+	
+	ylabel [en "Included Accounts (percentage)" fr "Comptes inclus (%)"]
+
+	lowthreshold [en "Low Threshold" fr "Seuil bas" ]
+	lowthresholdtooltip [ 	en "Low threshold as a percentage of # of accounts in common for the group as compared with the total number of selected accounts"
+							fr "Seuil bas en tant que pourcentage du nombre de comptes en commun par rapport au nombre de comptes sélectionnés au total"
+						]
+	hidechart [en "Hide Chart" fr "Masquer le graphique" ]
+	hidecharttooltip [en "Hide Analytics Chart" fr "Masquer l'analyse graphique" ]
+	
+	accountrepository [en "Account Repository" fr "Référentiel du compte"]
+	filtering [en "Filtering" fr "Filtrage"]
+	
+	inspect [en "Inspect selected group content\nthrough a detail section in the analytics\nwith both the included and excluded accounts lists" fr "Inspecter le contenu du groupe\nau travers d'une section détail dans l'analyse\nqui présente à la fois la liste des comptes inclus et des comptes exclus" ]
+	grouprepository [en "Group Repository" fr "Référentiel du groupe"]
+
+	nbincluded [en "Number of Included \nAccounts" fr "Nombre de comptes \ninclus" ]
+	nbexcluded [en "Number of Excluded \nAccounts" fr "Nombre de comptes \nexclus" ]
+	includedpercent [en "Included Accounts \n(percentage)" fr "Comptes inclus \n(pourcentage)" ]
+
+	nbincludedtitle [en "Included Accounts" fr "Comptes inclus" ]
+	nbexcludedtitle [en "Excluded Accounts" fr "Comptes exclus" ]
+
+	accountpermanalysis [en 'Accounts with the Group Analysis' fr 'Analyse des comptes avec le groupe']
+
+	originanalysis [
+		en "This analytics presents the characteristics of an union of all the accounts who have access to the selected groups in the list\nthanks to this analytics you can analyse the accounts origin and identify if they have joint characteristics"
+		fr "Cette analyse présente les caractéristiques de l'union des comptes qui ont accès aux groupes sélectionnés dans la liste\nà l'aide de cette analyse vous pouvez identifier si ces comptes ont des traits en communs" 
+	]
+
+	details.tab1 [en "Accounts with all Groups" fr "Comptes avec tous les groupes"]
+	details.tab2 [en "Accounts with Missing Groups" fr "Comptes avec des groupes manquants"]
+	details.tab3 [en "Accounts without any of those Groups" fr "Comptes avec aucun des groupes"]
+	details.tab4 [en "Groups Venn Analysis" fr "Diagramme de Venn des groupes"]
+	details.tab5 [en "Accounts with all Groups Origin Analysis" fr "Analyse de l'origine des Comptes"]
+
+	subdetails.title [en "Details" fr "Details"]
+	subdetails.identities [en "Accounts" fr "Comptes"]
+	subdetails.groups [en "Groups" fr "Groupes"]
+
+	analysisbutton [en "Selected Groups' Analysis" fr "Analyse des groupes sélectionnés"]
+
+	details.venn.suffix1 [en "Accounts" fr "comptes"]
+	details.venn.suffix2 [en "Accounts in Common" fr "comptes en commun"]
+}
+
+green1style = Style {
+	background:Color RGB(0, 203, 178)
+}
+green2style = Style {
+	background:Color RGB(0, 178, 140)
+}
+green3style = Style {
+	background:Color RGB(0, 153, 102)
+	foreground:white
+}
+green4style = Style {
+	background:Color RGB(0, 128, 64)
+	foreground:white
+}
+
+similarStyle = IntStylingTemplate {
+	when >80 then green4style
+	when >60 then green3style
+	when >40 then green2style
+	when >20 then green1style
+}
+
+access360analytics_account_peoplewithallgroups = Dialog {
+	title:$access360analytics_account_GroupsincommonNLS.subdetails.title
+	buttons:OkButton
+	width:1000
+	height:600
+
+	enter-event:
+		MultivaluedAdd code1 to groupsuid,
+		MultivaluedAdd code2 to groupsuid,
+		MultivaluedAdd code3 to groupsuid,
+		MultivaluedAdd code4 to groupsuid,
+		MultivaluedAdd code5 to groupsuid,
+		MultivaluedAdd code6 to groupsuid
+	
+	search = SearchDefinition {
+		entity: Account
+		simple-mode-rule: br_account_simple_search
+	}
+
+	code1 = Variable
+	code2 = Variable
+	code3 = Variable
+	code4 = Variable
+	code5 = Variable
+	code6 = Variable
+	directonly = Variable { type:Boolean }
+	groupsuid = Variable { multivalued:True }
+
+	selectedaccountuid = Variable
+	selectedidentityuid = Variable
+	selectedgroupuid = Variable
+
+	accountswithgroup = Dataset {
+		search: Search {
+			view:access360r_accountlistgroupsincommon with groupsuid to groupuids, directonly to directonly
+			definition:search
+		}
+		excludes:BooleanPredicate(False)
+	}
+	groups = Dataset {
+		view:access360r_listgroups_innerview with groupsuid to uid
+	}
+
+	goAccountDetails = NamedAction (
+			Dialog bwf_accountDetailsDialog(selectedaccountuid to inuid,
+											True to inshowapplications,
+											True to inshowcontrols,
+											True to inshowgroups,
+											True to inshowowner,
+											True to inshowshares,
+											True to inshowdecisionhistory
+			)
+	)
+
+	goIdentityDetails = NamedAction (
+			Dialog bwf_identityDetailsDialog(selectedidentityuid to inuid,
+											True to inshowposition
+			)
+	)
+
+	goGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedgroupuid to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+
+	TabFolder {
+		TabItem {
+			text:$access360analytics_account_GroupsincommonNLS.subdetails.identities
+		
+			Table {
+				data:accountswithgroup
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				Column {
+					column:identityuid
+					hidden:True
+					selection:selectedaccountuid
+				}
+				Column {
+					column:accountuid
+					hidden:True
+					selection:selectedaccountuid
+				}
+				Column {
+					column:accountlogin
+					header:$account.login
+					initially-masked:False
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:accountusername
+					header:$paccount.username
+					initially-masked:False
+					width:160px
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:identityhrcode
+					header:$identity.hrcode
+					initially-masked:True
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goIdentityDetails
+				}
+				Column {
+					column:identityfullname
+					header:$identity.fullname
+					filterable:True
+					sortable:True
+					width:160px
+					actions:ExecuteNamedAction goIdentityDetails
+					
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identitymail
+					header:$identity.mail
+					initially-masked:True
+					filterable:True
+					sortable:True
+					
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identityinternal
+					header:$identity.internal
+					sortable:True
+				}
+				Column {
+					column:jobtitledisplayname
+					header:$identity.jobtitledisplayname
+					sortable:True
+					filterable:True
+					width:200px
+				}
+				Column {
+					column:organisationdisplayname
+					header:$organisation.concept
+					sortable:True
+					filterable:True
+					width:200px
+				}
+			}		
+		}
+		TabItem {
+			text:$access360analytics_account_GroupsincommonNLS.subdetails.groups
+	
+			Table {
+				data:groups
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				Column {
+					column:uid
+					selection:selectedgroupuid
+					hidden:True
+				}
+				Column {
+					column:code
+					header:$group.code
+					width:160px
+					filterable:True
+					sortable:True
+					align:Right
+					initially-masked:True
+					actions:ExecuteNamedAction goGroupDetails
+				}
+				Column {
+					column:displayname
+					header:$group.concept
+					width:300px
+					filterable:True
+					sortable:True
+					align:Right
+					actions:ExecuteNamedAction goGroupDetails
+				}
+				Column {
+					column:repositorydisplayname
+					header:$repository.concept
+					width:160px
+					filterable:True
+					sortable:True
+					align:Right
+				}
+			}	
+		}
+	
+	}
+}
+
+access360analytics_account_Groupsincommonorgjob = Dialog {
+	title:$access360analytics_account_GroupsincommonNLS.accountpermanalysis
+	buttons:OkButton
+	width:1300
+	height:700
+	
+	search = SearchDefinition {
+		entity: Account
+		simple-mode-rule: br_account_simple_search
+	}
+
+	directonly = Variable { type:Boolean }
+	repositories = Variable { multivalued: True }
+	groupsuid = Variable { multivalued: True }
+	selectedaccountuid = Variable
+	selectedidentityuid = Variable
+
+	activatedTab1 = Variable { initial:True type:Boolean }
+	activatedTab2 = Variable { initial:False type:Boolean }
+	activatedTab3 = Variable { initial:False type:Boolean }
+	activatedTab4 = Variable { initial:False type:Boolean }
+	activatedTab5 = Variable { initial:False type:Boolean }
+
+	accountswithgroup = Dataset {
+		search: Search {
+			view:access360r_accountlistgroupsincommon with groupsuid to groupuids, directonly to directonly
+			definition:search
+		}
+		excludes:BooleanPredicate(False)
+		disabled:
+		AndPredicate {
+			Not BooleanPredicate(activatedTab1)
+			Not BooleanPredicate(activatedTab5)
+		}		
+	}
+
+	identitieswithoutgroup = Dataset {
+		search: Search {
+			view:access360r_accountlistnotgroupsincommon with groupsuid to groupuids, directonly to directonly
+			definition:search
+		}
+		excludes:BooleanPredicate(False)
+		disabled:Not BooleanPredicate(activatedTab2)
+	}
+	
+	identitieswithoutanygroup = Dataset {
+		search: Search {
+			view:	access360r_accountlistnogroupsatall with groupsuid to groupuids, repositories to repositories unless-empty, directonly to directonly
+			definition:search
+		}
+		excludes:BooleanPredicate(False)
+		disabled:Not BooleanPredicate(activatedTab3)
+	}
+	
+	venndata = Dataset {
+		search: Search {
+			view:access360r_accountlistgroupsincommon_innerview with groupsuid to uid, directonly to directonly
+			definition:search
+		}
+		disabled:
+		OrPredicate {
+			IntPredicate(SizeOf groupsuid) { when<2 then True otherwise False }
+			IntPredicate(SizeOf groupsuid) { when>10 then True otherwise False }
+			Not BooleanPredicate(activatedTab4)
+		}
+	}
+	
+	goIdentityDetails = NamedAction (
+			Dialog bwf_identityDetailsDialog(selectedidentityuid to inuid,
+											True to inshowposition
+			)
+	)
+
+	goAccountDetails = NamedAction (
+			Dialog bwf_accountDetailsDialog(selectedaccountuid to inuid,
+											True to inshowapplications,
+											True to inshowcontrols,
+											True to inshowgroups,
+											True to inshowowner,
+											True to inshowshares,
+											True to inshowdecisionhistory
+			)
+	)
+	
+	TabFolder {
+		TabItem {
+			text:$access360analytics_account_GroupsincommonNLS.details.tab1
+			activation-event:Set True to activatedTab1
+
+			Table {
+				data:accountswithgroup
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				Column {
+					column:identityuid
+					hidden:True
+					selection:selectedidentityuid
+				}
+				Column {
+					column:accountuid
+					hidden:True
+					selection:selectedaccountuid
+				}
+				Column {
+					column:accountlogin
+					header:$account.login
+					initially-masked:False
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:accountusername
+					header:$paccount.username
+					initially-masked:False
+					width:160px
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:identityhrcode
+					header:$identity.hrcode
+					initially-masked:True
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:identityfullname
+					header:$identity.fullname
+					filterable:True
+					sortable:True
+					width:160px
+					
+					actions:ExecuteNamedAction goIdentityDetails
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identitymail
+					header:$identity.mail
+					initially-masked:True
+					filterable:True
+					sortable:True
+					
+					actions:ExecuteNamedAction goIdentityDetails
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identityinternal
+					header:$identity.internal
+					sortable:True
+				}
+				Column {
+					column:jobtitledisplayname
+					header:$identity.jobtitledisplayname
+					sortable:True
+					filterable:True
+					width:200px
+				}
+				Column {
+					column:organisationdisplayname
+					header:$organisation.concept
+					sortable:True
+					filterable:True
+					width:200px
+				}
+			}		
+		}
+		TabItem {
+			text:$access360analytics_account_GroupsincommonNLS.details.tab2
+			hidden:IntPredicate(SizeOf groupsuid) { when =1 then True otherwise False }
+			activation-event:Set True to activatedTab2
+
+			Table {
+				data:identitieswithoutgroup
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				Column {
+					column:identityuid
+					hidden:True
+					selection:selectedidentityuid
+				}
+				Column {
+					column:accountuid
+					hidden:True
+					selection:selectedaccountuid
+				}
+				Column {
+					column:accountlogin
+					header:$account.login
+					initially-masked:False
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:accountusername
+					header:$paccount.username
+					initially-masked:False
+					width:160px
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:identityhrcode
+					header:$identity.hrcode
+					initially-masked:True
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:identityfullname
+					header:$identity.fullname
+					filterable:True
+					sortable:True
+					width:160px
+					
+					actions:ExecuteNamedAction goIdentityDetails
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identitymail
+					header:$identity.mail
+					initially-masked:True
+					filterable:True
+					sortable:True
+					
+					actions:ExecuteNamedAction goIdentityDetails
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identityinternal
+					header:$identity.internal
+					sortable:True
+				}
+				Column {
+					column:jobtitledisplayname
+					header:$identity.jobtitledisplayname
+					sortable:True
+					filterable:True
+					width:200px
+				}
+				Column {
+					column:organisationdisplayname
+					header:$organisation.concept
+					sortable:True
+					filterable:True
+					width:200px
+				}
+			}		
+		}
+		TabItem {
+			text:$access360analytics_account_GroupsincommonNLS.details.tab3
+			activation-event:Set True to activatedTab3
+
+			Table {
+				data:identitieswithoutanygroup
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				Column {
+					column:identityuid
+					hidden:True
+					selection:selectedidentityuid
+				}
+				Column {
+					column:accountuid
+					hidden:True
+					selection:selectedaccountuid
+				}
+				Column {
+					column:accountlogin
+					header:$account.login
+					initially-masked:False
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:accountusername
+					header:$paccount.username
+					initially-masked:False
+					width:160px
+					filterable:True
+					sortable:True
+					actions:ExecuteNamedAction goAccountDetails
+				}
+				Column {
+					column:identityhrcode
+					header:$identity.hrcode
+					initially-masked:True
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:identityfullname
+					header:$identity.fullname
+					filterable:True
+					sortable:True
+					width:160px
+					
+					actions:ExecuteNamedAction goIdentityDetails
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identitymail
+					header:$identity.mail
+					initially-masked:True
+					filterable:True
+					sortable:True
+					
+					actions:ExecuteNamedAction goIdentityDetails
+					tooltip: $search_page.showdetails
+				}
+				Column {
+					column:identityinternal
+					header:$identity.internal
+					sortable:True
+				}
+				Column {
+					column:jobtitledisplayname
+					header:$identity.jobtitledisplayname
+					sortable:True
+					filterable:True
+					width:200px
+				}
+				Column {
+					column:organisationdisplayname
+					header:$organisation.concept
+					sortable:True
+					filterable:True
+					width:200px
+				}
+			}		
+		}
+		TabItem {
+			text:$access360analytics_account_GroupsincommonNLS.details.tab4
+			activation-event:Set True to activatedTab4
+			hidden:
+				OrPredicate { // hide Venn analysis if over limits...
+					IntPredicate(SizeOf groupsuid) { when>10 then True otherwise False }
+					IntPredicate(SizeOf groupsuid) { when<2 then True otherwise False }
+					IntPredicate(Count venndata) { when>5000 then True otherwise False }
+				}
+
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 500 width 1000 align: horizontal Center vertical Center }
+				template: vennDiagramChart
+				datasets: venndata (groupuid, grouplabel, identityuid) to chartdata (code,label,element)
+				bindings: 
+					value-of $access360analytics_account_GroupsincommonNLS.details.venn.suffix1 to tooltipSuffix,
+					value-of $access360analytics_account_GroupsincommonNLS.details.venn.suffix2 to tooltipnSuffix
+				widget-events: {
+					when onclick then [
+						Dialog access360analytics_account_peoplewithallgroups(
+							Current code1 to code1,
+							Current code2 to code2,
+							Current code3 to code3,
+							Current code4 to code4,
+							Current code5 to code5,
+							Current code6 to code6,
+							SerializeSearch search to search,
+							directonly to directonly							
+						)
+					]
+				}
+			}
+		}
+		TabItem {
+			text:$access360analytics_account_GroupsincommonNLS.details.tab5
+			activation-event:Set True to activatedTab5
+
+			DynamicCrossTable {
+				data:accountswithgroup
+				layout: Layout { grab: horizontal True vertical True row-headers-max-width:500px }	
+				dimensions:
+					Dim {
+						value: identityfullname
+						label: identityfullname
+						header: $identity.fullname
+					},	
+					Dim {
+						value: identityhrcode
+						label: identityhrcode
+						header: $identity.hrcode
+					},
+					Dim {
+						value: identitymail
+						label: identitymail
+						header: $identity.mail
+					},
+					Dim {
+						value: identityinternal
+						label: identityinternal
+						header: $identity.internal
+					},
+					Dim {
+						value: organisationcode
+						label: organisationcode
+						header: $porganisation.code
+					},
+					Dim {
+						value: organisationshortname
+						label: organisationshortname
+						header: $porganisation.shortname
+					},
+					Dim {
+						value: organisationdisplayname
+						label: organisationdisplayname
+						header: $organisation.concept
+					},
+					Dim {
+						value: jobtitlecode
+						label: jobtitlecode
+						header: $identity.jobtitlecode
+					},
+					Dim {
+						value: jobtitledisplayname
+						label: jobtitledisplayname
+						header: $identity.jobtitledisplayname
+					}
+				measures:
+					Measure {
+						value: identityuid
+					}
+			}
+		}
+	}
+}
+
+access360analytics_account_Groupsincommon= Page {
+	title: $access360analytics_account_GroupsincommonNLS.title
+	dynamic-title: $access360analytics_account_GroupsincommonNLS.dyntitle(lowthreshold)
+	description: $access360analytics_account_GroupsincommonNLS.description
+	feature:All(bwsa_accountgroupsincommon, Any(governance_license, compliance_license))
+	tags: "account", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	mixins: simpleReport
+		
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_account_GroupsincommonNLS.filtering
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	
+						repositories inline,
+						directonly inline,
+						lowthreshold inline,
+						hidechart inline
+		}
+		
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_account_FilterEdition(SerializeSearch search to accountSearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Account Search with SerializeSearch search to accountSearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	repositories = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:True
+		label:$access360analytics_account_GroupsincommonNLS.accountrepository
+		tooltip:$access360analytics_account_GroupsincommonNLS.multicombotooltip
+		type:String
+		constraint:Lookup {
+			data:repositorylist
+			text:Current repositorydisplayname
+			value:Current repositoryuid
+		}		
+	}
+	directonly = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		default:True
+		label:$access360analytics_account_GroupsincommonNLS.directonly
+		tooltip:$access360analytics_account_GroupsincommonNLS.directonlytooltip
+		type:Boolean
+	}
+	lowthreshold = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		default:10
+		label:$access360analytics_account_GroupsincommonNLS.lowthreshold
+		tooltip:$access360analytics_account_GroupsincommonNLS.lowthresholdtooltip
+		type:Integer
+		constraint:Int{ min:0 max:100 }
+	}
+	hidechart = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		default:False
+		label:$access360analytics_account_GroupsincommonNLS.hidechart
+		tooltip:$access360analytics_account_GroupsincommonNLS.hidecharttooltip
+		type:Boolean
+	}
+	
+	search = SearchDefinition {
+		entity: Account
+		simple-mode-rule: br_account_simple_search
+	}
+		
+	/* Variables here */
+	outidentityuid = Variable
+	outaccountuid = Variable
+	outgroupuid = Variable
+	selectedaccountingroup = Variable
+	selectedaccountnotingroup = Variable
+	selectedgroups = Variable { multivalued:True }
+
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	totalnbaccounts = Variable
+	
+	/* Datasets and records here */
+	groups = Dataset {
+		search: Search {
+			view:access360r_accountgroupsincommon with repositories to repositories unless-empty, directonly to directonly, totalnbaccounts to totalnbaccounts, lowthreshold to lowthreshold
+			definition:search
+		}
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+	
+	// used to count the number of accounts
+	counter = Dataset {
+		search: Search {
+			view:access360r_accountnbaccounts with repositories to repositories unless-empty
+			definition:search
+		}
+		count-variable:totalnbaccounts
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	repositorylist = Dataset {
+		search: Search {
+			view:access360r_accountgrouprepos
+			definition:search
+		}
+	}
+
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid,
+												True to inshowaccounts
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	goAccountInGroupDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(selectedaccountingroup to inuid,
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												True to inshowowner,
+												True to inshowshares
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	goAccountNotInGroupDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(selectedaccountnotingroup to inuid,
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												True to inshowowner,
+												True to inshowshares
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	goGroupDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowperjob,
+												True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn { group:a }
+		layout:Layout { grab:horizontal True vertical True }
+		GridRow {
+			height:160
+			hidden:BooleanPredicate(hidechart)
+			GridCell {
+				span:1
+				
+
+				IncludeHTMLWidget {
+					//layout: Layout { hint: height 160 width 600 align: horizontal Center vertical Center }
+					layout: Layout { grab: horizontal True vertical True }
+					template: lineChart
+					datasets: groups ( groupdisplayname, groupuid, percent ) to chartdata ( label, code , count )
+					hidden:BooleanPredicate(hidechart)
+					bindings: 
+						value-of False to maintainAspectRatio,
+						value-of False to xAxesdisplay,
+						value-of True to beginAtZero,
+						value-of $access360analytics_account_GroupsincommonNLS.ylabel to ylabel,
+						value-of 2 to pointRadius,
+						value-of "start" to fill,
+						value-of False to curvedLine
+				}
+			}
+		} 
+		GridRow {
+			height:grow
+			GridCell {
+				span:1
+			
+				ButtonGroup {
+					Button {
+						actions:Dialog access360analytics_account_Groupsincommonorgjob(selectedgroups to groupsuid, repositories to repositories, SerializeSearch search to search, directonly to directonly)
+						image:%collection_16.bulb
+						text:$access360analytics_account_GroupsincommonNLS.analysisbutton
+						tooltip:$access360analytics_account_GroupsincommonNLS.originanalysis
+						disabled:
+							OrPredicate {
+								IntPredicate(SizeOf selectedgroups) { when >999 then True otherwise False }					
+								StringPredicate(selectedgroups) { when IsEmpty then True otherwise False }
+							}
+					}
+				}
+				Table {
+					data:groups
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					checkboxes:groupuid to selectedgroups
+					
+					Column {
+						column:groupdisplayname
+						header:$group.concept
+						width:100%
+						sortable:True
+						filterable:True
+						
+						actions: ExecuteNamedAction goGroupDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+					Column {
+						column:groupcode
+						header:$pgroup.code
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goGroupDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+					Column {
+						column:groupbwa_groupmetadata_descr
+						header:$pgroup.comment
+						width:140px
+						sortable:True
+						filterable:True
+						initially-masked:True
+
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+					Column {
+						column:groupbwa_groupmetadata_sensitivitylevel
+						header:$access360analytics_account_GroupsincommonNLS.sensitivitylevel
+						width:140px
+						sortable:True
+						initially-masked:True
+					}
+
+					Column {
+						column:grouprepositorydisplayname
+						header:$access360analytics_account_GroupsincommonNLS.grouprepository
+						width:140px
+						sortable:True
+
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+
+
+					Column {
+						column:nbaccount
+						header:$access360analytics_account_GroupsincommonNLS.nbincluded
+						width:160px
+						sortable:True
+						align:Right
+
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+					Column {
+						column:nbexcludedaccounts
+						header:$access360analytics_account_GroupsincommonNLS.nbexcluded
+						width:160px
+						sortable:True
+						align:Right
+
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+					Column {
+						column:percent
+						text:Concat(Current percent,' %')
+						header:$access360analytics_account_GroupsincommonNLS.includedpercent
+						width:160px
+						sortable:True
+						align:Right
+
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+					Column {
+						column:groupuid
+						hidden:True
+						selection:outgroupuid
+					}
+				}
+			}
+		}	
+	}
+}

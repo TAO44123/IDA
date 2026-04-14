@@ -1,0 +1,123 @@
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+
+bwdsm_testDsDialog = Dialog {
+	title:$bwdsm_testNLS.title
+	width:1100
+	height:600
+	exit-event: ExecuteNamedAction deleteTranscoded
+	buttons: ActionButton {
+	  actions: Unset errors
+	  close: True
+	  status: Ok
+	  text: $bwdsm_testNLS.button_close
+	}
+	
+	code = Variable
+	
+	errors = Variable
+	nbrows = Variable
+	
+	filename = Variable
+	uploadStatus = Variable
+	timestamp = Variable
+	sourcefile = Variable
+	destinationfile = Variable
+	staticFilePath = Variable 
+	enableFileMapping = Variable { initial:False type:Boolean }
+	testisdone = Variable { initial:False }
+	testisok = Variable { initial:False }
+	
+	
+	deleteTranscoded = NamedAction (
+		Call cleanFolder ( Concat(ConfigurationVariable "projectPath", "/static/bw_dsm/upload") to path )
+	)
+
+	
+	doTest = NamedAction (
+		Call applicationDataUpload_check(
+				filename to filepath, // Check file validity
+				code to applicationcode, 
+				0 to previoussize,
+				errors from errors, 
+				nbrows from totalnbrows
+			),
+		Set True to testisdone,
+		StringCase ( errors ) {
+			when IsEmpty then [
+				Set Date.valueLDAP to timestamp,
+				// File is valid
+				// transcode to upload file 
+				Set filename to sourcefile,
+				Set Concat( '/static/bw_dsm/upload/temp_', code, '_', timestamp, '.csv') to staticFilePath,
+				Set Concat(ConfigurationVariable "projectPath", staticFilePath) to destinationfile,
+				Call non-blocking applicationDataUpload_transcode(filename to sourcefile, destinationfile to destinationfile, code to applicationcode, errors from error) ,
+				StringCase(errors) {
+					when Not IsNull then [
+						Message $bwdsm_testNLS.errortranscode						
+					]
+					otherwise [
+						Message $bwdsm_testNLS.testok,
+						Set True to testisok
+					]
+				}
+			]
+			otherwise [
+				Message Error $bwdsm_testNLS.fileFormatErrors
+			]
+		},
+		Call fileDelete(filename to filename)
+	)
+	
+	FileUpload {
+		uploaded-filename: filename
+		disabled:
+			BooleanPredicate(testisdone)
+		hide-filename: False
+		upload-status: uploadStatus
+		upload-complete-event:  
+			ExecuteNamedAction doTest
+		upload-failed-event:
+			Flash $bwdsm_testNLS.problemoccured
+	}	
+	
+	Button {
+		text: $bwdsm_testNLS.downloadtranscoded
+		actions:
+			BrowseStatic staticFilePath
+		disabled:
+			Not BooleanPredicate(testisok)
+	}
+	Text {
+		value: errors
+		tooltip: errors
+		lines: 10
+		layout: Layout { grab:horizontal True vertical True }
+	}
+	
+}
+
+applicationDataUpload_check = EventService {
+	javascript-file:"/webportal/pages/bw_dsm/cfg/ds_test.javascript"
+	javascript-method:check
+
+	filepath = Input{ type:String multivalued:False mandatory: True }
+	applicationcode = Input{ type:String multivalued:False mandatory: True }
+
+	checksize = Input{ type:Boolean multivalued:False mandatory: True }
+	checksizevariation = Input{ type:Integer multivalued:False mandatory: False }
+	previoussize = Input{ type:Integer multivalued:False mandatory: False }
+
+	errors = Output { type:String multivalued:True }
+	totalnbrows  = Output { type:Integer multivalued:False }
+}
+
+applicationDataUpload_transcode = EventService {
+	javascript-file:"/webportal/pages/bw_dsm/cfg/ds_test.javascript"
+	javascript-method:transcode
+
+	sourcefile = Input{ type:String multivalued:False mandatory: True }
+	destinationfile = Input{ type:String multivalued:False mandatory: True }
+	applicationcode = Input{ type:String multivalued:False mandatory: True }
+	error = Output { type:String multivalued:False }
+}

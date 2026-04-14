@@ -1,0 +1,65 @@
+import "/webportal/pages/bw_cloud_base/widgets/stepper_js/stepper_js.page"
+
+stepper_demo_icons = ImageMap {
+  step1 [ "bw_fragments/report/analytics.svg" width: 24px color: white  ]
+  step2 [ "bw_fragments/report/excel.svg" width: 24px color: white  ]
+  step3 [ "bw_fragments/report/analytics.svg" width: 24px color: white  ]
+  step4 [ "bw_fragments/report/analytics.svg" width: 24px color: white  ]
+} 
+
+js_stepper_demos = Page {
+	title: "Stepper demos"
+	//homepage-for: All 
+		
+	currentStepA = Variable { initial: "step2"}
+	clickedStep = Variable 
+	
+	stepsA = Dataset {
+	  values: [
+	    ( _id -> "step1" , _label -> "Preparation of data" , _desc -> "This is a very long description for step A et encore plus long que ca ne finit jamais" , _icon -> %stepper_demo_icons.step1),
+	    ( _id -> "step2" ,_label -> "Design the roles " , _desc -> "This is a very long description for step B" , _icon -> %stepper_demo_icons.step2),
+	    ( _id -> "step3" , _label -> "Make the stuff" , _desc -> "This is a very long description for step C" , _icon -> %stepper_demo_icons.step3),
+	    ( _id -> "step4" , _label -> "Export the result" , _desc -> "This is a very long description for step D" , _icon -> %stepper_demo_icons.step4)	   
+	  ]
+	}
+	
+	Grid {
+		columns: GridColumn{ width: 400 }
+		GridRow {
+
+			GridCell {
+				IncludeHTMLWidget {
+						layout: Layout { grab:horizontal True vertical True  }
+						
+						template: bw_stepper
+						datasets:stepsA( _id, _label, _desc, _icon ) to stepsdata (id, label, description, icon)
+						bindings:
+						   value-of "vertical" to orientation 
+						  , value-of currentStepA to currentStep
+						 // , value-of True to showNumbers
+						  , value-of True to showIcons
+						 //  value-of True to sort
+						widget-events:
+						  { 
+						    when onlabelclick then [ 
+						      //Flash Concat ( "Clicked: " , Current id)
+						      Set Current id to clickedStep 
+						    ]
+					}   	   				
+				}
+	        }
+			}       		
+		}
+		
+		Text { value: clickedStep label: "current step"}	
+				
+		ButtonGroup {
+		  Button { text: "Step1" actions: Set "step1" to currentStepA}
+		  Button { text: "Step2" actions: Set "step2" to currentStepA}
+		  Button { text: "Step3" actions: Set "step3" to currentStepA}
+		  Button { text: "Step4" actions: Set "step4" to currentStepA}
+		}
+		
+			
+
+}

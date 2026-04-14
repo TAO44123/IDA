@@ -1,0 +1,40 @@
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+
+bw_fragments_detailKPI = PageFragment {
+	
+	inshowrisks = Variable { type: Boolean }
+	title = Variable { type: String }
+	count = Variable { type: Integer }
+	maxValue = Variable { type: Integer }
+	currentTrend = Variable { type: Integer }
+	previousTrend = Variable { type: Integer }
+	inuid = Variable { type: String }
+	hasThresholds = Variable { type: Boolean initial: False }
+	// Default conf
+	mode = Variable { type: String initial: "radial" } // radial, numeric, row
+	gaugeColor = Variable { type: String initial: "#4170C0" }
+	hasLink = Variable { type: Boolean initial: False }
+	warningThreshold = Variable { type: Integer initial: 1 }
+	criticalThreshold = Variable { type: Integer initial: 3 }
+	
+	Group {
+		hidden:
+			Not BooleanPredicate ( inshowrisks )
+		IncludeHTMLWidget {
+			layout: Layout { hint: height 180 width 150 align: horizontal Center vertical Center }
+			template: mashupGaugeIndicator
+			bindings:
+				value-of title to title,
+				value-of mode to mode,
+				value-of hasLink to hasLink,
+				value-of hasThresholds to hasThresholds,
+				value-of warningThreshold to warningThreshold,
+				value-of criticalThreshold to criticalThreshold,
+				value-of count to count,
+				value-of maxValue to maxValue,
+				value-of Difference(currentTrend, previousTrend) to trendValue,
+				value-of inuid to identifier,
+				value-of gaugeColor to gaugeColor
+		}
+	}
+}

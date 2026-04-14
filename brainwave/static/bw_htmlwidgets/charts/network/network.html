@@ -1,0 +1,810 @@
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<title>Network</title>
+	<script type="text/javascript" src="vis/vis-network.min.js"></script>
+	<script type="text/javascript" src="vis/vis-data.min.js"></script>
+	<!-- Pages Library File -->
+	<script src="bw_pages.js"></script>
+	<link href="vis/vis-network.min.css" rel="stylesheet" type="text/css" />
+	<link href="css/Brainwave.css" rel="stylesheet" type="text/css" />
+	<style type="text/css">
+		body {
+			font-family: Brainwave, "Helvetica Neue", Helvetica, Arial, sans-serif;
+			margin: auto;
+			position: relative;
+		}
+
+
+		div.vis-tooltip {
+			font: 12px sans-serif;
+			position: absolute;
+			text-align: center;
+			word-wrap: break-word;
+			white-space: pre;
+			width: 500px;
+			height: 48px;
+			background: #333;
+			color: #ddd;
+			padding: 2px;
+			border: 0px;
+			border-radius: 8px;
+			opacity: 0.9;
+
+			z-index: 5;
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+	<div id="mynetwork" style="width:100%;"></div>
+	<div id="text" class='div.vis-tooltip'
+		style="font: 12px sans-serif;position:absolute;visibility:hidden;white-space:pre-wrap;"></div>
+	<script type="text/javascript">
+		var nodecolor = '#d5dadc';
+		var fontcolor = '#000000';
+		var shape = 'box'; // ellipse, circle, database, box, text. The ones with the label outside of it are: diamond, dot, star, triangle, triangleDown, hexagon, square
+		var hierarchical = false;
+		var hierarchical_levelseparation = 100;
+		var hierarchical_nodespacing = 100;
+		var hierarchical_treespacing = 100;
+		var hierarchical_blockshifting = true;
+		var hierarchical_edgeminimization = true;
+		var hierarchical_parentcentralization = true;
+		var hierarchical_direction = 'DU' // UD, DU, LR, RL
+		var hierarchical_sortmethod = 'directed'; // hubsize, directed
+		var arrows_to = true;
+		var arrows_middle = false;
+		var arrows_from = false;
+		var randomSeed = null;
+		var navigationButtons = false;
+		var edgescalingmin = 1;
+		var edgescalingmax = 6;
+		var smoothedge = true;
+		var computegroupfontcolor = true;
+		var selectednode = null;
+		var stopPhysics = false;
+		var textboxsize = 100;
+
+		var defaultColors = [
+			"#61bd6d",
+			"#54acd2",
+			"#9365b8",
+			"#553982",
+			"#eb6b56",
+			"#75706b",
+			"#f37934",
+			"#475577",
+			"#d1d5d8",
+			"#2969b0"
+		];
+
+		var labelinside =
+			[
+				'ellipse', 'circle', 'database', 'box'
+			];
+		var icons =
+			[
+				'identities', 'A',
+				'account', 'B',
+				'manager', 'C',
+				'organisation', 'D',
+				'application', 'E',
+				'permission', 'F',
+				'check', 'G',
+				'sharepoint', 'H',
+				'repository', 'I',
+				'identity', 'J',
+				'share', 'K',
+				'role', 'L',
+				'folder', 'M',
+				'job', 'N',
+				'control', 'O',
+				'asset', 'P',
+				'group', 'A', // use the identities icon (never used elsewhere in IAP)
+				'log', 'R',
+				'usage', 'S',
+				'secret', 'U',
+				'safe', 'T',
+				'vault', 'V',
+				'server', 'Z'
+			];
+
+
+		var image = null;
+
+		var nodes = new vis.DataSet([]);
+		var edges = new vis.DataSet([]);
+		var options = {};
+		var cache = new Map();
+
+
+		function getWidth(text) {
+			document.getElementById("text").innerHTML = text;
+			var width = document.getElementById("text").clientWidth;
+			return width;
+		}
+		function getHeight(text) {
+			document.getElementById("text").innerHTML = text;
+			var height = document.getElementById("text").clientHeight;
+			return height;
+		}
+
+
+		function isLabelInside(shape) {
+			for (var i = 0; i < labelinside.length; i++) {
+				if (labelinside[i] === shape)
+					return true;
+			}
+			return false;
+		}
+
+		function isBright(hex) {
+			hex = hex.substring(1);
+			var r = parseInt(hex.substring(0, 2), 16);
+			var g = parseInt(hex.substring(2, 4), 16);
+			var b = parseInt(hex.substring(4, 6), 16);
+
+			var lum = (0.2126 * r + 0.7152 * g + 0.0722 * b);
+
+			if (lum > 128)
+				return true;
+			else
+				return false;
+
+		}
+
+
+		function ColorLuminance(hex, lum) {
+
+
+			// validate hex string
+			hex = hex.substring(1);
+			hex = String(hex).replace(/[^0-9a-f]/gi, '');
+			if (hex.length < 6) {
+				hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+			}
+			lum = lum || 0;
+
+			// convert to decimal and change luminosity
+			var rgb = "#", c, i;
+			for (i = 0; i < 3; i++) {
+				c = parseInt(hex.substr(i * 2, 2), 16);
+				c = Math.round(Math.min(Math.max(0, c + (c * lum)), 255)).toString(16);
+				rgb += ("00" + c).substr(c.length);
+			}
+
+
+			return rgb;
+		}
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "computegroupfontcolor") {
+				computegroupfontcolor = initialValue;
+			}
+			if (varName == "stopPhysics") {
+				stopPhysics = initialValue;
+			}
+			if (varName == "smoothedge") {
+				smoothedge = initialValue;
+			}
+			if (varName == "selectednode") {
+				selectednode = initialValue;
+			}
+			if (varName == "edgescalingmin") {
+				edgescalingmin = initialValue;
+			}
+			if (varName == "edgescalingmax") {
+				edgescalingmax = initialValue;
+			}
+			if (varName == "textboxsize") {
+				textboxsize = initialValue;
+			}
+			if (varName == "navigationButtons") {
+				navigationButtons = initialValue;
+			}
+			if (varName == "nodecolor") {
+				nodecolor = initialValue;
+			}
+			if (varName == "fontcolor") {
+				fontcolor = initialValue;
+			}
+			if (varName == "shape") {
+				for (var i = 0; i < icons.length; i = i + 2) {
+					var ic = icons[i];
+					var im = icons[i + 1];
+					if (initialValue === ic) {
+						shape = 'icon';
+						image = im;
+						return;
+					}
+				}
+				shape = initialValue;
+			}
+			if (varName == "hierarchical") {
+				hierarchical = initialValue;
+			}
+			if (varName == "hierarchical_levelseparation") {
+				hierarchical_levelseparation = initialValue;
+			}
+			if (varName == "hierarchical_nodespacing") {
+				hierarchical_nodespacing = initialValue;
+			}
+			if (varName == "hierarchical_treespacing") {
+				hierarchical_treespacing = initialValue;
+			}
+			if (varName == "hierarchical_blockshifting") {
+				hierarchical_blockshifting = initialValue;
+			}
+			if (varName == "hierarchical_edgeminimization") {
+				hierarchical_edgeminimization = initialValue;
+			}
+			if (varName == "hierarchical_parentcentralization") {
+				hierarchical_parentcentralization = initialValue;
+			}
+			if (varName == "hierarchical_direction") { // UD, DU, LR, RL
+				hierarchical_direction = initialValue;
+			}
+			if (varName == "hierarchical_sortmethod") { // hubsize, directed
+				hierarchical_sortmethod = initialValue;
+			}
+			if (varName == "arrows_to") {
+				arrows_to = initialValue;
+			}
+			if (varName == "arrows_middle") {
+				arrows_middle = initialValue;
+			}
+			if (varName == "arrows_from") {
+				arrows_from = initialValue;
+			}
+			if (varName == "randomSeed") {
+				randomSeed = initialValue;
+			}
+			if (varName == "customColors") {  /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+				var colors = initialValue.split(',');
+				defaultColors = colors.slice(0);
+			}
+		});
+
+		function disablePhysics() {
+			options.physics = false;
+		}
+
+		function enablePhysics() {
+			options.physics.stabilization.iterations = 300;
+			options.physics.hierarchicalRepulsion.centralGravity = 0;
+			options.physics.hierarchicalRepulsion.springLength = 50;
+			options.physics.hierarchicalRepulsion.nodeDistance = 150;
+		}
+
+		function updatePhysics() {
+			if (!hierarchical)
+				enablePhysics();
+			else
+				disablePhysics();
+		}
+
+		function initData() {
+			document.getElementById('loading').style.display = 'block';
+
+
+			Pages.fetchDataset("chartdata", function (rows) {
+				cache = new Map();
+				options = {
+					/*interaction:{hover:true},
+					manipulation: {
+						enabled: true
+					}*/
+					physics: {
+						stabilization: {
+							iterations: 300
+						},
+						hierarchicalRepulsion: {
+							centralGravity: 0,
+							springLength: 50,
+							nodeDistance: 150
+						}
+					},
+					nodes: {
+						borderWidth: 1,
+						borderWidthSelected: 2,
+						color: {
+							background: nodecolor,
+							border: nodecolor,
+							highlight: {
+								background: nodecolor,
+								border: nodecolor
+							}
+						},
+						font: {
+							color: fontcolor
+						},
+						shape: shape,
+						size: textboxsize,
+						widthConstraint: {
+							maximum: textboxsize
+						},
+						chosen: {
+							node: function (values, id, selected, hovering) {
+								values.borderWidth = 2;
+								values.borderColor = nodecolor;
+							}
+						}
+					},
+					interaction: {
+						navigationButtons: navigationButtons,
+						multiselect: false,
+						tooltipDelay: 100,
+						hover: true
+					},
+					layout: {
+						//randomSeed:2,
+						improvedLayout: true,
+						hierarchical: {
+							enabled: hierarchical,
+							levelSeparation: hierarchical_levelseparation,
+							nodeSpacing: hierarchical_nodespacing,
+							treeSpacing: hierarchical_treespacing,
+							blockShifting: hierarchical_blockshifting,
+							edgeMinimization: hierarchical_edgeminimization,
+							parentCentralization: hierarchical_parentcentralization,
+							direction: hierarchical_direction,        // UD, DU, LR, RL
+							sortMethod: hierarchical_sortmethod   // hubsize, directed
+						}
+					},
+					edges: {
+						smooth: smoothedge,
+						arrows: {
+							to: { enabled: arrows_to, scaleFactor: 1, type: 'arrow' },
+							middle: { enabled: arrows_middle, scaleFactor: 1, type: 'arrow' },
+							from: { enabled: arrows_from, scaleFactor: 1, type: 'arrow' }
+						},
+						color: {
+							inherit: 'from',
+							opacity: 1.0
+						},
+						chosen: {
+							edge: function (values, id, selected, hovering) {
+								values.width = 2;
+							}
+						}
+					}
+				};
+
+
+				if (image != null) {
+					options.nodes.icon = {
+						face: 'Brainwave',
+						code: image,
+						size: 50,
+						color: nodecolor
+					};
+				}
+
+				options.groups = {};
+
+
+				if (randomSeed != null) {
+					options.layout.randomSeed = randomSeed;
+				}
+
+
+				// update physics options based on Hierarchical
+				updatePhysics();
+
+				var dedupNodes = new Map();
+				var dedupGroups = new Map();
+				var nodesa = [];
+				var edgesa = [];
+				var grouplist = [];
+
+
+
+				// chartdata ( code as String , label as String, description as String, parentcode as String, group as String, nodeattributes as String)
+				var ind = 0;
+				for (var i = 0; i < rows.length; i++) {
+					var group = rows[i]["group"];
+					if (group != null) {
+						if (!dedupGroups.has(group)) {
+							dedupGroups.set(group, null);
+							grouplist.push(group);
+							var color = {};
+							ind = ind % defaultColors.length;
+							color.background = defaultColors[ind];
+							color.border = defaultColors[ind];
+							color.highlight = {
+								background: ColorLuminance(defaultColors[ind], 0.2),
+								border: defaultColors[ind]
+							};
+
+							var font = {};
+							if (isBright(defaultColors[ind]))
+								font.color = ColorLuminance(defaultColors[ind], -1.5);
+							else
+								font.color = ColorLuminance(defaultColors[ind], 1.5);
+
+							options.groups[group] = {};
+							options.groups[group].color = color;
+							if (computegroupfontcolor)
+								options.groups[group].font = font;
+
+
+							ind++;
+						}
+					}
+				}
+
+
+
+				for (var i = 0; i < rows.length; i++) {
+					var code = rows[i]["code"];
+					var label = rows[i]["label"];
+					var description = rows[i]["description"];
+					var parentcode = rows[i]["parentcode"];
+					var group = rows[i]["group"];
+					var nodeattributes = rows[i]["nodeattributes"];
+					var edgeattributes = rows[i]["edgeattributes"];
+					var edgevalue = rows[i]["edgevalue"];
+					var edgelabel = rows[i]["edgelabel"];
+					var hasColorAttributes = false;
+
+					var node = {};
+					if (nodeattributes != null) {
+						try {
+							/*
+							{
+								color:{
+									background:"#00FF00",
+									border:"#00FF00",
+									highlight:{
+										background:"#00FF00",
+										border:"#00FF00"
+									}
+								},
+								font:{
+									color:"#000000"
+								}
+							}
+							*/
+
+							nodeattributes = nodeattributes.replace(new RegExp("'", 'g'), '"');
+							node = JSON.parse(nodeattributes);
+
+							// Adaptation pour la nouvelle structure de couleurs
+							if (node.color) {
+								hasColorAttributes = true;
+
+								// Si l'ancienne structure existe, on la convertit
+								if (node.color.hover && !node.color.highlight) {
+									node.color.highlight = {
+										background: node.color.hover,
+										border: node.color.border || node.color.hover
+									};
+								}
+
+								// S'assurer que border est défini
+								if (!node.color.border && node.color.background) {
+									node.color.border = node.color.background;
+								}
+							}
+
+							if (node.shape != null) {
+								for (var a = 0; a < icons.length; a = a + 2) {
+									var ic = icons[a];
+									var im = icons[a + 1];
+									if (node.shape === ic) {
+										node.shape = 'icon';
+										node.icon = {};
+										node.icon.face = 'Brainwave';
+										node.icon.code = im;
+										node.icon.size = 50;
+										node.icon.color = node.color ? node.color.background : nodecolor;
+										break;
+									}
+								}
+							}
+						}
+						catch (e) {
+							console.log(e);
+						}
+					}
+
+					node.id = code;
+					if (label != null)
+						node.label = label;
+					else
+						node.label = code;
+					if (description != null) {
+						node.title = description;
+					}
+					if (!hasColorAttributes) {
+						if (group != null)
+							node.group = group;
+					}
+
+					if (!dedupNodes.has(code)) {
+						nodesa.push(node);
+						dedupNodes.set(code, null);
+					}
+
+					if (parentcode != null) {
+						var edge = {};
+						if (edgeattributes != null) {
+							try {
+								edgeattributes = edgeattributes.replace(new RegExp("'", 'g'), '"');
+								edge = JSON.parse(edgeattributes);
+							}
+							catch (e) {
+								console.log(e);
+							}
+						}
+
+
+						edge.scaling = {};
+						edge.scaling.min = edgescalingmin;
+						edge.scaling.max = edgescalingmax;
+
+						// Si pas de couleur définie, hériter de la source
+						if (!edge.color) {
+							edge.color = {
+								inherit: 'from'
+							};
+						} else if (typeof edge.color === 'string') {
+							// Si c'est une string, on la convertit en objet
+							edge.color = {
+								color: edge.color,
+								inherit: false
+							};
+						} else if (edge.color.inherit === undefined) {
+							// Si inherit n'est pas défini et qu'on a une couleur custom
+							edge.color.inherit = false;
+						}
+
+						edge.from = parentcode;
+						edge.to = code;
+
+						if (edgevalue != null) {
+							edge.value = edgevalue;
+						}
+						if (edgelabel != null) {
+							edge.label = edgelabel;
+						}
+
+						edgesa.push(edge);
+					}
+
+					cache.set(code, { label: label, description: description, group: group, parentcode: parentcode });
+				}
+
+				nodes = new vis.DataSet(nodesa);
+				edges = new vis.DataSet(edgesa);
+
+				init();
+
+				window.onresize = function (event) {
+					init();
+				};
+			});
+		}
+
+		var network;
+		function init() {
+			document.documentElement.style.overflow = 'hidden';
+			document.body.scroll = "no";
+
+
+			var myNode = document.getElementById("mynetwork");
+			while (myNode.firstChild) {
+				myNode.removeChild(myNode.firstChild);
+			}
+
+			var html = document.documentElement;
+
+
+			// create a network
+			var container = document.getElementById('mynetwork');
+
+			var divwidth = html.clientWidth;
+			var divheight = html.clientHeight;
+			container.style.width = divwidth + 'px';
+			container.style.height = divheight + 'px';
+
+
+			var data = {
+				nodes: nodes,
+				edges: edges
+			};
+
+
+			network = new vis.Network(container, data, options);
+
+
+			network.on("click", function (params) {
+				// click on an edge
+				if (params.edges.length > 0) {
+					var edge = edges.get(params.edges[0]);
+					Pages.sendEvent('onedgeclick', { _from: edge.from, _to: edge.to });
+				}
+				// click on a node
+				if (params.nodes.length > 0) {
+					var infos = cache.get(params.nodes[0]);
+					if (infos == null) return;
+					// onclick ( code as String, label as String, description as String, parentcode as String, group as String)
+					Pages.sendEvent('onclick', { code: params.nodes[0], label: infos.label, description: infos.description, parentcode: infos.parentcode, group: infos.group });
+				}
+			});
+			network.on("doubleClick", function (params) {
+				// click on an edge
+				if (params.edges.length > 0) {
+					var edge = edges.get(params.edges[0]);
+					Pages.sendEvent('onedgedoubleclick', { _from: edge.from, _to: edge.to });
+				}
+				// click on a node
+				if (params.nodes.length > 0) {
+					var infos = cache.get(params.nodes[0]);
+					if (infos == null) return;
+					// onclick ( code as String, label as String, description as String, parentcode as String, group as String)
+					Pages.sendEvent('ondoubleclick', { code: params.nodes[0], label: infos.label, description: infos.description, parentcode: infos.parentcode, group: infos.group });
+				}
+			});
+			network.on("showPopup", function (params) {
+				var infos = cache.get(params);
+				if (infos == null || infos.description == null) return;
+				var width = getWidth(infos.description);
+				var height = getHeight(infos.description);
+				var tooltip = document.querySelector('div.vis-tooltip');
+				tooltip.style.width = width + 'px';
+				tooltip.style.height = height + 'px';
+			});
+			network.on("hidePopup", function (params) {
+				var tooltip = document.querySelector('div.vis-tooltip');
+				tooltip.style.width = '100px';
+			});
+			network.on("afterDrawing", function (params) {
+				if (hierarchical) {
+					if (selectednode != null)
+						network.selectNodes([selectednode]);
+					document.getElementById('loading').style.display = 'none';
+				}
+			});
+			network.on("stabilizationIterationsDone", function (params) {
+				if (!hierarchical) {
+					if (stopPhysics)
+						network.setOptions({ physics: false });
+					if (selectednode != null)
+						network.selectNodes([selectednode]);
+					document.getElementById('loading').style.display = 'none';
+				}
+			});
+
+
+		}
+
+		var myTimeout = null;
+		var fetchInvalidated = function () {
+			initData();
+		};
+		Pages.listenToDatasetInvalidation("chartdata", function () {
+			if (myTimeout != null) {
+				clearTimeout(myTimeout);
+				myTimeout = setTimeout(fetchInvalidated, 500);
+				return;
+			}
+			myTimeout = setTimeout(fetchInvalidated, 500);
+		});
+
+
+		Pages.listenInitDone(function () {
+			initData();
+
+
+			Pages.listenTo("selectednode", function (newValue) {
+				if (newValue != selectednode) {
+					selectednode = newValue;
+					if (selectednode != null)
+						network.selectNodes([selectednode]);
+				}
+			});
+
+
+			Pages.listenTo("hierarchical", function (newValue) {
+				if (newValue != hierarchical) {
+					hierarchical = newValue;
+					initData();
+				}
+			});
+
+			Pages.listenTo("stopPhysics", function (newValue) {
+				if (newValue != stopPhysics) {
+					stopPhysics = newValue;
+					if (!hierarchical) {
+						if (stopPhysics)
+							network.setOptions({ physics: false });
+						else
+							network.setOptions({ physics: { stabilization: { iterations: 300 }, hierarchicalRepulsion: { centralGravity: 0, springLength: 50, nodeDistance: 150 } } });
+					}
+				}
+			});
+
+
+		});
+
+
+
+
+	</script>
+
+
+
+
+</body>
+
+</html>

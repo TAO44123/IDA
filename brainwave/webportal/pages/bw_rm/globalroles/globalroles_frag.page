@@ -1,0 +1,253 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+import "/webportal/pages/bw_rm/rolemining_dialogs.page"
+import "/webportal/pages/bw_rm/globalroles/globalrole_wzd.page"
+import "/webportal/pages/bw_rm/globalroles/globalroles_cfg.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_cloud_base/resources/services/dynamicrule_services.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+rm_globalroles = PageFragment {
+	mixins: detailPageMixin
+
+	inReadOnly = Variable { type: Boolean initial: False }
+	inEnabled = Variable { type: Boolean initial: True }
+
+	selectedRole = Variable
+	identityRuleContent = Variable
+
+	/* global roles */
+	groles = Dataset {
+		view: bwrm_globalrolesinfo
+		disable-cache: True
+	}
+	
+	roleDetail = Record {
+		view: bwpm_roledetails_md with selectedRole to rolecode
+	}
+	
+	rolePermissions = Dataset {
+		view: bwpm_getrolepermissions_md with selectedRole to rolecode
+	}
+
+	roleIdentities = Dataset {
+		view: bwrm_identity_search with roleDetail.identityrule to rulename
+	}
+ 
+	deleterole = TaskRecord(create "bwpm_deleterole")
+	
+	// creation role through dialog box with selected perms and identities 
+	onCreateRole = NamedAction ( 
+		Dialog bwrm_globalrole_wzd,
+		ReloadData(groles) 
+	)
+
+	onUpdateRole = NamedAction (
+		Dialog bwrm_globalrole_wzd (selectedRole to inCode, roleDetail.identityrulecontent to identitySearch ),
+		ReloadData(groles)
+	)
+
+	onDeleteRole = NamedAction (
+		Confirm $permminingNLS.sure,
+			Set selectedRole to deleterole.in_rolecode,
+			TaskComplete deleterole wait-end,
+			Flash $permminingNLS.deleted,
+		ReloadData(groles)
+	)
+
+	/* right:  roles */
+	ButtonGroup {
+		align: Right
+		uniform: True
+		Button {
+			actions:
+				GoTo Page rm_globalroles_cfg
+			text: $global_roles_NLS.page.management.title
+			hidden:
+				Eval "!inReadOnly.get()"
+		}
+		Button {
+			text: $permminingNLS.creat
+			actions:
+				ExecuteNamedAction onCreateRole
+			image: "16/famfamfam_silk_icons_v013/add.png"
+			tooltip: $permminingNLS.declare
+			hidden:
+				Eval "inReadOnly.get()"
+		}
+		Button {
+			actions:
+				ExecuteNamedAction onUpdateRole
+			text: $permminingNLS.editRole
+			image: "16/famfamfam_silk_icons_v013/wrench.png"
+			tooltip: $permminingNLS.edit
+			disabled:
+				Eval " selectedRole.isEmpty()"
+			hidden:
+				Eval "inReadOnly.get()"
+		}
+		Button {
+			actions:
+				ExecuteNamedAction onDeleteRole
+			text: $permminingNLS.deleteRole
+			image: "16/famfamfam_silk_icons_v013/delete.png"
+			tooltip: $permminingNLS.delete
+			disabled:
+				Eval " selectedRole.isEmpty()"
+			hidden:
+				Eval "inReadOnly.get()"
+		}
+	}
+	Table {
+		label: Label { value: $bw_rm_managementNLS.globalRoles break: True }
+		layout: Layout { grab: horizontal True vertical False hint: height 200 }
+		data: groles 
+		show-count: True
+		show-filter: True
+		configurable: True
+		persist-configuration: True
+		persist-configuration-key: "rm_globalroles_groles"
+		Column {
+			column: code
+			header: $permminingNLS.rolename
+			selection: selectedRole
+			initially-masked: True
+			filterable: True
+			sortable: True
+			width: 100%
+		}
+		Column {
+			column: name  
+			header: $permminingNLS.rolename
+			styling: StylingTemplateSelection( Eval "''+current.color+'g'" ) using bw_role_styling
+			filterable: True
+			sortable: True
+			width: 100%
+		}
+		Column {
+			column: ruledisplayname 
+			header: $bw_rm_managementNLS.global.identityRule
+			filterable: True
+			sortable: True
+			width: 100%
+		}
+		Column {
+			column: description
+			header: $permminingNLS.desc
+			filterable: True
+			sortable: True
+			width: 100%
+		}
+		Column {
+			column: status
+			header: $permminingNLS.status
+			text: Transform Current status using bwrm_rolestatus
+			filterable: True
+			sortable: True
+			width: 100px
+		}
+	}
+	Group {
+		hidden: Eval "selectedRole.isEmpty()"
+		layout: Layout { grab: horizontal True vertical True }
+		Text {
+			value: roleDetail.name
+			label: $bwpm_createRoleNLS.namelabel
+		}
+		Text {
+			value: roleDetail.description
+			label: $bwpm_createRoleNLS.descriptionlabel
+		}
+		Text {
+			value: roleDetail.category
+			label: $permminingNLS.rolecategory
+		}
+		Text {
+			value: roleDetail.owner_fullname
+			label: $bwpm_createRoleNLS.owner
+		}
+		// permissions and identities
+		Grid {
+			columns: GridColumn,GridColumn
+			GridRow {
+				GridCell { 
+					Table {
+						data: roleIdentities 
+						layout: Layout { grab: horizontal True vertical True }
+						label: Label {	break:True value: $permminingNLS.peoplerole }
+						show-count: True
+						show-filter: True
+						configurable: True
+						persist-configuration: True
+						persist-configuration-key: "rm_globalroles_roleIdentities"
+						Column {
+							column: hrcode
+							header: $identity.hrcode
+							initially-masked: True
+							filterable: True
+							sortable: True
+							width: 100%
+						}
+						Column {
+							column: fullname
+							header: $permminingNLS.fullname
+							filterable: True
+							sortable: True
+							width: 100%
+						}
+						Column {
+							column: job_organisation
+							header: $global_roles_NLS.wzd.identities.header.joborg
+							filterable: True
+							sortable: True
+							width: 100%
+						}
+					}
+				}
+				GridCell {
+					Table {
+						data: rolePermissions
+						layout: Layout { grab: horizontal True vertical True }
+						label: Label { break: True value: $permminingNLS.permrole }
+						show-count: True
+						show-filter: True
+						configurable: True
+						persist-configuration: True
+						persist-configuration-key: "rm_globalroles_rolePermissions"
+						Column {
+							column: code
+							header: $permminingNLS.permcode
+							filterable: True
+							sortable: True
+							width: 100%
+						}
+						Column {
+							column: displayname
+							header: $permminingNLS.perm
+							filterable: True
+							sortable: True
+							width: 100%
+						}
+						Column {
+							column: applicationcode
+							header: $papplication.code
+							initially-masked: True
+							filterable: True
+							sortable: True
+							width: 100%
+						}
+						Column {
+							column: applicationdisplayname
+							header: $permminingNLS.app
+							filterable: True
+							sortable: True
+							width: 100%
+						}
+					}
+				}
+			}
+		}
+	}
+}

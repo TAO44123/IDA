@@ -1,0 +1,502 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+import "/webportal/pages/resources/constants.page"
+
+prepositoryextNLS = NLS {
+	code [en "Repository \nCode" fr "Code du \nréférentiel"]
+	displayname [en "Repository \nName" fr "Nom du \nréférentiel"]
+}
+
+applicationextNLS = NLS {
+	sensitivityreason [en "Sensitivity \nReason" fr "Raison \nsensibilité"]
+	sensitivitylevel [en "Sensitivity \nLevel" fr "Niveau \nsensibilité"]
+	description [en "Description" fr "Description"]
+	category [en "Category" fr "Catégorie"]
+}
+
+papplicationextNLS = NLS {
+	sensitivityreason [en "Application \nSensitivity \nReason" fr "Raison \nsensibilité \napplication"]
+	sensitivitylevel [en "Application \nSensitivity \nLevel" fr "Niveau \nsensibilité \napplication"]
+	description [en "Application \nDescription" fr "Description \napplication"]
+	category [en "Application \nCategory" fr "Catégorie application"]
+}
+
+permissionextNLS = NLS {
+	sensitivityreason [en "sensitivity reason" fr "raison sensibilité"]
+	sensitivitylevel [en "sensitivity level" fr "niveau sensibilité"]
+	description [en "description" fr "description"]
+}
+
+ppermissionextNLS = NLS {
+	sensitivityreason [en "permission sensitivity reason" fr "raison sensibilité permission"]
+	sensitivitylevel [en "permission sensitivity level" fr "niveau sensibilité permission"]
+	description [en "permission description" fr "description permission"]
+}
+
+applicationSearchPage_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+
+applicationSearchPage_withtrends = UserVariable {
+		initial:False
+		type:Boolean
+		persistent:True
+}
+
+applicationSearchPage = Page {
+	title: $search.application.title
+	tags: "application" , "conceptsearch" priority 250
+	icon: %concept_32.application
+	large-icon: %concept_48.application
+	description: $searchlabel.application
+	
+	initialUid = Parameter {
+		type: String
+		hidden: True
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	applicationSearch = SearchDefinition {
+		entity: Application
+		simple-mode-rule: br_application_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedApplicationUid = Variable {
+		type: String
+	}
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	applicationanalytics = Dataset {
+		pages: Pages{tags: "application" and "searchresults" }
+		count-variable:nbanalytics
+	}
+	
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+	
+	applicationData = Dataset {
+		search: Search {
+			definition: applicationSearch
+			view: br_application_searchpoint_trend with "Profile" to applicationtype, reftimeslot.timeslotuid to reftimeslotuid, UserVariable applicationSearchPage_withtrends to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	applicationData_count = Dataset {
+		search: Search {
+			definition: applicationSearch
+			view: br_application_searchpoint_trend with "Profile" to applicationtype, reftimeslot.timeslotuid to reftimeslotuid, False to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	
+	goDetails = NamedAction (
+		GoTo Activity Application Detail with selectedApplicationUid to paramApplicationUid
+	)
+	
+	// Search section
+	Group {
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		SearchEdition {
+			definition: applicationSearch
+			layout: Layout { grab: horizontal True vertical False }
+			simple-mode-columns: 2
+			rule-mode-enabled:FeaturePredicate applicationsearch_rulemode
+			completion-view: [
+				Application as br_applicationcompletion
+			]
+			simple-mode-layout: SimpleModeLayout {
+				code { label: $application.code },
+				name { label: $application.displayname },
+				family { label: $application.applicationfamily }
+			}
+		}
+	}
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: applicationData
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex
+			selection-index: initialIndex
+			page-size:1000
+			show-count-button: True
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedApplicationUid
+			}
+			Column {
+				column: code
+				header: $application.code
+				width: 100%
+				sortable: True
+				initially-masked: True
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: displayname
+				header: $application.displayname
+				width: 100%
+				sortable: True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: repository_code
+				header: $prepositoryextNLS.code
+				width: 100%
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: repository_displayname
+				header: $prepositoryextNLS.displayname
+				width: 100%
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: category
+				header: $papplicationextNLS.category
+				width: 100%
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: sensitivitylevel
+				text:Transform Current sensitivitylevel using bwfApplicationSensitivityLevelMapping
+				header: $papplicationextNLS.sensitivitylevel
+				width: 100%
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: sensitivityreason
+				header: $papplicationextNLS.sensitivityreason
+				width: 100%
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: description
+				header: $papplicationextNLS.description
+				width: 100%
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: isnew
+				text:Transform Current isnew using booleanDisplayMapping
+				header: $searchlabel.isnew
+				width: 100px
+				styling:BooleanStyling(Current isnew) { when True then applicationSearchPage_highlightnew when False then default }				
+				initially-masked: True
+			}
+			Column {
+				column:nbaccount
+				text:Transform Current nbaccount using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbaccounts.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbaccount).equals('null')?956487965:current.nbaccount-current.prevnbaccount") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbaccount using mayBeNullMapping, Transform Current prevnbaccount using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbidentity
+				text:Transform Current nbidentity using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbidentities.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbidentity).equals('null')?956487965:current.nbidentity-current.prevnbidentity") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbidentity using mayBeNullMapping, Transform Current prevnbidentity using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbprofile
+				text:Transform Current nbprofile using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbprofile.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbprofile).equals('null')?956487965:current.nbprofile-current.prevnbprofile") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbprofile using mayBeNullMapping,Transform Current prevnbprofile using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbpermission
+				text:Transform Current nbpermission using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbpermission.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbpermission).equals('null')?956487965:current.nbpermission-current.prevnbpermission") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbpermission using mayBeNullMapping,Transform Current prevnbpermission using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbperimeter
+				text:Transform Current nbperimeter using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.application.nbperimeter.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbperimeter).equals('null')?956487965:current.nbperimeter-current.prevnbperimeter") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbperimeter using mayBeNullMapping,Transform Current prevnbperimeter using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbbusinessactivity
+				feature:sod_license
+				text:Transform Current nbbusinessactivity using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.application.nbbusinessactivity.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbbusinessactivity).equals('null')?956487965:current.nbbusinessactivity-current.prevnbbusinessactivity") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbbusinessactivity using mayBeNullMapping, Transform Current prevnbbusinessactivity using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:110px
+			}
+			Column {
+				column:nbtheoretical
+				feature:iam_license
+				text:Transform Current nbtheoretical using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.application.nbtheoretical.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbtheoretical).equals('null')?956487965:current.nbtheoretical-current.prevnbtheoretical") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbtheoretical using mayBeNullMapping,Transform Current prevnbtheoretical using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:110px
+			}
+			Column {
+				column:nbdirectaccountright
+				text:Transform Current nbdirectaccountright using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbdirectaccountright.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbdirectaccountright).equals('null')?956487965:current.nbdirectaccountright-current.prevnbdirectaccountright") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbdirectaccountright using mayBeNullMapping,Transform Current prevnbdirectaccountright using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:110px
+			}
+			Column {
+				column:nbdirectidentityright
+				text:Transform Current nbdirectidentityright using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbdirectidentityright.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbdirectidentityright).equals('null')?956487965:current.nbdirectidentityright-current.prevnbdirectidentityright") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbdirectidentityright using mayBeNullMapping,Transform Current prevnbdirectidentityright using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbusage
+				text:Transform Current nbusage using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.application.nbusage.header
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+		}
+		Grid {
+			columns:GridColumn,GridColumn { width: grow }
+			layout: Layout { grab:horizontal True vertical False hint: height 38 }
+			GridRow {
+				GridCell {
+					Checkbox {
+						variable:UserVariable applicationSearchPage_withtrends
+						text:$search.showkpitrends
+						tooltip:$search.showkpitrends.tooltip
+					}
+				}			
+				GridCell {
+					ButtonGroup {
+						nb-inline:2
+						align:Right
+						Button {
+							actions:ExecuteNamedAction goDetails
+							text:$search.showdetails
+							tooltip:$search.showdetailstooltip
+							disabled:StringPredicate(selectedApplicationUid) { when IsEmpty then True }	
+							image:%browsing_16.link
+						}
+						Button {
+							actions: IntCase(Count applicationData_count)	{
+											when > NonEmpty(ConfigurationVariable "search_application_analyticserrorthreshold", Constant search_application_analyticserrorthreshold) then [
+												Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_application_analyticserrorthreshold", Constant search_application_analyticserrorthreshold))
+											]
+											when > NonEmpty(ConfigurationVariable "search_application_analyticswarningthreshold", Constant search_application_analyticswarningthreshold) then [
+												Confirm $search.analyticswarningthreshold(Count applicationData_count),
+												GoTo Page applicationSearchAnalyticsPage with  SerializeSearch applicationSearch to search
+													
+											]
+											otherwise [
+												GoTo Page applicationSearchAnalyticsPage with  SerializeSearch applicationSearch to search
+											]
+										}
+							text:$search.applyanalytics
+							tooltip:$search.applyanalyticstooltip
+							image:%report_16.analytics
+							feature:applicationsearch_analytics
+							disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+						}
+						Button {
+							actions:	TransferData applicationData(uid) to (uids), 
+										Dialog fragmentApplicationBulkAddTag(uids to uids),
+										Flash $search.flashaddingatag
+							text:$search.addingatag
+							image:%collection_16.tag
+							feature:applicationsearch_updatetags
+						}
+						Button {
+							actions:	TransferData applicationData(uid) to (uids), 
+										Dialog fragmentApplicationBulkRemoveTag(uids to uids, SerializeSearch applicationSearch to applicationSearch),
+										Flash $search.flashremovingatag
+							text:$search.removingatag
+							image:%collection_16.tag
+							feature:applicationsearch_updatetags
+						}
+						Button {
+							actions:	TransferData applicationData(uid) to (uids), 
+										Dialog fragmentApplicationBulkRemoveAllTags(uids to uids),
+										Flash $search.flashremovingalltag
+							text:$search.removingalltag
+							image:%collection_16.tag
+							feature:applicationsearch_updatetags
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+applicationSearchAnalyticsPage = Page {
+	title:$search.applyanalytics
+
+	search = SearchDefinition {
+		entity:Application
+		simple-mode-rule: br_application_simple_search
+	}
+
+	analytics = Dataset {
+		pages: Pages{tags: "application" and "searchresults" }
+	}
+
+	ConditionalGroup {
+		IntCondition(Count analytics) {
+			when =0 then [
+				Header {
+					value:$search.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:analytics
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:$search.back
+			image:%browsing_16.back
+		}
+	}
+}

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwc_sensitivefolderrightsnotreviewedlast90days_root" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="fsright" displayname="sensitive folder rights not reviewed last 90 days" notes="" begindate="" enddate="">
+	<ViewParam name="limitactiondate" displayname="limit action date" defaultvalue="{ new Date( new Date().getTime() - ( param.daysnb.get()* (24*60*60*1000) ) ).toLDAPString() }"/>
+	<ViewParam name="sensitivitylevel" displayname="sensitivity level" type="Integer"/>
+	<ViewParam name="daysnb" displayname="dasynb" type="Integer"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1603102785999_597" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermission">
+		<ViewAttribute name="1603109938575_893" attribute="code" operator="or" removedfromprojection="true" globalfilter="false"/>
+		<ViewAttribute name="1608050157713_6503" attribute="bwa_permissionmetadata_sensitivitylevel" operator="or" removedfromprojection="true" globalfilter="true">
+			<ViewAttributeFilter name="F1608050134733_0" reference="sensitivitylevel" operation="eq" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1608050164435_6504" attribute="bwa_permissionmetadata_managed" operator="or" removedfromprojection="true" globalfilter="true">
+			<ViewAttributeFilter name="F1608050167719_0" operation="isTrue" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewAttribute name="1603109943835_896" attribute="permissionrecorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1603109943835_897" attribute="accountrecorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewCriteria name="I1602842266757_1430" criteria="hasBeenReviewed">
+	</ViewCriteria>
+	<ViewJoin name="J1602842303791_1431" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+		<ViewAttribute name="1603109957251_902" attribute="actiondate" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1602836243886_0" reference="limitactiondate" operation="lt" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="1603109957252_903" attribute="status" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1602839765390_0" operation="in" ignoreifempty="false">
+				<Value name="0" data="ok"/>
+				<Value name="1" data="update"/>
+				<Value name="2" data="revoke"/>
+				<Value name="3" data="remove"/>
+				<Value name="4" data="add"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+	</ViewJoin>
+</View>

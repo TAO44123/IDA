@@ -1,0 +1,85 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Animated bar chart</title>
+
+    <script src="jquery.min.js"></script>
+    <script src="d3.min.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var params = {};
+            window.location.search.substr(1).split("&").forEach(function (i) { params[i.split('=')[0]] = i.split('=')[1] });
+            var collect = params["collect"];
+            var activation = params["activation"];
+            var reconciliation = params["reconciliation"];
+            var control = params["control"];
+            var total = params["total"];
+            var max = params["max"];
+
+            // Calculate remaining value
+            var others = total - collect - activation - reconciliation - control;
+
+            $("body").css("overflow", "hidden");
+            $("body").css("background-color", "#F0F0F0");
+
+            // SVG container
+            var svg = d3.select("#canvas")
+                .append("svg")
+                .attr("width", "100%")
+                .attr("height", "100%");
+
+            // Calculate proportional sizes
+            var totalSize = $("#canvas").width();
+            var barSize = (total * totalSize) / max;
+
+            // Calculate segment widths based on data values
+            var v1 = collect * barSize / total;
+            var v2 = activation * barSize / total;
+            var v3 = reconciliation * barSize / total;
+            var v4 = control * barSize / total;
+            var v5 = others * barSize / total;
+
+            // Define bar segments with width and color
+            var barData = [
+                { width: v1, color: '#8EA5CC' },   // Collect segment
+                { width: v2, color: '#324F7F' },   // Activation segment
+                { width: v3, color: '#B1CFFF' },   // Reconciliation segment
+                { width: v4, color: '#659FFF' },   // Control segment
+                { width: v5, color: '#59677F' }    // Others segment
+            ];
+
+            // Calculate x position for each segment
+            var acum = 0;
+            barData.forEach(function (d) {
+                d.x = acum;
+                acum += d.width;
+            });
+
+            // Create and animate bar segments
+            svg.selectAll("rect")
+                .data(barData)
+                .enter()
+                .append("rect")
+                .attr("x", function (d) { return d.x; })  // Position segments side by side
+                .attr("y", 0)
+                .attr("width", 1)                         // Start with minimal width
+                .attr("height", 10)                       // Start with small height
+                .attr("fill", function (d) { return d.color; })
+                .attr("stroke", function (d) { return d.color; })
+                .transition()                             // Animate to final size
+                .duration(400)
+                .attr("width", function (d) { return d.width; })
+                .attr("height", 32);
+        });
+    </script>
+</head>
+
+<body>
+    <div id="canvas"></div>
+</body>
+
+</html>

@@ -1,0 +1,468 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/mixins.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_comparison/permission_comparison.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_access360/portalreports/control/rolessodmatrix.page"
+
+fragmentApplicationPermissionsNLS = NLS {
+	subtitle [en '{1} ({0}) accounts' fr 'Comptes de {1} ({0})']
+	noownercode [en "Technical account" fr "Compte technique"]
+	pdescription [en "Description" fr "Description"]
+	psensitivitylevel [en "Sensitivity Level" fr "Niveau sensibilité"]
+	nbaccount [en "Nb accounts" fr "Nb comptes"]
+	trends [en "Changes" fr "Changements"]
+	accounts [en "Active accounts list" fr "Liste des comptes actifs"]
+	showdetails [en "Show selected permission account list" fr "Afficher la liste des comptes pour la permission sélectionnée"]
+	empty [en "Select a permission in the upper table to display the corresponding accounts list" 
+	       fr "Sélectionnez une permission dans la table ci dessus pour afficher la liste des comptes correspondants"]
+	comparewith [en "Compare {0} with ..." fr "Comparer {0} avec ..."]
+	permsodanalysis [en "Permission Core Model SoD analysis" fr "Analyse des écarts SoD Core Model de la permission"]
+	sodproblemsdetected [en "A Warning sign is displayed \n if Core Model SoD problems are detected \nYou can select the line and clic on the icon on the right of the table to perform an analysis of this problem" fr "Un signal d'alerte est affiché \n si des problèmes de SoD au niveau du modèle ont été détectés \nVous pouvez sélectionner la ligne puis cliquer sur l'icone à droite du tableau pour réaliser une analyse"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected application permissions as a list at a "Role" level
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inPermissionType </b>the permission type ('Role' by defaut)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>incangotosodanalysis </b>activate/deactivate go to Core Model SOD analysis page (false by default)</li>
+ * <li><b>incancompare </b>optional, boolean value, true to enable comparison button (false by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationPermissions = PageFragment {
+	enter-event:BooleanCase using FeaturePredicate sod_license in { when True then [ Set True to hasSoDLicense ] when False then [ Set False to hasSoDLicense ] },
+				IntCase(application.bwa_applicationanalytics_nbbusinessactivity) { when >0 then [ Set True to hasBusinessactivity ] },
+				Set Eval "hasSoDLicense.get() && hasBusinessactivity.get()" to highlightSoDproblems
+				
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incangotosodanalysis = Variable { multivalued:False type:Boolean initial:False }
+	inshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inPermissionType = Variable {multivalued:True}
+	incancompare = Variable { type:Boolean initial:False }
+
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+	
+	sod_coremodelproblems = Variable
+
+	selectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+
+	hasSoDLicense = Variable { type:Boolean initial:False}
+	hasBusinessactivity = Variable { type:Boolean initial:False}
+	highlightSoDproblems = Variable { type:Boolean initial:False}
+
+	application = Record {
+		view:bwf_applicationDetail with inuid to uid
+	}
+
+	permissions = Dataset {
+		view:bwf_applicationpermissionswprb with inuid to uid,inPermissionType to permissiontype unless-empty, highlightSoDproblems to highlightSoDproblems
+		 disabled:Not BooleanPredicate(inenabled)
+		 
+		 excludes: 
+		 AndPredicate {
+		 	Not BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			StringPredicate(Current trends) { when "Removed" then True otherwise False }		 
+		 }
+	}
+
+	comparisonPermission = Record {
+		view: br_permissionDetail with compareFrom to uid
+		disabled:StringPredicate(compareFrom) { when IsEmpty then True otherwise False }
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid, 
+												True to inshowaccounts,
+												True to inshowaccountperimeters,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowoverallocated,
+												True to inshowcontrols,
+												True to inshowsodmodeldefects,
+												True to inshowdecisionhistory,
+												True to inshowusages
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				ButtonGroup {
+					Button {
+						layout:Layout { hint:width 300 }
+						
+						actions:
+							Set ElementAt 1 of selectedUids to compareFrom,
+							Set selectedUids to compareTo,
+							MultivaluedRemove compareFrom from compareTo,
+							GoTo Page bwc_permission_comparison with compareFrom to uid, compareTo to uids  save-state 
+						text:$fragmentApplicationPermissionsNLS.comparewith(NonEmpty(comparisonPermission.displayname,' '))
+						disabled:IntPredicate(SizeOf selectedUids) { when <2 then True otherwise False }
+						presentation:Button
+					}
+				}
+
+				Table {
+					data:permissions
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					checkboxes:permissionuid to selectedUids
+					checkboxes-changed-event:Set ElementAt 1 of selectedUids to compareFrom
+					double-click:ExecuteNamedAction goDetails
+					persist-configuration:True
+					commands:Commands {
+						position:After
+						presentation:Icon
+						orientation:Vertical
+						Command {
+							actions:Message "nop"
+							icon:""
+							disabled:True
+						}
+						Command {
+							actions:GoTo Page bwa360_rolessodmatrix_innerdetails with outpermissionuid to permissionuid, False to cangoback
+							icon:%report_16.analytics
+							tooltip:$fragmentApplicationPermissionsNLS.permsodanalysis
+							disabled:
+								OrPredicate {
+									StringPredicate(outpermissionuid) { when IsEmpty then True otherwise False }
+									Not BooleanPredicate(incangotosodanalysis)
+									Not FeaturePredicate sod_license
+									StringPredicate(sod_coremodelproblems) { when IsEmpty then True otherwise False }
+								}
+						}
+					}
+					
+					
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+			
+					Column {
+						column: sod_coremodelproblems
+						selection:sod_coremodelproblems
+						text:''
+						header: ''
+						width: 52px
+						sortable: True
+						image:TemplateImageSelection(Current sod_coremodelproblems) using bwf_warning
+						tooltip:$fragmentApplicationPermissionsNLS.sodproblemsdetected
+					}
+
+					Column {
+						column:permissioncode
+						header:$ppermission.code
+						selection:outpermissioncode
+						width:160px
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissiondisplayname
+						header:$ppermission.displayname
+						selection:outpermissionname
+						width:100%
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissionpermissiontype
+						header:$ppermission.permissiontype
+						width:140px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissiondescription
+						header:$fragmentApplicationPermissionsNLS.pdescription
+						width:260px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissionsensitivitylevel
+						header:$fragmentApplicationPermissionsNLS.psensitivitylevel
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:nbaccounts
+						text:Transform Current nbaccounts using bwf_defaultsTo0
+						align:Right
+						header:$fragmentApplicationPermissionsNLS.nbaccount
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+			when False then [
+				Table {
+					data:permissions
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					double-click:ExecuteNamedAction goDetails
+					
+					commands: Commands {
+						position:After
+						presentation:Icon
+						orientation:Vertical
+						Command {
+							actions:Message "nop"
+							icon:""
+							disabled:True
+						}
+						Command {
+							actions:GoTo Page bwa360_rolessodmatrix_innerdetails with outpermissionuid to permissionuid, False to cangoback
+							icon:%report_16.analytics
+							tooltip:$fragmentApplicationPermissionsNLS.permsodanalysis
+							disabled:
+								OrPredicate {
+									StringPredicate(outpermissionuid) { when IsEmpty then True otherwise False }
+									Not BooleanPredicate(incangotosodanalysis)
+									Not FeaturePredicate sod_license
+									StringPredicate(sod_coremodelproblems) { when IsEmpty then True otherwise False }
+								}
+						}
+					}
+					
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+
+					Column {
+						column: sod_coremodelproblems
+						selection: sod_coremodelproblems
+						text:''
+						header: ''
+						width: 52px
+						sortable: True
+						image:TemplateImageSelection(Current sod_coremodelproblems) using bwf_warning
+					}
+			
+					Column {
+						column:permissioncode
+						header:$ppermission.code
+						selection:outpermissioncode
+						width:160px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissiondisplayname
+						header:$ppermission.displayname
+						selection:outpermissionname
+						width:100%
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissionpermissiontype
+						header:$ppermission.permissiontype
+						width:140px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissiondescription
+						header:$fragmentApplicationPermissionsNLS.pdescription
+						width:260px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissionsensitivitylevel
+						header:$fragmentApplicationPermissionsNLS.psensitivitylevel
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:nbaccounts
+						text:Transform Current nbaccounts using bwf_defaultsTo0
+						align:Right
+						header:$fragmentApplicationPermissionsNLS.nbaccount
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}
+
+fragmentApplicationPermissionSelectionNLS =NLS {
+	profile [en "profiles only" fr "seulement les profils"]
+	_all [en "all permissions" fr "toutes les permissions"]
+}
+
+fragmentApplicationPermissionSelection = PageFragment {
+	enter-event: 
+		IntCase(application.bwa_applicationanalytics_nbprofile) { when >0 then [  
+					MultivaluedAdd "profile" to combovalue,
+					MultivaluedAdd $fragmentApplicationPermissionSelectionNLS.profile to combotext
+			] },
+		IntCase(application.bwa_applicationanalytics_nbpermission) { when >0 then [  
+					MultivaluedAdd "all" to combovalue,
+					MultivaluedAdd $fragmentApplicationPermissionSelectionNLS._all to combotext
+			] },
+		ExecuteNamedAction updateActiveFlags
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incangotosodanalysis = Variable { multivalued:False type:Boolean initial:False }
+	inshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incancompare = Variable { type:Boolean initial:False }
+
+	combovalue = Variable { multivalued:True }
+	combotext = Variable { multivalued:True }
+
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+	selection = Variable { private:True }
+
+	active_direct = Variable { initial:False multivalued:False type:Boolean }
+	active_all = Variable { initial:False multivalued:False type:Boolean }
+
+	application = Record {
+		view:bwf_applicationDetail with inuid to uid
+	}
+
+	combodata = Dataset {
+		columns:combovalue, combotext
+	}
+
+	updateActiveFlags = NamedAction (
+		StringCase(selection) {
+			when "profile" then [
+				Set True to active_direct
+			]		
+			when "all" then [
+				Set True to active_all
+			]		
+		}
+	)
+
+	Combo {
+		variable:selection
+		layout: Layout { hint: width 300 }
+		modify-event:ExecuteNamedAction updateActiveFlags
+		options: Dynamic {
+			data:combodata
+			text:Current combotext
+			value:Current combovalue
+		}
+	}
+
+	ConditionalGroup {
+		StringCondition(selection) {
+			when "profile" then [
+				IncludeFragment (fragmentApplicationPermissions with 	value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																		value-of inshowdetails to inshowdetails,
+																		value-of incangotosodanalysis to incangotosodanalysis,
+																		value-of incancompare to incancompare,
+																		value-of "Role" to inPermissionType,
+																		outpermissionuid binds-to outpermissionuid, 
+																		outpermissioncode binds-to outpermissioncode, 
+																		outpermissionname binds-to outpermissionname,
+																		value-of Eval "inenabled.get()&&active_direct.get()" to inenabled
+																	) 
+			]	
+			when "all" then [
+				IncludeFragment (fragmentApplicationPermissions with 	value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																		value-of inshowdetails to inshowdetails,
+																		value-of incangotosodanalysis to incangotosodanalysis,
+																		value-of incancompare to incancompare,
+																		outpermissionuid binds-to outpermissionuid, 
+																		outpermissioncode binds-to outpermissioncode, 
+																		outpermissionname binds-to outpermissionname,
+																		value-of Eval "inenabled.get()&&active_all.get()" to inenabled
+																	) 
+			]	
+		}
+	}	
+}

@@ -1,0 +1,119 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+fragmentIdentityApplicationsNLS = NLS {
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the applications for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>intype </b>the application type (Profile by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid  </li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * <li><b>outapplicationname </b>the selected application name</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityApplications = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	intype = Variable {multivalued:True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+	outapplicationuid = Variable
+	outapplicationname = Variable
+	
+	data = Dataset {
+		view: bwf_identityapplications with
+			inuid to uid,
+			intype to type unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	Table {
+		data:data
+		layout:Layout{grab:horizontal True vertical True}
+		show-count:True
+		show-filter:True
+		configurable:True
+		persist-configuration:True
+		
+		Column {
+			column:accountuid
+			hidden:True
+			selection:outaccountuid
+		}
+		Column {
+			column:accountlogin
+			header:$account.login
+			sortable:True
+			filterable:True
+			selection:outaccountlogin
+			width:128px
+		}
+		Column {
+			column:accountusername
+			header:$account.username
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:160px
+		}
+		Column {
+			column:accountlastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:160px
+		}
+		Column {
+			column:repositoryuid
+			hidden:True
+			selection:outrepositoryuid
+		}
+		Column {
+			column:repositorydisplayname
+			selection:outrepositoryname
+			header:$repository.concept
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:160px
+		}
+		Column {
+			column:uid
+			hidden:True
+			selection:outapplicationuid
+		}
+		Column {
+			column:displayname
+			header:$application.concept
+			sortable:True
+			filterable:True
+			selection:outapplicationname
+			width:160px
+		}
+	}
+}

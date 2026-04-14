@@ -1,0 +1,534 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_timeline/timelinenls.page"
+
+import "/webportal/pages/bw_timelinewidget/timeline.page"
+
+/* Nationalized labels here */
+grouptimelineNLS = NLS {
+	title [en "Group timeline" fr "Evolutions du groupe"]
+	dyntitle [en "{0} timeline" fr "Evolutions de {0}"]
+	joborg [en "{0} in {1}" fr "{0} chez {1}"]
+	share [en "Share" fr "Partage"]
+	folder [en "Data" fr "Données"]
+	manager [en "{0} as {1}" fr "{0} en tant que {1}"]
+
+	direct [en "Direct members" fr "Membres directs"]
+	directtooltip [en "Accounts directly assigned to this group" fr "Comptes directement assignés à ce groupe"]
+	allmembers [en "All members" fr "Tous les membres"]
+	allmemberstooltip [en "All members of this group" fr "Tous les membres de ce groupe"]
+	subgroups [en "Sub groups" fr "Sous groupes"]
+	subgroupstooltip [en "Sub groups" fr "Sous groupes"]
+	subgrouptimeline [en "Show selected subgroup timeline" fr "Afficher la timeline du sous groupe sélectionné"]
+
+	description [
+		en "This report presents the evolutions that have occurred over time. The timeline presents the different timeslots as well as the major events that occurred at each loading. It is possible to select a date to display the details of the identified changes. It is also possible to select a time range by pressing the Ctrl key and clicking on two dates in the timeline."
+		fr "Ce rapport présente les évolutions survenues au fil du temps. la timeline présente les différents points de chargement ainsi que les evenements majeurs survenus à chaque chargement. Il est posible de sélectionner une date pour afficher le détail des changements identifiés. Il est aussi posible de sélectionner une page de temps en appuyant sur la touche Ctrl et en cliquant sur deux dates dans la timeline."
+	]	
+}
+
+grouptimeline_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+grouptimeline_highlightremoved = Style {
+	foreground:white
+	background:Color red
+}
+
+grouptimeline_highlightmodified = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+grouptimelinepicker = Dialog {
+	title:$timelineNLS.selecttimeslot
+	width:640
+	height:200
+	buttons:[OkButton CancelButton]
+	
+	selectedTimeslot = Variable
+	
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+
+	Combo {
+		variable:selectedTimeslot
+		
+		options:Dynamic {
+			data:timeslots
+			text:Concat (Current displayname, ' (', Current commitdate, ')')
+			value:Current uid
+		}
+	}
+
+}
+
+grouptimeline = Page {
+	title: $grouptimelineNLS.title
+	dynamic-title:$grouptimelineNLS.dyntitle(group.displayname)
+	description:$grouptimelineNLS.description
+	tags: "group" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwt_grouptimeline
+	
+	uid = Parameter {
+		label:"Concept Uid"
+		type:String
+		hidden:True
+		mandatory:True
+	}
+	initialTimeslot = Parameter { default:PortalTimeslot.UID }
+
+	/* Parameters here */
+	currentTimeslot = Variable
+	refTimeslot = Variable
+	
+	selectedRepository = Variable
+	selectedApplication = Variable
+	selectedShare = Variable
+	
+	showonlydiffdirectmembers = Variable {initial:True}
+	showonlydiffallmembers = Variable {initial:True}
+	showonlydiffsubgroups = Variable {initial:True}
+	showonlydiffpermission = Variable {initial:True}
+	showonlydiffdata = Variable {initial:True}
+	
+	
+	currentTab = Variable {initial:0}
+	subgroupuid = Variable
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+	previoustimeslot = Record {
+		view:bwt_previoustimeslot with currentTimeslot to uid
+	}
+	reftimeslot = Record {
+		view:bwt_timeslot with refTimeslot to uid
+	}
+		
+	group = Record {
+		view:br_groupDetail with uid to uid
+		timeslot:currentTimeslot
+	}
+	
+	groupmanagers = Dataset {
+		view:bwt_groupmanagers with uid to uid
+		timeslot:currentTimeslot
+	}
+	
+	groupdirectmembers = Dataset {
+		view:bwt_groupdirectmembers with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=0 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffdirectmembers)
+		}
+	}
+	
+	groupallmembers = Dataset {
+		view:bwt_groupallmembers with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=1 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffallmembers)
+		}
+	}
+	
+	groupsubgroups = Dataset {
+		view:bwt_groupsubgroups with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:nbaccounts
+			difference-column-name:diff
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=2 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffsubgroups)
+		}
+	}
+	
+	grouppermission = Dataset {
+		view:bwt_grouppermission with uid to uid, refTimeslot to dummy
+
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=3 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffpermission)
+		}
+	}
+	
+	groupdata = Dataset {
+		view:bwt_groupdata with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=4 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffdata)
+		}
+	}
+	
+	
+	timeline = Dataset {
+		view:bwt_groupcomputechanges with uid to uid
+	}
+	
+	/* Page content */
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical False hint:height 110 }
+		label:Label {break:True}
+		template: timeline
+		datasets:timeline(previoustimeslotuid, timeslotuid, previoustimeslotcommitdate, timeslotcommitdate, label, description, group) to chartdata(from_timeslotuid,  to_timeslotuid, from_ts, to_ts, label, description, group)
+		bindings:
+			value-of True to navigationButtons,
+			value-of "background" to itemType
+		widget-events: {
+			when onclick then [
+				Set Current to_timeslotuid to currentTimeslot, Set Current from_timeslotuid to refTimeslot  
+			]
+		}
+	}
+	ConditionalGroup {
+		StringCondition(currentTimeslot) {
+		when IsEmpty then [
+			Header {
+				value:$timelineNLS.help
+			}
+		]
+		otherwise [
+			TabFolder {
+				TabItem {
+					text:$group.concept
+	
+					Text {
+						label:Label {break:False value:$group.code}
+						compact:True
+						value:group.code
+					}
+					Text {
+						label:Label {break:False value:$group.displayname}
+						compact:True
+						value:group.displayname
+					}
+					Text {
+						label:Label {break:False value:$group.comment}
+						compact:True
+						value:group.comment
+					}
+					Text {
+						label:Label {break:False value:$repository.concept}
+						compact:True
+						value:group.repository_displayname
+					}
+					Text {
+						label:Label {break:False value:$group.creationdate}
+						compact:True
+						value:group.creationdate
+					}
+					Text {
+						label:Label {break:False value:$group.modificationdate}
+						compact:True
+						value:group.modificationdate
+					}
+					Text {
+						label:Label {break:False value:$group.grouptype}
+						compact:True
+						value:group.grouptype
+					}
+					Text {
+						label:Label {break:False value:$group.dynamic}
+						compact:True
+						value:group.dynamic
+					}
+					Text {
+						label:Label {break:False value:$group.filter}
+						compact:True
+						value:group.filter
+					}
+		
+					Text {
+						label:$manager.concept
+						compact:True
+						iterate-on:groupmanagers
+						value:$grouptimelineNLS.manager(Current fullname, Current expertisedomaindisplayname)
+					}
+				}
+				TabItem {
+					text:$grouptimelineNLS.direct
+					tooltip:$grouptimelineNLS.directtooltip
+					activation-event:Set 0 to currentTab
+	
+				
+					Checkbox {
+						variable:showonlydiffdirectmembers
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:groupdirectmembers
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+	
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then grouptimeline_highlightnew when 'Removed' then grouptimeline_highlightremoved when 'Modified' then grouptimeline_highlightmodified }}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.identifier column:identifier}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.login column:login}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.givenname column:givenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.surname column:surname}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.username column:username}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.mail column:mail}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.service column:service}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$reconciliation.noownercode column:noownercode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.creationdate column:creationdate}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.lastlogindate column:lastlogindate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.expiredate column:expiredate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordlastsetdate column:passwordlastsetdate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.nextpwdchangedate column:nextpwdchangedate}
+	
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordcantchange column:passwordcantchange}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordnotrequired column:passwordnotrequired}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.dontexpirepassword column:dontexpirepassword}
+	
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.notnormalaccount column:privilegedaccount}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.locked column:locked}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$repository.concept column:repositorydisplayname}
+	
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.hrcode column:identityhrcode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.givenname column:identitygivenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.surname column:identitysurname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.fullname column:identityfullname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.mail column:identitymail}
+					}			
+				}
+				TabItem {
+					text:$grouptimelineNLS.allmembers
+					tooltip:$grouptimelineNLS.allmemberstooltip
+					activation-event:Set 1 to currentTab
+	
+				
+					Checkbox {
+						variable:showonlydiffallmembers
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+				
+					Table {
+						data:groupallmembers
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+	
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then grouptimeline_highlightnew when 'Removed' then grouptimeline_highlightremoved when 'Modified' then grouptimeline_highlightmodified }}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.identifier column:identifier}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.login column:login}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.givenname column:givenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.surname column:surname}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.username column:username}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.mail column:mail}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.service column:service}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$reconciliation.noownercode column:noownercode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.creationdate column:creationdate}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.lastlogindate column:lastlogindate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.expiredate column:expiredate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordlastsetdate column:passwordlastsetdate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.nextpwdchangedate column:nextpwdchangedate}
+	
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordcantchange column:passwordcantchange}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordnotrequired column:passwordnotrequired}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.dontexpirepassword column:dontexpirepassword}
+	
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.notnormalaccount column:privilegedaccount}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.locked column:locked}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$repository.concept column:repositorydisplayname}
+	
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.hrcode column:identityhrcode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.givenname column:identitygivenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.surname column:identitysurname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.fullname column:identityfullname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.mail column:identitymail}
+					}			
+				}
+				TabItem {
+					text:$grouptimelineNLS.subgroups
+					tooltip:$grouptimelineNLS.subgroupstooltip
+					activation-event:Set 2 to currentTab
+	
+				
+					Checkbox {
+						variable:showonlydiffsubgroups
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:groupsubgroups
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then grouptimeline_highlightnew when 'Removed' then grouptimeline_highlightremoved  when 'Modified' then grouptimeline_highlightmodified } }
+						Column {initially-masked:True filterable:True width:320px header:$group.code column:code}
+						Column {filterable:True width:320px header:$group.displayname column:displayname}
+						Column {initially-masked:False filterable:True width:160px header:$group.comment column:comment}
+						Column {initially-masked:True filterable:True width:160px header:$group.creationdate column:creationdate}
+						Column {initially-masked:True filterable:True width:160px header:$group.modificationdate column:modificationdate}
+						Column {initially-masked:False filterable:True width:160px header:$repository.concept column:repositorydisplayname}
+						Column {initially-masked:False filterable:True width:160px header:'nb direct accounts' column:nbaccounts text:Concat(Current nbaccounts, ' (', Current diff, ')')  image:IntImageSelection(Current diff) {when>0 then "16/indicators/high1blue.png" when <0 then "16/indicators/low1blue.png" } }
+						Column {column:uid hidden:True selection:subgroupuid}
+					}
+					ButtonGroup {
+						align:Left
+						Button {
+							actions:GoTo Page grouptimeline with subgroupuid to uid, currentTimeslot to initialTimeslot
+							text:$grouptimelineNLS.subgrouptimeline
+							disabled:StringPredicate(subgroupuid) { when IsEmpty then True}
+						}
+					}
+				}
+				TabItem {
+					text:$permission.concept
+					activation-event:Set 3 to currentTab
+				
+				
+					Checkbox {
+						variable:showonlydiffpermission
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:grouppermission
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then grouptimeline_highlightnew when 'Removed' then grouptimeline_highlightremoved  when 'Modified' then grouptimeline_highlightmodified } }
+						Column {initially-masked:False filterable:True width:100px header:$permission.code column:code}
+						Column {initially-masked:False filterable:True width:160px header:$permission.displayname column:displayname}
+						Column {initially-masked:True filterable:True width:160px header:$timelineNLS.description column:description}
+						Column {initially-masked:False filterable:True width:100px header:$application.concept column:applicationdisplayname}
+						Column {initially-masked:True filterable:True width:100px header:$right.perimetercode column:perimetercode}
+						Column {initially-masked:False filterable:True width:160px header:$right.perimeterdisplayname column:perimeterdisplayname}
+						Column {initially-masked:True filterable:True width:100px header:$right.action column:action}
+						Column {initially-masked:True filterable:True width:100px header:$right.limit column:limit}
+						Column {initially-masked:False filterable:True width:100px header:'through sub-group' column:indirect}
+					}
+				}
+				TabItem {
+					text:$grouptimelineNLS.folder
+					activation-event:Set 4 to currentTab
+					feature:unstructureddata_license
+	
+				
+					Checkbox {
+						variable:showonlydiffdata
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:groupdata
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then grouptimeline_highlightnew when 'Removed' then grouptimeline_highlightremoved when 'Modified' then grouptimeline_highlightmodified } }
+						Column {initially-masked:False filterable:True width:100px header:$right.concept column:basic}
+						Column {initially-masked:False filterable:True width:320px header:$grouptimelineNLS.folder column:code}
+						Column {filterable:True width:160px header:$grouptimelineNLS.share column:sharedisplayname}
+						Column {initially-masked:False filterable:True width:100px header:$pacl.order column:order}
+						Column {initially-masked:False filterable:True width:100px header:$pacl.negative column:negative}
+					}
+				}
+			}
+		]
+		}
+	}
+}
+

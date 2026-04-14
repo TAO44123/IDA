@@ -1,0 +1,143 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+revokeactionNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel current edition ?" fr "Annuler l'édition en cours ?"]
+	complete.buttontext [en "confirm" fr "Confirmer"]
+	complete.confirm [en "Complete current task ?" fr "Terminer la tâche en cours ?"]
+	complete.flashmessage [en "Task completed" fr "Tâche terminée"]
+	title [en "Please revoke application access" fr "Please revoke application access"]
+	_application [en "application" fr "application"]
+	_approvalstatus [en "approval status" fr "approval status"]
+	_organisationcode [ en "Organisation code" fr "Code de l'organisation"]
+	_organisationname [ en "Organisation name" fr "Nom de l'organisation"]
+	approvalstatus.value0 [en "approve" fr "approve"]
+	approvalstatus.value1 [en "deny" fr "deny"]
+	_requestername [en "requester name" fr "requester name"]
+}
+
+
+revokeactionapplication = Page {
+	title: $revokeactionNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	taskId = Parameter {
+		type: String
+		mandatory: True
+	}
+	
+	/* variables here */
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord(taskId)
+	
+	applicationDataset = Dataset {
+		view: workflow_applicationdisplayname_all
+	}
+	
+	organisation = Record {
+	    view: getidentityorganisations with task.requester to uid
+	}   
+	  
+	
+	
+	Flow {
+
+    disposition: Vertical
+    	
+	Group { 
+	//layout: Layout{hint:height 100}
+	title: "Requester"
+	Text {
+		label: $revokeactionNLS._requestername
+		value: task.requestername
+	    }
+	
+	Text {
+		label: $revokeactionNLS._organisationcode
+		value: organisation.code
+	     }
+	
+	Text {
+		label: $revokeactionNLS._organisationname
+		value: organisation.displayname
+	     }
+	
+	   }
+	
+	
+	Group {
+	title: "Application"
+	/* Page content */
+	MultiEdit {
+		//label: $revokeactionNLS._application
+		hide-remove: True
+		Element {
+			variable: task.application
+			filterable: True
+			display: Display {
+				data: applicationDataset match uid
+				value: Current displayname
+			}
+		}
+	}
+	}
+	
+	Group {
+		title: $revokeactionNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		Combo {
+		label: Concat($revokeactionNLS._approvalstatus,"*")
+		variable: task.approvalstatus
+		options: Static {
+			Option {
+				value: "approve"
+				text: $revokeactionNLS.approvalstatus.value0
+			}
+			Option {
+				value: "deny"
+				text: $revokeactionNLS.approvalstatus.value1
+			}
+		}
+	   }
+	
+	
+	
+	Group {
+		title: $revokeactionNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		ButtonGroup {
+			Button { 
+				text: $revokeactionNLS.cancel.buttontext
+				actions: Confirm $revokeactionNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: StringPredicate (task.approvalstatus) { when IsEmpty then True }
+				
+				text: $revokeactionNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $revokeactionNLS.complete.confirm, TaskComplete task, Flash Information $revokeactionNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+	}
+  } // End of Flow
+}
+

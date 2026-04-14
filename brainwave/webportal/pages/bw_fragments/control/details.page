@@ -1,0 +1,281 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/bw_controls_browser/resources/mappings.page"
+
+fragmentControlDetailsNLS = NLS {
+	risklevel [en "Risk level" fr "Niveau de risque"]
+	riskinfo [en "Risk info" fr "Informations sur le risque"]
+	suggestedmitigation [en "Suggested mitigation" fr "Remédation suggérée"]
+	risklevel.header [en "Risk \nlevel" fr "Niveau \nde risque"]
+	riskinfo.header [en "Risk info" fr "Informations \nsur le risque"]
+	suggestedmitigation.header [en "Suggested \nmitigation" fr "Remédation \nsuggérée"]
+}
+
+control_typeMapping = IntMapping {
+	when =1 then $control.type1
+	when =2 then $control.type2
+	when =3 then $control.type3
+	when =4 then $control.type4
+	when =5 then $control.type5
+	when =6 then $control.type6
+	when =7 then $control.type7
+	when =8 then $control.type8
+	when =9 then $control.type9
+	otherwise current
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected control details
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>incontrolcode</b> the control code</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentControlDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	incontrolcode = Variable
+	inresulttype = Variable
+	inenabled = Variable { multivalued: False type: Boolean initial: True }
+	
+	currentControl = Record {
+		view: bwf_controldetails with
+			incontrolcode to controlcode,
+			inresulttype to resulttype unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( incontrolcode ) {
+					when IsEmpty then True				
+				}
+			}
+	}
+	
+	Group {
+		Text {
+			value: currentControl.controlcode 
+			label: $controlresult.controlcode
+			compact: True
+			hidden: True
+		}
+		Text {
+			value: currentControl.controlname 
+			label: $bw_control_browser.shortname
+			compact: True 
+		}
+		Text {
+			value: @srv_truncatestring(currentControl.controldisplayname to string, 200 to maxlength)
+			label: $controlresult.controldisplayname
+			tooltip: currentControl.controldisplayname
+			compact: True
+		}
+		Text {
+			value: Transform currentControl.controlentity using type
+			label: $controlresult.controlentity
+			compact: True 
+		}
+		Text {
+			value: currentControl.risklevel 
+			label: $fragmentControlDetailsNLS.risklevel
+			decorator: Decorator {
+				width: 16
+				after: Image {
+					image: TemplateImageSelection(currentControl.risklevel) using bwf_controllevel
+					width: 16
+				}
+			}
+			compact: True 
+		}
+		Text {
+			value: Transform currentControl.controltype using control_typeMapping 
+			label: $controlresult.controltype
+			compact: True 
+		}
+		Text {
+			value:@srv_truncatestring(currentControl.controldescription to string, 200 to maxlength)
+			label: $controlresult.controldescription
+			tooltip: currentControl.controldescription
+			compact: True 
+		}
+		Grid {
+			columns: GridColumn { width: grow }
+			GridRow {
+				GridCell {
+					Text {
+						value: currentControl.controlnotes
+						layout: Layout { grab: horizontal True vertical True }
+						label: Label { value: $controlresult.controlnotes break: True }
+						lines: 5								
+					}
+				}
+			}
+			GridRow {
+				GridCell {
+					Text {
+						value: currentControl.riskinfo
+						layout: Layout {grab: horizontal True vertical True }
+						label: Label { value: $fragmentControlDetailsNLS.riskinfo break: True }
+						lines: 5
+					}
+				}
+			
+			}
+			GridRow {
+				GridCell {
+					Text {
+						value: currentControl.suggestedmitigation
+						layout: Layout { grab: horizontal True vertical True }
+						label: Label { value: $fragmentControlDetailsNLS.suggestedmitigation break: True }
+						lines: 5
+					}	
+				}
+			}
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected control details, for a Dialog/pop, so more of an horizontal presentation
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>incontrolcode</b> the control code</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentControlDetails_popup = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inresulttype = Variable { type: String }
+	inenabled = Variable { multivalued: False type: Boolean initial: True }
+	
+	currentControl = Record {
+		view: bwf_controldetails with
+			incontrolcode to controlcode,
+			inresulttype to resulttype unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( incontrolcode ) {
+					when IsEmpty then True		
+				}
+			}
+	}
+	
+	Grid {
+		columns: GridColumn {}, GridColumn {}
+		layout: Layout { grab: horizontal True vertical False }
+		GridRow {
+			GridCell {
+				Text {
+					value: currentControl.controlname 
+					label: $bw_control_browser.shortname
+					compact: True 
+				}				
+			}
+			GridCell {
+				Text {
+					value: currentControl.controlcode 
+					label: $controlresult.controlcode
+					compact: True
+					hidden: True
+				}
+			}
+		}
+		GridRow {
+			GridCell {
+				Text {
+					value: @srv_truncatestring(currentControl.controldisplayname to string, 50 to maxlength)
+					label: $controlresult.controldisplayname
+					tooltip: currentControl.controldisplayname
+					compact: True
+				}
+			}
+			GridCell {
+				Text {
+					value: Transform currentControl.controlentity using type
+					label: $controlresult.controlentity
+					compact: True 
+				}
+			}
+		}
+		GridRow {
+			GridCell {
+				Text {
+					value: currentControl.risklevel 
+					label: $fragmentControlDetailsNLS.risklevel
+					decorator: Decorator {
+						width: 16
+						after: Image {
+							image: TemplateImageSelection(currentControl.risklevel) using bwf_controllevel
+							width: 16
+						}
+					}
+					compact: True 
+				}
+			}
+			GridCell {
+				Text {
+					value: Transform currentControl.controltype using control_typeMapping 
+					label: $controlresult.controltype
+					compact: True 
+				}
+			}
+		}
+		GridRow {
+			GridCell {
+				Text {
+					value: @srv_truncatestring(currentControl.controldescription to string, 50 to maxlength)
+					label: $controlresult.controldescription
+					tooltip: currentControl.controldescription
+					compact: True 
+				}
+			}
+			GridCell {}
+		}
+	}
+	Spacer {
+		height: 42
+	}
+	Flow {
+		disposition: Horizontal
+		Group {
+			Text {
+				value: currentControl.riskinfo
+				layout: Layout {grab: horizontal True vertical True }
+				label: Label { value: $fragmentControlDetailsNLS.riskinfo break: True }
+				lines: 5
+			}
+		}
+		Group {
+			Text {
+				value: currentControl.suggestedmitigation
+				layout: Layout { grab: horizontal True vertical True }
+				label: Label { value: $fragmentControlDetailsNLS.suggestedmitigation break: True }
+				lines: 5
+			}
+		}
+		Group {
+			Text {
+				value: currentControl.controlnotes
+				layout: Layout { grab: horizontal True vertical True }
+				label: Label { value: $controlresult.controlnotes break: True }
+				lines: 5								
+			}
+		}
+	}
+	Spacer {
+		height: Fill
+	}
+}

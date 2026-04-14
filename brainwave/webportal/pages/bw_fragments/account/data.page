@@ -1,0 +1,406 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/sharedfolder/rightsInfos.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentAccountData360NLS = NLS {
+	code [en "Code" fr "Code"]
+	sensitivity [en "Sensitivity" fr "Sensibilité"]
+	simplerights [en "Rights" fr "Droits"]
+	path [en "Path" fr "Chemin"]
+	permdisplayname [en "Shared Folder" fr "Répertoire Partagé"]
+	appdisplayname [en "Share" fr "Partage"]
+	revokesflash [en "Folders to remove" fr "Dossiers à supprimer"]
+	revokeflash [en "Folder to remove" fr "Dossier à supprimer"]
+	type [en "Type" fr "Type"]
+	
+	status [en "Status" fr "Statut"]
+	foldername [en "Folder name" fr "Nom du répertoire"]
+	folderpath [en "Folder path" fr "Chemin du répertoire"]
+	share [en "Share" fr "Partage"]
+	sharefamily [en "Share family" fr "Famille de partage"]
+	sharecode [en "Share code" fr "Code partage"]
+	apptype [en "Share type" fr "Type partage"]
+	showpermdetails [en "show permission details" fr "Détails de la permission"]
+	showfolddetails [en "show folder details" fr "Détails du répertoire"]
+	senslevel [en "Sensitivity Level" fr "Niveau de sensibilité"]	
+	aclonlylabel [en 'Display only folders with ACLs' fr 'Afficher seulement les partages avec des ACLs']
+
+	yes [ en "Yes" fr "Oui" ] 
+	no [ en "No" fr "Non" ]
+
+	fschanged [ en "Fold. changed" fr "Réper. changés" ]
+	fsrightschanged [ en "Fold.rights changed" fr "Droits réper. changés" ]
+	deleted [ en "Deleted" fr "Supprimé" ]
+	modified [ en "Modified" fr "Modifié" ]
+	new [ en "New" fr "Nouveau" ]
+	nochanged [ en "none" fr "non" ]
+	removed [en "Removed" fr "Supprimé"]
+	identical [en "Identical" fr "Identique"]
+
+	_empty [en "not set" fr "inconnu"]
+	_0 [en "public" fr "public"]
+	_1 [en "internal" fr "interne"]
+	_2 [en "confidential" fr "confidentiel"]
+	_3 [en "restricted use" fr "usage restreint"]
+
+	empty [en "Account doesn't have access to shares" fr "Ce compte n'a pas d'accès à des partages"]
+	folderdepth [en "Folder depth" fr "Profondeur arborescence"]
+}
+
+
+noyesstatus = StringMapping {
+	when "false" then $fragmentAccountData360NLS.no prefix " "
+	when "true" then $fragmentAccountData360NLS.yes prefix " "
+}
+
+newItemTemplate = StringImageTemplate {
+	when "new" then %status_16_green.add
+	when "true" then %status_16_orange.update
+}
+
+sensitivityText = IntMapping {
+	when =0 then $fragmentAccountData360NLS._0
+	when =1 then $fragmentAccountData360NLS._1
+	when =2 then $fragmentAccountData360NLS._2
+	when =3 then $fragmentAccountData360NLS._3
+	when =4 then $fragmentAccountData360NLS._3
+	otherwise $fragmentAccountData360NLS._empty
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the data rights for a given account
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>infolderdepth </b>optional, integer value, folder depth (1 by default)</li>
+ * <li><b>incanchangedepth </b>optional, integer value, can change folder depth (False by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>inaclonly </b>optional, boolean value, show only entries with ACLs attached to them (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * <li><b>outapplicationname </b>the selected application name</li>
+ * <li><b>outpermissionuid </b>the selected permission uid  </li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountData360 = PageFragment {
+	feature: unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	infolderdepth = Variable { type: Integer initial: 1 }
+	inenabled = Variable { type: Boolean initial: True }
+	incanchangedepth = Variable { type: Boolean initial: False }
+	inaclonly = Variable { type: Boolean initial: False }
+	incanshowdetails = Variable { type: Boolean initial: False }
+
+	outaccountuid = Variable { type: String }
+	outapplicationuid = Variable { type: String }
+	outapplicationname = Variable { type: String }
+	outpermissionuid = Variable { type: String }
+	outpermissionname = Variable { type: String }
+
+	selectedFamily = Variable { type: String }
+	selectedApplication = Variable { type: String }
+
+	families = Dataset {
+		view: bwf_foldfamiliesbyaccount with
+			inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		excludes:
+			StringPredicate ( Current applicationfamily ) {
+				when IsEmpty then True
+			}
+	}
+
+	applications = Dataset {
+		view: bwf_foldapplicationsbyaccount with
+			inuid to uid,
+			selectedFamily to family unless-empty
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	databyaccount = Dataset {
+		view: bwf_shareandfolder_byAccount with
+			inuid to uid,
+			infolderdepth to maxdepth,
+			inaclonly to aclonly,
+			selectedFamily to family,
+			selectedApplication to application
+		trend: Trend { 
+			join-column: perm_uid
+			value-column: trend
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}	
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog (
+					outpermissionuid to inuid,
+					False to inshowaccounts, 
+					True to inshowaccountacls, 
+					True to inshowperjob,
+					True to inshowperorg,
+					outaccountuid to inaccountuid
+				)
+			] when False then [ ]
+		}
+	)
+
+	Grid {
+		columns: GridColumn, GridColumn, GridColumn, GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical False hint: height 32 }
+		hidden:
+			Not BooleanPredicate ( incanchangedepth )
+		GridRow {
+			GridCell {
+				Combo {
+					variable: selectedFamily 
+					allow-none: True
+					label: $fragmentAccountData360NLS.sharefamily
+					layout: Layout { hint: width 120 }
+					options:
+						Dynamic {
+							data: families
+							text: Current applicationfamily
+							value: Current applicationfamily
+						}
+					disabled:
+						IntPredicate ( Count families ) {
+							when < 1 then True
+						}
+				}
+			}
+			GridCell {
+				Combo {
+					variable: selectedApplication
+					allow-none: True
+					label: $fragmentAccountData360NLS.share
+					layout: Layout { hint: width 120 }
+					options:
+						Dynamic {
+							data: applications
+							text: Current displayname
+							value: Current uid
+						}
+				}
+			}
+			GridCell {
+				Combo {
+					variable: infolderdepth
+					label: $fragmentAccountData360NLS.folderdepth
+					layout: Layout { hint: width 120 }
+					hidden:
+						Not BooleanPredicate ( incanchangedepth )
+					options:
+						Static {
+							Option {
+								value: 1
+								text: "<=1"
+							}
+							Option {
+								value: 2
+								text: "<=2"
+							}
+							Option {
+								value: 3
+								text: "<=3"
+							}
+							Option {
+								value: 4
+								text: "<=4"
+							}
+							Option {
+								value: 5
+								text: "<=5"
+							}
+							Option {
+								value: 6
+								text: "<=6"
+							}
+							Option {
+								value: 7
+								text: "<=7"
+							}
+							Option {
+								value: 8
+								text: "<=8"
+							}
+							Option {
+								value: 9
+								text: "<=9"
+							}
+						}
+				}
+			}
+			GridCell {
+			}
+		}
+	}
+	Checkbox {
+		variable: inaclonly
+		label: $fragmentAccountData360NLS.aclonlylabel
+		hidden:
+			Not BooleanPredicate ( incanchangedepth )
+	}
+	ConditionalGroup {
+		IntCondition ( Count databyaccount ) {
+			when =0 then [
+				Header {
+					value: $fragmentAccountData360NLS.empty
+					styling: bigTitleStyle
+				}
+			] otherwise [
+				Table {
+					data: databyaccount
+					layout: Layout { grab: horizontal True vertical True }
+					label: Label { break: True }
+					configurable: True
+					show-filter: True
+					show-count: True
+					persist-configuration: True
+					double-click:
+						ExecuteNamedAction goDetails
+					Column {
+						column: perm_uid
+						hidden: True
+						selection: outpermissionuid
+					}
+					Column {
+						column: perm_displayname
+						selection: outpermissionname
+						header: $fragmentAccountData360NLS.permdisplayname
+						sortable: True
+						filterable: True
+						width: 15%
+						initially-masked: True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}									
+					Column {
+						column: perm_code
+						header: $fragmentAccountData360NLS.path
+						sortable: True
+						filterable: True
+						width: 20%
+						initially-masked: False 
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}																		
+					Column {
+						column: app_uid
+						selection: outapplicationuid
+						hidden: True
+					}
+					Column {
+						column: app_displayname
+						selection: outapplicationname
+						header: $fragmentAccountData360NLS.appdisplayname
+						sortable: True
+						filterable: True
+						width: 10%
+					}
+					Column {
+						column: app_code
+						header: $fragmentAccountData360NLS.code
+						sortable: True
+						filterable: True
+						initially-masked: True
+					}																		
+					Column {
+						column: accountuid
+						hidden: True
+						selection: outaccountuid
+					}
+					Column {
+						column: accountlogin
+						header: $account.login
+						sortable: True
+						filterable: True
+						width: 10%
+						initially-masked: True
+					}
+					Column {
+						column: right // simplerights
+						text: NonEmpty ( Current right, Current simplerights )
+						header: $fragmentAccountData360NLS.simplerights
+						sortable: True
+						filterable: True
+						width: 96px
+						actions: Dialog bwf_SharedFolderRightsInfosDialog
+					}
+					Column {
+						column: app_applicationfamily
+						header: $fragmentAccountData360NLS.type
+						sortable: True
+						filterable: True
+						width: 128px
+					}									
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text: Transform Current trends using bwf_trendStatusColumn 
+						styling: StylingTemplateSelection ( Current trends ) using bwf_trendStatusColumn  
+						image: TemplateImageSelection ( Current trends ) using bwf_trendStatusColumnWhite
+						tooltip: $bwf_trendStatusColumnNLS.tooltip
+						sortable: True
+						filterable: True
+						width: 96px
+					}
+					Column {
+						column: metadata_sensitivitylevel
+						text: Transform Current metadata_sensitivitylevel using sensitivityText
+						header: $fragmentAccountData360NLS.sensitivity
+						sortable: True
+						filterable: True
+						width: 96px
+						initially-masked: True
+					}
+				}
+			]
+		}
+	}
+}

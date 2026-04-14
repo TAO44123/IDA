@@ -1,0 +1,453 @@
+
+import "/webportal/pages/bw_ledger_admin/timing/services.page"
+import "/webportal/pages/bw_ledger_admin/timing/dialogs.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+fragment_changes = PageFragment {
+	mixins: timingMixin
+	enter-event: ExecuteNamedAction loadAllLabels, ExecuteNamedAction initFields, ExecuteNamedAction generateChecksums
+	
+	// Variables associated with the javascript service timeslotsChecksum
+	in_uids = Variable { type: String multivalued: True }
+	out_uid = Variable { type: String multivalued: True }
+	out_parent_uid = Variable { type: String multivalued: True }
+	out_checksum = Variable { type: String multivalued: True }
+	out_parent_checksum = Variable { type: String multivalued: True }
+	out_changed = Variable { type: String multivalued: True }
+	
+	// Variables associated with the selection of the key columns
+	details_labels = Variable { type: String multivalued: True }
+	ts_values = Variable { type: String multivalued: True }
+	parent_ts_values = Variable { type: String multivalued: True }
+	
+	labels = Variable { type: String multivalued: True }
+	selectedField = Variable { type: String }
+	selectedFields = Variable { type: String multivalued: True }
+	
+	// Global selection variables
+	selectedTimeslotUid = Variable { type: String }
+	selectedTimeslotParenttUid = Variable { type: String }
+	
+	// Variables for elapsed times details
+	elapsedTotal = Variable { type: Integer initial: 0 }
+	elapsedAcum = Variable { type: Integer initial: 0 }
+	elapsedCollect = Variable { type: Integer initial: 0 }
+	elapsedActivation = Variable { type: Integer initial: 0 }
+	elapsedReconciliation = Variable { type: Integer initial: 0 }
+	elapsedControl = Variable { type: Integer initial: 0 }
+	elapsedOthers = Variable { type: Integer initial: 0 }
+	
+	elapsedTotal_prev = Variable { type: Integer initial: 0 }
+	elapsedAcum_prev = Variable { type: Integer initial: 0 }
+	elapsedCollect_prev = Variable { type: Integer initial: 0 }
+	elapsedActivation_prev = Variable { type: Integer initial: 0 }
+	elapsedReconciliation_prev = Variable { type: Integer initial: 0 }
+	elapsedControl_prev = Variable { type: Integer initial: 0 }
+	elapsedOthers_prev = Variable { type: Integer initial: 0 }
+	
+	// Variables and datasets for the birt chart
+	steps_category = Variable { type:  String multivalued: True }
+	steps_values = Variable { type: Integer multivalued: True }
+	steps_category_prev = Variable { type:  String multivalued: True }
+	steps_values_prev = Variable { type: Integer multivalued: True }
+	
+	// bar custom colors
+	customcolors = Variable { initial: ["#8ea5cc,#324f7f,#b1cfff,#659fff,#59677f" ] }
+	
+	stepsChart_prev = Dataset {
+		columns: steps_category_prev, steps_values_prev
+	}
+	
+	stepsChart = Dataset {
+		columns: steps_category, steps_values
+	}
+	
+	// Records that hold the selected timeslot and its parent
+	selectedtimeslot = Record {
+		view: timeslot_timing with selectedTimeslotUid to uid
+	}
+	
+	selectedparenttimeslot = Record {
+		view: timeslot_timing with selectedTimeslotParenttUid to uid
+	}
+	
+	// Datasets to get all selected timeslots and join with the checksums
+	alltimeslots = Dataset {
+		view: timeslot_all
+		limit: 20
+	}
+	
+	checksums = Dataset {
+		columns: out_uid, out_checksum, out_parent_uid, out_parent_checksum, out_changed
+		excludes: StringPredicate ( Current out_changed ) { when "no" then True }
+	}
+	
+	timeslotsThatChanged = Dataset {
+		join: Join {
+			primary-dataset: alltimeslots
+			primary-optional: False
+			primary-column: uid
+			
+			secondary-prefix: changes_
+			secondary-dataset: checksums
+			secondary-column: out_uid
+			secondary-cardinality: mandatory
+		}
+	}
+	
+	// Datasets to obtain the list of fields
+	
+	fields = Dataset {
+		columns: labels
+	}
+	selectedFieldsDataset = Dataset {
+		columns: selectedFields
+	}
+	
+	allDetails = Dataset { columns: details_labels , ts_values, parent_ts_values }
+	
+	allDetailsExtended = Dataset {
+		join: Join {
+			primary-dataset: allDetails
+			primary-column: details_labels
+			primary-optional: False
+			primary-prefix: p_
+			secondary-dataset: selectedFieldsDataset
+			secondary-column: selectedFields
+			secondary-cardinality: optional
+			secondary-prefix: s_
+		}
+	}
+	
+	// *******************************************************************
+	 
+	 
+	generateChecksums = NamedAction (
+		Unset in_uids,
+		TransferData alltimeslots(uid) to (in_uids),
+		Call timeslotsChecksum ( in_uids to timeslotsUid, selectedFields to selectedFields, out_uid from uid, out_checksum from checksum, out_parent_uid from parent_uid, out_parent_checksum from parent_checksum , out_changed from changed)
+	)
+	
+	initFields = NamedAction (
+		MultivaluedAdd $context.productversion to selectedFields, 
+		MultivaluedAdd $context.configuration to selectedFields,
+		MultivaluedAdd $context.availablecpus to selectedFields, 	
+		MultivaluedAdd $context.multithread to selectedFields, 
+		MultivaluedAdd $context.databaseurl to selectedFields,
+		MultivaluedAdd $context.javaversion to selectedFields,
+		MultivaluedAdd $context.arguments to selectedFields
+	)
+	
+	loadAllLabels = NamedAction (
+		MultivaluedAdd $context.displayname to labels, 	
+		MultivaluedAdd $context.importdate to labels, 		
+		MultivaluedAdd $context.commitdate to labels, 		
+		MultivaluedAdd $context.status to labels, 			
+		MultivaluedAdd $context.portal to labels, 			
+		MultivaluedAdd $context.productversion to labels, 	
+		MultivaluedAdd $context.configuration to labels, 	
+		MultivaluedAdd $context.optimizedrecon to labels, 	
+		MultivaluedAdd $context.multithread to labels, 	
+		MultivaluedAdd $context.projectpath to labels, 	
+		MultivaluedAdd $context.osname to labels, 			
+		MultivaluedAdd $context.osversion to labels, 		
+		MultivaluedAdd $context.javavendor to labels, 		
+		MultivaluedAdd $context.javaversion to labels, 	
+		MultivaluedAdd $context.maxmemoryinmb to labels, 	
+		MultivaluedAdd $context.availablecpus to labels, 	
+		MultivaluedAdd $context.usedcpus to labels, 		
+		MultivaluedAdd $context.databasetype to labels, 	
+		MultivaluedAdd $context.databaseversion to labels,	
+		MultivaluedAdd $context.databaseurl to labels, 	
+		MultivaluedAdd $context.driverversion to labels, 	
+		MultivaluedAdd $context.computername to labels, 	
+		MultivaluedAdd $context.arguments to labels
+	)
+	
+	
+	loadAllDetails = NamedAction (
+		Unset details_labels, Unset ts_values, Unset parent_ts_values,
+		MultivaluedAdd $context.displayname to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_displayname using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_displayname using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.importdate to details_labels, 		MultivaluedAdd Transform selectedtimeslot.ts_importdate using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_importdate using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.commitdate to details_labels, 		MultivaluedAdd Transform selectedtimeslot.ts_commitdate using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_commitdate using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.status to details_labels, 			MultivaluedAdd Transform selectedtimeslot.ts_status using optionStringMapping to ts_values, 			MultivaluedAdd Transform selectedparenttimeslot.ts_status using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.portal to details_labels, 			MultivaluedAdd Transform selectedtimeslot.ts_portal using optionStringMapping to ts_values, 			MultivaluedAdd Transform selectedparenttimeslot.ts_portal using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.productversion to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_productversion using optionStringMapping to ts_values, 	MultivaluedAdd Transform selectedparenttimeslot.ts_productversion using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.configuration to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_configuration using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_configuration using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.optimizedrecon to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_optimizedrecon using optionStringMapping to ts_values, 	MultivaluedAdd Transform selectedparenttimeslot.ts_optimizedrecon using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.multithread to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_multithread using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_multithread using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.projectpath to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_projectpath using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_projectpath using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.osname to details_labels, 			MultivaluedAdd Transform selectedtimeslot.ts_osname using optionStringMapping to ts_values, 			MultivaluedAdd Transform selectedparenttimeslot.ts_osname using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.osversion to details_labels, 		MultivaluedAdd Transform selectedtimeslot.ts_osversion using optionStringMapping to ts_values, 			MultivaluedAdd Transform selectedparenttimeslot.ts_osversion using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.javavendor to details_labels, 		MultivaluedAdd Transform selectedtimeslot.ts_javavendor using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_javavendor using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.javaversion to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_javaversion using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_javaversion using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.maxmemoryinmb to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_maxmemoryinmb using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_maxmemoryinmb using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.availablecpus to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_availablecpus using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_availablecpus using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.usedcpus to details_labels, 		MultivaluedAdd Transform selectedtimeslot.ts_usedcpus using optionStringMapping to ts_values, 			MultivaluedAdd Transform selectedparenttimeslot.ts_usedcpus using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.databasetype to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_databasetype using optionStringMapping to ts_values,	 	MultivaluedAdd Transform selectedparenttimeslot.ts_databasetype using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.databaseversion to details_labels,	MultivaluedAdd Transform selectedtimeslot.ts_databaseversion using optionStringMapping to ts_values, 	MultivaluedAdd Transform selectedparenttimeslot.ts_databaseversion using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.databaseurl to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_databaseurl using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_databaseurl using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.driverversion to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_driverversion using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_driverversion using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.computername to details_labels, 	MultivaluedAdd Transform selectedtimeslot.ts_computername using optionStringMapping to ts_values, 		MultivaluedAdd Transform selectedparenttimeslot.ts_computername using optionStringMapping to parent_ts_values,
+		MultivaluedAdd $context.arguments to details_labels, 		MultivaluedAdd Transform selectedtimeslot.ts_arguments using optionStringMapping to ts_values, 			MultivaluedAdd Transform selectedparenttimeslot.ts_arguments using optionStringMapping to parent_ts_values
+	)
+	
+	fillStepsVars = NamedAction (
+		
+		Unset elapsedTotal, 			Set @elapsedTime ( selectedTimeslotUid to timeslotUid, False to formatTime ) to elapsedTotal,
+		Unset elapsedCollect, 			Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Collect" to step, False to formatTime) to elapsedCollect,
+		Unset elapsedActivation, 		Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Activation" to step, False to formatTime) to elapsedActivation,
+		Unset elapsedReconciliation,	Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Reconciliation" to step, False to formatTime) to elapsedReconciliation,
+		Unset elapsedControl, 			Set @elapsedTime ( selectedTimeslotUid to timeslotUid, "Control" to step, False to formatTime) to elapsedControl,
+		Unset elapsedAcum, Set Sum ( elapsedControl, Sum ( Sum ( elapsedCollect, elapsedActivation), elapsedReconciliation)) to elapsedAcum,
+		Unset elapsedOthers, Set Difference ( elapsedTotal, elapsedAcum  ) to elapsedOthers,
+		
+		
+		Unset elapsedTotal_prev, 			Set @elapsedTime ( selectedTimeslotParenttUid to timeslotUid, False to formatTime ) to elapsedTotal_prev,
+		Unset elapsedCollect_prev, 			Set @elapsedTime ( selectedTimeslotParenttUid to timeslotUid, "Collect" to step, False to formatTime) to elapsedCollect_prev,
+		Unset elapsedActivation_prev, 		Set @elapsedTime ( selectedTimeslotParenttUid to timeslotUid, "Activation" to step, False to formatTime) to elapsedActivation_prev,
+		Unset elapsedReconciliation_prev,	Set @elapsedTime ( selectedTimeslotParenttUid to timeslotUid, "Reconciliation" to step, False to formatTime) to elapsedReconciliation_prev,
+		Unset elapsedControl_prev, 			Set @elapsedTime ( selectedTimeslotParenttUid to timeslotUid, "Control" to step, False to formatTime) to elapsedControl_prev,
+		Unset elapsedAcum_prev, Set Sum ( elapsedControl_prev, Sum ( Sum ( elapsedCollect_prev, elapsedActivation_prev), elapsedReconciliation_prev)) to elapsedAcum_prev,
+		Unset elapsedOthers_prev, Set Difference ( elapsedTotal_prev, elapsedAcum_prev  ) to elapsedOthers_prev,
+			
+		Unset steps_category,
+		MultivaluedAdd $steps.collect to steps_category,
+		MultivaluedAdd $steps.activation to steps_category,
+		MultivaluedAdd $steps.reconciliation to steps_category,
+		MultivaluedAdd $steps.controls to steps_category,
+		MultivaluedAdd $steps.others to steps_category,
+		
+		Unset steps_values,
+		MultivaluedAdd elapsedCollect to steps_values,
+		MultivaluedAdd elapsedActivation to steps_values,
+		MultivaluedAdd elapsedReconciliation to steps_values,
+		MultivaluedAdd elapsedControl to steps_values,
+		MultivaluedAdd elapsedOthers to steps_values,
+		
+		Unset steps_category_prev,
+		MultivaluedAdd $steps.collect to steps_category_prev,
+		MultivaluedAdd $steps.activation to steps_category_prev,
+		MultivaluedAdd $steps.reconciliation to steps_category_prev,
+		MultivaluedAdd $steps.controls to steps_category_prev,
+		MultivaluedAdd $steps.others to steps_category_prev,
+		
+		Unset steps_values_prev,
+		MultivaluedAdd elapsedCollect_prev to steps_values_prev,
+		MultivaluedAdd elapsedActivation_prev to steps_values_prev,
+		MultivaluedAdd elapsedReconciliation_prev to steps_values_prev,
+		MultivaluedAdd elapsedControl_prev to steps_values_prev,
+		MultivaluedAdd elapsedOthers_prev to steps_values_prev
+	)
+	
+	Grid {
+		columns: GridColumn { width: 360px}, GridColumn{ width: 10px }, GridColumn { width: grow}, GridColumn{ width: 10px }
+		layout: Layout { grab: horizontal True vertical True  indent: horizontal 0 vertical 5}
+		GridRow{
+			GridCell {
+				Header { value: $timingfragmentchanges.header layout: Layout { indent: horizontal 18 vertical 0}
+				
+					commands: Commands { 
+						position: After
+						Command {
+							icon: "16/famfamfam_silk_icons_v013/help.png"
+							actions: Message $timingfragmentchanges.messages.globalhelp
+						}
+					} 
+				}
+				
+				Spacer { height: 10}
+				
+				Grid {
+					columns: GridColumn , GridColumn
+					GridRow {
+						height: 40
+						GridCell{
+							Combo {
+								options: Dynamic { data: fields text: Current labels value: Current labels  }
+								layout: Layout { indent: horizontal 20 vertical 10 hint: height 30 }
+								variable: selectedField
+								styling: headerLight
+								label: Label { value: $timingfragmentchanges.labels.attributes styling: headerLight layout: Layout{ hint: width 85 indent: horizontal 20 vertical 15}}
+							}
+						}
+						GridCell{
+							Button {
+								styling: headerLight
+								layout: Layout { indent: horizontal 15 vertical 10 hint: height 30 }
+								actions: MultivaluedAdd selectedField to selectedFields, MultivaluedDistinct selectedFields, ExecuteNamedAction generateChecksums
+								text: $timingfragmentchanges.labels.add
+							}
+						}
+					}
+					GridRow {
+						height: 200 
+						GridCell {
+							span: 2
+							Spacer { height: 20 }
+							Tiles {
+								columns: 3
+								tile-height: 30
+								layout: Layout { indent: horizontal 5 vertical 0}
+								gap: 10
+								TileGroup {
+									iterate-on: selectedFieldsDataset
+									
+									Tile {
+										Group {
+											background: Color RGB (240,240,240)
+											Flow {
+												disposition: Horizontal
+												
+												Group {
+													margins: All 0
+													layout: Layout { grab: horizontal False vertical False hint: height 20 width 20 }
+													Button {
+														layout: Layout { hint: width 20 height 20}
+														actions: MultivaluedRemove Current selectedFields from selectedFields, ExecuteNamedAction generateChecksums
+														image: "16/famfamfam_silk_icons_v013/cross.png"
+														presentation: Link
+													}
+												
+												}	
+												Group {
+													margins: All 0
+													layout: Layout { grab: horizontal True vertical False hint: height 20 width 100 indent: horizontal 0 vertical 0}
+													Text { 
+															value: Current selectedFields 
+															layout: Layout { grab: horizontal True vertical False align: horizontal Beginning vertical Center hint: height 20 width 100 }
+															compact: True
+															align: Left
+													} 
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					GridRow {
+						height: grow
+						GridCell {
+							span: 2
+							TemplateTable {
+								data: timeslotsThatChanged
+								layout: Layout { grab: horizontal True vertical True }
+								row-height: 55
+								selection-changed-event: ExecuteNamedAction loadAllDetails, ExecuteNamedAction fillStepsVars
+								show-lines: True
+								
+								ImageCell {
+									top: 5
+									left: 10
+									width: 32
+									height: 32
+									image: "bw_ledger_admin/time_32.png"
+				
+								}
+
+								TextCell {
+									column: displayname
+									top: 10
+									left: 60
+									height: 20
+									width: 300
+									styling: normalBoldText
+								}
+								
+								TextCell {
+									column: displayname
+									text: $timingfragmentall.labels.importdate
+									top: 30
+									left: 80
+									height: 20
+									width: 300
+									styling: normalText
+								}
+								
+								TextCell {
+									column: importdate
+									top: 30
+									left: 180
+									height: 20
+									width: 300
+									styling: normalText
+								}
+								
+								HiddenCell {
+									column: uid 
+									selection: selectedTimeslotUid
+								}
+								
+								HiddenCell {
+									column: changes_out_parent_uid
+									selection: selectedTimeslotParenttUid
+								}
+								
+							}
+						}
+					}
+				}
+			}
+			GridCell { }
+			GridCell { 
+				// content
+				ConditionalGroup { 
+					StringCondition ( selectedTimeslotUid )
+					{
+						when IsEmpty then  [
+							Text { value: $timingpage.messages.selectformore styling: normalText compact: True }
+						]
+						
+						otherwise  [
+							
+							Header { value: $timingfragmentchanges.subheader layout: Layout { indent: horizontal 18 vertical 0}}
+							
+							Table {
+								data: allDetailsExtended
+								layout: Layout { grab: horizontal True vertical True indent: horizontal 5 vertical 0 }
+								hide-lines: True 
+								
+								Column { column: p_details_labels  header: $timingfragmentchanges.header.attributes width: 200px styling: labelsst  align: Right }
+								Column { column: p_ts_values header: $timingpage.labels.selectedts width: 100% align: Center 
+									styling: StringStyling ( Current s_selectedFields  ) { when IsEmpty then valuesst otherwise highlightedValues }
+								}
+								Column { column: p_parent_ts_values header: $timingpage.labels.parentts width: 100% align: Center 
+									styling: StringStyling ( Current s_selectedFields  ) { when IsEmpty then valuesst otherwise highlightedValues }
+								}
+							}
+							
+							Header { value: $timingfragmentchanges.tstitle ( selectedtimeslot.ts_displayname, @elapsedTime ( selectedTimeslotUid to timeslotUid, True to formatTime ) ) layout: Layout { indent: horizontal 18 vertical 0} }
+							
+							
+							IncludeHTMLWidget {
+								template: treemapChart
+								datasets: stepsChart ( steps_category , steps_category, steps_values ) to chartdata (  label ,code, count )
+								layout: Layout { grab: horizontal True vertical False hint: height 50 indent: horizontal 10 vertical 0}
+								bindings: value-of customcolors to customColors, value-of True to centerLabel, value-of False to showTooltipValue
+							}
+							
+							Header { value: $timingfragmentchanges.parenttstitle ( selectedparenttimeslot.ts_displayname, @elapsedTime ( selectedTimeslotParenttUid to timeslotUid, True to formatTime ) ) layout: Layout { indent: horizontal 18 vertical 0} }
+							
+							
+							IncludeHTMLWidget {
+								template: treemapChart
+								datasets: stepsChart_prev ( steps_category_prev , steps_category_prev, steps_values_prev ) to chartdata (  label ,code, count )
+								layout: Layout { grab: horizontal True vertical False hint: height 50 indent: horizontal 10 vertical 0}
+								bindings: value-of customcolors to customColors, value-of True to centerLabel, value-of False to showTooltipValue
+							}
+							
+						]
+					}
+				}
+			}
+		}
+	}
+}

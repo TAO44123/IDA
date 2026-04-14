@@ -1,0 +1,520 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentAccountRightsNLS = NLS {
+	description [en "description" fr "description"]
+	alias [en "alias" fr "alias"]
+	slevel [en "sensitivity level" fr "niveau de sensibilité"]
+	sreason [en "sensitivity reason" fr "raison de sensibilité"]
+	lastmodifiedby [en "last modified by" fr "dernière modification par"]
+	lastmodificationdate [en "last modification date" fr "date de dernière modification"]
+	trends [en "Changes" fr "Changements"]
+	empty [en "Account does not have permissions" fr "Ce compte n'a pas de permissions"]
+	filteredforapp [en "filtered to {0}" fr "filtré sur {0}"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * List direct account server rights in a form of a Table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types (set to Role by default)</li>
+ * <li><b>inapplicationtypes </b>optional, multivalued filtering of the permission types (set to Profile by default)</li>
+ * <li><b>inapplicationuids </b>optional, multivalued filtering on some applications only</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid </b>selected permission uid</li>
+ * <li><b>outSelectedpermissioncode </b>selected permission code</li>
+ * <li><b>outSelectedpermissionname </b>selected permission name</li>
+ * <li><b>outSelectedapplicationname </b>selected application name</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountServerRightsList = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inpermissiontypes = Variable { multivalued:True type:String initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+	inapplicationtypes = Variable { multivalued:True type:String initial:['Server'] }
+	inapplicationuids= Variable { multivalued:True type:String }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationname = Variable
+	outselectedapplicationuid = Variable
+	
+	/* Datasets here */
+	rights = Dataset {
+		view: bwf_directrights with
+			inuid to uid,
+			inpermissiontypes to permissiontypes unless-empty, 
+			inapplicationtypes to applicationtypes unless-empty, 
+			inapplicationuids to applicationuids unless-empty
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	application = Record {
+		view: br_applicationDetail with inapplicationuids to uid
+	}
+
+	account = Record {
+		view: bwf_account with inuid to uid
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	appserver = Record {
+		view: br_applicationDetail with outselectedapplicationuid to uid
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outSelectedpermissionuid to inuid, 
+												True to inshowperjob,
+												True to inshowperorg
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goServerDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_repositoryDetailsDialog(appserver.repositoryuid to inuid,
+												True to inshowperjob,
+												True to inshowperorg
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	Header {
+		value:$fragmentAccountRightsNLS.filteredforapp(application.displayname)
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False } 
+	}
+	ConditionalGroup {
+		IntCondition(Count rights) {
+			when =0 then [
+				Header {
+					value:$fragmentAccountRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				ConditionalGroup {
+					IntCondition(account.bwa_accountanalytics_nbperimeter) {
+						when >0 then [
+							Table {
+								data:rights
+								configurable:True
+								show-count:True
+								show-filter:True
+								layout:Layout {grab: horizontal True vertical True }
+								double-click:ExecuteNamedAction goDetails
+								
+								Column {
+									column:permissionuid
+									selection:outSelectedpermissionuid
+									hidden:True
+								}	
+								Column {
+									column:permissioncode
+									sortable:True
+									filterable:True
+									header:$ppermission.code
+									width:96px
+									initially-masked:True
+									selection:outSelectedpermissioncode
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondisplayname
+									sortable:True
+									filterable:True
+									header:$permission.concept
+									width:100%
+									selection:outSelectedpermissionname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondescription
+									sortable:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.description
+									initially-masked:True
+									width:160px
+								}	
+								Column {
+									column:permissionalias
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.alias
+									width:128px
+								}	
+								Column {
+									column:permissionsensitivitylevel
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.slevel
+									width:96px
+								}	
+								Column {
+									column:permissionsensitivityreason
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.sreason
+									width:128px
+								}	
+								Column {
+									column:permissiontype
+									sortable:True
+									filterable:True
+									header:$permission.permissiontype
+									width:96px
+								}	
+								Column {
+									column:permissionlastmodifiedby
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.lastmodifiedby
+									width:128px
+								}	
+								Column {
+									column:permissionlastmodifydate
+									text:DateLDAP(Current permissionlastmodifydate).value
+									sortable:True
+									header:$fragmentAccountRightsNLS.lastmodificationdate
+									width:160px
+									initially-masked:True
+								}	
+								Column {
+									column:rightperimetercode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.perimetercode
+									width:128px
+								}
+								Column {
+									column:rightperimeterdisplayname
+									sortable:True
+									filterable:True
+									header:$right.perimeterdisplayname
+									width:128px
+								}
+								Column {
+									column:applicationcode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$pserver.code
+									width:128px
+									actions: ExecuteNamedAction goServerDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:applicationdisplayname
+									sortable:True
+									filterable:True
+									header:$pserver.displayname
+									width:300px
+									selection:outSelectedapplicationname
+									actions: ExecuteNamedAction goServerDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:applicationtype
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$pserver.repositorytype
+									width:128px
+								}	
+								Column {
+									column:applicationuid
+									hidden:True
+									selection:outselectedapplicationuid
+								}	
+								Column {
+									column:rightaction
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.action
+									width:96px
+								}	
+								Column {
+									column:rightdisplayname
+									sortable:True
+									filterable:True
+									header:$right.displayname
+									width:128px
+									initially-masked:True
+								}	
+								Column {
+									column:rightlimit
+									sortable:True
+									header:$right.limit
+									width:96px
+									initially-masked:True
+								}	
+								Column {
+									column:rightfromgroup
+									sortable:True
+									initially-masked:True
+									header:$right.fromgroup
+									width:64px
+								}	
+								Column {
+									column:rightindirect
+									sortable:True
+									initially-masked:True
+									header:$right.indirect
+									width:64px
+								}	
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+						otherwise [
+							Table {
+								data:rights
+								configurable:True
+								show-count:True
+								show-filter:True
+								layout:Layout {grab: horizontal True vertical True }
+								persist-configuration:True
+								double-click:ExecuteNamedAction goDetails
+								
+								Column {
+									column:permissionuid
+									selection:outSelectedpermissionuid
+									hidden:True
+								}	
+								Column {
+									column:permissioncode
+									sortable:True
+									filterable:True
+									header:$ppermission.code
+									width:96px
+									initially-masked:True
+									selection:outSelectedpermissioncode
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondisplayname
+									sortable:True
+									filterable:True
+									header:$permission.concept
+									width:100%
+									selection:outSelectedpermissionname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:permissiondescription
+									sortable:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.description
+									initially-masked:True
+									width:160px
+								}	
+								Column {
+									column:permissionalias
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$fragmentAccountRightsNLS.alias
+									width:128px
+								}	
+								Column {
+									column:permissionsensitivitylevel
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.slevel
+									width:96px
+								}	
+								Column {
+									column:permissionsensitivityreason
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.sreason
+									width:128px
+								}	
+								Column {
+									column:permissiontype
+									sortable:True
+									filterable:True
+									header:$permission.permissiontype
+									width:96px
+									initially-masked:True
+								}	
+								Column {
+									column:permissionlastmodifiedby
+									sortable:True
+									initially-masked:True
+									header:$fragmentAccountRightsNLS.lastmodifiedby
+									width:128px
+								}	
+								Column {
+									column:permissionlastmodifydate
+									text:DateLDAP(Current permissionlastmodifydate).value
+									sortable:True
+									header:$fragmentAccountRightsNLS.lastmodificationdate
+									width:160px
+									initially-masked:True
+								}	
+								Column {
+									column:applicationcode
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$pserver.code
+									width:128px
+									actions: ExecuteNamedAction goServerDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:applicationdisplayname
+									sortable:True
+									filterable:True
+									header:$pserver.displayname
+									width:300px
+									selection:outSelectedapplicationname
+									actions: ExecuteNamedAction goServerDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}	
+								Column {
+									column:applicationtype
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$pserver.repositorytype
+									width:128px
+								}	
+								Column {
+									column:applicationuid
+									hidden:True
+									selection:outselectedapplicationuid
+								}	
+								Column {
+									column:rightaction
+									sortable:True
+									initially-masked:True
+									filterable:True
+									header:$right.action
+									width:96px
+								}	
+								Column {
+									column:rightdisplayname
+									sortable:True
+									filterable:True
+									header:$right.displayname
+									width:128px
+									initially-masked:True
+								}	
+								Column {
+									column:rightlimit
+									sortable:True
+									header:$right.limit
+									width:96px
+									initially-masked:True
+								}	
+								Column {
+									column:rightfromgroup
+									sortable:True
+									initially-masked:True
+									header:$right.fromgroup
+									width:64px
+								}	
+								Column {
+									column:rightindirect
+									sortable:True
+									initially-masked:True
+									header:$right.indirect
+									width:64px
+								}	
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}

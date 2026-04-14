@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="rolelastreview" prefix="review" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketreview" displayname="role last review" notes="" begindate="" enddate="">
+	<ViewParam name="filterminimumreviewdate" displayname="filterminimumreviewdate" type="Date"/>
+	<ViewParam name="roles" displayname="roles" type="String"/>
+	<ViewParam name="apps" displayname="apps" type="String"/>
+	<ViewParam name="permsensitivity" displayname="permsensitivity" type="String"/>
+	<ViewParam name="permtags" displayname="parmtags" type="String"/>
+	<ViewParam name="rulename" displayname="rulename" type="String"/>
+	<ViewParam name="iamapps" displayname="IAM Applications" type="String"/>
+	<ViewParam name="iamapptags" displayname="IAM Application tags" type="String"/>
+	<ViewParam name="iampermtags" displayname="IAM Permission Tags" type="String"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.iamapp_uid.get() +&apos;$$&apos; + dataset.perimeteruid.get() + &apos;$$&apos; + dataset.perm_uid.get() + &apos;$$&apos; + dataset.role_uid.get()"/>
+	<ViewSort name="sort" attribute1="1764063514343_1035" direction1="DESC"/>
+	<ViewAttribute name="1764063514342_1032" attribute="status" operator="or" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1625825896543_0" operation="in" ignoreifempty="false">
+			<Value name="0" data="ok"/>
+			<Value name="1" data="revoke"/>
+			<Value name="2" data="update"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="1764063514342_1033" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1764063514343_1034" attribute="actorfullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1764063514343_1035" attribute="actiondate" operator="and" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1626080987802_0" reference="filterminimumreviewdate" operation="ge" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1626081439161_1" operation="isNotNull" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1767962794172_2605" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="rawPermLinks">
+		<ViewAttribute name="1767962798547_2607" attribute="perimeteruid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1761661150288_411" prefix="perm_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+			<ViewAttribute name="1767962805785_2614" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1761661196875_415" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+				<ViewAttribute name="1767962805786_2615" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+					<ViewAttributeFilter name="F1763566513621_0" reference="apps" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+			</ViewJoin>
+			<ViewAttribute name="1767962805787_2616" attribute="bwa_permissionmetadata_sensitivitylevel" operator="or" removedfromprojection="true" globalfilter="true">
+				<ViewAttributeFilter name="F1763566935953_0" reference="permsensitivity" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="1767962805787_2617" attribute="bwa_permissiontags_tag" operator="or" removedfromprojection="true" globalfilter="true">
+				<ViewAttributeFilter name="F1763567130616_0" reference="permtags" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewJoin name="J1544634538845_4512" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="!param.isEmpty(&apos;rulename&apos;)" join="ruleresult">
+				<ViewAttribute name="1767967212665_2726" attribute="rulename" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1544631155160_0" reference="rulename" operation="in" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1767962811641_2618" prefix="role_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="parentpermission">
+			<ViewJoin name="J1761661196875_415" prefix="iamapp_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+				<ViewAttribute name="1767962820306_2630" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+					<ViewAttributeFilter name="F1763566513621_0" reference="iamapps" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="1767962820311_2631" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1767962820312_2632" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1767962820314_2633" attribute="custom1" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1767962820319_2634" attribute="custom2" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1767962820323_2635" attribute="custom3" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1767962820330_2636" attribute="bwa_applicationtags_tag" operator="or" removedfromprojection="true" globalfilter="true">
+					<ViewAttributeFilter name="F1767801095549_0" reference="iamapptags" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+			</ViewJoin>
+			<ViewAttribute name="1767962828834_2639" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1763564852706_0" reference="roles" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="1767962828845_2640" attribute="bwa_permissiontags_tag" operator="or" removedfromprojection="true" globalfilter="true">
+				<ViewAttributeFilter name="F1767859023869_0" reference="iampermtags" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+</View>

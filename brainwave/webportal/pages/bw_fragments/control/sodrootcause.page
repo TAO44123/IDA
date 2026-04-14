@@ -1,0 +1,100 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+fragmentSodRootCauseNLS = NLS {
+	list1 [ en "List 1" fr "Liste 1" ]
+	list2 [ en "List 2" fr "Liste 2" ]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the root cause for sod controls
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>incontrolcode</b> the control code</li>
+ * <li><b>inentityyuid</b> the uid of the entity that is in discrepancy</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentSodRootCause = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	incontrolcode = Variable
+	inentityyuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	
+	currentControl = Record {
+		view: bwf_controldetails with incontrolcode to controlcode 
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( incontrolcode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	sodrootcause_list1 = Dataset {
+		view: bwf_controlrootcause_sod with
+			incontrolcode to controlcode,
+			inentityyuid to controlentityuid,
+			currentControl.controlentity to controlentity
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( incontrolcode ) {
+					when IsEmpty then True
+				}
+			}
+		includes: IntPredicate ( Current listnumber ) { when = 1 then True otherwise False }
+	}
+	
+	sodrootcause_list2 = Dataset {
+		view: bwf_controlrootcause_sod with
+			incontrolcode to controlcode,
+			inentityyuid to controlentityuid,
+			currentControl.controlentity to controlentity
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( incontrolcode ) {
+					when IsEmpty then True
+				}
+			}
+		includes: IntPredicate ( Current listnumber ) { when = 2 then True otherwise False }
+	}
+	
+
+	Flow {
+		disposition:Horizontal
+		Group {
+			title: $fragmentSodRootCauseNLS.list1
+			
+			Table {
+				data: sodrootcause_list1 
+				layout: Layout { grab: horizontal True vertical True }
+				Column { header: $papplication.displayname column: applicationdisplayname width: 100% }
+				Column { header: $papplication.code  column: applicationcode width: 100% }
+				Column { header: $ppermission.displayname column: permissiondisplayname width: 100% }
+				Column { header: $ppermission.code column: permissioncode width: 100% }
+			}
+			
+		}
+		Group {
+			title: $fragmentSodRootCauseNLS.list2
+			
+			Table {
+				data: sodrootcause_list2
+				layout: Layout { grab: horizontal True vertical True }
+				Column { header: $papplication.displayname column: applicationdisplayname width: 100% }
+				Column { header: $papplication.code  column: applicationcode width: 100% }
+				Column { header: $ppermission.displayname column: permissiondisplayname width: 100% }
+				Column { header: $ppermission.code column: permissioncode width: 100% }
+			}
+			
+		}
+	}
+		
+}

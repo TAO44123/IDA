@@ -1,0 +1,169 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dialogs.page"
+import "/webportal/pages/bw_ad_schema/explorers/explore_access.page"
+
+selected_object_schema_explorer = NLS {
+	title [en "Accounts with ACL" fr "Comptes avec ACL"]
+	dyntitle [en "{0}" fr "{0}"]
+}
+
+selected_managedobject_schema_explorer = Page {
+	title: $selected_object_schema_explorer.title
+	dynamic-title: $selected_object_schema_explorer.dyntitle(title)
+	
+	mixins: base_pageMixin
+	tags: "ADreports"
+	
+	/* Parameters here */
+	domainuid = Parameter {type:String hidden:True mandatory:False multivalued:True}
+	title = Parameter {type:String hidden:True mandatory:False}
+	selectedObjectLabel = Parameter  { type: String hidden:True}
+	filterByType = Parameter  { type: String hidden:True}
+	domainTreeCode = Parameter  { type: String hidden:True}
+	
+	/* Variables here */
+	
+	/* Selection vars */
+	selectedObjectUid = Variable  { type: String}
+	selectedAccountUid = Variable { type: String }
+	selectedIdentityUid = Variable { type: String }
+	
+	/* Variables for tabs */
+//	selectedTab = Variable { type: Integer initial: 0 }
+	
+	/* Variables for feature */
+	hideDefault = Variable { type: Boolean initial: True }
+	selectAll = Variable { type: Integer initial: 0 }
+	uids =  Variable {type:String multivalued:True}
+	
+	/* Variables for the first tab */
+	account_uid = Variable { type: String multivalued: True }
+	login = Variable { type: String multivalued: True }
+	r = Variable { type: Integer multivalued: True }
+	w = Variable { type: Integer multivalued: True }
+	l = Variable { type: Integer multivalued: True }
+	a = Variable { type: Integer multivalued: True }
+	d = Variable { type: Integer multivalued: True }
+	p = Variable { type: Integer multivalued: True }
+	iduid = Variable { type: String multivalued: True }
+	idname = Variable { type: String multivalued: True }
+	orguid = Variable { type: String multivalued: True }
+	orgname = Variable { type: String multivalued: True }
+	
+	
+	/* Datasets and records here */
+
+	selected_managed_adobject_Detail = Dataset { view: selected_managed_object_Detail with domainTreeCode to domain_treecode}
+
+	dataToShow = Dataset {
+		columns: account_uid, login, r, w, l, a, d, p , iduid as meta_id_uid, idname as meta_id_fullname, orgname as meta_org_shortname
+	}
+	
+	/* Named Actions */
+	
+	groupPermissions = NamedAction (
+		Call groupPemissions ( selectedObjectUid to adObjectUid,
+			PageTimeslot.UID to timeslot,
+			account_uid from account_uid,
+			login from login ,
+			r from r ,
+			w from w ,
+			l from l ,
+			a from a ,
+			d from d ,
+			p from p ,
+			iduid from iduid , 
+			idname from idname ,
+			orguid from orguid,
+			orgname from orgname)
+	)
+	
+	
+	
+	
+	/* Page content */
+	
+	Splitter {
+		disposition: Horizontal 
+		size: 40%
+		
+
+		
+		Group {
+		 	margins: 
+			title: "Please select an object to view the accounts'ACL"
+			background: Color RGB ( 249 , 247 , 246)
+			layout: Layout { grab: horizontal True vertical True}
+			Grid {
+				columns: GridColumn { width: grow }			
+				GridRow {
+				height:grow
+					GridCell {
+						Table {
+							data: selected_managed_adobject_Detail
+							layout: Layout { grab: horizontal True vertical True }
+							selection-changed-event: ExecuteNamedAction groupPermissions 
+							Column {
+								column: displayname
+								width: 20%
+								// Icon 
+								image: "bw_ad_schema/16/container_16.png"
+								// Style
+								styling: blankStyle
+								// Text
+								text: Concat ( "  "  , Current displayname )
+								header: "AD Object"	
+							}
+							Column { column: custom1 header: "DN" width: 65%}
+							Column { column: domain header: "Domain" }
+							Column { column: uid hidden: True selection: selectedObjectUid} 
+						}
+					}
+				}
+			}
+		}
+		
+		Group {
+			title: "Accounts with ACL on the selected object"
+			Group {
+				background: Color RGB ( 249 , 247 , 246)
+				layout: Layout { grab: horizontal True vertical True}
+		
+				Grid {
+					columns: GridColumn { width: grow }
+							
+					GridRow {
+					height:grow
+						GridCell {
+							Table {
+								data: dataToShow
+								layout: Layout { grab: horizontal True vertical True indent: horizontal 0 vertical 5 }
+								show-count: True 
+								double-click: Dialog dialogACLDetails ( selectedObjectUid to adObjectUid , selectedAccountUid to accountUid  )
+										
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70% column: login header: $account.login }
+										
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: r header: "R"  image: TemplateImageSelection (Current r) using rightTemplate text: "" }
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: w header: "W"  image: TemplateImageSelection (Current w) using rightTemplate text: "" }
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: l header: "L"  image: TemplateImageSelection (Current l) using rightTemplate text: "" }
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: a header: "A" image: TemplateImageSelection  (Current a) using rightTemplate text: "" }
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: d header: "D" image: TemplateImageSelection  (Current d) using rightTemplate text: "" }
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: p header: "+" image: TemplateImageSelection  (Current p) using rightTemplate text: "" }
+										
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70%  column: meta_id_fullname header: $pidentity.fullname  text: Transform Current meta_id_fullname using optionStringMapping }
+								Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 50%  column: meta_org_shortname header: $organisation.concept text: Transform Current meta_org_shortname using optionStringMapping  }
+										
+								Column { column: account_uid hidden: True selection: selectedAccountUid }		
+								Column { column: meta_id_uid hidden: True selection: selectedIdentityUid }		
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,710 @@
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+
+bwfApplicationSensitivityLevel_NLS = NLS {
+	notclassified [en "Not classified" fr "Non classifié"]
+	low [en "Low" fr "Faible"]
+	medium [en "Medium" fr "Moyen"]
+	high [en "High" fr "Elevé"]
+	extreme [en "Highest" fr "Extrême"]
+}
+
+bwfApplicationSensitivityLevelMapping = StringMapping {
+	when "0" then $bwfApplicationSensitivityLevel_NLS.notclassified
+	when "1" then $bwfApplicationSensitivityLevel_NLS.low
+	when "2" then $bwfApplicationSensitivityLevel_NLS.medium
+	when "3" then $bwfApplicationSensitivityLevel_NLS.high
+	when "4" then $bwfApplicationSensitivityLevel_NLS.extreme
+	otherwise $bwfApplicationSensitivityLevel_NLS.notclassified
+
+}
+
+
+bwfApplicationDetailsMetadata_Dialog_NLS = NLS {
+	title [en "Update description" fr "Mettre à jour la description"]
+	descriptionlabel [en "Description" fr "Description"]
+	description[en 'Please update the description associated with this application' 
+				fr 'Veuillez mettre à jour la description associée à cette application'
+				]
+	done [en "Your request to update description has been received successfully" fr "Votre demande de modification de la description a bien été enregistrée"]
+	edit [en "Edit" fr "Edition"]
+	newcategory [en "New category" fr "Nouvelle catégorie"]
+	category [en "Category" fr "Catégorie"]
+	addcategory [en "Add a new category" fr "Ajouter une nouvelle catégorie"]
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	sensitivityreasonvalid [en "Please enter a valid explanation" fr "Veuillez saisir une raison"]
+}
+
+bwfApplicationDetailsManager_Dialog_NLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel process creation?" fr "Annuler la création du processus ?"]
+	complete.buttontext [en "Start process" fr "Initier le processus"]
+	complete.confirm [en "Start process?" fr "Démarrer le processus ?"]
+	complete.flashmessage [en "Process started" fr "Processus démarré"]
+	title [en "Add a new application manager" fr "Ajouter un nouveau responsable d''application"]
+	removetitle [en "Remove application manager" fr "Supprimer le responsable d''application"]
+	dynamictitle [en "Update application manager for \"{0}\"" fr "Mettre à jour le reponsable de l''application \"{0}\""]
+	managerhrcode [en "Current manager HR code" fr "Matricule du responsable actuel"]
+	managerfullname [en "Current manager fullname" fr "Nom du responsable actuel"]
+	newmanagerconfirm [en "Are you sure that you want to add {0} {1} as the {2} of the {3} application?" fr "Êtes-vous sûr de vouloir ajouter {0} {1} en tant que {2} de l''application {3}?"]
+	newmanagerremove [en "Are you sure that you want to remove {0} {1} as the {2} of the {3} application?" fr "Êtes-vous sûr de vouloir supprimer {0} {1} en tant que {2} de l''application {3}?"]
+	confirmupdate [en "Your request has been received successfully" fr "Votre demande a bien été prise en compte"]
+	removeupdate [en "Your request has been received successfully" fr "Votre demande a bien été prise en compte"]
+	
+	setmanager [en "Set a manager for this application" fr "Assigner un responsable pour cette application"]
+	removemanager [en "Remove the current manager" fr "Supprimer le responsable actuel"]
+	
+	manageraudittrail [en "View change history" fr "Voir l'historique des modifications"]
+
+	question [en "What do you want to do?" fr "Que voulez-vous faire ?"]	
+	changeinprogress [en "A change request is already in progress. Changes are disabled until the current request is complete" fr "Une demande de changement est déja en cours. Les demandes de changements sont désactivés tant que la demande est en cours"]
+	
+	managertype [en "Manager type" fr "Type de responsable"]
+}
+
+bwfApplicationDetailsText_Dialog = Dialog {
+	title:$bwfApplicationDetailsMetadata_Dialog_NLS.edit
+	width:400
+	height:200
+	buttons:[ OkButton CancelButton ]
+	
+	text = Variable
+	
+	Spacer {
+		height:16
+	}
+	Edit {
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.newcategory
+		variable:text
+	}
+}
+
+/**
+ * Update application description
+ * 
+ * @param paramApplicationUid application uid
+ */
+bwfApplicationDetailsMetadata_Dialog = Dialog {
+	title: $bwfApplicationDetailsMetadata_Dialog_NLS.title
+	enter-event:	TransferData categories(category) to (categoryList), 
+					Set application.description to description,
+					Set application.sensitivityreason to sensitivityreason,
+					Set application.category to category,
+					Set application.sensitivitylevel to sensitivitylevel
+	buttons:[
+	
+		OkButton {
+			disabled:
+				OrPredicate {
+					StringPredicate(changed) {when '1' then False otherwise True}
+					AndPredicate {
+						IntPredicate(sensitivitylevel) { when >0 then True otherwise False }				
+						Not BooleanPredicate(reasonisvalid) 
+					}
+					StringPredicate(description) { when IsEmpty then True otherwise False }
+				}
+			actions:Set description to task.description,
+					Set sensitivityreason to task.sensitivityreason,
+					Set category to task.category,
+					Set sensitivitylevel to task.sensitivitylevel,
+					Set paramApplicationUid to task.application,
+					TaskComplete task wait-end,
+					Flash $bwfApplicationDetailsMetadata_Dialog_NLS.done
+		} 
+	
+		CancelButton
+	]
+	
+	width:800
+	height:300
+	
+	/* Parameters here */
+	paramApplicationUid = Variable {type:String multivalued:False}
+	applicationtype = Variable { type:String multivalued:False initial:'Profile' }
+
+	description = Variable
+	sensitivitylevel = Variable
+	sensitivityreason = Variable
+	category = Variable
+	
+	selecteddescription = Variable { private:True }
+	newcategory = Variable { private:True }
+	changed = Variable{type:String initial:'0' private:True }
+	categoryList = Variable {type:String multivalued:True}
+	reasonisvalid = Variable
+
+	application = Record {
+		view: br_applicationDetail with paramApplicationUid to uid
+	}
+	categories = Dataset {
+		view:bwf_applicationcategory with applicationtype to applicationtype
+	}
+	categoryCombo = Dataset {
+		columns:categoryList
+	}
+
+	task = TaskRecord (create "bwf_updateapplicationmetadata")
+	
+
+	Header {
+		value:$bwfApplicationDetailsMetadata_Dialog_NLS.description
+		styling:subtitleStyle
+	}
+	Separator
+	Combo {
+		variable:category
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.category
+		allow-none:True
+		options:Dynamic {
+			data:categoryCombo
+			text:Current categoryList
+			value:Current categoryList
+		}
+		modify-event:Set '1' to changed
+		commands:Commands {
+			position:After
+			Command {
+				actions:Dialog bwfApplicationDetailsText_Dialog(newcategory from text), MultivaluedAdd newcategory to categoryList, Set newcategory to category, Set '1' to changed
+				
+				icon:'16/famfamfam_silk_icons_v013/add_black.png'
+				tooltip:$bwfApplicationDetailsMetadata_Dialog_NLS.addcategory
+			}
+		}
+	}
+	Combo {
+		variable:sensitivitylevel
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivitylevel
+		modify-event:Set '1' to changed, IntCase(sensitivitylevel) { when =0 then [ Set '-' to sensitivityreason] }
+		options:Static {
+			Option {
+				text:Transform "0" using bwfApplicationSensitivityLevelMapping
+				value:0
+			}
+			Option {
+				text:Transform "1" using bwfApplicationSensitivityLevelMapping
+				value:1
+			}
+			Option {
+				text:Transform "2" using bwfApplicationSensitivityLevelMapping
+				value:2
+			}
+			Option {
+				text:Transform "3" using bwfApplicationSensitivityLevelMapping
+				value:3
+			}
+			Option {
+				text:Transform "4" using bwfApplicationSensitivityLevelMapping
+				value:4
+			}
+		}
+	}
+	Edit {
+		variable:sensitivityreason
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivityreason
+		modify-event:Set '1' to changed
+		not-empty:True
+		match:'[0-9a-zA-z].+'
+		validity:reasonisvalid
+		error-tooltip:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivityreasonvalid
+		hidden:IntPredicate(sensitivitylevel) { when =0 then True otherwise False }
+	}
+	Edit {
+		variable:description
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.descriptionlabel
+		multi-lines:True
+		layout:Layout{grab: horizontal True vertical False hint:height 64}
+		modify-event:Set '1' to changed
+		not-empty:True
+	}	
+}
+
+/**
+ * Add application manager
+ * 
+ */
+bwfApplicationDetailsAddManager_Dialog = Dialog {
+	title: $bwfApplicationDetailsManager_Dialog_NLS.title
+	buttons:[ 
+				OkButton {
+						disabled:StringPredicate(newmanagerUid) { when IsEmpty then True otherwise False }
+						actions:
+							Confirm $bwfApplicationDetailsManager_Dialog_NLS.newmanagerconfirm( Transform newManager.hrcode using mayBeNullMapping, newManager.fullname, Transform newManagertype using bwfManagerTypeMapping, application.displayname),
+							Set newManagertype to task.managertype,
+							Set paramApplicationUid to task.application,
+							Set newmanagerUid to task.manager,
+							Set newcomment to task.comments,
+							Set delegation to task.delegation,
+							Set _priority to task.delegationpriority,
+							Set _reason to task.delegationreason,
+							Set Date(startdate).valueLDAP to task.delegationbegindate,
+							Set Date(enddate).valueLDAP to task.delegationenddate,
+							Set 'create' to task.action,
+							TaskComplete task wait-end,
+							Flash Information $bwfApplicationDetailsManager_Dialog_NLS.confirmupdate
+						}
+				CancelButton
+			]
+	width:800
+	height:430
+	
+	/* Parameters here */
+	paramApplicationUid = Variable {type:String multivalued:False}
+
+	newManagertype = Variable {type:String multivalued:False initial:'businessowner' private:True}
+	newmanagerUid = Variable {type:String multivalued:False private:True}
+	newcomment = Variable {type:String multivalued:False private:True initial:' '}
+
+	delegation = Variable {type:Boolean multivalued:False private:True initial:False}
+	_priority = Variable {type:Integer multivalued:False private:True initial:0}
+	_reason = Variable {type:String multivalued:False private:True initial:' '}
+	startdate = Variable {type:Date multivalued:False private:True initial:Date.value}
+	enddate = Variable {type:Date multivalued:False private:True initial:Date.offset(10 years).value}
+	
+	/* Datasets and records here */
+	// Record for concept details
+	application = Record {
+		view: br_applicationDetail with paramApplicationUid to uid
+	}
+	
+	newManager = Record {
+		view: br_identityDetail with newmanagerUid to uid
+	}
+
+	task = TaskRecord (create "bwf_updateapplicationmanager")
+	
+	
+	/* Page content */
+	
+	Header {
+		value:$bwfApplicationDetailsManager_Dialog_NLS.title
+		styling:bigTitleStyle
+	}
+	Separator {
+	}
+	Combo {
+		label:$bw_fragment_updateownerNLS.managertype
+		variable:newManagertype
+		layout:Layout { grab:horizontal False vertical False hint:width 160 }
+		options:Static {
+			Option {
+				text:$bw_fragment_updateownerNLS.businessowner
+				value:'businessowner'
+			}
+			Option {
+				text:$bw_fragment_updateownerNLS.technicalowner
+				value:'technicalowner'
+			}
+			Option {
+				text:$bw_fragment_updateownerNLS.reviewer
+				value:'areviewer'
+			}
+		}
+	}
+	Text {
+		label:$bw_fragment_updateownerNLS.manager
+		value:newManager.fullname
+		layout:Layout { grab:horizontal False vertical False hint:width 260 }
+		commands: Command {	
+				actions:Dialog identityPicker(newmanagerUid from outUid)
+            	icon:%concept_16.manager
+            	tooltip:$bw_fragment_updateownerNLS.managertooltip
+           }
+	}
+	Edit {
+		label:$bw_fragment_updateownerNLS.comments
+		variable:newcomment
+	}
+		Checkbox {
+			variable:delegation
+			label:$bw_fragment_updateownerNLS.delegatedmanager
+			tooltip:$bw_fragment_updateownerNLS.delegatedmanagertooltip
+			text:$bw_fragment_updateownerNLS.isdelegated
+		}
+	Group {
+		title:$bw_fragment_updateownerNLS.delegationdetails
+		Edit {
+			variable:_reason
+			label:$bw_fragment_updateownerNLS._reason
+			tooltip:$bw_fragment_updateownerNLS._reasontooltip
+			disabled:Not BooleanPredicate(delegation)
+		}
+		Spinner {
+			variable:_priority
+			label:$bw_fragment_updateownerNLS._priority
+		layout:Layout { grab:horizontal False vertical False hint:width 130 }
+			tooltip:$bw_fragment_updateownerNLS._prioritytooltip
+			minimum:0
+			maximum:9
+			disabled:Not BooleanPredicate(delegation)
+		}
+		/*
+		DateTime {
+			variable:startdate
+			layout:Layout { grab:horizontal False vertical False hint:width 160 }
+			label:$bw_fragment_updateownerNLS.begindate
+			type:Date
+			tooltip:$bw_fragment_updateownerNLS.begindatetooltip
+			disabled:Not BooleanPredicate(delegation)
+		}	
+		DateTime {
+			variable:enddate
+			layout:Layout { grab:horizontal False vertical False hint:width 160 }
+			label:$bw_fragment_updateownerNLS.enddate
+			tooltip:$bw_fragment_updateownerNLS.enddatetooltip
+			type:Date
+			disabled:Not BooleanPredicate(delegation)
+		}
+		*
+		*/
+	}
+}
+
+/**
+ * Remove application manager
+ * 
+ */
+bwfApplicationDetailsRemoveManager_Dialog = Dialog {
+	title: $bwfApplicationDetailsManager_Dialog_NLS.removetitle
+	buttons:[ 	OkButton (
+						Set paramManagerLinkRecorduid to task.managerlink,
+						Set paramApplicationUid to task.application,
+						Set 'delete' to task.action,
+						TaskComplete task wait-end,
+						Flash Information $bwfApplicationDetailsManager_Dialog_NLS.removeupdate
+				)
+				CancelButton 
+			]
+	width:600
+	height:200
+	
+	/* Parameters here */
+	paramApplicationUid = Variable {type:String multivalued:False}
+	paramManagerUid = Variable {type:String multivalued:False}
+	paramManagerTypeCode = Variable {type:String multivalued:False initial:'businessowner'}
+	paramManagerLinkRecorduid = Variable {type:Integer multivalued:False}
+
+	/* variables here */
+	newmanagerUid = Variable {type:String multivalued:False}
+
+	task = TaskRecord (create "bwf_updateapplicationmanager")
+
+	manager = Record {
+		view:br_identityDetail with paramManagerUid to uid
+	}
+	managertype = Record {
+		view:bwf_managertype with paramManagerTypeCode to expertisedomaincode
+	} 
+	application = Record {
+		view:br_applicationDetail with paramApplicationUid to uid
+	} 
+
+	Text {
+		value:$bwfApplicationDetailsManager_Dialog_NLS.newmanagerremove(Transform manager.hrcode using mayBeNullMapping, manager.fullname, Transform paramManagerTypeCode using bwfManagerTypeMapping, application.displayname)
+		lines: 2
+		layout: Layout { hint: height 120 }
+		compact:True
+	}
+
+} 
+
+fragmentApplicationTagsEditorNLS = NLS{
+	addtitle [en "Add a new tag" fr "Ajouter un nouveau label"]
+	createnewtag [en "Create a new tag" fr "Créer un nouveau label"]
+	flash [en "Tags updated" fr "Labels mis à jour"]
+	addsyntaxerror [ 	en "Tag field cannot be empty and must contain only valid characters\n3 characters minimum; letters, numbers, -, _"
+						fr "Le champ label ne peut pas être vide et doit contenir des caractères valides\n3 caractères au minimum; lettres, chiffres, -, _, ."
+	]
+
+	title [en "Manage tags" fr "Gestion des labels"]
+	newtag [en "Create a new tag" fr "Créer un nouveau label"]
+	
+	removealltitle [en "Remove all tags from the selected repositories" fr "Suppression de tous les labels sur les référentiels sélectionnés"]
+	removeallconfirmation [en "Are you sure that you want to remove all the tags from those {0} entries?" fr "Etes-vous sûr de vouloir supprimer tous les labels de ces {0} entrées?"]
+	removetitle [en "Remove a tag from the selected repositories" fr "Suppression d'un label sur les référentiels sélectionnés"]
+	removepicker [en "Pick the tag you want to remove" fr "Sélectionnez le label que vous voulez supprimer"]
+	addconfirmation [en "Are you sure that you want to add a new tag on those {0} entries?" fr "Etes-vous sûr que vous souhaitez ajouter un label sur ces {0} entrées?"]
+}
+
+/**
+ * Remove all tags from selected applications
+ * 
+ * @param uids application uids
+ */
+fragmentApplicationBulkRemoveAllTags = Dialog {
+	title:$fragmentApplicationTagsEditorNLS.removealltitle
+	width:500
+	height:150
+ 	buttons:[CancelButton OkButton {
+			actions:
+				Set uids to task.uids,
+				TaskComplete task
+			}
+		]
+
+	uids = Variable { multivalued:True }
+	
+	task = TaskRecord(create "bwa_bulkremoveallapplicationtag")
+
+	Header {
+		value:$fragmentApplicationTagsEditorNLS.removeallconfirmation(SizeOf uids)
+	}
+}
+
+/**
+ * Remove a tag from selected applications
+ * 
+ * @param uids application uids
+ */
+fragmentApplicationBulkRemoveTag = Dialog {
+	title:$fragmentApplicationTagsEditorNLS.removetitle
+	width:500
+	height:150
+ 	buttons:[CancelButton OkButton {
+			disabled:StringPredicate(tag) { when IsEmpty then True }
+			actions:
+				Set uids to task.uids,
+				Set tag to task.tag,
+				TaskComplete task
+			}
+		]
+
+	applicationSearch = SearchDefinition {
+		entity: Application
+		simple-mode-rule: br_application_simple_search
+	}
+
+	uids = Variable { multivalued:True }
+	tag = Variable { multivalued:False }
+
+	task = TaskRecord(create "bwa_bulkremoveallapplicationtag")
+	taglist = Dataset {
+		search: Search {
+			definition: applicationSearch
+			view:bwa_applicationtagsfromsearch
+		}
+	}
+	
+	Combo {
+		variable:tag
+		allow-none:True
+		label:Label { break:True value:$fragmentApplicationTagsEditorNLS.removepicker }
+		options:Dynamic {
+			data:taglist
+			text:Current tag		
+			value:Current tag		
+		}
+	}
+}
+
+/*
+ * Bulk add a new tag for applications
+ * 
+ * @param uids selected applications
+ */
+fragmentApplicationBulkAddTag = Dialog {
+	title:$fragmentApplicationTagsEditorNLS.addtitle
+	width:400
+	height:200
+ 	buttons:[CancelButton OkButton {
+			disabled:
+					OrPredicate {
+						AndPredicate {
+							Not BooleanPredicate(createtag)
+							StringPredicate(existingtag) { when IsEmpty then True }
+						}
+						AndPredicate {
+							BooleanPredicate(createtag)
+							Not BooleanPredicate(valid)
+						}
+					}
+			actions:
+					Confirm $fragmentApplicationTagsEditorNLS.addconfirmation(SizeOf uids),
+					BooleanCase(createtag) {
+						when True then [
+							Set Eval "newtag.get().toUpperCase()" to task.tag
+						]
+						when False then [
+							Set existingtag to task.tag
+						]
+					},
+					Set uids to task.uids,
+					TaskComplete task
+			}
+		]
+
+	uids = Variable
+
+	newtag = Variable {private:True}
+	existingtag = Variable {private:True}
+	valid = Variable {private:True}
+	createtag = Variable { type:Boolean }
+		
+	task = TaskRecord(create "bwa_bulkaddapplicationtag")
+	alltags = Dataset {
+		view:bwf_applicationalltags
+	}
+
+	Checkbox {
+		variable:createtag
+		text:$fragmentApplicationTagsEditorNLS.createnewtag
+	}
+
+	Edit {
+		variable:newtag
+		limit:24
+		not-empty:True
+		match:"^[0-9,a-z,A-Z,\\-,_,.][0-9,a-z,A-Z,\\-,_,.][0-9,a-z,A-Z,\\-,_,.]+"
+		error-tooltip:$fragmentApplicationTagsEditorNLS.addsyntaxerror
+		validity:valid
+		hidden:Not BooleanPredicate(createtag)
+	}
+	Combo {
+		variable:existingtag
+		allow-none:False
+		options:Dynamic {
+			data:alltags
+			text:Current tag
+			value:Current tag
+		}
+		hidden:BooleanPredicate(createtag)
+	}
+}
+
+/*
+ * INTERNAL dialog box used by fragmentApplicationTagsEditor
+ * 
+ * @param 
+ */
+fragmentApplicationNewTag = Dialog {
+	title:$fragmentApplicationTagsEditorNLS.addtitle
+	width:400
+	height:150
+	enter-event:Set Join alltags using "|" to alltagsoneline
+ 	buttons:[CancelButton OkButton {
+			disabled:
+				OrPredicate {
+					Not BooleanPredicate(valid)
+					BooleanPredicate(Eval "alltags.indexOf(newtag.get().toUpperCase())!=-1")
+				}
+			actions:
+				TransferData tags(tag) to (tags),
+				MultivaluedAdd Eval "newtag.get().toUpperCase()" to tags,
+				 Set tags to task.tags,
+					Set uid to task.uid,
+					TaskComplete task wait-end,
+					Flash $fragmentApplicationTagsEditorNLS.flash
+			}
+		]
+
+	uid = Variable
+	alltags = Variable { multivalued:True }
+	newtag = Variable
+
+	alltagsoneline = Variable { multivalued:False private:True }
+	valid = Variable { private:True }
+	tags = Variable { multivalued:True private:True }
+
+	tags = Dataset {
+		view:bwf_applicationtags with uid to uid
+	}
+	
+	task = TaskRecord(create "bwa_updateapplicationtags")
+
+	Edit {
+		variable:newtag
+		limit:24
+		not-empty:True
+		match:"^[0-9,a-z,A-Z,\\-,_,.][0-9,a-z,A-Z,\\-,_,.][0-9,a-z,A-Z,\\-,_,.]+"
+		error-tooltip:$fragmentApplicationTagsEditorNLS.addsyntaxerror
+		validity:valid
+	}	
+}
+
+/**
+ * Edit application tags
+ *
+ * @param uid application uid
+ * @param canupdatetags True to enable tags update (false by default)
+ */
+fragmentApplicationTagsEditor = Dialog {
+	title:$fragmentApplicationTagsEditorNLS.title
+	buttons:[	CancelButton 
+				OkButton {
+					disabled:Not BooleanPredicate(canupdatetags)
+					actions:
+							BooleanCase(added) {
+								when True then [
+								]
+								when False then [
+									Set currenttags to task.tags,
+									Set uid to task.uid,
+									TaskComplete task wait-end,
+									Flash $fragmentApplicationTagsEditorNLS.flash
+								]
+							}
+				} 
+			]
+	width:450
+	height:200
+	enter-event:TransferData tags(tag) to (currenttags), TransferData alltags(tag) to (alltags) 
+	
+	uid = Variable
+	canupdatetags = Variable { type:Boolean initial:False }
+
+	currenttags = Variable { multivalued:True private:True }
+	alltags = Variable { multivalued:True private:True }
+	newtag = Variable {private:True }
+	modified = Variable {private:True }
+	added = Variable {private:True }
+	
+	tags = Dataset {
+		view:bwf_applicationtags with uid to uid
+	}
+	alltags = Dataset {
+		view:bwf_applicationalltags
+	}
+	
+	atags = Dataset {
+		columns:alltags as tag
+	}
+
+	task = TaskRecord(create "bwa_updateapplicationtags")
+
+	Combo {
+		variable:currenttags
+		multi-selection:True
+		disabled:Not BooleanPredicate(canupdatetags)
+		options:Dynamic {
+			data:atags
+			text:Current tag
+			value:Current tag
+		}
+		commands:Commands {
+			position:After
+			orientation:Vertical
+			Command {
+				actions:Set True to added,
+						Dialog fragmentApplicationNewTag(uid to uid, alltags to alltags, newtag from newtag), 
+						CloseDialog Ok
+				icon:%status_16.add
+				disabled:Not BooleanPredicate(canupdatetags)
+				tooltip:$fragmentApplicationTagsEditorNLS.newtag
+			}
+			Command {
+				actions:Message "NOP"
+				disabled:True
+				icon:''
+			}
+		}
+	}	
+}
+
+

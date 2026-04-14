@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa_identityaggriskscores" displayname="identity aggregated risk scores">
+	<Definition scriptfile="/views/bw_analytics/riskscore.javascript" name="D1574522591685">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1574522591684" title="identity risk score">
+			<InnerView name="bwa_identitygetriskscore"/>
+			<ViewComputedAttribute name="nb" displayname="nb" type="Integer" expression="dataset.isEmpty(&apos;riskscore&apos;)?0:dataset.riskscore.get()"/>
+		</Component>
+		<Component name="C1574524965441" type="joinview" x="621" y="281" w="300" h="50" title="identity account risk score">
+			<InnerView name="identitygetaccountsriskscore" prefix="account_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.account_uid.get()}"/>
+			<ViewComputedAttribute name="aggriskscore" displayname="aggregated risk score" type="Integer" expression="(dataset.isEmpty(&apos;riskscore&apos;)?0:dataset.riskscore.get()) + (dataset.isEmpty(&apos;account_riskscore&apos;)?0:dataset.account_riskscore.get())"/>
+		</Component>
+		<Link name="L1574524965864" source="C1574522591684" target="C1574524965441" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1578928472896" type="note" x="410" y="34" w="300" h="50" title="To be rewritten with a capped aggregation"/>
+	</Definition>
+	<ViewSort name="sort"/>
+</View>

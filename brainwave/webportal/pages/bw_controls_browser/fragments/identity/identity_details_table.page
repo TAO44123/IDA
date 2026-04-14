@@ -1,0 +1,637 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control discrepancies for identities without root causes
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>selectedIdentityUid</b> (out) the selected identity UID</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_identity_details_table = PageFragment {
+	
+	/* Variables here */
+	controlCode = Variable { type: String }
+	selectedIdentityUid = Variable { type: String }
+	selectedIdentityUids = Variable { type: String multivalued: True }
+	initialIndex = Variable { type: Integer }
+	useExceptions = Variable { type: Boolean }
+	controlType = Variable { type: String }
+	updateRequired = Variable { type: Boolean }
+	// View filters
+	filterOrganizationUid = Variable { type: String multivalued: True }
+	filterJobUid = Variable { type: String multivalued: True }
+	filterTags = Variable { type: String multivalued: True }
+	// Tab selection
+	isActive = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	identityData = Dataset {
+		view: bw_control_browser_get_identities_discrepancies_on_control with
+			controlCode to controlCode,
+			False to getRootCause,
+			useExceptions to useExceptions,
+			filterJobUid to job_uid unless-empty,
+			filterOrganizationUid to org_uid unless-empty,
+			filterTags to tags unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}	
+	}
+	
+	organizations = Dataset {
+		view: bw_controls_browser_identitiesOrganizations with
+			controlCode to controlCode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	jobs = Dataset {
+		view: bw_controls_browser_identitiesJobs with
+			controlCode to controlCode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	tags = Dataset {
+		view: bw_controls_browser_identityTags with
+			controlCode to controlCode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog (
+			selectedIdentityUid to inuid,
+			True to inshowaccounts,
+			True to inshowaccountsfororganisation,
+			True to inshowapplications,
+			True to inorganisationuid, 
+			True to inshowcontrols,
+			True to inshowshares,
+			True to inshowACLs,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowrisks,
+			True to inshowoverallocated
+		)
+	)
+	
+	reload = NamedAction (
+		ReloadData ( identityData )
+	)
+	
+	/* Page content */
+	// Filters
+	Group {
+		title: $bw_control_browser.filter
+		layout: Layout { grab: horizontal True vertical False }
+		Flow {
+			disposition: Horizontal
+			Group {
+				Combo {
+					variable: filterTags
+					label: Label {
+						break: True
+						value: $bw_control_browser.tag
+						tooltip: $bw_control_browser.tag.tooltip
+					}
+					multi-selection: True
+					allow-none: True
+					layout: Layout { grab: horizontal False vertical False hint: width 200 }
+					options: Dynamic {
+						data: tags
+						text: Current bwa_identitytags_tag
+						value: Current bwa_identitytags_tag
+					}
+					disabled:
+						IntPredicate ( Count tags ) {
+							when < 1 then True
+						}
+				}
+			}
+			Group {
+				Combo {
+					variable: filterJobUid
+					label: Label {
+						break: True
+						value: $bw_control_browser.job
+						tooltip: $bw_control_browser.job.tooltip
+					}
+					multi-selection: True
+					allow-none: True
+					layout: Layout { grab: horizontal False vertical False hint: width 200 }
+					options: Dynamic {
+						data: jobs
+						text: Current jobtitledisplayname
+						value: Current jobtitleuid
+					}
+					disabled:
+						IntPredicate ( Count jobs ) {
+							when < 1 then True
+						}
+				}
+			}
+			Group {
+				Combo {
+					variable: filterOrganizationUid
+					label: Label {
+						break: True
+						value: $organisation.concept
+						tooltip: $bw_control_browser.org.tooltip
+					}
+					multi-selection: True
+					allow-none: True
+					layout: Layout { grab: horizontal False vertical False hint: width 200 }
+					options: Dynamic {
+						data: organizations
+						text: Current org_displayname
+						value: Current org_uid
+					}
+					disabled:
+						IntPredicate ( Count jobs ) {
+							when < 1 then True
+						}
+				}
+			}
+			Group {
+				Spacer {
+					height: Fill
+				}
+				ButtonGroup {
+					align: Center
+					Button {
+						text: $bw_control_browser.clear
+						tooltip: $bw_control_browser.clear.tooltip
+						image: %collection_16.delete
+						presentation: Link
+						actions:
+							Unset filterJobUid,
+							Unset filterOrganizationUid,
+							Unset filterTags
+					}
+				}
+			}
+		}
+	}
+	Table {
+		data: identityData
+		double-click:
+			ExecuteNamedAction goDetails
+		layout: Layout { grab: horizontal True vertical True }
+		configurable: True
+		persist-configuration: True
+		persist-configuration-key: "bw_control_browser_identity_details_table"
+		selection-index: initialIndex
+		show-filter: True
+		show-count: True
+		// Disabled as no buttons available yet
+//		checkboxes:
+//			uid to selectedIdentityUids
+		Column {
+			column: uid
+			hidden: True
+			selection: selectedIdentityUid
+		}
+		Column {
+			column: hrcode
+			header: $identity.hrcode
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: givenname
+			header: $identity.givenname
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: surname
+			header: $identity.surname
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: mail
+			header: $identity.mail
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: fullname
+			header: $identity.fullname
+			width: 100%
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: nickname
+			header: $identity.nickname
+			width: 100%
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: middlename
+			header: $identity.middlename
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: altname
+			header: $identity.altname
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: phone
+			header: $identity.phone
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: mobile
+			header: $identity.mobile
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: arrivaldate
+			header: $identity.arrivaldate
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: departuredate
+			header: $identity.departuredate
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: active
+			header: $identity.active
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: internal
+			header: $identity.internal
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: allocationchanged
+			header: $identity.allocationchanged
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: organisationchanged
+			header: $identity.organisationchanged
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: accountchanged
+			header: $identity.accountchanged
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: permissionchanged
+			header: $identity.permissionchanged
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: repo_code
+			header: $prepository.code
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: repo_displayname
+			header: $prepository.displayname
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+	}
+	ButtonGroup {
+		layout: Layout { align: horizontal End vertical End }
+		Button {
+			actions:
+				StringCase ( selectedIdentityUids ) {
+					when IsEmpty then [
+						Dialog createControlExceptionDialog (
+							controlCode to controlcode,
+							selectedIdentityUid to targetuids,
+							controlType to controlresulttype
+						)
+					] otherwise [
+						Dialog createControlExceptionDialog (
+							controlCode to controlcode,
+							selectedIdentityUids to targetuids,
+							controlType to controlresulttype
+						)
+					]
+				},
+				Set True to updateRequired,
+				ExecuteNamedAction reload,
+				Unset selectedIdentityUids
+			presentation: Button
+			text: $detailspages.addexception
+			tooltip: $detailspages.addexceptionTt
+			image: %collection_16.add_user
+			feature: bw_control_browser_exceptions
+			disabled:
+				AndPredicate {
+					StringPredicate ( selectedIdentityUid ) {
+						when IsEmpty then True
+					}
+					StringPredicate ( selectedIdentityUids ) {
+						when IsEmpty then True
+					}
+				}
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control discrepancies for identities with root causes
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>includedIdentityUid</b> (in) filter the control discrepancies to just the selected Uids </li>
+ * <li><b>includedRootcauseUid</b> (in) filter the control root causes to just the selected Uids </li>
+ * <li><b>selectedIdentityUid</b> (out) the selected identity UID</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_identity_details_table_with_root_cause = PageFragment {	
+	
+	/* Variables here */
+	controlCode = Variable { type: String }
+	selectedIdentityUid = Variable { type: String }
+	includedRootcauseUid = Variable { type: String }
+	includedIdentityUid = Variable { type: String }
+	initialIndex = Variable { type: Integer }
+	// Tab selection
+	isActive = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	identityData = Dataset {
+		view: bw_control_browser_get_identities_discrepancies_on_control with
+			controlCode to controlCode,
+			True to getRootCause, 
+			includedRootcauseUid to includedRootcauseUid,
+			includedIdentityUid to includedIdentityUid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog (
+			selectedIdentityUid to inuid,
+			True to inshowaccounts,
+			True to inshowaccountsfororganisation,
+			True to inshowapplications,
+			True to inorganisationuid, 
+			True to inshowcontrols,
+			True to inshowshares,
+			True to inshowACLs,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowrisks,
+			True to inshowoverallocated
+		)
+	)
+	
+	/* Page content */
+	PaginatedTable {
+		data: identityData
+		double-click:
+			ExecuteNamedAction goDetails
+		layout: Layout { grab: horizontal True vertical True }
+		configurable: True
+		persist-configuration: True
+		selection-index: initialIndex
+		page-size:1000
+		show-filter: True
+		Column {
+			column: uid
+			hidden: True
+			selection: selectedIdentityUid
+			initially-masked: False
+		}
+		Column {
+			column: hrcode
+			header: $identity.hrcode
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: givenname
+			header: $identity.givenname
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: surname
+			header: $identity.surname
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: mail
+			header: $identity.mail
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: fullname
+			header: $identity.fullname
+			width: 100%
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: nickname
+			header: $identity.nickname
+			width: 100%
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: middlename
+			header: $identity.middlename
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: altname
+			header: $identity.altname
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: phone
+			header: $identity.phone
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: mobile
+			header: $identity.mobile
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: arrivaldate
+			header: $identity.arrivaldate
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: departuredate
+			header: $identity.departuredate
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: active
+			header: $identity.active
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: internal
+			header: $identity.internal
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: allocationchanged
+			header: $identity.allocationchanged
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: organisationchanged
+			header: $identity.organisationchanged
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: accountchanged
+			header: $identity.accountchanged
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: permissionchanged
+			header: $identity.permissionchanged
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: repo_code
+			header: $prepository.code
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: repo_displayname
+			header: $prepository.displayname
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: perm_displayname
+			header: $rootcause.displayname
+			width: 100%
+			initially-masked: False
+		}
+		Column {
+			column: perm_permissiontype
+			header: $rootcause.type
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: app_displayname
+			header: $rootcause.application
+			width: 100%
+			initially-masked: True
+		}
+	}
+}

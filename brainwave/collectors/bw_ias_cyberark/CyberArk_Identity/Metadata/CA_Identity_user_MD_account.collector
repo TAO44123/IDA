@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity user MD account" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1729505051971_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1728399529827_1">
+		<Component name="C1728632215348_1" type="metadata" x="109" y="462" w="300" h="64" title="link ca identity">
+			<Metadata schema="bw_pam_userrefaccount" key=" " account="user_internalname" accountRepository="_REPOSITORY_CODE_" accountValueRepository="external_reponame" accountValue="id" error="true" event="ERROR METADATA"/>
+		</Component>
+		<Component name="C1728399506562_1" type="discoverysource" x="559" y="217" w="300" h="64" title="CA_Identity_Users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_DSUsers.csv&apos;)}"/>
+		</Component>
+		<Component name="C1729775782725_1" type="csvsource" x="561" y="347" w="300" h="64" title="external_repository.csv">
+			<Source file="{config.cyberark_folder}external_repository.csv" separator=";" encoding="ISO-8859-1" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A2944895084315283822" attribute="directoryserviceuuid" column="directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A1730197111921" attribute="external_reponame" column="external_reponame" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1728399529827_1" type="discoverysource" x="110" y="93" w="300" h="64" title="aad_users">
+			<Discovery file="/discovery/bw_ad_azure/aad_users.discovery" datafile="{config.inputfilename}"/>
+		</Component>
+		<Component name="C1728399524614_1" type="joinfilter" x="110" y="217" w="300" h="64" title="Join identity with aad">
+			<Join source="C1728399506562_1"/>
+			<Cache active="true" main="userprincipalname" join="systemname"/>
+			<Attributes>
+				<Attribute name="A1729609556107" attribute="servicetype" source="servicetype" type="String" multivalued="false"/>
+				<Attribute name="A1729609608270" attribute="serviceinstancelocalized" source="serviceinstancelocalized" type="String" multivalued="false"/>
+				<Attribute name="A1733150708890" attribute="user_internalname" source="internalname" type="String" multivalued="false"/>
+				<Attribute name="A1733150730523" attribute="user_systemname" source="systemname" type="String" multivalued="false"/>
+				<Attribute name="A1733155373936" attribute="user_directoryserviceuuid" source="user_directoryserviceuuid" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1729775599692_1" type="joinfilter" x="110" y="346" w="300" h="64" title="repository mapping">
+			<Cache active="true" main="user_directoryserviceuuid" join="directoryserviceuuid"/>
+			<Attributes>
+				<Attribute name="A1730197126853" attribute="external_reponame" source="external_reponame" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1729775782725_1"/>
+		</Component>
+		<Link name="L1728399571068_1" source="C1728399506562_1" target="C1728399524614_1" priority="1"/>
+		<Link name="L1729775607800_1" source="C1728399524614_1" target="C1729775599692_1" priority="1"/>
+		<Link name="L1729775816538_1" source="C1729775782725_1" target="C1729775599692_1" priority="1"/>
+		<Link name="L1728399571739_1" source="C1728399529827_1" target="C1728399524614_1" priority="1"/>
+		<Link name="L1733151091428" source="C1729775599692_1" target="C1728632215348_1" priority="1"/>
+		<Component name="N1733216008834" type="note" x="609" y="71" w="300" h="50" title="Metadata between CyberArk Identity EntraID shadow account and EntraID account"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="inputfilename"/>
+			<Variable name="cyberark_folder"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="rolereview" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="rawpermlink" displayname="Role review" notes="" begindate="" enddate="">
+	<ViewParam name="notreviewedonly" displayname="not reviewed only" type="String"/>
+	<ViewParam name="includesignedoff" displayname="include signed off" type="String"/>
+	<ViewParam name="campaignid" displayname="campaignid" type="String">
+		<Value name="0" data="2050"/>
+	</ViewParam>
+	<ViewParam name="filteraccountable" displayname="filteraccountable" type="String"/>
+	<ViewParam name="revieweruid" displayname="revieweruid" type="String">
+		<Value name="0" data="ID0000744_1710946804171_1476"/>
+	</ViewParam>
+	<ViewSqlFilter name="F1767361645944" expression="dataset.revieweruid=param.revieweruid OR  dataset.accountableuid=param.revieweruid" enabled="param.filteraccountable.get()==false"/>
+	<ViewSort name="sort" attribute1="A1764690082039_3129" attribute2="A1764690391206_3141" attribute3="1764690369437_3137" attribute4="A1764690466887_3149" attribute5="A1764690028403_3124"/>
+	<ViewJoin name="J1764688206789_2896" prefix="review" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+		<ViewAttribute name="1764690020314_3101" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1764690020315_3102" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1764690020315_3103" attribute="actorfullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1764690020315_3104" attribute="actiondate" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1764690020315_3105" attribute="status" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.notreviewedonly.get()">
+			<ViewAttributeFilter name="F1764688329763_0" operation="eq" ignoreifempty="false">
+				<Value name="0" data="to be reviewed"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewAttribute name="1764690020315_3106" attribute="status" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1764690020315_3107" attribute="custom3" alias="reviewerorigin" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1764690020317_3108" attribute="custom5" alias="signedoff" operator="or" removedfromprojection="false" globalfilter="false" enabled="!param.includesignedoff.get()">
+			<ViewAttributeFilter name="F1698058237699_0" operation="isNull" ignoreifempty="false"/>
+			<ViewAttributeFilter name="F1698058240077_1" operation="eq" ignoreifempty="false">
+				<Value name="0" data="0"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewJoin name="J1626349948708_454" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketaction">
+			<ViewJoin name="J1626349950948_455" prefix="campaign" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+				<ViewAttribute name="1764690020320_3109" attribute="title" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1764690020320_3110" attribute="submissiondate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1764690020320_3111" attribute="duedate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1764690020320_3112" attribute="priority" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1764690020320_3113" attribute="description" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1764690020320_3114" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1628339918734_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="ADHOC_UAR"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+				<ViewAttribute name="1764690020321_3115" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1630309887906_0" reference="campaignid" operation="eq" ignoreifempty="true"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1627057019329_1217" prefix="remediation" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="remediations">
+			<ViewAttribute name="1764690020321_3116" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewJoin name="J1659089111228_1264" prefix="accountable" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.filteraccountable.get()==false" join="accountable">
+			<ViewAttribute name="1764690020321_3117" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1764690020322_3118" attribute="fullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewJoin name="J1673268471197_1420" prefix="reviewer" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="actor">
+			<ViewAttribute name="1764690020322_3119" attribute="fullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1764690020322_3120" attribute="hrcode" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1764690020322_3121" attribute="mail" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1764690020322_3122" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false" enabled="param.isEmpty(&apos;filteraccountable&apos;) || param.filteraccountable.get()==true">
+				<ViewAttributeFilter name="F1626350257910_0" reference="revieweruid" operation="eq" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1764690027398_3123" attribute="perimetercode" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1764690028403_3124" attribute="perimeterdisplayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1764690030160_3125" attribute="perimeteruid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1764690038219_3126" prefix="role_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="parentpermission">
+		<ViewAttribute name="A1764690069726_3127" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1764690078013_3128" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1764690082039_3129" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1764690412370_3145" attribute="bwa_permissiontags_tag" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewJoin name="J1764690437932_3146" prefix="iamapp_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="A1764690454409_3147" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1764690463171_3148" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1764690466887_3149" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1765285725639_642" attribute="custom1" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1765285726396_643" attribute="custom2" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1765285727162_644" attribute="custom3" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1765285727891_645" attribute="custom4" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1765285728744_646" attribute="custom5" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewRule name="I1767189514751_1926" rule="bw_roleContentReview_IAMApps">
+			</ViewRule>
+		</ViewJoin>
+		<ViewAttribute name="A1765285700047_627" attribute="custom1" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1765285701490_628" attribute="custom2" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1765285702330_629" attribute="custom3" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1765285703158_630" attribute="custom4" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1765285704332_631" attribute="custom5" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewJoin name="J1764690159802_3130" prefix="perm_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+		<ViewJoin name="J1761661196875_415" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="1764690369437_3135" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1764690369437_3136" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1764690369437_3137" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1765285736440_652" attribute="custom1" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1765285736460_653" attribute="custom2" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1765285736482_654" attribute="custom3" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1765285736505_655" attribute="custom4" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1765285736528_656" attribute="custom5" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewAttribute name="A1764690384038_3139" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1764690387796_3140" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1764690391206_3141" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1764690395011_3142" attribute="bwa_permissionmetadata_sensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="A1764690396300_3143" attribute="bwa_permissionmetadata_sensitivityreason" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="A1764690401333_3144" attribute="bwa_permissiontags_tag" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="1765285717634_637" attribute="custom1" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1765285717660_638" attribute="custom2" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1765285717672_639" attribute="custom3" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1765285717686_640" attribute="custom4" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1765285717699_641" attribute="custom5" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+</View>

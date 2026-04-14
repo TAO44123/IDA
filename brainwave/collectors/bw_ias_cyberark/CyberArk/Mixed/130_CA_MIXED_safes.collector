@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA safes" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039375263_2_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039805315_1">
+		<Component name="C1617039805315_1" type="discoverysource" x="42" y="20" w="300" h="64" title="CA_EVD_safes">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_SafesList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-SafesList.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617039830090_1" type="application" x="42" y="342" w="300" h="64" title="CA safe application">
+			<Application key="EVD_safename" error="true" event="ApplicationNullOrEmpty">
+				<Attribute name="displayname" attribute="safedisplayname"/>
+				<Attribute name="applicationtype" attribute="type"/>
+				<Attribute name="custom1" attribute="EVD_safeid"/>
+				<Attribute name="custom3" attribute="EVD_locationname"/>
+			</Application>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepositoryNullOrEmpty"/>
+		</Component>
+		<Link name="L1617039865952_1" source="C1617039805315_1" target="C1623230288651" priority="1"/>
+		<Component name="C1617195444313_2" type="changefilter" x="42" y="225" w="300" h="64" title="Add type attribute">
+			<Actions>
+				<Action name="U1617195479883" action="add" attribute="type" type="String" multivalued="false" newvalue="ca_safe" errorexist="false"/>
+				<Action name="U1625472717217" action="add" attribute="safedisplayname" type="String" multivalued="false" newvalue="{dataset.EVD_safename.get()}" errorexist="false"/>
+				<Action name="U1624458319355" action="update" attribute="EVD_safename" newvalue="{&apos;SAFE_&apos;+dataset.EVD_safeid.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1617198784385" source="C1617195444313_2" target="C1617039830090_1" priority="1"/>
+		<Component name="C1623230288651" type="joinfilter" x="46" y="114" w="300" h="64" title="Get missing safes (Not Shared)">
+			<Join zeroerror="true" zeroevent="JoinFails" zerotechnical="true" source="C1617039805315_2"/>
+			<Cache active="true" main="EVD_safeid" join="safenumber"/>
+			<Attributes>
+			</Attributes>
+		</Component>
+		<Link name="L1623230302626" source="C1623230288651" target="C1617195444313_2" priority="1" expression="(dataset.hasEvent(&apos;JoinFails&apos;))"/>
+		<Component name="C1617039805315_2" type="discoverysource" x="439" y="111" w="300" h="64" title="CA_safes">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_safes.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_safes.csv&apos;)}"/>
+		</Component>
+		<Link name="L1623230338343" source="C1617039805315_2" target="C1623230288651" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

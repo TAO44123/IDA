@@ -1,0 +1,800 @@
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<title>Timeline</title>
+	<script src="vis/vis-timeline-graph2d.min.js"></script>
+	<!-- Pages Library File -->
+	<script src="bw_pages.js"></script>
+	<link rel="stylesheet" href="vis/vis-timeline-graph2d.min.css">
+	<style type="text/css">
+		body {
+			font-family: roboto, sans-serif, "Helvetica Neue", Helvetica, Arial, sans-serif;
+			font-size: 13px;
+			margin: auto;
+			position: relative;
+		}
+
+		.menu {
+			position: absolute;
+			top: 0;
+			right: 0;
+			margin: 10px;
+			z-index: 9999;
+		}
+
+		.zoomIn {
+			height: 30px;
+			width: 30px;
+			background-image: url('vis/img/network/plus.png');
+			background-repeat: no-repeat;
+			border: none;
+			cursor: pointer;
+			background-color: rgba(170, 170, 170, 0);
+			display: none;
+		}
+
+		.zoomIn:focus {
+			outline: 0;
+		}
+
+		.zoomOut {
+			height: 30px;
+			width: 30px;
+			background-image: url('vis/img/network/minus.png');
+			background-repeat: no-repeat;
+			border: none;
+			cursor: pointer;
+			background-color: rgba(170, 170, 170, 0);
+			display: none;
+		}
+
+		.zoomOut:focus {
+			outline: 0;
+		}
+
+		.zoomExtends {
+			height: 30px;
+			width: 30px;
+			background-image: url('vis/img/network/zoomExtends.png');
+			background-repeat: no-repeat;
+			border: none;
+			cursor: pointer;
+			background-color: rgba(170, 170, 170, 0);
+			display: none;
+		}
+
+		.zoomExtends:focus {
+			outline: 0;
+		}
+
+		.moveLeft {
+			height: 30px;
+			width: 30px;
+			background-image: url('vis/img/network/leftArrow.png');
+			background-repeat: no-repeat;
+			border: none;
+			cursor: pointer;
+			background-color: rgba(170, 170, 170, 0);
+			display: none;
+		}
+
+		.moveLeft:focus {
+			outline: 0;
+		}
+
+		.moveRight {
+			height: 30px;
+			width: 30px;
+			background-image: url('vis/img/network/rightArrow.png');
+			background-repeat: no-repeat;
+			border: none;
+			cursor: pointer;
+			background-color: rgba(170, 170, 170, 0);
+			display: none;
+		}
+
+		.moveRight:focus {
+			outline: 0;
+		}
+
+
+		/*
+		.vis-custom-time {
+		    pointer-events: none;
+		}
+*/
+		.vis-item.vis-background {
+			background-color: rgba(255, 255, 255, 0);
+		}
+
+		.vis-group {
+			background-color: #FFFFFF;
+		}
+
+		.vis-panel.vis-background {
+			background-color: #F0F0F0;
+			/*#455157;*/
+		}
+
+		.vis-time-axis .vis-text {
+			color: #455157;
+			/* //padding-top: 10px;
+	      //padding-left: 10px; */
+		}
+
+		.vis-time-axis .vis-text.vis-major {
+			/* //font-weight: bold; */
+		}
+
+		.vis-time-axis .vis-grid.vis-minor {
+			/* //border-width: 2px;
+	      //border-color: pink; */
+		}
+
+		.vis-time-axis .vis-grid.vis-major {
+			/* //border-width: 2px;
+	      //border-color: #F991A3; */
+		}
+
+		.vis-item.vis-selected {
+			/* //font-weight: bold; */
+			box-shadow: 0 0 20px black;
+		}
+
+		div.vis-tooltip {
+			font: 12px sans-serif;
+			position: absolute;
+			text-align: center;
+			word-wrap: break-word;
+			white-space: pre;
+			width: 256px;
+			height: 16px;
+			background: #333;
+			color: #ddd;
+			padding: 2px;
+			border: 0px;
+			border-radius: 8px;
+			opacity: 0.9;
+
+			z-index: 5;
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+	<div id="mytimeline" style="width:100%;">
+		<div class="menu">
+			<input type="button" id="zoomIn" class="zoomIn" />
+			<input type="button" id="zoomOut" class="zoomOut" />
+			<input type="button" id="zoomExtends" class="zoomExtends" />
+			<input type="button" id="moveLeft" class="moveLeft" />
+			<input type="button" id="moveRight" class="moveRight" />
+		</div>
+	</div>
+	<div id="text" class='div.vis-tooltip' style="font: 12px sans-serif;position:absolute;visibility:hidden"></div>
+	<script type="text/javascript">
+
+		var minZoom = 7;	// in days
+		var maxZoom = 365;	// in days
+		var fullHeight = false;
+		var showCurrentTime = false;
+		var navigationButtons = false;
+		var hideTimeslots = false;
+		var hideTimeslotsTime = false;
+		var itemType = "range"; // point, box, range, background
+		var orientationAxis = "top"; // none, top, bottom, both
+		var itemIdent = "right"; // left, center, right
+		var itemStack = false;
+		var selectable = 'timeslot'; // none, timeslot, item
+		var defaultColors = [
+			"#61bd6d",
+			"#54acd2",
+			"#9365b8",
+			"#553982",
+			"#eb6b56",
+			"#75706b",
+			"#f37934",
+			"#475577",
+			"#d1d5d8",
+			"#2969b0"
+		];
+
+		var timeline;
+		var options = {};
+		var items = new vis.DataSet([]);
+		var groups = new vis.DataSet([]);
+		var groupsStyle = new Map();
+		var tsdates = [];
+		var customtimes = [];
+		var startDate = null;
+		var endDate = null;
+
+		var rangeFrom = null;
+		var rangeTo = null;
+
+		var latestSelection = null;
+
+		function getWidth(text) {
+			document.getElementById("text").innerHTML = text;
+			var width = document.getElementById("text").clientWidth;
+			return width;
+		}
+
+		function isLabelInside(shape) {
+			for (var i = 0; i < labelinside.length; i++) {
+				if (labelinside[i] === shape)
+					return true;
+			}
+			return false;
+		}
+
+		function isBright(hex) {
+			hex = hex.substring(1);
+			var r = parseInt(hex.substring(0, 2), 16);
+			var g = parseInt(hex.substring(2, 4), 16);
+			var b = parseInt(hex.substring(4, 6), 16);
+
+			var lum = (0.2126 * r + 0.7152 * g + 0.0722 * b);
+
+			if (lum > 128)
+				return true;
+			else
+				return false;
+
+		}
+
+		function ColorLuminance(hex, lum) {
+
+			// validate hex string
+			hex = hex.substring(1);
+			hex = String(hex).replace(/[^0-9a-f]/gi, '');
+			if (hex.length < 6) {
+				hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+			}
+			lum = lum || 0;
+
+			// convert to decimal and change luminosity
+			var rgb = "#", c, i;
+			for (i = 0; i < 3; i++) {
+				c = parseInt(hex.substr(i * 2, 2), 16);
+				c = Math.round(Math.min(Math.max(0, c + (c * lum)), 255)).toString(16);
+				rgb += ("00" + c).substr(c.length);
+			}
+
+			return rgb;
+		}
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "minZoom") {
+				minZoom = initialValue;
+			}
+			if (varName == "maxZoom") {
+				maxZoom = initialValue;
+			}
+			if (varName == "fullHeight") {
+				fullHeight = initialValue;
+			}
+			if (varName == "showCurrentTime") {
+				showCurrentTime = initialValue;
+			}
+			if (varName == "selectable") {
+				selectable = initialValue;
+			}
+			if (varName == "navigationButtons") {
+				navigationButtons = initialValue;
+			}
+			if (varName == "hideTimeslots") {
+				hideTimeslots = initialValue;
+			}
+			if (varName == "hideTimeslotsTime") {
+				hideTimeslotsTime = initialValue;
+			}
+			if (varName == "itemType") {
+				itemType = initialValue;
+			}
+			if (varName == "orientationAxis") {
+				orientationAxis = initialValue;
+			}
+			if (varName == "itemIdent") {
+				itemIdent = initialValue;
+			}
+			if (varName == "itemStack") {
+				itemStack = initialValue;
+			}
+			if (varName == "customColors") {  /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+				var colors = initialValue.split(',');
+				defaultColors = colors.slice(0);
+			}
+		});
+
+		function initData() {
+			Pages.fetchDataset("chartdata", function (rows) {
+				options = {};
+				items = new vis.DataSet([]);
+				groups = new vis.DataSet([]);
+				groupsStyle = new Map();
+
+				var its = [];
+				var allgroups;
+				var allgroupslabel;
+				if (!hideTimeslots) {
+					allgroups = ['timeslots'];
+					allgroupslabel = ['timeslots'];
+				} else {
+					allgroups = [];
+					allgroupslabel = [];
+				}
+				var allfromts = [];
+				var tscount = 0;
+
+				startDate = null;
+				endDate = null;
+
+				groupsStyle = new Map();
+				tsdates = [];
+
+				var index = 0;
+
+				for (var i = 0; i < rows.length; i++) {
+					var itemid = rows[i]["id"];
+					var fromtimeslotuid = rows[i]["from_timeslotuid"];
+					var totimeslotuid = rows[i]["to_timeslotuid"];
+					var from = new Date(rows[i]["from_ts"]).toISOString(); // Convert to ISO format
+					var to = new Date(rows[i]["to_ts"]).toISOString(); // Convert to ISO format
+					var label = rows[i]["label"];
+					var description = rows[i]["description"];
+					var group = rows[i]["group"];
+					var grouplabel = rows[i]["grouplabel"];
+					var itemstyle = rows[i]["itemstyle"];
+
+					if (grouplabel == null)
+						grouplabel = group;
+
+					if (startDate == null) {
+						startDate = from;
+						endDate = to;
+					}
+
+					if (new Date(from).getTime() < new Date(startDate).getTime())
+						startDate = from;
+					if (new Date(to).getTime() > new Date(endDate).getTime())
+						endDate = to;
+
+					if (allgroups.indexOf(group) == -1) {
+						allgroups.push(group);
+						allgroupslabel.push(grouplabel);
+						var style = '';
+						var col = defaultColors[(index++) % defaultColors.length];
+						var fontColor;
+						if (isBright(col))
+							fontColor = ColorLuminance(col, -1.5);
+						else
+							fontColor = ColorLuminance(col, 1.5);
+						style = 'color:' + fontColor + ';background-color:' + col + ';' + 'border:' + col + ';'
+						groupsStyle.set(group, style);
+					}
+
+					if (allfromts.indexOf(from) == -1) {
+						allfromts.push(from);
+						var language = window.navigator.userLanguage || window.navigator.language;
+						var period = {
+							type: "range",
+							group: "timeslots",
+							style: "color:#455157;border:rgba(255, 255, 255, 0);background-color:rgba(255, 255, 255, 0);",
+							content: new Date(to).toLocaleDateString(language, { year: 'numeric', month: 'numeric', day: 'numeric' }),
+							title: new Date(from).toLocaleDateString(language, { year: 'numeric', month: 'numeric', day: 'numeric' }) + ' \u2192 ' + new Date(to).toLocaleDateString(language, { year: 'numeric', month: 'numeric', day: 'numeric' }), // tooltip
+							start: from,
+							end: to,
+							from_timeslotuid: fromtimeslotuid,
+							to_timeslotuid: totimeslotuid,
+							from_ts: from,
+							to_ts: to
+						};
+
+						if (!hideTimeslots)
+							its.push(period);
+						tscount++;
+
+						if (tsdates.indexOf(from) == -1) {
+							tsdates.push(from);
+						}
+						if (tsdates.indexOf(to) == -1) {
+							tsdates.push(to);
+						}
+					}
+
+					var it = {
+						itemid: itemid,
+						from_timeslotuid: fromtimeslotuid,
+						to_timeslotuid: totimeslotuid,
+						from_ts: from,
+						to_ts: to,
+						label: label,
+						description: description,
+						start: from,
+						end: to,
+						type: itemType
+					};
+
+					if (group != null) {
+						it.group = group;
+						it.style = groupsStyle.get(group);
+					}
+
+					if (itemstyle != null)
+						it.style = itemstyle;
+
+					it.content = label;
+					if (description != null && description.length > 0)
+						it.title = description;
+
+					if (label != null && label.length > 0)
+						its.push(it);
+				}
+
+				items = new vis.DataSet(its);
+
+				gr = [];
+
+				for (var i = 0; i < allgroups.length; i++) {
+					var g = {};
+					g.style = 'color:#455157;border:#F0F0F0;background-color:#F0F0F0;';
+					g.id = allgroups[i];
+					g.content = allgroupslabel[i];
+					gr.push(g);
+				}
+				groups = new vis.DataSet(gr);
+
+				var html = document.documentElement;
+				var documentwidth = html.clientWidth;
+				var documentheight = html.clientHeight;
+
+				options = {
+					onInitialDrawComplete: () => {
+						timeline._setScrollTop(0);
+						if (navigationButtons) {
+							document.getElementById('zoomIn').style.display = 'inline';
+							document.getElementById('zoomOut').style.display = 'inline';
+							document.getElementById('zoomExtends').style.display = 'inline';
+							document.getElementById('moveLeft').style.display = 'inline';
+							document.getElementById('moveRight').style.display = 'inline';
+						}
+					},
+					selectable: !(selectable === 'none'),
+					zoomMin: 1000 * 60 * 60 * 24 * minZoom,
+					zoomMax: 1000 * 60 * 60 * 24 * maxZoom,
+					showCurrentTime: showCurrentTime,
+					showMajorLabels: true,
+					showMinorLabels: true,
+					multiselect: (selectable === 'timeslot'),
+					align: itemIdent,
+					start: startDate,
+					end: endDate,
+					stack: itemStack,
+					verticalScroll: true,
+					zoomKey: 'ctrlKey',
+					maxHeight: documentheight,
+					orientation: { axis: orientationAxis }
+				};
+
+				if (fullHeight) {
+					options.minHeight = documentheight;
+				}
+
+				init();
+
+				window.onresize = function (event) {
+					var container = document.getElementById('mytimeline');
+
+					var divwidth = html.clientWidth;
+					var divheight = html.clientHeight;
+					container.style.width = divwidth + 'px';
+					container.style.height = divheight + 'px';
+
+					options.maxHeight = divheight;
+					if (fullHeight) {
+						options.minHeight = divheight;
+					}
+
+					timeline.setOptions(options);
+					timeline.redraw();
+				};
+			});
+		}
+
+
+		function init() {
+			document.documentElement.style.overflow = 'hidden';
+			document.body.scroll = "no";
+
+			var html = document.documentElement;
+
+			// create a timeline
+			var container = document.getElementById('mytimeline');
+
+			var divwidth = html.clientWidth;
+			var divheight = html.clientHeight;
+			container.style.width = divwidth + 'px';
+			container.style.height = divheight + 'px';
+
+			if (timeline != null) {
+				for (var i = 0; i < customtimes.length; i++) {
+					timeline.removeCustomTime(customtimes[i]);
+				}
+
+				timeline.setOptions(options);
+				timeline.setData({
+					groups: groups,
+					items: items
+				});
+			}
+			else {
+				timeline = new vis.Timeline(container, items, groups, options);
+
+				// add the listeners for the action buttons
+				if (navigationButtons) {
+					document.getElementById('zoomIn').onclick = function () { timeline.zoomIn(0.2); };
+					document.getElementById('zoomOut').onclick = function () { timeline.zoomOut(0.2); };
+					document.getElementById('zoomExtends').onclick = function () { timeline.setWindow(startDate, endDate); };
+					document.getElementById('moveLeft').onclick = function () { move(0.2); };
+					document.getElementById('moveRight').onclick = function () { move(-0.2); };
+				}
+			}
+
+			customtimes = [];
+			if (!hideTimeslotsTime) {
+				for (var i = 0; i < tsdates.length; i++) {
+					customtimes.push(timeline.addCustomTime(tsdates[i], tsdates[i]));
+					timeline.customTimes[timeline.customTimes.length - 1].hammer.off("panstart panmove panend");
+				}
+			}
+
+			timeline.on('click', function (properties) {
+				var what = properties.what;
+
+				if (what === 'group-label') {
+					var group = properties.group;
+					Pages.sendEvent('ongroupclick', { group: group });
+				}
+			});
+			timeline.on('select', function (properties) {
+				if (selectable === 'timeslot')
+					selectTimeslots(properties);
+				if (selectable === 'item')
+					selectItem(properties);
+			});
+			timeline.on('mouseOver', function (properties) {
+
+				var what = properties.what;
+
+				if (what === 'item') {
+					if (!(selectable === 'none')) {
+						var group = properties.group;
+						if (selectable === 'timeslot') {
+							if (group === 'timeslots') {
+								properties.event.toElement.style.cursor = 'pointer';
+							}
+						}
+						else {
+							if (!(group === 'timeslots')) {
+								properties.event.toElement.style.cursor = 'pointer';
+							}
+						}
+					}
+				}
+			});
+
+			document.getElementById('loading').style.display = 'none';
+		}
+
+		var myTimeout = null;
+		var fetchInvalidated = function () {
+			initData();
+		};
+		Pages.listenToDatasetInvalidation("chartdata", function () {
+			if (myTimeout != null) {
+				clearTimeout(myTimeout);
+				myTimeout = setTimeout(fetchInvalidated, 500);
+				return;
+			}
+			myTimeout = setTimeout(fetchInvalidated, 500);
+		});
+
+		Pages.listenInitDone(function () {
+			initData();
+		});
+
+		/**
+		 * Move the timeline a given percentage to left or right
+		 * @param {Number} percentage   For example 0.1 (left) or -0.1 (right)
+		 */
+		function move(percentage) {
+			var range = timeline.getWindow();
+			var interval = range.end - range.start;
+
+			timeline.setWindow({
+				start: range.start.valueOf() - interval * percentage,
+				end: range.end.valueOf() - interval * percentage
+			});
+		}
+
+		function selectTimeslots(properties) {
+			var itemids = properties.items;
+			var event = properties.event;
+
+			// unselect items not in the timeslots groups
+			var newSelection = [];
+			for (var i = 0; i < itemids.length; i++) {
+				var it = items.get(itemids[i]);
+				var gr = it.group;
+				if (gr == 'timeslots') {
+					newSelection.push(itemids[i]);
+				}
+			}
+
+			if (newSelection.length == 0 && latestSelection != null) {
+				timeline.setSelection(latestSelection);
+				return;
+			}
+
+
+			if (itemids.length != newSelection.length) {
+				timeline.setSelection(newSelection);
+				if (newSelection.length == 0)
+					Pages.sendEvent('onclick', { id: '', from_timeslotuid: '', to_timeslotuid: '', from_ts: '', to_ts: '', label: '', description: '', group: '' });
+				return;
+			}
+
+			// compute the range if multiple selection is activated
+			var item = items.get(itemids[0]);
+			var itemid = item.itemid;
+			var from_timeslotuid = item.from_timeslotuid;
+			var to_timeslotuid = item.to_timeslotuid;
+			var from_ts = item.from_ts;
+			var to_ts = item.to_ts;
+			var label = item.label;
+			var description = item.description;
+			var group = item.group;
+
+			for (var i = 1; i < itemids.length; i++) {
+				item = items.get(itemids[i]);
+				if (item.from_ts < from_ts) {
+					from_ts = item.from_ts;
+					from_timeslotuid = item.from_timeslotuid;
+				}
+				if (item.to_ts > to_ts) {
+					to_ts = item.to_ts;
+					to_timeslotuid = item.to_timeslotuid;
+				}
+
+				if (item.group != group)
+					group = null;
+			}
+
+			// select full range
+			if (itemids.length > 1) {
+				itemid = null;
+				label = null;
+				description = null;
+
+				var allids = [];
+				// compute a full range based on the from and to values
+				items.forEach(function (properties) {
+					var ltype = properties.type;
+					var lgroup = properties.group;
+					var lfrom_ts = properties.from_ts;
+					var lto_ts = properties.to_ts;
+					var lid = properties.id;
+					if (ltype === 'range' && lgroup === 'timeslots') {
+						if (lfrom_ts >= from_ts && lto_ts <= to_ts)
+							allids.push(lid);
+					}
+				});
+
+				if (allids.length != itemids.length) {
+					timeline.setSelection(allids);
+					return;
+				}
+			}
+
+			rangeFrom = from_timeslotuid;
+			rangeTo = to_timeslotuid;
+			latestSelection = itemids.slice(0);
+			Pages.sendEvent('onclick', { id: itemid, from_timeslotuid: from_timeslotuid, to_timeslotuid: to_timeslotuid, from_ts: from_ts, to_ts: to_ts, label: label, description: description, group: group });
+		}
+
+		function selectItem(properties) {
+			var itemids = properties.items;
+			var event = properties.event;
+
+			// compute the range if multiple selection is activated
+			var item = items.get(itemids[0]);
+			var itemid = item.itemid;
+			var from_timeslotuid = item.from_timeslotuid;
+			var to_timeslotuid = item.to_timeslotuid;
+			var from_ts = item.from_ts;
+			var to_ts = item.to_ts;
+			var label = item.label;
+			var description = item.description;
+			var group = item.group;
+
+			if (group === 'timeslots') {
+				timeline.setSelection([]);
+				return;
+			}
+
+			rangeFrom = from_timeslotuid;
+			rangeTo = to_timeslotuid;
+			latestSelection = itemids.slice(0);
+			Pages.sendEvent('onclick', { id: itemid, from_timeslotuid: from_timeslotuid, to_timeslotuid: to_timeslotuid, from_ts: from_ts, to_ts: to_ts, label: label, description: description, group: group });
+		}
+
+
+	</script>
+
+
+</body>
+
+</html>

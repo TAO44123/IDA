@@ -1,0 +1,457 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_timeline/timelinenls.page"
+
+import "/webportal/pages/bw_timelinewidget/timeline.page"
+
+/* Nationalized labels here */
+safetimelineNLS = NLS {
+	title [en "Safe Timeline" fr "Evolutions du Safe"]
+	dyntitle [en "Safe {0} Timeline" fr "Evolutions du Safe {0}"]
+	manager [en "{0} as {1}" fr "{0} en tant que {1}"]
+	joborg [en "{0} in {1}" fr "{0} chez {1}"]
+	safe [en "Safe" fr "Safe"]
+	vault [en "Vault" fr "Vault"]
+	credentials [en "Credentials" fr "Secrets"]
+	users [en "Users" fr "Utilisateurs"]
+	description [
+		en "This report presents the evolutions that have occurred over time. The timeline presents the different timeslots as well as the major events that occurred at each loading. It is possible to select a date to display the details of the identified changes. It is also possible to select a time range by pressing the Ctrl key and clicking on two dates in the timeline."
+		fr "Ce rapport présente les évolutions survenues au fil du temps. la timeline présente les différents points de chargement ainsi que les evenements majeurs survenus à chaque chargement. Il est possible de sélectionner une date pour afficher le détail des changements identifiés. Il est aussi possible de sélectionner une page de temps en appuyant sur la touche Ctrl et en cliquant sur deux dates dans la timeline."
+	]
+	credentials.identifier [en "Identifier" fr "Identifiant"]
+	credentials.login [en "Login" fr "Login"]
+	credentials.username [en "Username" fr "Nom d''utilisateur"]
+	credentials.address [en "Address" fr "Adresse"]
+	credentials.platform [en "Platform" fr "Platforme"]
+	credentials.credtype [en "Type of Credential" fr "Type de secret"]
+}
+
+safetimeline_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+safetimeline_highlightremoved = Style {
+	foreground:white
+	background:Color red
+}
+
+safetimeline_highlightmodified = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+safetimelinepicker = Dialog {
+	title:$timelineNLS.selecttimeslot
+	width:640
+	height:200
+	buttons:[OkButton CancelButton]
+	
+	selectedTimeslot = Variable
+	
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+
+	Combo {
+		variable:selectedTimeslot
+		
+		options:Dynamic {
+			data:timeslots
+			text:Concat (Current displayname, ' (', Current commitdate, ')')
+			value:Current uid
+		}
+	}
+
+}
+
+safetimeline = Page {
+	title: $safetimelineNLS.title
+	dynamic-title: $safetimelineNLS.dyntitle(casafe.displayname)
+	description:$safetimelineNLS.description
+	tags: "safe" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	enter-event:Set previoustimeslot.uid to refTimeslot
+	feature:bwpam_safetimeline
+	
+	uid = Parameter {
+		label:"Concept Uid"
+		type:String
+		hidden:True
+		mandatory:True
+	}
+	initialTimeslot = Parameter { default:PortalTimeslot.UID }
+
+	/* Parameters here */
+	currentTimeslot = Variable
+	refTimeslot = Variable
+
+	selectedRepository = Variable
+	selectedApplication = Variable
+	selectedShare = Variable
+	
+	currentTab = Variable {initial:0}
+	
+	showonlydiffperms = Variable {initial:True}
+	showonlydiffaccounts = Variable {initial:True}
+	showonlydiffrights = Variable {initial:True}
+	showonlydiffcredentials = Variable {initial:True}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+	previoustimeslot = Record {
+		view:bwt_previoustimeslot with currentTimeslot to uid
+	}
+	reftimeslot = Record {
+		view:bwt_timeslot with refTimeslot to uid
+	}
+
+	casafe = Record {
+		view:bwpam_casafeDetail with uid to uid
+		timeslot:currentTimeslot
+	}
+	
+//	applicationmanagers = Dataset {
+//		view:bwt_applicationmanagers with uid to uid
+//		timeslot:currentTimeslot
+//	}
+
+	safemanagers = Dataset {
+			view:bwt_applicationmanagers with uid to uid
+			timeslot:currentTimeslot
+		}
+	
+	safeprofiles = Dataset {
+		view:bwt_safepermissions with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:nbaccounts
+			timeslot:refTimeslot
+			status-column-name:status
+			difference-column-name:diff
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=0 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffperms)
+		}
+	}
+
+	safeaccounts = Dataset {
+		view:bwt_safeaccounts with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:nbpermissions
+			timeslot:refTimeslot
+			status-column-name:status
+			difference-column-name:diff
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=1 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffaccounts)
+		}
+	}
+
+	safeaccountsandprofiles = Dataset {
+		view:bwt_safeaccountsandpermissions with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+			difference-column-name:diff
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=2 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffrights)
+		}
+	}
+	
+	safecredentials = Dataset {
+		view:bwf_safecredentials with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+			difference-column-name:diff
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=3 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffcredentials)
+		}	
+	}
+
+	timeline = Dataset {
+		view:bwt_applicationcomputechanges with uid to uid
+	}
+
+	/* Page content */
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical False hint:height 120 }
+		label:Label {break:True}
+		template: timeline
+		datasets:timeline(previoustimeslotuid, timeslotuid, previoustimeslotcommitdate, timeslotcommitdate, label, description, group) to chartdata(from_timeslotuid,  to_timeslotuid, from_ts, to_ts, label, description, group)
+		bindings:
+			value-of True to navigationButtons,
+			value-of "background" to itemType
+		widget-events: {
+			when onclick then [
+				Set Current to_timeslotuid to currentTimeslot, Set Current from_timeslotuid to refTimeslot  
+			]
+		}
+	}
+	ConditionalGroup {
+		StringCondition(currentTimeslot) {
+		when IsEmpty then [
+			Header {
+				value:$timelineNLS.help
+			}
+		]
+		otherwise [
+			TabFolder {
+				TabItem {
+					text:$safetimelineNLS.safe
+
+					Text {
+						label:$application.code
+						compact:True
+						value:casafe.code
+					}
+					Text {
+						label:$application.displayname
+						compact:True
+						value:casafe.displayname
+					}
+					Text {
+						value:casafe.vault_displayname
+						label:$safetimelineNLS.vault
+						compact:True
+					}
+//					Text {
+//						label:$timelineNLS.description
+//						compact:True
+//						value:casafe.description
+//					}
+					Text {
+						label:$manager.concept
+						iterate-on:safemanagers
+						compact:True
+						value: $safetimelineNLS.manager(Current fullname, Current expertisedomaindisplayname)
+					}
+				}
+				TabItem {
+					text:$permission.concept
+					activation-event:Set 0 to currentTab
+	
+					Checkbox {
+						variable:showonlydiffperms
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:safeprofiles
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then safetimeline_highlightnew when 'Removed' then safetimeline_highlightremoved when 'Modified' then safetimeline_highlightmodified } }
+						Column {sortable:True filterable:True width:160px header:$permission.code column:code}
+						Column {sortable:True filterable:True width:300px header:$permission.displayname column:displayname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$permission.permissionalias column:permissionalias}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$timelineNLS.description column:description}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:'sensitivity level' column:sensitivitylevel}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$timelineNLS.sensitivityreason column:sensitivityreason}
+						Column {sortable:True filterable:True width:100px header:'nb accounts' column:nbaccounts text:Concat(Current nbaccounts, ' (', Current diff, ')')  image:IntImageSelection(Current diff) {when>0 then "16/indicators/high1blue.png" when <0 then "16/indicators/low1blue.png" } }
+					}			
+				}
+				TabItem {
+					text:$safetimelineNLS.users
+					activation-event:Set 1 to currentTab
+				
+					Checkbox {
+						variable:showonlydiffaccounts
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:safeaccounts
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then safetimeline_highlightnew when 'Removed' then safetimeline_highlightremoved when 'Modified' then safetimeline_highlightmodified }}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.identifier column:identifier}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.login column:login}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.givenname column:givenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.surname column:surname}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.username column:username}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.mail column:mail}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.service column:service}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$reconciliation.noownercode column:noownercode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.creationdate column:creationdate}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.lastlogindate column:lastlogindate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.expiredate column:expiredate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordlastsetdate column:passwordlastsetdate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.nextpwdchangedate column:nextpwdchangedate}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordcantchange column:passwordcantchange}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordnotrequired column:passwordnotrequired}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.dontexpirepassword column:dontexpirepassword}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.notnormalaccount column:privilegedaccount}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.locked column:locked}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$repository.concept column:repositorydisplayname}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.hrcode column:identityhrcode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.givenname column:identitygivenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.surname column:identitysurname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.fullname column:identityfullname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.mail column:identitymail}
+
+						Column {sortable:True filterable:True width:100px header:'nb permissions' column:nbpermissions text:Concat(Current nbpermissions, ' (', Current diff, ')') image:IntImageSelection(Current diff) {when>0 then "16/indicators/high1blue.png" when <0 then "16/indicators/low1blue.png" }}
+					}
+				}
+				TabItem {
+					text:$right.concept
+					activation-event:Set 2 to currentTab
+
+					Checkbox {
+						variable:showonlydiffrights
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+					
+					Table {
+						data:safeaccountsandprofiles
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then safetimeline_highlightnew when 'Removed' then safetimeline_highlightremoved when 'Modified' then safetimeline_highlightmodified }}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.identifier column:identifier}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.login column:login}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.givenname column:givenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.surname column:surname}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.username column:username}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.mail column:mail}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.service column:service}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$reconciliation.noownercode column:noownercode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.creationdate column:creationdate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.lastlogindate column:lastlogindate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.expiredate column:expiredate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordlastsetdate column:passwordlastsetdate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.nextpwdchangedate column:nextpwdchangedate}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordcantchange column:passwordcantchange}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordnotrequired column:passwordnotrequired}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.dontexpirepassword column:dontexpirepassword}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.notnormalaccount column:privilegedaccount}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.locked column:locked}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$repository.concept column:repositorydisplayname}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.hrcode column:identityhrcode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.givenname column:identitygivenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.surname column:identitysurname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.fullname column:identityfullname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.mail column:identitymail}
+
+						Column {sortable:True filterable:True width:160px header:$ppermission.code column:permissioncode}
+						Column {sortable:True filterable:True width:300px header:$ppermission.displayname column:permissiondisplayname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$ppermission.permissionalias column:permissionpermissionalias}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:'permission description' column:permissiondescription}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:'permission sensitivity lebvel' column:permissionsensitivitylevel}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:'permission sensitivity reason' column:permissionsensitivityreason}
+
+						Column {initially-masked:True sortable:True filterable:True width:100px header:$right.perimetercode column:perimetercode}
+						Column {sortable:True filterable:True width:160px header:$right.perimeterdisplayname column:perimeterdisplayname}
+
+						Column {initially-masked:True sortable:True filterable:True width:100px header:$right.action column:action}
+						Column {initially-masked:True sortable:True filterable:True width:100px header:$right.limit column:limit}
+						Column {initially-masked:True sortable:True filterable:True width:100px header:$right.indirect column:indirect}
+						Column {initially-masked:True sortable:True filterable:True width:100px header:$right.fromgroup column:fromgroup}
+					}
+				}
+				TabItem {
+					text:$safetimelineNLS.credentials
+					activation-event:Set 3 to currentTab
+				
+					Checkbox {
+						variable:showonlydiffcredentials
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:safecredentials
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then safetimeline_highlightnew when 'Removed' then safetimeline_highlightremoved when 'Modified' then safetimeline_highlightmodified }}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$safetimelineNLS.credentials.identifier column:secret_uid}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$safetimelineNLS.credentials.login column:secret_login}
+						Column {initially-masked:False sortable:True filterable:True width:260px header:$safetimelineNLS.credentials.address column:secret_custom2}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$safetimelineNLS.credentials.platform column:secret_custom3}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$safetimelineNLS.credentials.credtype column:secret_custom4}
+					}
+				}
+			}		
+		]
+		}
+	}
+}
+

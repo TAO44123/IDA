@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwaccess360_repositoryaccountsreviewcampaignsentries" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketlog" displayname="accessreviewcampaignsentries" notes="" begindate="" enddate="">
+	<ViewParam name="campaignid" displayname="campaign id" type="String">
+		<Value name="0" data="23172"/>
+	</ViewParam>
+	<ViewParam name="status" displayname="status" type="String">
+		<Value name="0" data="revoke"/>
+		<Value name="1" data="update"/>
+	</ViewParam>
+	<ViewParam name="ticketreviewrecorduids" displayname="ticketreviewrecorduids" type="Integer">
+		<Value name="0" data="141868"/>
+		<Value name="1" data="142126"/>
+		<Value name="2" data="141894"/>
+	</ViewParam>
+	<ViewParam name="filterprocessed" displayname="filterprocessed" type="Boolean" defaultvalue="false">
+		<Value name="0" data="true"/>
+	</ViewParam>
+	<ViewComputedAttribute name="remediationstatus" displayname="remediation status" type="String" expression="(dataset.isEmpty(&apos;accountuid&apos;))?&apos;done&apos;:&apos;init&apos;"/>
+	<ViewComputedAttribute name="remediationcomment" displayname="remediation comment" type="String" expression="(dataset.isEmpty(&apos;accountuid&apos;))?dataset.comment.get():&apos;&apos;"/>
+	<ViewComputedAttribute name="remediationtype" displayname="remediationtype" type="String" expression="!dataset.isEmpty(&apos;repositorybwr_remediation_repository_type&apos;)?dataset.repositorybwr_remediation_repository_type.get():&apos;embedded&apos;"/>
+	<ViewComputedAttribute name="remediationclosed" displayname="remediation closed" type="String" expression="(dataset.isEmpty(&apos;accountuid&apos;))?&apos;1&apos;:&apos;-1&apos;"/>
+	<ViewSort name="sort" attribute1="A1655207163999_1647" attribute2="A1655207063947_1644" attribute3="A1655207066187_1645"/>
+	<ViewJoin name="J1626682820961_1023" prefix="ticketaction" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketAction">
+		<ViewJoin name="J1626682823269_1024" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+			<ViewAttribute name="A1627051894544_1040" attribute="status" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1627051905322_0" reference="status" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1629107305591_777" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1629107442553_778" attribute="custom1" alias="label" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1647859832656_810" prefix="account" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accounts">
+				<ViewAttribute name="1647859839327_812" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewJoin name="J1655207040761_1643" prefix="repository" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+					<ViewAttribute name="A1655207063947_1644" attribute="bwr_remediation_repository_type" operator="or" removedfromprojection="false" globalfilter="true"/>
+					<ViewAttribute name="A1655207066187_1645" attribute="bwr_remediation_repository_instancecode" operator="or" removedfromprojection="false" globalfilter="true"/>
+					<ViewAttribute name="A1655207163459_1646" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="A1655207163999_1647" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="A1655207164763_1648" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				</ViewJoin>
+			</ViewJoin>
+			<ViewAttribute name="1702979785418_1484" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1698076178071_0" reference="ticketreviewrecorduids" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="1702979794961_1486" attribute="custom5" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.filterprocessed.get()">
+				<ViewAttributeFilter name="F1698408006127_0" operation="isNull" ignoreifempty="false"/>
+				<ViewAttributeFilter name="F1698408014857_1" operation="ne" ignoreifempty="false">
+					<Value name="0" data="2"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="A1626705148386_1181" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewAttribute name="1626705068168_1180" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1626427983689_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="ADHOC_UAR"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="1630310086976_3848" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1630309887906_0" reference="campaignid" operation="eq" ignoreifempty="true"/>
+	</ViewAttribute>
+</View>

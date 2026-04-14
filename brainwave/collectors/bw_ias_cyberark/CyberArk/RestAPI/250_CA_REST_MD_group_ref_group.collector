@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA MD group ad group" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617206690416_1_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617205694918_1">
+		<Component name="C1617205694918_1" type="discoverysource" x="38" y="28" w="300" h="64" title="CA_groups">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_groups.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_groups.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617205830458_1" type="metadata" x="38" y="253" w="300" h="64" title="bw_pam_groupadgroup">
+			<Metadata schema="bw_pam_grouprefgroup" key=" " group1Repository="_REPOSITORY_CODE_" group1="id" groupValue="ref_group_id" groupValueRepository="ref_group_repo_code" error="true" event="EntityNotFound">
+				<Attribute name="valueboolean" attribute="ref_group_isdirectory"/>
+			</Metadata>
+		</Component>
+		<Link name="L1617205731451_1" source="C1617205694918_1" target="C1617354379854" priority="1"/>
+		<Component name="C1617354379854" type="changefilter" x="37" y="150" w="300" h="64" title="compute ref group and repo">
+			<Actions>
+				<Action name="U1617354483505" action="add" attribute="ref_group_id" type="String" multivalued="false" newvalue="{dataset.grouptype.get() == &apos;Directory&apos;? dataset.dn.get() : dataset.id.get()}" errorexist="false"/>
+				<Action name="U1617354524489" action="add" attribute="ref_group_repo_code" type="String" multivalued="false" errorexist="false" newvalue="{dataset.grouptype.get() == &apos;Directory&apos;? dataset.repository_code.get() : dataset._REPOSITORY_CODE_.get()}"/>
+				<Action name="U1617354874082" action="add" attribute="ref_group_isdirectory" type="Boolean" multivalued="false" newvalue="{dataset.grouptype.get() == &apos;Directory&apos; }" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1617354491295" source="C1617354379854" target="C1617205830458_1" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

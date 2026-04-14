@@ -1,0 +1,935 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentIdentityRightsNLS = NLS {
+	empty [en "Identity doesn't have access to applications" fr "Cette identité n'a pas d'accès à des applications"]
+	description [en "description" fr "description"]
+
+	firstlist [ en "First List" fr "Première liste"]
+	secondlist [ en "Second List" fr "Deuxième liste"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the rights for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>intype </b>the permission types (Role by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid  </li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outpermissionuid </b>the selected permission uid  </li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityRights = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	intype = Variable {multivalued: True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	
+	outapplicationuid = Variable
+	
+	/* Dataset here */
+	application = Dataset {
+		view: bwf_identityapplications with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	permissions = Dataset {
+		view: bwf_identityapprights with
+			outapplicationuid to applicationuid,
+			inuid to uid,
+			intype to permissiontype unless-empty
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	ConditionalGroup {
+		IntCondition(Count application) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Combo {
+					variable:outapplicationuid
+					options:Dynamic {
+						data:application
+						text:Current displayname
+						value:Current uid
+					}
+					label:Label{break:True value:$application.concept}
+				}
+				Table {
+					data:permissions
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					label:Label{break:True value:$permission.concept}
+					persist-configuration:True
+					
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:uid
+						hidden:True
+						selection:outpermissionuid
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						selection:outaccountlogin
+						width:128px
+					}
+					Column {
+						column:accountusername
+						header:$account.username
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						column:action
+						header:$right.action
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:limit
+						header:$right.limit
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:code
+						header:$ppermission.code
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:displayname
+						header:$ppermission.displayname
+						sortable:True
+						filterable:True
+						width:160px
+						selection:outpermissionname
+					}
+					Column {
+						column:description
+						header:$fragmentIdentityRightsNLS.description
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentIdentityRights360NLS = NLS {
+	profilecode [en "Permission code" fr "Code permission"]
+	profilename [en "Permission" fr "Permission"]
+	profiledescription [en "Description" fr "Description"]
+	sensitivitylevel [en "Sensitivity" fr "Sensibilité"]
+	sensitivityreason [en "Sensitivity \nreason" fr "Raison \nSensibilité"]
+	action [en "Action" fr "Action"]
+	limit [en "Limit" fr "Limite"]
+	perimetercode [en "Perimeter \ncode" fr "Code \npérimètre"]
+	perimetername [en "Perimeter" fr "Périmètre"]
+	type [en "type" fr "type"]
+	filteredto [en "filtered to {0}" fr "filtré sur {0}"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the rights for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>intype </b>the permission types (Role by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>inapplicationuids </b>optional filter to display only some applications</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * <li><b>outapplicationname </b>the selected application name</li>
+ * <li><b>outpermissionuid </b>the selected permission uid  </li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityRights360 = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	intype = Variable {multivalued: True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inapplicationuids = Variable {multivalued: True}
+
+	outapplicationuid = Variable
+	outapplicationname = Variable
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	
+	application = Record {
+		view: bwf_applicationDetail with inapplicationuids to uid
+	}
+	
+	appsbyidentity = Dataset {
+		view: bwf_appsbyidentity with
+			inuid to uid,
+			inapplicationuids to applicationuids unless-empty
+		trend: Trend { 
+			join-column: uniqappid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: const
+			
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	permsbyidentity = Dataset {
+		view: bwf_permsbyidentity with
+			outapplicationuid to application_uid,
+			inuid to id_uid
+		trend: Trend { 
+			join-column: perm_uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: trend
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+													False to inshowaccounts, 
+													True to inshowperjob,
+													True to inshowperorg
+												  )
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False }
+		value:$fragmentIdentityRights360NLS.filteredto(application.displayname)
+	}
+	ConditionalGroup {
+		IntCondition(Count appsbyidentity) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]
+			otherwise [
+				Grid {
+					layout: Layout fill: Both 								
+					columns: GridColumn { width: 300px }, GridColumn { width: 400px } 
+					GridRow {
+						height: grow
+						GridCell {
+							Table {	
+								data: appsbyidentity
+								layout: Layout { grab: horizontal True vertical True }
+								label: Label { break: True }
+								show-filter: True
+								show-count: True
+								configurable: True
+								persist-configuration: True
+								persist-configuration-key: "fragmentIdentityRights360_appsbyidentity"
+								Column {
+									column: app_uid
+									hidden: True
+									selection: outapplicationuid
+								}
+								Column {
+									column: app_displayname
+									selection: outapplicationname
+									header: $application.concept
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: acc_login
+									header: $account.login
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: repo_displayname
+									header: $repository.concept
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+									sortable: True
+									filterable: True
+									width: 10%
+								}
+							} // End of table
+						}
+						// Groups by identity and application
+						GridCell {
+						    // Permissions by identity 
+						    ConditionalGroup {
+						    	IntCondition(application.bwa_applicationanalytics_nbperimeter) {
+									when >0 then [
+										Table {
+											data: permsbyidentity
+											layout: Layout { grab: horizontal True vertical True }
+											label: Label { break: True }
+											show-filter: True
+											show-count: True
+											configurable: True
+											persist-configuration: True
+											persist-configuration-key: "fragmentIdentityRights360_permsbyidentity"
+											double-click:
+												ExecuteNamedAction goDetails
+											Column {
+												column: perm_uid
+												header: $fragmentIdentityRights360NLS.profilecode
+												hidden: True
+												selection: outpermissionuid
+											}
+											Column {
+												column: acc_login
+												header: $account.login
+												sortable: True
+												filterable: True
+												width: 50%
+											}
+											Column {
+												column: perm_permissiontype
+												header: $fragmentIdentityRights360NLS.type
+												initially-masked:True
+												sortable: True
+												filterable: True
+												width: 5%
+											}
+											Column {
+												column: perm_code
+												header: $fragmentIdentityRights360NLS.profilecode
+												initially-masked:True
+												sortable: True
+												filterable: True
+												width: 100%
+												actions: ExecuteNamedAction goDetails
+												actions-disabled: Not BooleanPredicate(incanshowdetails)
+												tooltip: $search_page.showdetails
+											}
+											Column {
+												column: perm_displayname
+												selection: outpermissionname
+												header: $fragmentIdentityRights360NLS.profilename
+												sortable: True
+												filterable: True
+												width: 100%
+												actions: ExecuteNamedAction goDetails
+												actions-disabled: Not BooleanPredicate(incanshowdetails)
+												tooltip: $search_page.showdetails
+											}
+											Column {
+												column: perm_description
+												header: $fragmentIdentityRights360NLS.profiledescription
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: perm_sensitivitylevel
+												header: $fragmentIdentityRights360NLS.sensitivitylevel
+												sortable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: perm_sensitivityreason
+												header: $fragmentIdentityRights360NLS.sensitivityreason
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: action
+												header: $fragmentIdentityRights360NLS.action
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: limit
+												header: $fragmentIdentityRights360NLS.limit
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: perimetercode
+												header: $fragmentIdentityRights360NLS.perimetercode
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: perimeterdisplayname
+												header: $fragmentIdentityRights360NLS.perimetername
+												sortable: True
+												filterable: True
+												width: 100%
+											}
+											Column {
+												column: trends
+												header: $bw_fragment.trends
+												text:Transform Current trends using bwf_trendStatusColumn 
+												styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+												image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+												tooltip:$bwf_trendStatusColumnNLS.tooltip
+												sortable: True
+												filterable: True
+												width: 10%
+											}																
+										} 
+									]
+									otherwise [
+										Table {
+											data: permsbyidentity
+											layout: Layout { grab: horizontal True vertical True }
+											label: Label { break: True }
+											show-filter: True
+											show-count: True
+											configurable: True
+											double-click:
+												ExecuteNamedAction goDetails
+											Column {
+												column: perm_uid
+												header: $fragmentIdentityRights360NLS.profilecode
+												hidden: True
+												selection: outpermissionuid
+											}
+											Column {
+												column: acc_login
+												header: $account.login
+												sortable: True
+												filterable: True
+												width: 50%
+											}
+											Column {
+												column: perm_permissiontype
+												header: $fragmentIdentityRights360NLS.type
+												initially-masked:True
+												sortable: True
+												filterable: True
+												width: 5%
+											}
+											Column {
+												column: perm_code
+												header: $fragmentIdentityRights360NLS.profilecode
+												initially-masked:True
+												sortable: True
+												filterable: True
+												width: 100%
+												actions: ExecuteNamedAction goDetails
+												actions-disabled: Not BooleanPredicate(incanshowdetails)
+												tooltip: $search_page.showdetails
+											}
+											Column {
+												column: perm_displayname
+												selection: outpermissionname
+												header: $fragmentIdentityRights360NLS.profilename
+												sortable: True
+												filterable: True
+												width: 100%
+												actions: ExecuteNamedAction goDetails
+												actions-disabled: Not BooleanPredicate(incanshowdetails)
+												tooltip: $search_page.showdetails
+											}
+											Column {
+												column: perm_description
+												header: $fragmentIdentityRights360NLS.profiledescription
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: perm_sensitivitylevel
+												header: $fragmentIdentityRights360NLS.sensitivitylevel
+												sortable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: perm_sensitivityreason
+												header: $fragmentIdentityRights360NLS.sensitivityreason
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: action
+												header: $fragmentIdentityRights360NLS.action
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: limit
+												header: $fragmentIdentityRights360NLS.limit
+												sortable: True
+												filterable: True
+												width: 100%
+												initially-masked:True
+											}
+											Column {
+												column: trends
+												header: $bw_fragment.trends
+												text:Transform Current trends using bwf_trendStatusColumn 
+												styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+												image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+												tooltip:$bwf_trendStatusColumnNLS.tooltip
+												sortable: True
+												filterable: True
+												width: 10%
+											}																
+										} 
+									]					    	
+						    	}
+						    }
+						} // End of Gridcell
+					}// End of Gridrow	
+				} // End of Grid
+			]
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display all the rights for a given identity in a form of a hierarchy
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>infilterbyapplications </b>application uids in order to filter the results for some applications only</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid  </li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outpermissionuid </b>the selected permission uid  </li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityRightsHierarchy = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	infilterbyapplications = Variable {multivalued: True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	
+	outapplicationuid = Variable
+	
+	/* Dataset here */
+	application = Dataset {
+		view:bwf_identityapplications with inuid to uid
+		 disabled:Not BooleanPredicate(inenabled)
+		 includes:OrPredicate {
+		 	StringPredicate(infilterbyapplications) { when IsEmpty then True otherwise False }
+		 	MultivaluedPredicate(infilterbyapplications contains Current uid)
+		 }
+	}
+	permissions = HierarchicalData {
+		view:bwf_identitypermhierarchy with inuid to uid, outapplicationuid to applicationuids unless-empty
+		initial:parentuid IsNull
+		connect:parent uid to child parentuid
+		disabled:Not BooleanPredicate(inenabled)
+	}
+
+	ConditionalGroup {
+		IntCondition(Count application) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Combo {
+					variable:outapplicationuid
+					allow-none:True
+					options:Dynamic {
+						data:application
+						text:Current displayname
+						value:Current uid
+					}
+					label:Label{break:True value:$application.concept}
+				}
+				Tree {
+					data:permissions
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					label:Label{break:True value:$permission.concept}
+					persist-configuration:True
+					expand-level:9
+					Column {
+						column:code
+						header:$ppermission.code
+						sortable:True
+						filterable:True
+						width:160px
+					}
+					Column {
+						column:displayname
+						header:$ppermission.displayname
+						sortable:True
+						filterable:True
+						width:100%
+						selection:outpermissionname
+					}
+					Column {
+						column:applicationdisplayname
+						header:$application.concept
+						sortable:True
+						filterable:True
+						width:160px
+					}
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:uid
+						hidden:True
+						selection:outpermissionuid
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						selection:outaccountlogin
+						width:128px
+					}
+					Column {
+						column:accountusername
+						header:$account.username
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentIdentityRightsHierarchywSoDColors1 = Style { background:Color RGB(144, 188, 216) } 
+fragmentIdentityRightsHierarchywSoDColors2 = Style { background:Color RGB(254, 190, 138) } 
+fragmentIdentityRightsHierarchywSoDColorsStyle = IntStylingTemplate {
+	when =1 then fragmentIdentityRightsHierarchywSoDColors1
+	when =2 then fragmentIdentityRightsHierarchywSoDColors2
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display all the rights for a given identity in a form of a hierarchy with different background colors if they are part of a provided list.
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>infilterbyapplications </b>application uids in order to filter the results for some applications only</li>
+ * <li><b>inlist1name </b>the first permission list name</li>
+ * <li><b>inlist1uid </b>the first permission list uids</li>
+ * <li><b>inlist2name </b>the second permission list name</li>
+ * <li><b>inlist2uid </b>the second permission list uids</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid  </li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outpermissionuid </b>the selected permission uid  </li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityRightsHierarchywSoDColors = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	infilterbyapplications = Variable {multivalued: True}
+	inlist1name = Variable { type:String initial:$fragmentIdentityRightsNLS.firstlist}
+	inlist2name = Variable { type:String initial:$fragmentIdentityRightsNLS.secondlist}
+	inlist1uid = Variable { multivalued:True type:String }
+	inlist2uid = Variable { multivalued:True type:String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	
+	outapplicationuid = Variable
+	
+	/* Dataset here */
+	application = Dataset {
+		view:bwf_identityapplications with inuid to uid
+		 disabled:Not BooleanPredicate(inenabled)
+		 includes:OrPredicate {
+		 	StringPredicate(infilterbyapplications) { when IsEmpty then True otherwise False }
+		 	MultivaluedPredicate(infilterbyapplications contains Current uid)
+		 }
+	}
+	permissions = HierarchicalData {
+		view:bwf_identitypermhierarchywbuckets with inuid to uid, outapplicationuid to applicationuid, infilterbyapplications to applicationuids unless-empty, inlist1uid to list1uid, inlist2uid to list2uid
+		initial:parentuid IsNull
+		connect:parent uid to child parentuid
+		disabled:Not BooleanPredicate(inenabled)
+	}
+
+	ConditionalGroup {
+		IntCondition(Count application) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Grid {
+					columns: GridColumn { width: grow}, GridColumn
+					layout: Layout { grab: horizontal True vertical True}
+					GridRow {
+						hidden: IntPredicate(SizeOf application.uid) { when <= 1 then True otherwise False }
+						GridCell {
+							Combo {
+								layout: Layout {grab: horizontal False vertical True}
+								variable:outapplicationuid
+								allow-none:True
+								options:Dynamic {
+									data:application
+									text:Current displayname
+									value:Current uid
+								}
+								label: $application.concept
+								hidden: IntPredicate(SizeOf application.uid) { when <= 1 then True otherwise False }
+							}
+						}
+						GridCell {
+						}
+					}
+					GridRow {
+						height: grow
+						GridCell {
+							Tree {
+								data:permissions
+								configurable:True
+								show-filter:True
+								persist-configuration:True
+								expand-level:9
+								layout:Layout {grab: horizontal True vertical True }
+								Column {
+									column:code
+									header:$ppermission.code
+									sortable:True
+									filterable:True
+									width:100%
+									styling:StylingTemplateSelection (Current isinlist) using fragmentIdentityRightsHierarchywSoDColorsStyle
+								}
+								Column {
+									column:displayname
+									header:$ppermission.displayname
+									sortable:True
+									filterable:True
+									width:100%
+									selection:outpermissionname
+									styling:StylingTemplateSelection (Current isinlist) using fragmentIdentityRightsHierarchywSoDColorsStyle
+								}
+								Column {
+									column:applicationdisplayname
+									header:$application.concept
+									sortable:True
+									filterable:True
+									width:100%
+									styling:StylingTemplateSelection (Current isinlist) using fragmentIdentityRightsHierarchywSoDColorsStyle
+								}
+								Column {
+									column:accountuid
+									hidden:True
+									selection:outaccountuid
+								}
+								Column {
+									column:uid
+									hidden:True
+									selection:outpermissionuid
+								}
+								Column {
+									column:accountlogin
+									header:$account.login
+									sortable:True
+									filterable:True
+									selection:outaccountlogin
+									width:100%
+									styling:StylingTemplateSelection (Current isinlist) using fragmentIdentityRightsHierarchywSoDColorsStyle
+								}
+								Column {
+									column:accountusername
+									header:$account.username
+									sortable:True
+									filterable:True
+									initially-masked:True
+									width:100%
+									styling:StylingTemplateSelection (Current isinlist) using fragmentIdentityRightsHierarchywSoDColorsStyle
+								}
+								Column {
+									column:accountlastlogindate
+									header:$account.lastlogindate
+									sortable:True
+									filterable:True
+									initially-masked:True
+									width:100%
+									styling:StylingTemplateSelection (Current isinlist) using fragmentIdentityRightsHierarchywSoDColorsStyle
+								}
+							}
+						}
+						GridCell {
+							Text { value: "" compact: True}
+							Text {
+								label: inlist1name
+								value: "       "
+								styling:fragmentIdentityRightsHierarchywSoDColors1
+							}
+							Text {
+								label: inlist2name
+								value: "       "
+								styling:fragmentIdentityRightsHierarchywSoDColors2
+							}
+						}
+					}
+				}
+			]
+		}
+	}
+}

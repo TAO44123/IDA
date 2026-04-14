@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity OrgMembers" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1727944961157_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1727947483501">
+		<Component name="C1727945744334" type="groupmembers" x="92" y="301" w="300" h="64" title="Add Organization Roles">
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepoNotFound"/>
+			<Group error="true" event="GroupNullOrEmpty" code="orgid"/>
+			<Content members="id"/>
+		</Component>
+		<Component name="C1727947483501" type="discoverysource" x="91" y="98" w="300" h="64" title="CA_Identity_Roles">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_Roles.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_Roles.csv&apos;)}"/>
+			<Request>
+				<Sort name="S1" attribute="orgid"/>
+			</Request>
+		</Component>
+		<Link name="L1728044189258" source="C1727947483501" target="C1730388910083" priority="1" expression="(! dataset.isEmpty(&apos;orgid&apos;))"/>
+		<Component name="C1730388910083" type="groupfilter" x="92" y="203" w="300" h="64" title="get all roles for an organization">
+			<Criteria expression="{dataset.orgid.get()}"/>
+			<Multivalued>
+				<Value name="M1730389164896" attribute="id" synchronised="false"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1730388932040" source="C1730388910083" target="C1727945744334" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

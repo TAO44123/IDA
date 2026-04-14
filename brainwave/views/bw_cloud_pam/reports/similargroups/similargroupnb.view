@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwcdpamr_repository_similargroupnb" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="repository" displayname="similar group members" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="0" data="AMER_1612780227864_37948"/>
+	</ViewParam>
+	<ViewParam name="nbmembersThreshold" displayname="nbmembersThreshold" type="Integer"/>
+	<ViewParam name="codefilter" displayname="codefilter" type="String">
+		<Value name="0" data="ACAppn"/>
+	</ViewParam>
+	<ViewParam name="codefilterFlt" displayname="codefilterFlt" type="String" defaultvalue="{!param.isEmpty(&apos;codefilter&apos;)?(&apos;%&apos;+param.codefilter.get()+&apos;%&apos;):&apos;&apos;}"/>
+	<ViewSqlFilter name="F1613486804767" expression="dataset.grp1code like param.codefilterFlt OR dataset.grp1displayname like param.codefilterFlt" enabled="!param.isEmpty(&apos;codefilter&apos;)"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="A1594041013407_429" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1594044660380_0" reference="uid" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1594041084946_432" prefix="grp1" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="group">
+		<ViewAttribute name="A1594041513139_435" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1594041524140_436" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1594043352874_455" attribute="bwa_groupanalytics_nbdirectaccount" alias="grp1nbaccount" operator="or" removedfromprojection="false" globalfilter="true">
+			<ViewAttributeFilter name="F1594129447113_0" reference="nbmembersThreshold" operation="ge" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1594044398979_866" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1620838211595_691" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="downpermission">
+			<ViewJoin name="J1620838218108_692" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+				<ViewAttribute name="A1620838222926_693" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1620838226096_0" operation="in" ignoreifempty="false">
+						<Value name="0" data="ca_safe"/>
+						<Value name="1" data="ca_vault"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

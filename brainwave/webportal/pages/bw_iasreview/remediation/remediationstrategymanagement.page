@@ -1,0 +1,303 @@
+import "/webportal/pages/bw_iasreview/remediation/itsmrepository.page"
+import "/webportal/pages/bw_iasreview/remediation/itsmapplication.page"
+import "/webportal/pages/bw_iasreview/remediation/itsmmanagement.page"
+import "/webportal/pages/bw_cloud_pam/ias_review/remediation/safe/itsmsafe.page"
+import "/webportal/pages/bw_cloud_pam/ias_review/remediation/server/itsmserver.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+bwiasr_remediationstrategymanagementNLS = NLS {
+	title [en "Remediation Strategy Management" fr "Gestion des stratégies de remédiation"]
+	repositories [ en "Repositories" fr "Référentiels"]
+	repositoriesTt [en "Repository Remediation Strategy" fr "Stratégie de remédiation des référentiels"]
+	tab1 [en "Repository Remediation Strategy" fr "Stratégie de remédiation des référentiels"]
+	applications [ en "Applications" fr "Applications"]
+	applicationsTt [en "Application Remediation Strategy"	 fr "Stratégie de remédiation des applications"]
+	tab2 [en "Application Remediation Strategy"	 fr "Stratégie de remédiation des applications"]
+	connectors [en "Connector Configuration" fr "Configuration connecteurs"]
+	connectorsTt [en "Connector Configuration" fr "Configuration connecteurs"]
+	tab3 [en "Connector Configuration" fr "Configuration connecteurs"]
+	safes [en "Safes" fr "Safes"]
+	safesTt [en "Safe Remediation Strategy"	 fr "Stratégie de remédiation des safes"]
+	tab4 [en "Safe Remediation Strategy"	 fr "Stratégie de remédiation des safes"]
+	servers [en "Servers" fr "Serveurs"]
+	serversTt [en "Server Remediation Strategy" fr "Stratégie de remédiation des serveurs"]
+	tab5 [en "Server Remediation Strategy" fr "Stratégie de remédiation des serveurs"]
+}
+
+bwiasr_remediationstrategymanagementaddNLS = NLS {
+	add.title [en "Attach a remediation strategy" fr "Assigner une stratégie de remédiation"]
+	add.type [en "Remediation strategy" fr "Stratégie de remédiation"]
+	add.type.embedded [en "Embedded Remediation" fr "Remédiation intégrée"]
+	add.type.itsm [en "ITSM Remediation" fr "Remédiation ITSM"]
+	add.type.mail [en "Mail Remediation" fr "Remédiation par mail"]
+	add.type.iddm [en "RadiantOne Remediation" fr "Remédiation par RadiantOne"]
+	add.embedded.title [
+		en "Remediation is managed directly through Identity Analytics\nActions are sent to resources technical owners"
+		fr "La remédiation est gérée directement dans Identity Analytics\nLes actions sont envoyées aux responsables techniques"
+	]
+	add.iddm.title [
+		en "Remediation orders are sent back to RadiantOne Identity Data Management. \nRemediation is automatically enforced."
+		fr "Les ordres de remédiation sont renvoyés à RadiantOne Identity Data Management.\nLes actions sont appliqués automatiquement."
+	]
+	iddm.instance [en "IDDM Configuration" fr "Configuration IDDM"]
+	add.itsm.title [
+		en "Remediation is managed by a third party ITSM\ntickets are created and tickets status are tracked"
+		fr "La remédiation est gérée par un ITSM tier\nles tickets sont créés et le statut des tickets est suivi"
+	]
+	itsm.instance [en "ITSM Instance" fr "Instance ITSM"]
+	add.mail.title [
+		en "Remediation is managed by sending an email for each remediation\nthis can be used to fulfill a third party ITSM or RPA"
+		fr "La remédiation est gérée par l'envoi d'un mail par action\nceci peut être utilisé pour alimenter un ITSM tier ou un robot (RPA)"
+	]
+	mail.instance [en "Mail Instance" fr "Instance Mail"]
+}
+
+defaultsto0 = IntMapping {
+	when >0 then current
+	otherwise 0
+}
+
+bwiasr_remediationstrategymanagement_add = Dialog {
+	title: $bwiasr_remediationstrategymanagementaddNLS.add.title
+	width: 600
+	height: 300
+	enter-event:
+		 BooleanCase ( inallowembeddedtype ) {
+		 	when True then [
+		 		MultivaluedAdd "embedded" to combocodes,
+		 		MultivaluedAdd $bwiasr_remediationstrategymanagementaddNLS.add.type.embedded to combolabels
+		 	] when False then [ ]
+		 },
+		 BooleanCase ( inallowitsmtype ) {
+		 	when True then [
+		 		MultivaluedAdd "itsm" to combocodes,
+		 		MultivaluedAdd $bwiasr_remediationstrategymanagementaddNLS.add.type.itsm to combolabels
+		 	] when False then [ ]
+		 },
+		 BooleanCase ( inallowmailtype ) {
+		 	when True then [
+		 		MultivaluedAdd "mail" to combocodes,
+		 		MultivaluedAdd $bwiasr_remediationstrategymanagementaddNLS.add.type.mail to combolabels
+		 	] when False then [ ]
+		 },
+		 BooleanCase ( inallowiddmtype ) {
+		 	when True then [
+		 		MultivaluedAdd "iddm" to combocodes,
+		 		MultivaluedAdd $bwiasr_remediationstrategymanagementaddNLS.add.type.iddm to combolabels
+		 	] when False then [ ]
+		 }
+	buttons: [
+		CancelButton
+		OkButton {
+			actions:
+				StringCase(strategytype) {
+					when "itsm" then [
+						Set itsminstancecode to instancecode
+					] when "mail" then [
+						Set mailinstancecode to instancecode
+					] when "iddm" then [
+						Set iddminstancecode to instancecode
+					]
+				}
+			disabled:
+				OrPredicate {
+					AndPredicate {
+						StringPredicate ( strategytype ) {
+							when "itsm" then True
+						}			
+						StringPredicate ( itsminstancecode ) {
+							when IsEmpty then True
+						}			
+					}
+					AndPredicate {
+						StringPredicate ( strategytype ) {
+							when "mail" then True
+						}			
+						StringPredicate ( mailinstancecode ) {
+							when IsEmpty then True
+						}			
+					}
+					AndPredicate {
+						StringPredicate ( strategytype ) {
+							when "iddm" then True
+						}			
+						StringPredicate ( iddminstancecode ) {
+							when IsEmpty then True
+						}			
+					}
+				}
+		}
+	]
+	
+	inallowembeddedtype = Variable { type: Boolean initial: True }
+	inallowitsmtype = Variable { type: Boolean initial: True }
+	inallowmailtype = Variable { type: Boolean initial: True }
+	inallowiddmtype = Variable { type: Boolean initial: True }
+	
+	strategytype = Variable { type: String }
+	instancecode = Variable { type: String }
+
+	itsminstancecode = Variable { type: String }
+	iddminstancecode = Variable { type: String }
+	mailinstancecode = Variable { type: String }
+	
+	combocodes = Variable { type: String multivalued: True }
+	combolabels = Variable { type: String multivalued: True }
+	combodata = Dataset {
+		columns:
+			combocodes,
+			combolabels
+	}
+	
+	itsms = Dataset {
+		view: bwiasr_itsms with
+			["ServiceNow", "Jira"] to type
+	}
+	iddms = Dataset {
+		view: bwiasr_itsms with
+			["iddm"] to type
+	}
+	mails = Dataset {
+		view: bwiasr_itsms with
+			["Mail"] to type
+	}
+	
+	Combo {
+		variable: strategytype
+		label: $bwiasr_remediationstrategymanagementaddNLS.add.type
+		options:
+			Dynamic {
+				data: combodata
+				value: Current combocodes
+				text: Current combolabels
+			}
+	}
+	ConditionalGroup {
+		StringCondition ( strategytype ) {
+			when "embedded" then [
+				Group {
+					title: $bwiasr_remediationstrategymanagementaddNLS.add.type.embedded
+					Header {
+						value: $bwiasr_remediationstrategymanagementaddNLS.add.embedded.title
+					}
+				}
+			] when "iddm" then [
+				Group {
+					title: $bwiasr_remediationstrategymanagementaddNLS.add.type.iddm
+					Header {
+						value: $bwiasr_remediationstrategymanagementaddNLS.add.iddm.title
+					}
+					Combo {
+						variable: iddminstancecode
+						label: $bwiasr_remediationstrategymanagementaddNLS.iddm.instance
+						allow-none: False
+						options:
+							Dynamic {
+								data: iddms
+								value: Current bwr_remediation_itsmdef_code
+								text: Current bwr_remediation_itsmdef_name
+							}
+					}
+				}
+			] when "itsm" then [
+				Group {
+					title: $bwiasr_remediationstrategymanagementaddNLS.add.type.itsm
+					Header {
+						value: $bwiasr_remediationstrategymanagementaddNLS.add.itsm.title
+					}
+					Combo {
+						variable: itsminstancecode
+						label: $bwiasr_remediationstrategymanagementaddNLS.itsm.instance
+						allow-none: False
+						options:
+							Dynamic {
+								data: itsms
+								value: Current bwr_remediation_itsmdef_code
+								text: Current bwr_remediation_itsmdef_name
+							}
+					}
+				}
+			] when "mail" then [
+				Group {
+					title: $bwiasr_remediationstrategymanagementaddNLS.add.type.mail
+					Header {
+						value: $bwiasr_remediationstrategymanagementaddNLS.add.mail.title
+					}
+					Combo {
+						variable: mailinstancecode
+						label: $bwiasr_remediationstrategymanagementaddNLS.mail.instance
+						allow-none: False
+						options:
+							Dynamic {
+								data: mails
+								value: Current bwr_remediation_itsmdef_code
+								text: Current bwr_remediation_itsmdef_name
+							}
+					}
+				}
+			]
+		}
+	}
+}
+
+bwiasr_remediationstrategymanagement = Page {
+	title: $bwiasr_remediationstrategymanagementNLS.title
+	large-icon: %collection_48.gear
+	icon: %collection_32.gear
+	tags: "admin"
+	feature: iasreview_license
+
+	activetab = Variable { type: Integer initial: -1 }
+
+	TabFolder {
+		TabItem {
+			activation-event:
+				Set 1 to activetab
+			text: $bwiasr_remediationstrategymanagementNLS.repositories
+			tooltip: $bwiasr_remediationstrategymanagementNLS.repositoriesTt
+			IncludeFragment {
+				fragment: bwiasr_itsmrepository
+			}		
+		}
+		TabItem {
+			activation-event:
+				Set 2 to activetab
+			text: $bwiasr_remediationstrategymanagementNLS.applications
+			tooltip: $bwiasr_remediationstrategymanagementNLS.applicationsTt
+			IncludeFragment {
+				fragment: bwiasr_itsmapplication
+			}		
+		}
+		TabItem {
+			activation-event:
+				Set 4 to activetab
+			text: $bwiasr_remediationstrategymanagementNLS.safes
+			tooltip: $bwiasr_remediationstrategymanagementNLS.safesTt
+			hidden:
+				Not BooleanPredicate ( ConfigurationVariable "isPamBoosterActive" ) 
+			feature: All(pam_license, Any(governance_license, compliance_license))		
+			IncludeFragment {
+				fragment: bwir_itsmsafe
+			}		
+		}
+		TabItem {
+			activation-event:
+				Set 5 to activetab
+			text: $bwiasr_remediationstrategymanagementNLS.servers
+			tooltip: $bwiasr_remediationstrategymanagementNLS.serversTt
+			IncludeFragment {
+				fragment: bwiasr_itsmserver
+			}		
+		}		
+		TabItem {
+			activation-event:
+				Set 3 to activetab
+			text: $bwiasr_remediationstrategymanagementNLS.connectors
+			tooltip: $bwiasr_remediationstrategymanagementNLS.connectorsTt
+			IncludeFragment {
+				fragment: bwiasr_itsmmanagement with
+					value-of Eval "activetab.get()==3?true:false" to inenabled
+			}
+		}
+	}
+}

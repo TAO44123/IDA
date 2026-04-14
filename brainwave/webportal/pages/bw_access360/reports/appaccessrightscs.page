@@ -1,0 +1,182 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_access360/reports/appaccessrights.page"
+
+/* Nationalized labels here */
+appaccessrightscs360NLS = NLS {
+	title [en "Managed Applications Access Analysis" fr "Analyse des droits d'accès des applications gérées"]
+	dyntitle [en "Managed Applications Access Analysis for {0}" fr "Analyse des droits d''accès des applications gérées par {0}"]
+	description [
+		en "This report lists the access rights of managed applications in a form of a pivot table. Only active accounts are taken into account. Only the rights directly associated with the accounts and of type 'application profile' are taken into account. It is possible to identify only changes that have occurred since a given date. It is possible to modify the columns or export the data by right-clicking on the table."
+		fr "Ce rapport liste les droits d'accès des application gérées sous la forme d'un tableau croisé dynamique. Seuls les comptes actifs sont pris en comptes. Seuls les droits directement associés aux comptes et de type 'profil applicatifs' sont pris en compte. Il est possible d'identifier uniquement les changements survenus depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les données en faisant un clic droit sur le tableau."
+	]
+}
+
+appaccessrights360csdetail = Page {
+	title: $appaccessrightscs360NLS.title
+	description: $appaccessrightscs360NLS.description
+	tags: "identityext" priority 200, "byuid" , "analytics", "applicationmanager"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_appaccessrightscs
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page appaccessrights360cs with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+appaccessrights360cshp = Page {
+	title: $appaccessrightscs360NLS.title
+	description: $appaccessrightscs360NLS.description
+	tags: "myapp_access360" priority 2
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_appaccessrightscs
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page appaccessrights360cs with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+appaccessrights360cs = Page {
+	title: $appaccessrightscs360NLS.title
+	dynamic-title: $appaccessrightscs360NLS.dyntitle(identity.fullname)
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	description: $appaccessrightscs360NLS.description
+	feature:bwa360_appaccessrightscs
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	teamrights = Dataset {
+		view:enduser360_apprightscs with uid to uid, UserVariable session_selectedApplicationsTeam360 to applicationuids, UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+
+	managedapps = Dataset {
+		view:enduser360_managedapplications with uid to uid
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					layout:Layout { hint: width 200 }
+					variable:UserVariable session_selectedApplicationsTeam360
+					options:Dynamic {
+						data:managedapps
+						text:Current resourcename
+						value:Current resourceuid
+					}
+					label:$session_selectedApplicationsTeam360NLS.label
+					tooltip:$session_selectedApplicationsTeam360NLS.tooltip
+					allow-none:True
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:teamrights
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:64px  grab: horizontal True vertical True}
+					columns:
+						Dim {value:applicationuid label:applicationdisplayname header:$application.concept},
+						Dim {value:permissionuid label:permissioncode header:$ppermission.code initially-masked:True}, 
+						Dim {value:permissionuid label:permissiondisplayname header:$permission.concept} 
+					rows:
+						Dim {value:orguid label:orgshortname header:$porganisation.shortname initially-masked:True},
+						Dim {value:orguid label:orgdisplayname header:$organisation.concept},
+						Dim {value:jobtitleuid label:jobtitledisplayname header:$identity.jobtitledisplayname initially-masked:True},
+						Dim {value:ownerinternal label:ownerinternal header:$identity.internal initially-masked:True},
+						Dim {value:owneruid label:ownerfullname header:$identity.concept},
+						Dim {value:uid label:login header:$account.login}
+					cell-content:CellContent {text: Current status cluster-value:'X' styling:StringStyling(Current status) { when 'New' then aartimeline_highlightnew360 when 'Removed' then aartimeline_highlightremoved360 }}
+				
+				}
+			}
+		}
+	}
+}

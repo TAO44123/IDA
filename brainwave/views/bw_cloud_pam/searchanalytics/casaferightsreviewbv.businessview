@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_casaferightsreview_bv" displayname="Safe Rights Access Review Status">
+	<Definition scriptfile="/views/bw_cloud_pam/searchanalytics/casaferightsbv.javascript" name="D1671551108725">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1671551108724" title="safe rights all user accounts">
+			<InnerView name="bwpam_casaferights">
+				<Param name="F1671642947009" viewparam="includebuiltin" viewparamvalue="{param.includebuiltin.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="N1644237708695_1" type="note" x="559" y="50" w="300" h="107" title="review status are sorted by recorduid z-&gt;a, as a result, the most recent results are presented on the top of the list"/>
+		<Component name="C1671552293583" type="joinview" x="640" y="478" w="300" h="50" title="review status">
+			<InnerView name="bwpam_casaferightsreviewstatus">
+				<Param name="F1671643069183" viewparam="includebuiltin" viewparamvalue="{param.includebuiltin.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<ViewComputedAttribute name="compliancestatus" displayname="compliancestatus" type="Boolean" expression="!dataset.isEmpty(&apos;reviewactionday&apos;) &amp;&amp; dataset.reviewactionday.get()&gt;param.reviewdaythreshold.get()"/>
+			<ViewComputedAttribute name="compliancenbdayslate" displayname="compliancenbdayslate" type="Integer" expression="dataset.isEmpty(&apos;reviewstatus&apos;)?999:(dataset.reviewactionday.get()-param.reviewdaythreshold.get())&lt;0?(param.reviewdaythreshold.get()-dataset.reviewactionday.get()):0"/>
+			<ViewComputedAttribute name="compliancenbdaysleft" displayname="compliancenbdaysleft" type="Integer" expression="dataset.isEmpty(&apos;reviewstatus&apos;)?0:(param.reviewdaythreshold.get()-dataset.reviewactionday.get())&lt;0?(dataset.reviewactionday.get()-param.reviewdaythreshold.get()):0"/>
+			<FilterList>
+				<Filter name="F1671552675662" expression="dataset.key.get()" comment="keep only the latest review status" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Component name="C1671632522213" type="joinview" x="309" y="39" w="300" h="50" title="safe rights effective user accounts">
+			<Join jointype="full" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<ViewComputedAttribute name="UserType" displayname="UserType" type="String" expression="dataset.isEmpty(&apos;RawUserType&apos;)?&quot;Booking&quot;:dataset.RawUserType.get()"/>
+			<InnerView name="bwpam_casaferights_effectiveusers">
+				<Param name="F1671642962979" viewparam="includebuiltin" viewparamvalue="{param.includebuiltin.get()}"/>
+			</InnerView>
+		</Component>
+		<Link name="L1671632522492" source="C1671551108724" target="C1671632522213" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1671632522939" source="C1671632522213" target="C1671552293583" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="complianceThreshold" displayname="complianceThreshold" defaultvalue="90" type="Integer"/>
+	<ViewParam name="reviewdaythreshold" displayname="reviewdaythreshold" defaultvalue="{(new Date().getTime()/(1000*3600*24))-param.complianceThreshold.get()}" type="Integer"/>
+	<ViewParam name="includebuiltin" displayname="includebuiltin"/>
+</View>

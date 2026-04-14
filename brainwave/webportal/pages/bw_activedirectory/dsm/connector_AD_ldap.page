@@ -1,0 +1,171 @@
+ds_adldap_NLS = NLS {
+  title [ en "Active Directory - LDAP" fr "Active Directory - LDAP" ]
+  description [ 
+    en "Collects AD account and group information through an LDAP query to the domain controller"
+    fr "Collecte les informations sur les comptes et groupes AD via une requête au contrôleur de domaine"]
+  label_url [ en "LDAP Server URL" fr "URL du serveur LDAP"]
+  label_url_TT [
+    en "ActiveDirectory LDAP URL to the global catalog or a domain controller to perform the extraction, in the form of ldap://dns_name_or_ipaddress"
+    fr "URL LDAP ActiveDirectory du catalogue global ou du contrôleur de domaine pour effectuer l'extraction, au format ldap://nom_dns_ou_adresseip" ]
+  label_login [en "Login" fr "Login"]
+  label_login_TT [
+    en "ActiveDirectory user for extraction in the form of DOMAIN\\LOGIN"
+    fr "utilisateur ActiveDirectory pour l'extraction, sous la forme DOMAIN\\LOGIN"]
+  label_password [en "Password" fr "Mot de passe"]
+  label_domain [en "Domain" fr "Domaine"]
+  label_domain_TT [
+    en "ActiveDirectory domain to extract (the LDIF file will be named [DOMAIN].ldif)"
+    fr "Nom du domain ActiveDirectory à extraire ( le fichier LDIF sera nommé [DOMAINE].ldif"]
+  label_searchbase [en "Search base" fr "Bases de recherches"]
+  label_searchbaseTT [
+   en "ActiveDirectory LDAP search base to perform the data extraction, such as DC=mycompany,DC=com"
+   fr "Base de recherche ActiveDirectory LDAP pour l'extraction de données, par exemple DC=acme,DC=com"]
+  label_searchcriteria [en "Search filter" fr "Filtre de recherche"]
+  label_searchcriteriaTT [
+    en "(Advanced) Optional LDAP filter to fine tune objects to retrieve. Configured by default to 
+(|(objectClass=group)(objectClass=groupofnames)(objectClass=groupOfUniqueNames)
+(objectCategory=person)(objectClass=inetOrgPerson))"
+   fr "(Avancé) Filtre LDAP optionnel pour préciser les objets à remonter. Configuré par défaut à la valeur:
+(|(objectClass=group)(objectClass=groupofnames)(objectClass=groupOfUniqueNames)
+(objectCategory=person)(objectClass=inetOrgPerson))"
+  ]
+
+}
+
+ds_activedirectory_ldap = Page {
+	title: $ds_adldap_NLS.title
+	tags: "bwds_connector" , "live" , "csv", "microsoft", "ldap"
+	description: $ds_adldap_NLS.description
+	icon: "bw_dsm/L/bw_activedirectory.png"
+	large-icon: "bw_dsm/XL/bw_activedirectory.png"	
+	 metadata: ( 	    
+	    category -> "infrastructure", 
+	    family -> "LDAP",
+	    collector -> "bw_activedirectory",
+	    action ->"activedirectory",
+	    destPathVar -> "ad_sourceFolder",
+	    filePattern -> "*.ldif",
+	    hasMapping -> False,
+	    multiFile -> True  
+	 )
+}
+
+/* config dynamic fragment */
+
+ad_ldap_params = Constant { value: "login,password,domain,ldapurl,searchbase,searchcriteria" }
+
+deserializeOptions_adp = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant ad_ldap_params }
+  options = Input
+  login = Output { }
+  password = Output { }
+  domain = Output { }  
+  ldapurl = Output { }
+  searchbase = Output { }
+  searchcriteria = Output
+}
+
+serializeOptions_adp = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant ad_ldap_params }
+  secretnames = Input { default: "password"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+
+  login = Input { }
+  password = Input { }
+  domain = Input { } 
+  ldapurl = Input { }
+  searchbase = Input { }  
+  searchcriteria = Input { }
+}
+
+
+ds_activedirectory_ldap_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  // custom
+  ldapurl = Variable { initial: "ldap://"}
+  login = Variable
+  password = Variable
+  domain = Variable
+  searchbase = Variable
+  searchcriteria = Variable
+  outValid = Variable { type: Boolean initial: False } 
+  
+  //state var
+  ldapurl_isvalid = Variable
+  login_isvalid = Variable
+  password_isvalid = Variable
+  domain_isvalid = Variable
+  searchbase_isvalid = Variable
+  
+  
+   doInit = NamedAction(
+     Call deserializeOptions_adp ( options to options, ldapurl from ldapurl, login from login, password from password, domain from domain, searchbase from searchbase, searchcriteria from searchcriteria )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_adp ( dsname to secretdsname, 
+          ldapurl to ldapurl, login to login, password to password, domain to domain, searchbase to searchbase, searchcriteria to searchcriteria   ) to options
+   )
+   
+   doUpdateValid = NamedAction (
+     Set Eval "ldapurl_isvalid.get() && login_isvalid.get() && password_isvalid.get() && domain_isvalid.get() && searchbase_isvalid.get()" to outValid
+   )
+   
+  Edit { 
+     label: $ds_adldap_NLS.label_url
+     variable: ldapurl
+     match: "ldap:\\/\\/.+"
+     validity: ldapurl_isvalid
+     not-empty:True
+     tooltip: $ds_adldap_NLS.label_url_TT
+     modify-event: ExecuteNamedAction doUpdateValid
+  }
+  Edit { 
+     label: $ds_adldap_NLS.label_login
+     variable: login
+     not-empty:True
+     validity: login_isvalid
+     tooltip: $ds_adldap_NLS.label_login_TT
+     modify-event: ExecuteNamedAction doUpdateValid
+  }
+  Edit { 
+     label: $ds_adldap_NLS.label_password
+     variable: password
+     not-empty:True
+     validity: password_isvalid
+     password-mode: True
+     modify-event: ExecuteNamedAction doUpdateValid
+  }
+  Edit { 
+     label: $ds_adldap_NLS.label_domain
+     variable: domain
+     not-empty:True
+     validity: domain_isvalid
+     tooltip: $ds_adldap_NLS.label_domain_TT
+     modify-event: ExecuteNamedAction doUpdateValid
+  }
+  Edit { 
+     label: $ds_adldap_NLS.label_searchbase 
+     variable: searchbase
+     not-empty:True
+     validity: searchbase_isvalid
+     tooltip: $ds_adldap_NLS.label_searchbaseTT
+     modify-event: ExecuteNamedAction doUpdateValid
+  }
+  Edit { 
+     label: $ds_adldap_NLS.label_searchcriteria 
+     variable: searchcriteria
+     tooltip: $ds_adldap_NLS.label_searchcriteriaTT
+  }  
+  
+}
+
+
+

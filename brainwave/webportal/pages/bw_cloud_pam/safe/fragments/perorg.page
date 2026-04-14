@@ -1,0 +1,90 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+fragmentSafePerOrgNLS = NLS {
+	perorg [en "Organisations with access to the safe" fr "Organisations avec accès au safe"]
+	innertooltip [en "{0} identities from this organisation,\n{1} identities in total with access to the safe\n(limited to 20 entries)" fr "{0} personnes de cette organisation\nsur un total de {1} personnes qui ont des droits sur ce safe\n(limité à 20 entrées)"]
+
+	tooltip [en "This tile presents the organizations where identities mostly have access to this safe\nthis tile is used to understand the meaning of a given safe, who is actually using it from an organization perspective"
+			 fr "Cette tuile présente les organisations dont les identités ont le plus accès à ce safe\ncette tuile est utilisée pour comprendre l'utilité d'un safe donné, quelles sont les organisations qui l'utilisent"
+			]
+	top20 [en "Top 30" fr "Top 30"]
+
+	axe_nbpeople [en "People with access to the safe" fr "Personnes avec accès au safe"]
+	axe_organisations [en "Organisations" fr "Organisations"] 
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display for a given application the number of people per organisation as a dataviz (top 20)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentSafePerOrg = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	
+	perorg = Dataset {
+		view:bwf_applicationnbidentityperorg with inuid to uid, total.totalidentities to total
+		 limit:20
+		 disabled:Not BooleanPredicate(inenabled)
+	}
+	total = Record {
+		view:bwf_applicationnbtotalidentity with inuid to uid
+		 disabled:Not BooleanPredicate(inenabled)
+	}
+
+	Header {
+		value:$fragmentSafePerOrgNLS.perorg
+		styling:bigTitleStyle
+		tooltip:"Top 20"
+	}
+//	Text {
+//		iterate-on:perorg
+//		value:Current displayname
+//		compact:True
+//		decorator:Decorator{width:200 after:Bar{max-value:total.totalidentities  value:Current nbidentity width:200 higher-is-better:True tooltip:$fragmentSafePerOrgNLS.tooltip(Current nbidentity,total.totalidentities) }  }
+//		label:Label{ break:True }
+//	}
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: barChart
+		datasets: perorg ( shortname, uid, nbidentity, label ) to chartdata ( label, code , count , description)
+		bindings: 
+			value-of $fragmentSafePerOrgNLS.axe_nbpeople to xlabel,
+			value-of $fragmentSafePerOrgNLS.axe_organisations to ylabel,
+			value-of True to showxAxesGrid,
+			value-of True to showyAxesGrid,
+			value-of True to isHorizontal,
+			value-of True to isLabelInside,
+			value-of True to beginAtZero,
+			value-of False to maintainAspectRatio,
+			value-of Constant shadesofbluePalette to customColors
+		widget-events: {
+			when onclick then [
+				BooleanCase(incanshowdetails) {
+					when True then [
+						Dialog bwf_organisationDetailsDialog(Current code to inuid
+															,True to inshowteam
+															,True to inshowsuborganisationtree
+															,inuid to infilterteambyapplication
+						)
+					]
+					when False then [
+					]
+				}
+			]
+		}
+	}
+}

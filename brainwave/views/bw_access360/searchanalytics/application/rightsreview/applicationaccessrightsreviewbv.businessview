@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="access360r_applicationaccessrightsreviewbv" displayname="applicationaccessrightsreviewbv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/application/rightsreview/applicationaccessrightsreviewbv.javascript" name="D1625819957856">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1625819957855" title="application access rights review (filtered by permission tag if needed)">
+			<InnerView name="access360r_applicationaccessrightsreview_root">
+				<Param name="F1625823134687" viewparam="filterbypermissiontag" viewparamvalue="{param.filterbypermissiontag}"/>
+				<Param name="F1625938649874" viewparam="filterbyaccounttag" viewparamvalue="{param.filterbyaccounttag}"/>
+				<Param name="F1626099221762" viewparam="applicationlist" viewparamvalue="{param.applicationlist}"/>
+				<Param name="F1755522686671" viewparam="ruleuid" viewparamvalue="{param.ruleuid.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1630420558255" expression="dataset.key.get()" comment="Remove duplicated lines in case of several line managers for a single individual" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Component name="C1625822274115" type="scriptview" x="214" y="287" w="300" h="50" enable="{param.includeuseraccounts.get().equals(&apos;0&apos;)}" title="filter user accounts">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1625822412795" expression="!dataset.isEmpty(&apos;identityuid&apos;)" comment="remove user accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1625822274115_1" type="scriptview" x="231" y="288" w="300" h="50" enable="{param.includeorphanaccounts.get().equals(&apos;0&apos;)}" title="filter orphan accounts">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1625822412795" expression="dataset.isEmpty(&apos;reconuid&apos;)" comment="remove orphan accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1625822448046" source="C1625822274115" target="C1625822274115_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625822274115_2" type="scriptview" x="248" y="300" w="300" h="50" enable="{param.includeleaveraccounts.get().equals(&apos;0&apos;)}" title="filter leaver accounts">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1625822412795" expression="!dataset.isEmpty(&apos;reconnoownercode&apos;) &amp;&amp; dataset.reconnoownercode.get().equalsIgnoreCase(&apos;leave&apos;)" comment="remove leaver accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1625822497425" source="C1625822274115_1" target="C1625822274115_2" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625822274115_3" type="scriptview" x="249" y="302" w="300" h="50" enable="{param.includetechaccounts.get().equals(&apos;0&apos;)}" title="filter tech accounts">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1625822412795" expression="!dataset.isEmpty(&apos;reconnoownercode&apos;) &amp;&amp; !dataset.reconnoownercode.get().equalsIgnoreCase(&apos;leave&apos;)" comment="remove tech accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1625822564937" source="C1625822274115_2" target="C1625822274115_3" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625826187028" type="joinview" x="441" y="605" w="300" h="50" title="get latest review status">
+			<InnerView name="bwaccess360r_applicationaccessrightslastreview">
+				<Param name="F1626083711545" viewparam="filterminimumreviewdate" viewparamvalue="{param.filterminimumreviewdate.get()}"/>
+				<Param name="F1626099320814" viewparam="applicationlist" viewparamvalue="{param.applicationlist}"/>
+				<Param name="F1626107043899" viewparam="includelatestreviewstatus" viewparamvalue="{param.includelatestreviewstatus.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<ViewComputedAttribute name="positionchanged" displayname="position has changed" type="Boolean" expression="dataset.identitypositionkey.get() != dataset.reviewidentitypositionkey.get()"/>
+		</Component>
+		<Component name="C1625822274115_4" type="scriptview" x="268" y="315" w="300" h="50" enable="{param.includelatestreviewstatus.get().equals(&apos;1&apos;) &amp;&amp; param.filterifalreadyreviewed.get().equals(&apos;1&apos;)}" title="filter if already reviewed">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1625822412795" expression="!dataset.isEmpty(&apos;reviewstatus&apos;)" comment="filter if the entry has already been reviewed in the timeframe" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1625819976919_1" type="joinview" x="623" y="156" w="300" h="50" title="add app owner">
+			<InnerView name="bwaccess360r_application1businessowner">
+				<Param name="F1626101742402" viewparam="applicationlist" viewparamvalue="{param.applicationlist}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.applicationuid.get()}" key2="{dataset.applicationuid.get()}"/>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Link name="L1625834451900" source="C1625822274115_3" target="C1625826187028" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625833211998_1" type="joinview" x="411" y="698" w="300" h="50" title="get default reviewer infos if needed">
+			<InnerView name="bw_access360r_applicationdefaultreviewer">
+				<Param name="F1625833335047" viewparam="uid" viewparamvalue="{param.defaultrevieweruid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key2="{dataset.defkey.get()}" key1="{dataset.defkey.get()}"/>
+			<ExcludeList>
+			</ExcludeList>
+		</Component>
+		<Component name="C1625939648955" type="scriptview" x="629" y="750" w="300" h="50" title="set reviewer">
+			<Script onscriptread="setreviewer"/>
+			<ExcludeList>
+				<Exclude name="defaultreviewerfullname"/>
+				<Exclude name="defaultreviewerhrcode"/>
+				<Exclude name="defaultreviewermail"/>
+				<Exclude name="defaultrevieweruid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1625939650739" source="C1625833211998_1" target="C1625939648955" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1626084644566" type="scriptview" x="749" y="950" w="300" h="50" title="filter for one reviewer if needed" enable="{!param.isEmpty(&apos;filterbyreviewer&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1626084788031" expression="!dataset.isEmpty(&apos;revieweruid&apos;) &amp;&amp; param.filterbyreviewer.get().equals(dataset.revieweruid.get())" comment="Filter the results for one reviewer only" type="Include"/>
+			</FilterList>
+		</Component>
+		<Link name="L1626084645996" source="C1625939648955" target="C1626084644566" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1626199755084" type="note" x="376" y="49" w="530" h="175" title="This is the view that revolves the perimeter of the campaign and computes everything.&#xA;Review tickets will be created based on the results this view.&#xA;Called by workflow: &#xA;startAppRighsReviewInstance.&#xA;&#xA;Needless to say &quot;boolean&quot; parameters are bugged in the marshalling Pages-&gt;NotificationRule-&gt;Birt Report-&gt;BusinessView&#xA;As a result everything MUST be a String"/>
+		<Link name="L1627291970976" source="C1625822274115_4" target="C1625819976919_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1627291957954_2" type="scriptview" x="30" y="620" w="543" h="114" title="do not take latest review status if identity position changed since then" enable="{param.includelatestreviewstatus.get().equals(&apos;1&apos;)}">
+			<Script onscriptread="checkIdentityPosition"/>
+		</Component>
+		<Link name="L1627291974123" source="C1625826187028" target="C1627291957954_2" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1627291974937" source="C1627291957954_2" target="C1625822274115_4" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625819976919_2" type="joinview" x="638" y="160" w="300" h="50" title="add perm owner">
+			<InnerView name="bwaccess360r_permission1businessowner">
+				<Param name="F1626101742402" viewparam="applicationlist" viewparamvalue="{param.applicationlist}"/>
+				<Param name="F1672743471077" viewparam="filterbypermissiontag" viewparamvalue="{param.filterbypermissiontag}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.permissionuid.get()}" key2="{dataset.permissionuid.get()}"/>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Link name="L1672743390186" source="C1625819976919_1" target="C1625819976919_2" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625819976919_3" type="joinview" x="648" y="175" w="300" h="50" title="add account owner">
+			<InnerView name="bwaccess360r_account1businessowner">
+				<Param name="F1626101742402" viewparam="applicationlist" viewparamvalue="{param.applicationlist}"/>
+			</InnerView>
+			<Join jointype="left" key2="{dataset.accountuid.get()}" key1="{dataset.accountuid.get()}"/>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Link name="L1672770001330" source="C1625819976919_2" target="C1625819976919_3" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1672770002794" source="C1625819976919_3" target="C1625833211998_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1712211877381" type="scriptview" x="145" y="1488" w="300" h="50" title="compute clusters" enable="{param.computeclusters.get() == true}">
+			<Attributes>
+				<Attribute name="A1715102355021" attribute="ai_clusterids" type="String" multivalued="false"/>
+				<Attribute name="A1715178061171" attribute="ai_maxclusterid" type="String" multivalued="false"/>
+				<Attribute name="A1715200707492" attribute="ai_firstclusterid" type="String" multivalued="false"/>
+			</Attributes>
+			<Script onscriptread="clustersRead"/>
+		</Component>
+		<Link name="L1712211878760" source="C1626084644566" target="C1712211877381" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1717594289273" type="joinview" x="555" y="158" w="300" h="50" title="app_perms">
+			<InnerView name="access360r_applicationaccessrightsreview_metadata" prefix="app_perms_">
+				<Param name="F1717594609259" viewparam="applicationlist" viewparamvalue="{param.applicationlist}"/>
+				<Param name="F1717594692402" viewparam="filterbypermissiontag" viewparamvalue="{param.filterbypermissiontag}"/>
+			</InnerView>
+			<Join jointype="inner" key1="{dataset.permissionuid.get()}" key2="{dataset.app_perms_permissionuid.get()}"/>
+			<ViewComputedAttribute name="applicationuid" displayname="applicationuid" type="String" expression="dataset.app_perms_applicationuid.get()"/>
+			<ExcludeList>
+				<Exclude name="app_perms_applicationuid"/>
+				<Exclude name="app_perms_applicationdescription"/>
+				<Exclude name="app_perms_applicationsensitivitylevel"/>
+				<Exclude name="app_perms_applicationsensitivityreason"/>
+				<Exclude name="app_perms_permissiondescription"/>
+				<Exclude name="app_perms_permissionsensitivitylevel"/>
+				<Exclude name="app_perms_permissionuid"/>
+			</ExcludeList>
+			<ViewComputedAttribute name="applicationdescription" displayname="applicationdescription" type="String" expression="dataset.app_perms_applicationdescription.get()"/>
+			<ViewComputedAttribute name="applicationsensitivitylevel" displayname="applicationsensitivitylevel" type="Integer" expression="dataset.app_perms_applicationsensitivitylevel.get()"/>
+			<ViewComputedAttribute name="applicationsensitivityreason" displayname="applicationsensitivityreason" type="String" expression="dataset.app_perms_applicationsensitivityreason.get()"/>
+			<ViewComputedAttribute name="permissiondescription" displayname="permissiondescription" type="String" expression="dataset.app_perms_permissiondescription.get()"/>
+			<ViewComputedAttribute name="permissionsensitivitylevel" displayname="permissionsensitivitylevel" type="Integer" expression="dataset.app_perms_permissionsensitivitylevel.get()"/>
+			<ViewComputedAttribute name="permissionuid" displayname="permissionuid" type="String" expression="dataset.app_perms_permissionuid.get()"/>
+		</Component>
+		<Link name="L1717594290667" source="C1625819957855" target="C1717594289273" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1717594293162" source="C1717594289273" target="C1625822274115" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="includeuseraccounts" displayname="include user accounts" type="String" defaultvalue="1">
+	</ViewParam>
+	<ViewParam name="includeorphanaccounts" displayname="include orphan accounts" type="String" defaultvalue="1"/>
+	<ViewParam name="includetechaccounts" displayname="include tech accounts" type="String" defaultvalue="1"/>
+	<ViewParam name="includeleaveraccounts" displayname="include leaver accounts" type="String" defaultvalue="1"/>
+	<ViewParam name="filterbypermissiontag" displayname="filter by permission tag" type="String"/>
+	<ViewSort name="sort" attribute1="reviewerfullname" attribute2="identityfullname" attribute3="applicationdisplayname" attribute4="permissiondisplayname"/>
+	<ViewParam name="includelatestreviewstatus" displayname="include latest review status" type="String" defaultvalue="1"/>
+	<ViewParam name="filterifalreadyreviewed" displayname="filter if already reviewed in the timeframe" type="String" defaultvalue="0"/>
+	<ViewParam name="defaultrevieweruid" displayname="default reviewer uid" type="String">
+		<Value name="V1717594915326_1" data="ID0000001_1711114754889_140"/>
+	</ViewParam>
+	<ViewParam name="forceapplicationownerasreviewer" displayname="force application owner as reviewer" type="String" defaultvalue="0"/>
+	<ViewParam name="filterbyaccounttag" displayname="filter by account tag" type="String"/>
+	<ViewParam name="filterminimumreviewdate" displayname="filterminimumreviewdate" type="String">
+		<Value name="V1717595005587_2" data="20240308"/>
+	</ViewParam>
+	<ViewParam name="filterbyreviewer" displayname="filter by reviewer uid" type="String">
+	</ViewParam>
+	<ViewParam name="applicationlist" displayname="applicationlist" type="String">
+		<Value name="V1705590996883_1" data="ANGULARIS_MOBILE_1716974938346_254705"/>
+		<Value name="V1717595047854_3" data="APPRECIATE_APPS_1716974942818_256063"/>
+	</ViewParam>
+	<ViewParam name="forcedefaultreviewerasreviewer" displayname="forcedefaultreviewerasreviewer" type="String" defaultvalue="0"/>
+	<ViewParam name="forceapplicationownerforallotheraccounts" displayname="forceapplicationownerforallotheraccounts" type="String" defaultvalue="0"/>
+	<ViewParam name="forcehimselfasreviewer" displayname="forcehimselfasreviewer" type="String" defaultvalue="0">
+	</ViewParam>
+	<ViewParam name="reviewerscript" displayname="reviewer script (must return a string in this list: linemanager, applicationowner, accountowner, permissionowner, default, myself)" type="String">
+	</ViewParam>
+	<ViewParam name="computeclusters" displayname="compute clusters" type="Boolean" defaultvalue="false">
+	</ViewParam>
+	<ViewParam name="minsupportprc" displayname="Cluster Min Support %" defaultvalue="10" type="Integer"/>
+	<ViewParam name="minsupportnb" displayname="min items per cluster" defaultvalue="5" type="Integer"/>
+	<ViewParam name="maxclusters" displayname="max nb clusters" type="Integer" defaultvalue="7"/>
+	<ViewParam name="forceaccountownerfortechaccount" displayname="force technical account awner for tech account" type="String" defaultvalue="0"/>
+	<ViewParam name="forcepermissionowner" displayname="forcepermissionowner" type="String" defaultvalue="0"/>
+	<ViewParam name="ruleuid" displayname="ruleuid"/>
+</View>

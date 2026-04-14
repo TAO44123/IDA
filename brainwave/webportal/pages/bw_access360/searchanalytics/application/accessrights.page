@@ -1,0 +1,451 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ""
+	otherwise current
+}
+
+access360analytics_application_AccessRightsNLS = NLS {
+	title [en "Access rights list" fr "Liste des droits d'accès"]
+	directrightsonly [en "only direct rights" fr "seulement les droits directs"]
+	description [
+		en "This report lists the application access rights. Only active accounts are taken into account. Only the rights directly associated with individuals are taken into account. Only the rights of type 'Application profile' are taken into account. It is possible to identify only changes that have occurred since a given date. It is possible to modify the columns or to export the results."
+		fr "Ce rapport liste les droits d'accès des applications. Seuls les comptes actifs sont pris en compte. Seuls les droits directement associés aux personnes sont pris en comptes. Seuls les droits de type 'Profil applicatif' sont pris en compte. Il est possible d'identifier uniquement les changements survenus depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats"
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+}
+
+access360analytics_application_AccessRights= Page {
+	title: $access360analytics_application_AccessRightsNLS.title
+	description: $access360analytics_application_AccessRightsNLS.description
+	feature:bwsa_applicationaccessrights
+	tags: "application", "searchresults"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	mixins: simpleReport	
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_resourcesNLS.localfiltertitle
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	comparisontimeslot inline,		
+						exclRemoved inline,
+						exclSimilar inline
+		}
+
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_application_FilterEdition(SerializeSearch search to applicationSearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Application Search with SerializeSearch search to applicationSearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	comparisontimeslot = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:String
+		label:$session_comparisonTimeslotTeam360NLS.label
+		tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+		constraint:Lookup {
+			data:session_comparisontimeslots
+			text:Current commitdate
+			value:Current uid
+		}
+	}
+	exclRemoved = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:True
+		label:$session_exclRemovedNLS.label
+		tooltip:$session_exclRemovedNLS.tooltip
+	}
+	exclSimilar = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:False
+		label:$session_exclSimilarNLS.label
+		tooltip:$session_exclSimilarNLS.tooltip
+	}
+
+	search = SearchDefinition {
+		entity: Application
+		simple-mode-rule: br_application_simple_search
+	}
+	
+		
+	/* Variables here */
+	inpermissiontypes = Variable { multivalued:True initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+
+	outapplicationuid = Variable
+	outpermissionuid = Variable
+	outidentityuid = Variable
+	outaccountuid = Variable
+
+//	applications = Variable { multivalued:True }
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	/* Datasets and records here */
+	accessrights = Dataset {
+		search: Search {
+			view:access360r_applicationrights_bv with comparisontimeslot to comparisontimeslot unless-empty, exclRemoved to excluderemoved, exclSimilar to excludesimilar
+			definition:search
+		}
+/*
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(exclSimilar)
+			}
+		}
+*/
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	goApplicationDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outapplicationuid to inuid,
+													True to inshowperjob,
+													True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+													True to inshowaccounts,
+													True to inshowperjob,
+													True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowowner,
+												True to inshowcontrols
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				PaginatedTable {
+					data:accessrights
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					page-size:1000
+					//show-count:True
+					show-filter:True
+					double-click:ExecuteNamedAction goPermissionDetails
+					persist-configuration:True
+					show-count-button: True
+					
+					Column {
+						column:identityuid
+						hidden:True
+						selection:outidentityuid
+					}
+			
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 when 'Invalid' then tartimeline_highlightremoved360 } text:Transform Current status using tarmapping360 }
+			
+					Column {
+						column:identityhrcode
+						header:$identity.hrcode
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identityfullname
+						header:$identity.fullname
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identitymail
+						header:$identity.mail
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						header:$identity.internal
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:identityarrivaldate
+						header:$identity.arrivaldate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:identitydeparturedate
+						header:$identity.departuredate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgshortname
+						header:$porganisation.shortname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgdisplayname
+						header:$organisation.concept
+						sortable:True
+						width:160px
+						initially-masked:True
+					}
+			
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						width:128px
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountusername
+						header:$paccount.username
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:reconnoownercode
+						header:$reconciliation.status.noowner
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:reconleavedate
+						header:$reconciliation.leavedate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:uid
+						hidden:True
+						selection:outpermissionuid
+					}
+					Column {
+						column: applicationuid
+						hidden: True
+						selection: outapplicationuid
+					}
+					Column {
+						column:applicationcode
+						header:$papplication.code
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goApplicationDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+						
+					}
+					Column {
+						column:applicationdisplayname
+						header:$application.concept
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goApplicationDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:code
+						header:$ppermission.code
+						width:160px
+						sortable:True
+						filterable:True
+						
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:displayname
+						header:$permission.concept
+						width:100%
+						sortable:True
+						filterable:True
+						
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissiontype
+						header:$ppermission.permissiontype
+						width:140px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+				}
+			}
+		}	
+	}
+}

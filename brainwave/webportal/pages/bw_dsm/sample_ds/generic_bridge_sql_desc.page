@@ -1,0 +1,147 @@
+import "/webportal/pages/bw_dsm/resources/styles.page"
+
+ds_generic_bridge_sql_NLS = NLS {
+  title [ en "Generic bridge - SQL" fr "Passerelle générique - SQL"]
+  description [ 
+    en "Runs one or more SQL queries and copies the resulting files to a given location so that it can be processed by a custom collector."
+    fr "Exécute une ou plusieurs requêtes SQL et copie les fichiers résultants dans le dossier indiqué pour qu'ils soient pris en charge par une collecte personnalisée."]
+   cfg.driver [ en "Driver" fr "Driver"]
+   cfg.server [ en "Server" fr "Serveur"]
+   cfg.server.tooltip [ 
+     en "Database server IP Address\nfollowed by :port_number if necessary" 
+     fr "Adresse IP du serveur de base de données\nsuivie de :numéro_de_port si besoin"]
+   cfg.database [ en "Database" fr "Base de données"]
+   cfg.user [ en "User" fr "Utilisateur"]
+   cfg.password [ en "Password" fr "Mot de passe"]
+   cfg.queries [ en "SQL Queries" fr "Requêtes SQL"] 
+   cfg.queries.tooltip [ en "Each SQL query must be separated from the next one by a blank line." fr "Chaque requête SQL doit être séparée de la suivante par une ligne vide."]  
+}
+
+
+ds_generic_bridge_sql = Page {
+	title: $ds_generic_bridge_sql_NLS.title
+	tags: "bwds_connector" , "sql" , "custom", "bridge"
+	description: $ds_generic_bridge_sql_NLS.description
+	icon: "bw_dsm/L/bw_genericapp.png"
+	large-icon: "bw_dsm/XL/bw_genericapp.png"	
+	 metadata: ( 	  
+	    category -> "infrastructure", 
+	    family -> "Custom",
+	    hasMapping -> False,
+	    multiFile -> True,
+	    hasDestDir -> True,
+	    action ->"sqlodbc"
+	 )
+}
+
+/* config dynamic fragment */
+generic_bridge_sql_params = Constant { value: "driver,server,database,user,password,queriesstring"}
+
+deserializeOptions_generic_bridge_sql = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant generic_bridge_sql_params }
+  options = Input
+  driver=Output
+  server=Output
+  database=Output
+  user=Output
+  password=Output
+  queriesstring=Output
+}
+
+serializeOptions_generic_bridge_sql = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant generic_bridge_sql_params }
+  secretnames = Input { default: "password"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/  
+  driver=Input
+  server=Input
+  database=Input
+  user=Input
+  password=Input
+  queriesstring=Input        
+}
+
+ds_generic_bridge_sql_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  mixins: defaultPage
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  outValid = Variable { type: Boolean initial: False } 
+ 
+  driver=Variable
+  server=Variable
+  database=Variable
+  user=Variable
+  password=Variable
+  queriesstrings=Variable 
+  
+
+   doInit = NamedAction(
+     Call deserializeOptions_generic_bridge_sql ( options to options, 
+      driver from driver, server from server, database from database , user from user, password from password, queriesstrings from queriesstring
+       ),
+     ExecuteNamedAction doUpdateValid   
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_generic_bridge_sql (dsname to secretdsname, 
+      driver to driver, server to server, database to database, user to user, password to password, queriesstrings to queriesstring
+      ) to options
+   )
+   
+   doUpdateValid = NamedAction (
+     Set True to outValid
+   )
+        
+	  Combo {
+	    variable: driver
+	    label: $ds_generic_bridge_sql_NLS.cfg.driver
+	    allow-none: False		    
+	    options: Static {
+	      //Option { text: "SQL Server" value: "sqlserver" } 
+	      //Option { text: "Oracle" value: "oracle"}    
+	      Option { text: "PostgreSQL" value: "postgresql"}   
+	      //Option { text: "MariaDB/MySQL" value: "mysql"}   
+	    }	    	    
+	   }
+	   
+	   Edit {
+	    variable: server
+	    label: $ds_generic_bridge_sql_NLS.cfg.server
+	    tooltip: $ds_generic_bridge_sql_NLS.cfg.server.tooltip
+	    not-empty: True
+	  }
+	  Edit {
+	    variable: database
+	    label: $ds_generic_bridge_sql_NLS.cfg.database
+	    not-empty: True
+	  }
+	  Edit {
+	    variable: user
+	    label: $ds_generic_bridge_sql_NLS.cfg.user
+	    not-empty: True
+	  }
+	  Edit {
+	   variable: password
+	   label: $ds_generic_bridge_sql_NLS.cfg.password
+	   password-mode: True
+	   not-empty: True
+	  }
+	
+	  Edit {
+		 variable: queriesstrings
+		 label: $ds_generic_bridge_sql_NLS.cfg.queries
+		 tooltip: $ds_generic_bridge_sql_NLS.cfg.queries.tooltip
+		 multi-lines: True
+		 layout: Layout { hint: height 100 }
+		 not-empty: True
+	  }	
+	  Text { value: $ds_generic_bridge_sql_NLS.cfg.queries.tooltip
+	    styling: bwdms_help_text
+	  }  
+}
+

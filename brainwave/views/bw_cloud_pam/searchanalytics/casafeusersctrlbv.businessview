@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_casafeusersctrl_bv" displayname="ca safe users controls">
+	<Definition scriptfile="/views/bw_cloud_pam/searchanalytics/casaferightsbv.javascript" name="D1671557133063">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1671557133063" title="safe users">
+			<InnerView name="bwpam_safeusersctrl">
+				<Param name="F1671557369461" viewparam="controls" viewparamvalue="{param.controls}"/>
+				<Param name="F1671557376108" viewparam="controlscope" viewparamvalue="{param.controlscope}"/>
+				<Param name="F1671557382321" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+				<Param name="F1671646765413" viewparam="includebuiltin" viewparamvalue="{param.includebuiltin.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1671558309395" type="unionview" x="1099" y="283" w="300" h="50" title="safe identities">
+			<InnerView name="bwpam_safeidentityctrl">
+				<Param name="F1671558361698" viewparam="controls" viewparamvalue="{param.controls.get()}"/>
+				<Param name="F1671558369953" viewparam="controlscope" viewparamvalue="{param.controlscope.get()}"/>
+				<Param name="F1671558376996" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="prim" secondary_discriminator="sec" discriminatorcolumn="discr"/>
+		</Component>
+		<Component name="C1671558455057" type="trendview" x="847" y="384" w="300" h="50" title="trend" enable="{!param.isEmpty(&apos;comparisontimeslot&apos;)}">
+			<Trend timeslot="{param.comparisontimeslot.get()}" key="{dataset.key.get()}" comparing_column="val" trend_column_name="status" include_removed="true"/>
+			<FilterList>
+				<Filter name="F1671558557340" expression="param.excluderemoved.get() &amp;&amp; &quot;Removed&quot;.equals(dataset.status.get())" comment="remove Removed" type="Exclude"/>
+				<Filter name="F1671558572653" expression="param.excludesimilar.get() &amp;&amp; &quot;Identical&quot;.equals(dataset.status.get())" comment="remove Similar" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1671558455262" source="C1671558309395" target="C1671558455057" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1671646773791" type="joinview" x="1105" y="246" w="300" h="50" title="safe effective users">
+			<Join jointype="full" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<InnerView name="bwpam_safeeffectiveusersctrl">
+				<Param name="F1671646820485" viewparam="includebuiltin" viewparamvalue="{param.includebuiltin.get()}"/>
+				<Param name="F1671647760956" viewparam="controls" viewparamvalue="{param.controls}"/>
+				<Param name="F1671647778352" viewparam="controlscope" viewparamvalue="{param.controlscope}"/>
+				<Param name="F1671647794972" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<ViewComputedAttribute name="UserType" displayname="UserType" type="String" expression="dataset.isEmpty(&apos;RawUserType&apos;)?&quot;Booking&quot;:dataset.RawUserType.get()"/>
+		</Component>
+		<Link name="L1671646774072" source="C1671557133063" target="C1671646773791" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1671646774390" source="C1671646773791" target="C1671558309395" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="comparisontimeslot" displayname="comparisontimeslot"/>
+	<ViewParam name="controls" displayname="controls"/>
+	<ViewParam name="minimumrisklevel" displayname="minimumrisklevel"/>
+	<ViewParam name="controlscope" displayname="controlscope"/>
+	<ViewParam name="excluderemoved" displayname="exclude removed"/>
+	<ViewParam name="excludesimilar" displayname="exclude similar"/>
+	<ViewParam name="includebuiltin" displayname="includebuiltin" type="Boolean">
+		<Value name="V1671700542610_4" data="1"/>
+	</ViewParam>
+</View>

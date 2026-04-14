@@ -1,0 +1,521 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/share/resources.page"
+import "/webportal/pages/bw_fragments/sharedfolder/rightsInfos.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentOrganisationFoldersRightsNLS = NLS {
+	directonly [en "only this organisation" fr "seulement cette organisation"]
+	directonlytooltip [en "Check to consider only this organisation\nUncheck to consider both this organisation and all its sub-organisations" fr "Cochez pour considérer seulement cette organisation\nDécochez pour considérer à la fois cette organisation et toutes ses sous-organisations"]
+
+	description [en "Description" fr "Description"]
+	alias [en "Alias" fr "Alias"]
+	slevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sreason [en "Sensitivity Reason" fr "Raison de sensibilité"]
+	lastmodifiedby [en "Last modified by" fr "Dernière modification par"]
+	lastmodificationdate [en "Last modification date" fr "Date de dernière modification"]
+	action [en "Full rights" fr "Ensemble des droits"]
+	basic [en "Rights" fr "Droits"]
+	directory [en "Directory" fr "Répertoire"]
+	
+	share [en "Share" fr "Partage"]
+	sharecode [en "Share code" fr "Code du partage"]
+	sharefamily [en "Share family" fr "Famille de partage"]
+	sharedisplayname [en "Share name" fr "Nom du partage"]
+	sharetype [en "Share type" fr "Type de partage"]
+	
+	permissiontype [en "Type" fr "Type"]
+	permissioncode [en "Path" fr "Chemin"]
+	permissiondisplayname [en "Name" fr "Nom"]
+
+	empty [en "Account doesn't have access to shares" fr "Ce compte n'a pas d'accès à des partages"]
+	folderdepth [en "Folder depth" fr "Profondeur arborescence"]
+	aclonlylabel [en 'Display only folders with ACLs' fr 'Afficher seulement les partages avec des ACLs']
+
+	nbidentities [en "Nb identities" fr "Nb identités"]
+}
+
+fragmentOrganisationFSRightsPermissionType = StringMapping {
+	when 'D' then $fragmentOrganisationFoldersRightsNLS.directory
+	otherwise 'File'
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation shared folders rights
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>infolderdepth</b> optional, integer value, folder depth (1 by default)</li>
+ * <li><b>inaclonly</b> optional, boolean value, show only entries with ACLs attached to them (true by default)</li>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid</b> selected permission uid</li>
+ * <li><b>outSelectedpermissioncode</b> selected permission code</li>
+ * <li><b>outSelectedpermissionname</b> selected permission name</li>
+ * <li><b>outSelectedapplicationname</b> selected application name</li>
+ * <li><b>outSelectedidentityuid</b> selected identity</li>
+ * <li><b>outSelectedaccountuid</b> selected account</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationFoldersRights= PageFragment {
+	feature:unstructureddata_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inonlydirectselection = Variable { multivalued:False }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+	inaclonly = Variable { multivalued:False type:Boolean initial:True }
+
+	selectedFamily = Variable { type: String }
+	selectedApplication = Variable { type: String }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationname = Variable
+	outselectedidentityuid = Variable
+	outselectedaccountuid = Variable
+	
+	/* Datasets and records here */
+	families = Dataset {
+		view: bwf_org_folders_family with
+			inuid to uid,
+			inonlydirectselection to directonly
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		excludes:
+			StringPredicate ( Current applicationfamily ) {
+				when IsEmpty then True
+			}
+	}
+
+	applications = Dataset {
+		view: bwf_org_folders_application with
+			inuid to uid,
+			selectedFamily to family unless-empty,
+			inonlydirectselection to directonly
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	folders = Dataset {
+		view: bwf_org_folders_identities_list with
+			inuid to uid unless-empty,
+			inonlydirectselection to directonly,
+			inaclonly to aclonly,
+			infolderdepth to folderdepth,
+			selectedApplication to application,
+			selectedFamily to family
+		trend: Trend { 
+			join-column: key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outselectedaccountuid to inuid
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goSharedFolderDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outSelectedpermissionuid to inuid,
+													False to inshowaccounts,
+													True to inshowperjob,
+													True to inshowperorg,
+													True to inshowaccountsfororganisation,
+													inuid to inorganisationuid,
+													inonlydirectselection to inonlydirectselection
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Checkbox {
+		variable:inonlydirectselection
+		text:$fragmentOrganisationFoldersRightsNLS.directonly
+		tooltip:$bwfOrganisation.directonlytooltip
+	}
+	
+	Grid {
+		columns: GridColumn, GridColumn, GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical False hint: height 70 }
+		GridRow {
+			GridCell {
+				Combo {
+					variable: selectedFamily
+					allow-none: True
+					label: $fragmentOrganisationFoldersRightsNLS.sharefamily
+					layout: Layout { hint: width 120 }
+					options:
+						Dynamic {
+							data: families
+							text: Current applicationfamily
+							value: Current applicationfamily
+						}
+					disabled:
+						IntPredicate ( Count families ) {
+							when < 1 then True
+						}
+				}	
+			}
+			GridCell {
+				Combo {
+					variable: selectedApplication
+					allow-none:True
+					label:$fragmentOrganisationFoldersRightsNLS.share
+					layout: Layout { hint:width 120 }
+					options:
+						Dynamic {
+							data:applications
+							text:Current displayname
+							value:Current uid
+						}
+				}	
+			}
+			GridCell {
+				Combo {
+					variable:infolderdepth
+					label:$fragmentOrganisationFoldersRightsNLS.folderdepth
+					layout: Layout { hint:width 120 }
+					options:Static {
+						Option { value:1 text:"<=1" }
+						Option { value:2 text:"<=2" }
+						Option { value:3 text:"<=3" }
+						Option { value:4 text:"<=4" }
+						Option { value:5 text:"<=5" }
+						Option { value:6 text:"<=6" }
+						Option { value:7 text:"<=7" }
+						Option { value:8 text:"<=8" }
+						Option { value:9 text:"<=9" }
+					}
+				}	
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			GridCell {
+				span:3
+				Checkbox {
+					variable:inaclonly
+					label:$fragmentOrganisationFoldersRightsNLS.aclonlylabel
+				}						
+			}
+			GridCell {
+			}
+		}
+	}
+	ConditionalGroup {
+		IntCondition(Count folders) {
+			when =0 then [
+				Header {
+					value:$fragmentOrganisationFoldersRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:folders
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					double-click:ExecuteNamedAction goSharedFolderDetails
+					persist-configuration:True
+					initial-sort:identityfullname
+					
+					Column {
+						column:identityuid
+						hidden:True
+						selection:outselectedidentityuid
+					}
+			
+					Column {
+						column:identityhrcode
+						header:$identity.hrcode
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:identityfullname
+						header:$identity.fullname
+						sortable:True
+						filterable:True
+						width:160px
+					}
+					Column {
+						column:identitymail
+						header:$identity.mail
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						header:$identity.internal
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:identityarrivaldate
+						header:$identity.arrivaldate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:identitydeparturedate
+						header:$identity.departuredate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgshortname
+						header:$porganisation.shortname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgdisplayname
+						header:$organisation.concept
+						sortable:True
+						width:160px
+						initially-masked:True
+					}
+			
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outselectedaccountuid
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						width:128px
+						actions:ExecuteNamedAction goAccountDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:accountusername
+						header:$paccount.username
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						actions:ExecuteNamedAction goAccountDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+					
+					Column {
+						column:permissionuid
+						selection:outSelectedpermissionuid
+						hidden:True
+					}	
+					Column {
+						column:right
+						sortable:True
+						filterable:True
+						header:$fragmentOrganisationFoldersRightsNLS.basic
+						width:80px
+						actions:Dialog bwf_SharedFolderRightsInfosDialog
+					}	
+					Column {
+						column:permissioncode
+						sortable:True
+						filterable:True
+						header:$fragmentFolderNLS.code
+						width:100%
+						selection:outSelectedpermissioncode
+						actions: ExecuteNamedAction goSharedFolderDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}	
+					Column {
+						column:permissiondisplayname
+						sortable:True
+						filterable:True
+						header:$fragmentFolderNLS.displayname
+						width:160px
+						initially-masked:True
+						selection:outSelectedpermissionname
+						actions: ExecuteNamedAction goSharedFolderDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}	
+					Column {
+						column:permissiondescription
+						sortable:True
+						filterable:True
+						header:$fragmentFolderNLS.description
+						width:160px
+						initially-masked:True
+					}	
+					Column {
+						column:permissionalias
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentFolderNLS.alias
+						width:128px
+					}	
+					Column {
+						column:permissioninherited
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentFolderNLS.inherited
+						width:128px
+					}	
+					Column {
+						column:permissionsensitivitylevel
+						sortable:True
+						initially-masked:True
+						header:$fragmentFolderNLS.sensitivitylevel
+						width:96px
+					}	
+					Column {
+						column:permissionsensitivityreason
+						sortable:True
+						initially-masked:True
+						header:$fragmentFolderNLS.sensitivityreason
+						width:128px
+					}	
+					Column {
+						column:permissiontype
+						text:Transform Current permissiontype using fragmentOrganisationFSRightsPermissionType
+						sortable:True
+						filterable:True
+						header:$fragmentFolderNLS.type
+						width:96px
+						initially-masked:True
+					}	
+					Column {
+						column:permissionlastmodifiedby
+						sortable:True
+						initially-masked:True
+						header:$fragmentFolderNLS.lastmodifiedby
+						width:128px
+					}	
+					Column {
+						column:permissionlastmodifydate
+						text:DateLDAP(Current permissionlastmodifydate).value
+						sortable:True
+						header:$fragmentFolderNLS.lastmodificationdate
+						width:160px
+						initially-masked:True
+					}	
+					Column {
+						column:applicationcode
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentOrganisationFoldersRightsNLS.sharecode
+						width:128px
+					}	
+					Column {
+						column:applicationdisplayname
+						sortable:True
+						filterable:True
+						header:$fragmentOrganisationFoldersRightsNLS.sharedisplayname
+						width:128px
+						selection:outSelectedapplicationname
+					}	
+					Column {
+						column:applicationapplicationfamily
+						sortable:True
+						filterable:True
+						header:$fragmentOrganisationFoldersRightsNLS.sharefamily
+						width:128px
+					}	
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}

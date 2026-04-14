@@ -1,0 +1,778 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_comparison/account_comparison.page"
+
+fragmentApplicationAccountsNLS = NLS {
+	permissions [en '{1} ({0}) Permissions' fr 'Permissions de {1} ({0})']
+	noownercode [en "Technical \naccount" fr "Compte \ntechnique"]
+	trends [en "Changes" fr "Changements"]
+	nbperms [en "Nb \npermissions" fr "Nb \npermissions"]
+	comparewith [en "Compare {0} with ..." fr "Comparer {0} avec ..."]
+	filter [en "Results filtered for {0}" fr "Résultats filtrés sur {0}"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected application accounts along with the number of direct assigned "Role" permissions
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>incancompare </b>optional, boolean value, true to enable comparison button (false by default)</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationAccounts = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanreconcile = Variable { multivalued:False type:Boolean initial:False }
+	incancompare = Variable { type:Boolean initial:False }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outaccountusername = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	selectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+
+	accounts = Dataset {
+		view: bwf_applicationaccounts with inuid to uid
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:nbperms
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		 
+	}
+
+	comparisonAccount = Record {
+		view: br_accountDetail with compareFrom to uid
+		disabled:
+			StringPredicate(compareFrom) { when IsEmpty then True }
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												incanreconcile to incanreconcile,
+												True to inshowowner,
+												True to inshowgroups,
+												True to inshowapplications,
+												False to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												inuid to inapplicationuids
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				ButtonGroup {
+					Button {
+						layout:Layout { hint:width 300 }
+						
+						actions:
+							Set ElementAt 1 of selectedUids to compareFrom,
+							Set selectedUids to compareTo,
+							MultivaluedRemove compareFrom from compareTo,
+							GoTo Page bwc_account_comparison with compareFrom to uid, compareTo to uids,
+										False to inshowaccount,
+										False to inshowapplication,
+										False to inshowfolder,
+										False to inshowgroup,
+										True to inshowpermission,
+										False to inshowshare,
+										inuid to inapplicationuid  save-state
+										  
+						text:$fragmentApplicationAccountsNLS.comparewith(NonEmpty(comparisonAccount.login,' '))
+						disabled:IntPredicate(SizeOf selectedUids) { when <2 then True otherwise False }
+						presentation:Button
+					}
+				}
+
+				Table {
+					data:accounts
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					checkboxes:uid to selectedUids
+					checkboxes-changed-event:Set ElementAt 1 of selectedUids to compareFrom
+					double-click:ExecuteNamedAction goDetails
+					
+			
+					Column {
+						column:uid
+						hidden:True
+						selection:outaccountuid
+					}
+					
+					Column {
+						column:login
+						header:$account.login
+						sortable:True
+						filterable:True
+						selection:outaccountlogin
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+			
+					Column {
+						column:givenname
+						header:$account.givenname
+						sortable:True
+						filterable:True
+						initially-masked:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+			
+					Column {
+						column:surname
+						header:$account.surname
+						sortable:True
+						filterable:True
+						initially-masked:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+			
+					Column {
+						column:username
+						header:$account.username
+						sortable:True
+						filterable:True
+						width:160px
+						selection:outaccountusername
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+			
+					Column {
+						column:disabled
+						header:$account.disabled
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+			
+					Column {
+						column:creationdate
+						width:160px
+						header:$account.creationdate
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:lastlogindate
+						width:160px
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:repositoryuid
+						hidden:True
+						selection:outrepositoryuid
+					}
+					Column {
+						column:repositorydisplayname
+						header:$repository.concept
+						sortable:True
+						filterable:True
+						selection:outrepositoryname
+					}
+					Column {
+						column:noownercode
+						sortable:True
+						filterable:True
+						header:$fragmentApplicationAccountsNLS.noownercode
+					}
+					Column {
+						column:identityhrcode
+						sortable:True
+						filterable:True
+						header:$pidentity.hrcode
+						initially-masked:True
+					}
+					Column {
+						column:identityfullname
+						sortable:True
+						filterable:True
+						header:$pidentity.fullname
+						width:100%
+					}
+					Column {
+						column:identitymail
+						sortable:True
+						filterable:True
+						header:$pidentity.mail
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						sortable:True
+						filterable:True
+						header:$pidentity.internal
+						initially-masked:True
+					}
+					Column {
+						column:identityactive
+						sortable:True
+						filterable:True
+						header:$pidentity.active
+						initially-masked:True
+					}
+					Column {
+						column:identitybwa_identityanalyticsdata_joborg
+						header:$pidentity.joborg
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+					}				
+					Column {
+						column: nbperms
+						text:Transform Current nbperms using bwf_defaultsTo0
+						align:Right
+						header: $fragmentApplicationAccountsNLS.nbperms
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+			
+					Column {
+						column:bwa_accountanalytics_riskrank
+						text:Transform Current bwa_accountanalytics_riskrank using bwf_defaultsTo0
+						align:Right
+						sortable:True
+						header:$bwf_accountNLS.riskrank
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_accountanalytics_maxrisklevel
+						text:Transform Current bwa_accountanalytics_maxrisklevel using bwf_defaultsTo0
+						align:Right
+						sortable:True
+						header:$bwf_accountNLS.maxrisk
+						image:TemplateImageSelection(Current bwa_accountanalytics_maxrisklevel) using bwf_accountriskimage
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_accountanalytics_nbrisks
+						text:Transform Current bwa_accountanalytics_nbrisks using bwf_defaultsTo0
+						align:Right
+						sortable:True
+						header:$bwf_accountNLS.nbrisk
+						width:120px
+						initially-masked:True
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+			when False then [
+				Table {
+					data:accounts
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					double-click:ExecuteNamedAction goDetails
+					
+					commands: Commands {
+						position:After
+						presentation:Icon
+						orientation:Vertical
+						Command {
+							actions:Message "nop"
+							icon:""
+							disabled:True
+						}
+						Command {
+							actions:ExecuteNamedAction goDetails
+							icon:%browsing_16.zoom
+							//TODO: missing NLS entry
+							tooltip: 'Shows selected account details'
+							disabled:
+								OrPredicate {
+									Not BooleanPredicate(incanshowdetails)
+									StringPredicate(outaccountuid) { when IsEmpty then True otherwise False }
+								}
+						}
+					}
+			
+					Column {
+						column:uid
+						hidden:True
+						selection:outaccountuid
+					}
+					
+					Column {
+						column:login
+						header:$account.login
+						sortable:True
+						filterable:True
+						selection:outaccountlogin
+					}
+			
+					Column {
+						column:givenname
+						header:$account.givenname
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+			
+					Column {
+						column:surname
+						header:$account.surname
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+			
+					Column {
+						column:username
+						header:$account.username
+						sortable:True
+						filterable:True
+						width:160px
+						selection:outaccountusername
+					}
+			
+					Column {
+						column:disabled
+						header:$account.disabled
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+			
+					Column {
+						column:creationdate
+						header:$account.creationdate
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:lastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:repositoryuid
+						hidden:True
+						selection:outrepositoryuid
+					}
+					Column {
+						column:repositorydisplayname
+						header:$repository.concept
+						sortable:True
+						filterable:True
+						selection:outrepositoryname
+					}
+					Column {
+						column:noownercode
+						sortable:True
+						filterable:True
+						header:$fragmentApplicationAccountsNLS.noownercode
+					}
+					Column {
+						column:identityhrcode
+						sortable:True
+						filterable:True
+						header:$pidentity.hrcode
+						initially-masked:True
+					}
+					Column {
+						column:identityfullname
+						sortable:True
+						filterable:True
+						header:$pidentity.fullname
+						width:100%
+					}
+					Column {
+						column:identitymail
+						sortable:True
+						filterable:True
+						header:$pidentity.mail
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						sortable:True
+						filterable:True
+						header:$pidentity.internal
+						initially-masked:True
+					}
+					Column {
+						column:identityactive
+						sortable:True
+						filterable:True
+						header:$pidentity.active
+						initially-masked:True
+					}
+					Column {
+						column:identitybwa_identityanalyticsdata_joborg
+						header:$pidentity.joborg
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+					}				
+					Column {
+						column: nbperms
+						text:Transform Current nbperms using bwf_defaultsTo0
+						align:Right
+						header: $fragmentApplicationAccountsNLS.nbperms
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+			
+					Column {
+						column:bwa_accountanalytics_riskrank
+						text:Transform Current bwa_accountanalytics_riskrank using bwf_defaultsTo0
+						align:Right
+						sortable:True
+						header:$bwf_accountNLS.riskrank
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_accountanalytics_maxrisklevel
+						text:Transform Current bwa_accountanalytics_maxrisklevel using bwf_defaultsTo0
+						align:Right
+						sortable:True
+						header:$bwf_accountNLS.maxrisk
+						image:TemplateImageSelection(Current bwa_accountanalytics_maxrisklevel) using bwf_accountriskimage
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_accountanalytics_nbrisks
+						text:Transform Current bwa_accountanalytics_nbrisks using bwf_defaultsTo0
+						align:Right
+						sortable:True
+						header:$bwf_accountNLS.nbrisk
+						width:120px
+						initially-masked:True
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}
+
+fragmentApplicationAccountsForOrgNLS = NLS {
+	directfilter [en "Accounts whom owners are direct members of {0}" fr "Comptes dont les membres sont des membres directs de {0}"]
+	subfilter [en "Accounts whom owners are direct or indirect members of {0}" fr "Comptes dont les membres sont des membres directs ou indirects de {0}"]
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected application accounts for a given organisation
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inorganisationuid </b>the group uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>inPermissionType </b>the permission type for permission counter ('Role' by defaut)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationAccountsForOrg = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanreconcile = Variable { multivalued:False type:Boolean initial:False }
+	inPermissionType = Variable {multivalued:True}
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outaccountusername = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	accounts = Dataset {
+		view: bwf_applicationaccountsfororg with
+			inuid to uid,
+			inPermissionType to permissiontypes,
+			inorganisationuid to organisationuid,
+			inonlydirectselection to directonly
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:nbperms
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		 
+	}
+
+	organisation = Record {
+		view: br_organisationDetail with inorganisationuid to uid
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												incanreconcile to incanreconcile,
+												True to inshowowner,
+												False to inshowgroups,
+												True to inshowapplications,
+												False to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												inuid to inapplicationuids,
+												inPermissionType to inpermissiontypes
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentApplicationAccountsForOrgNLS.directfilter(organisation.displayname)
+		hidden:Not BooleanPredicate(inonlydirectselection)
+	}
+	Header {
+		value:$fragmentApplicationAccountsForOrgNLS.subfilter(organisation.displayname)
+		hidden:BooleanPredicate(inonlydirectselection)
+	}
+	Table {
+		data:accounts
+		layout:Layout {grab: horizontal True vertical True}
+		configurable:True
+		show-count:True
+		show-filter:True
+		persist-configuration:True
+		double-click:ExecuteNamedAction goDetails
+
+		Column {
+			column:uid
+			hidden:True
+			selection:outaccountuid
+		}
+		
+		Column {
+			column:login
+			header:$account.login
+			sortable:True
+			filterable:True
+			selection:outaccountlogin
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:username
+			header:$account.username
+			sortable:True
+			filterable:True
+			width:160px
+			selection:outaccountusername
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:disabled
+			header:$account.disabled
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:creationdate
+			header:$account.creationdate
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:lastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:repositoryuid
+			hidden:True
+			selection:outrepositoryuid
+		}
+		Column {
+			column:repositorydisplayname
+			header:$repository.concept
+			sortable:True
+			filterable:True
+			selection:outrepositoryname
+		}
+		Column {
+			column:noownercode
+			sortable:True
+			filterable:True
+			header:$fragmentApplicationAccountsNLS.noownercode
+		}
+		Column {
+			column:identityhrcode
+			sortable:True
+			filterable:True
+			header:$pidentity.hrcode
+			initially-masked:True
+		}
+		Column {
+			column:identityfullname
+			sortable:True
+			filterable:True
+			header:$pidentity.fullname
+			width:100%
+		}
+		Column {
+			column:identitymail
+			sortable:True
+			filterable:True
+			header:$pidentity.mail
+			initially-masked:True
+		}
+		Column {
+			column:identityinternal
+			sortable:True
+			filterable:True
+			header:$pidentity.internal
+			initially-masked:True
+		}
+		Column {
+			column:identityactive
+			sortable:True
+			filterable:True
+			header:$pidentity.active
+			initially-masked:True
+		}
+		Column {
+			column:identitybwa_identityanalyticsdata_joborg
+			header:$pidentity.joborg
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:160px
+		}				
+		Column {
+			column: nbperms
+			text:Transform Current nbperms using bwf_defaultsTo0
+			align:Right
+			header: $fragmentApplicationAccountsNLS.nbperms
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+	}
+}

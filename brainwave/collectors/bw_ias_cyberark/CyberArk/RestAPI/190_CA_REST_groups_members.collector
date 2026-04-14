@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA groups members" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617040424525_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039877974_1">
+		<Component name="C1617203530230" type="groupmembers" x="35" y="556" w="300" h="64" title="CA vault group members">
+			<Group code="groupsmembership_groupid" error="true" event="groupNotFound"/>
+			<Content members="member" error="true" event="memberNotFound"/>
+			<Domain isuniqueidentifier="false" repoerror="true" repoevent="memberRepositoryNotFound" separator="\"/>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="repositoryNotFound"/>
+		</Component>
+		<Component name="C1617039877974_1" type="discoverysource" x="34" y="32" w="300" h="64" title="CA_users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_users.csv&apos;)}"/>
+		</Component>
+		<Component name="C1620240616235" type="enumfilter" x="34" y="171" w="300" h="64" title="Enumirate groupsmembership_groupid">
+			<Multivalued>
+				<Value name="M1620240629555" attribute="groupsmembership_groupid"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1620240620001" source="C1617039877974_1" target="C1620240616235" priority="1"/>
+		<Link name="L1620240650862" source="C1620240616235" target="C1638552038538" priority="1"/>
+		<Component name="C1617040043577_1" type="discoverysource" x="484" y="312" w="300" h="64" title="CA_groups">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_groups.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_groups.csv&apos;)}"/>
+		</Component>
+		<Component name="C1638552038538" type="joinfilter" x="33" y="309" w="300" h="64" title="Join with group">
+			<Cache active="true" main="groupsmembership_groupid" join="vaultuser_id"/>
+			<Join source="C1617040043577_1"/>
+			<Attributes>
+				<Attribute name="A1638552138708" attribute="grouptype" source="grouptype" type="String" multivalued="false"/>
+				<Attribute name="A1638781557606" attribute="groupname" source="groupname" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1638552050996" source="C1617040043577_1" target="C1638552038538" priority="1"/>
+		<Link name="L1638552051961" source="C1638552038538" target="C1618241629328_2" priority="1" expression="(dataset.equals(&apos;grouptype&apos;, &apos;Vault&apos;, false, true))"/>
+		<Component name="C1618241629328_2" type="changefilter" x="34" y="441" w="300" h="64" title="member id and repo">
+			<Actions>
+				<Action name="U1618241693608" action="add" attribute="object_repo" type="String" multivalued="false" errorexist="false" newvalue="{(dataset.equals(&apos;source&apos;, &apos;LDAP&apos;, false, true)) ? dataset.repository_code.get() : dataset._REPOSITORY_CODE_}" description="if memeber is LDAP User get the domain name"/>
+				<Action name="U1637283128197" action="add" attribute="member" type="String" multivalued="false" newvalue="{dataset.object_repo.get().concat(&apos;\\&apos;).concat(dataset.username.get())}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1638552302250" source="C1618241629328_2" target="C1617203530230" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

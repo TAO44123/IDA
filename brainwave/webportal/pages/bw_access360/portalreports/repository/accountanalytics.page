@@ -1,0 +1,168 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+/* Nationalized labels here */
+access360r_repository_accountanalytics360NLS = NLS {
+	title [en "Self-Service Account Analytics" fr "Analyse des comptes en self-service"]
+	dyntitle [en "{0} Self-Service Account Analytics" fr "Analyse des comptes en self-service pour {0}"]
+	empty [en "{0} does not contain any account" fr "{0} ne contient pas de comptes"]
+	description [
+		en "This report presents the accounts in the form of a dynamic pivot table where it is possible to select the analysis dimensions. It is possible to identify only the changes made since a given date. The columns displayed are configurable and the results can be exported, right-click on the table to do so."
+		fr "Ce rapport présente les comptes sous la forme d'un tableau croisé dynamique où il est possible de sélectionner les dimensions d'analyse. Il est possible d'identifier uniquement les changements réalisés depuis une date donnée. Les colonnes affichées sont configurables et les résultats exportables, faites un clic droit sur le tableau pour cela."
+		]
+}
+
+access360r_repository_accountanalytics = Page {
+	title: $access360r_repository_accountanalytics360NLS.title
+	description: $access360r_repository_accountanalytics360NLS.description
+	dynamic-title: $access360r_repository_accountanalytics360NLS.dyntitle(repository.displayname)
+	tags: "server", "repository" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa_repositoryaccountanalytics
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+	uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	nbResults = Variable { type: Integer initial: 0 }
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view: bw360_prevtimeslot with
+			PortalTimeslot.UID to currentuid
+	}
+	
+	repository = Record {
+		view: bwf_repositoryDetail with
+			uid to uid
+	}
+
+	rights = Dataset {
+		view: bwaccess360r_repository_accountsanalytics with
+			uid to uid,
+			UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:False
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+		count-variable: nbResults
+		excludes:
+			OrPredicate {
+				AndPredicate {
+					StringPredicate(Current status) { when 'Identical' then True }
+					BooleanPredicate(UserVariable session_exclSimilar)
+				}
+			}
+	}
+
+	/* Page content */
+	ConditionalGroup {
+		IntCondition(repository.bwa_repositoryanalytics_nbaccount) {
+			when >0 then [
+				Grid {
+					columns:GridColumn, GridColumn, GridColumn
+					layout:Layout { grab:horizontal True vertical True } 
+					GridRow {
+						height:64
+						GridCell {
+							Combo {
+								variable:UserVariable session_comparisonTimeslotTeam360
+								layout:Layout { hint: width 200 }
+								label:$session_comparisonTimeslotTeam360NLS.label
+								tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+								options:Dynamic {
+									data:session_comparisontimeslots
+									text:Current commitdate
+									value:Current uid
+								}
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:UserVariable session_exclSimilar
+								text:$session_exclSimilarNLS.label
+								tooltip:$session_exclSimilarNLS.tooltip
+							}
+						}
+						GridCell {
+						}
+					}
+					GridRow {
+						height:grow
+						GridCell {
+							span:3
+							DynamicCrossTable {
+								data:rights
+								layout:Layout {cell-width:64px  grab: horizontal True vertical True}
+								dimensions:
+									Dim {
+										value: repositoryuid
+										label: repositorydisplayname
+										header: $repository.concept
+									},
+									Dim {
+										value: orguid
+										label: orgdisplayname
+										header: $organisation.concept
+									},
+									Dim {
+										value: jobtitleuid
+										label: jobtitledisplayname
+										header: $allocation.jobtitledisplayname
+									},
+									Dim {
+										value: uid
+										label: login
+										header: $account.login
+									},
+									Dim {
+										value: service
+										label: service
+										header: $account.service
+									},
+									Dim {
+										value: owneruid
+										label: ownerhrcode
+										header: $identity.hrcode
+									},
+									Dim {
+										value: owneruid
+										label: ownerfullname
+										header: $identity.fullname
+									},
+									Dim {
+										value: ownerinternal
+										label: ownerinternal
+										header: $pidentity.internal
+									},
+									Dim {
+										value: owneractive
+										label: owneractive
+										header: $pidentity.active
+									}
+								measures:
+									Measure {
+										value: val
+										header: "#"
+									}
+							}
+						}
+					}
+				}
+			] otherwise [
+				Header {
+					value: $access360r_repository_accountanalytics360NLS.empty( repository.displayname )
+				}
+			]
+		} 
+	}
+}

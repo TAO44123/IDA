@@ -1,0 +1,185 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/reports/teamnls.page"
+
+import "/webportal/pages/bw_access360/reports/teamgroups.page"
+
+/* Nationalized labels here */
+organisationgroupscs360NLS = NLS {
+	title [en "Managed Organizations AD Groups Analysis" fr "Analyse de l'appartenance aux Groupes AD des organisations gérées"]
+	dyntitle [en "Managed Organizations AD Groups Analysis for {0}" fr "Analyse de l''appartenance aux Groupes AD des organisations gérées par {0}"]
+	description [
+		en "This report lists the Active Directory groups of the members of the managed organizations in a form of a pivot table. Only active accounts are taken into account. Only the groups directly associated with the accounts are taken into account. It is possible to filter the results to show only the changes since a given date. It is possible to modify the columns or to export the results by right clicking on the table."
+		fr "Ce rapport liste les groupes Active Directory des membres des organisations gérées sous la forme d'un tableau croisé dynamique. Seuls les comptes actifs sont pris en compte. Seuls les groupes directement associés aux comptes sont pris en compte. Il est possible de filtrer les résultats pour ne faire apparaitre que les changements depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant un clic droit sur le tableau."
+	]
+}
+
+organisationgroupscs360detail = Page {
+	title: $organisationgroupscs360NLS.title
+	description:$organisationgroupscs360NLS.description
+	tags: "identityext" priority 300, "byuid", "organisationmanager"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_orggroupscs
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page organisationgroupscs360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+organisationgroupscs360hp = Page {
+	title: $organisationgroupscs360NLS.title
+	description:$organisationgroupscs360NLS.description
+	tags: "browsing","myorg_access360" priority 2
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_orggroupscs
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page organisationgroupscs360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+organisationgroupscs360 = Page {
+	title: $organisationgroupscs360NLS.title
+	dynamic-title: $organisationgroupscs360NLS.dyntitle(identity.fullname)
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	description:$organisationgroupscs360NLS.description
+	// limit full (hierarchical) analysis to people with less than session_indirectTeam360NLS_threshold managed identities
+	enter-event:IntCase(orgmanagernbidentity.nbtotalmembers) { when > NonEmpty(ConfigurationVariable "access360_crosstabteamlimit", Constant session_indirectTeam360NLS_threshold) then [ Set False to UserVariable session_indirectTeam360, Set True to indirectTeam360_disabled  ] }
+	feature:bwa360_orggroupscs
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	indirectTeam360_disabled = Variable { initial:False }
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	orgmanagernbidentity = Record {
+		view:enduser360_orgmanagernbidentity with uid to uid
+	}
+
+	teamgroups = Dataset {
+		view:enduser360_orgmanagergroups with uid to uid, UserVariable session_indirectTeam360 to indirectteam,UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_indirectTeam360
+					label:$session_indirectTeam360NLS.label
+					tooltip:$session_indirectTeam360NLS.tooltiplimit(NonEmpty(ConfigurationVariable "access360_crosstabteamlimit", Constant session_indirectTeam360NLS_threshold))
+					disabled:BooleanPredicate(indirectTeam360_disabled)
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+
+				CrossTable {
+					data:teamgroups
+					layout:Layout {grab: horizontal True vertical True cell-width:64px }
+					cluster-sortable:True
+					multi-selection:True
+					
+					columns:
+						Dim { value:repositoryuid label: repositorydisplayname header:$repository.concept }, 					
+						Dim { value:groupuid label: groupcode header:$pgroup.code initially-masked:True tooltip:groupcode }, 					
+						Dim { value:groupuid label: groupdisplayname header:$group.concept tooltip:groupdisplayname} 					
+					rows:
+						Dim { value:orguid label: orgshortname header:$porganisation.shortname initially-masked:True},					
+						Dim { value:orguid label: orgdisplayname header:$organisation.concept},					
+						Dim { value:jobtitleuid label: jobtitledisplayname header:$organisation.concept initially-masked:True},					
+						Dim { value:internal label: internal header:$organisation.concept initially-masked:True},					
+						Dim { value:uid label: fullname header:$identity.concept},					
+						Dim { value:accountuid label: accountlogin header:$account.login} 					
+				
+					cell-content:CellContent {text: Current status cluster-value:'X' styling:StringStyling(Current status) { when 'New' then tgtimeline_highlightnew360 when 'Removed' then tgtimeline_highlightremoved360 }}
+				}
+			}
+		}
+	}
+}

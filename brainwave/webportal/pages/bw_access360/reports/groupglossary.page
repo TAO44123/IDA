@@ -1,0 +1,822 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/reports/teamnls.page"
+
+import "/webportal/pages/bw_fragments/repository/details.page"
+import "/webportal/pages/bw_fragments/repository/resources.page"
+import "/webportal/pages/bw_fragments/group/resources.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+groupglossary360NLS = NLS {
+	title [en "Managed groups glossary" fr "Gestion du glossaire des groupes gérés"]
+	dyntitle [en "Managed groups glossary for {0}" fr "Gestion du glossaire des groups gérés par {0}"]
+	description [
+		en "This analysis helps you to manage your repository and groups glossary. Description and sensitivity level."
+		fr "Cette analyse vous aide à gérer le glossaire de vos groups. Description et niveau de sensibilité."
+	]
+}
+
+aartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+aartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+aartimeline_highlightmodified360 = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+aarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+groupglossary360detail = Page {
+	title: $groupglossary360NLS.title
+	description:$groupglossary360NLS.description
+	tags: "identityext" priority 200, "byuid" , "analytics", "groupmanager"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_groupglossary 
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page groupglossary360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+groupglossary360hp = Page {
+	title: $groupglossary360NLS.title
+	description:$groupglossary360NLS.description
+	tags: "mygroup_access360" priority 1
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_groupglossary
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page groupglossary360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+groupglossary360 = Page {
+	title: $groupglossary360NLS.title
+	dynamic-title: $groupglossary360NLS.dyntitle(identity.fullname)
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	description:$groupglossary360NLS.description
+	feature:bwa360_groupglossary
+	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedgroups = Variable { multivalued:True }
+	selectedgroup = Variable
+	selectedgroupsensitivitylevel = Variable
+	selectedgroupsensitivityreason = Variable
+	selectedgroupdescription = Variable
+	ismanaged = Variable { type:Boolean }
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	repository = Record {
+		view:bwf_repositoryDetail with UserVariable session_selectedRepositoriesTeam360 to uid
+	}
+	
+	managedrepositories = Dataset {
+		view:enduser360_managedrepositories with uid to uid
+	}
+	groups = Dataset {
+		view:access360_repositorygroups with UserVariable session_selectedRepositoriesTeam360 to uid
+	}
+	
+//	editgroup = NamedAction (
+//		Dialog bwfGroupDetailsMetadata_Dialog(	selectedgroup to paramGroupUid,
+//													selectedgroupsensitivitylevel to sensitivitylevel,
+//													selectedgroupsensitivityreason to sensitivityreason,
+//													selectedgroupdescription to description,
+//													ismanaged to ismanaged), 
+//												ReloadData (groups)	
+//	)
+//	
+//	batcheditgroup = NamedAction (
+//		Dialog bwfGroupDetailsBatchMetadata_Dialog (selectedgroups to groups), 
+//												ReloadData (groups)	
+//	)
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical False hint:height 40 } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					layout:Layout { hint: width 200 }
+					variable:UserVariable session_selectedRepositoriesTeam360
+					options:Dynamic {
+						data:managedrepositories
+						text:Current resourcename
+						value:Current resourceuid
+					}
+					label:$session_selectedGroupsTeam360NLS.label
+					tooltip:$session_selectedGroupsTeam360NLS.tooltip
+					allow-none:False
+				}
+				
+			}
+			GridCell {
+			}
+			GridCell {
+			}
+		}
+	}
+	
+	Separator {
+		width:1
+	}
+
+	IncludeFragment {
+		fragment:repoglossary360Fragment with UserVariable session_selectedGroupsTeam360 binds-to repositoryuid
+	}	
+}
+
+access360r_group_glossary360NLS = NLS {
+	title [en "Group glossary management" fr "Gestion du glossaire de groupes"]
+	dyntitle [en "{0} groups glossary management" fr "Gestion du glossaire des groupes pour {0}"]
+	description [
+		en "This analysis helps you to manage the group glossary such as group description and sensitivity levels."
+		fr "Cette analyse vous permet de gérer le glossaire des groupes tels que la description et le niveau de sensibilité des groupes."
+	]
+	onlyempty [	en "Only groups without description"
+				fr "Seulement les groupes sans description"
+	]
+	onlywithoutowner [	en "Only groups unmanaged"
+				fr "Seulement les groupes non gérés"
+	]	
+}
+
+access360r_repository_groupglossary360 = Page {
+	title: $access360r_group_glossary360NLS.title
+	dynamic-title: $access360r_group_glossary360NLS.dyntitle(repository.displayname)
+	description:$access360r_group_glossary360NLS.description
+	tags: "repository" priority 100, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+
+	repository = Record {
+		view:bwf_repositoryDetail with uid to uid
+	}
+
+	IncludeFragment {
+		fragment:repoglossary360Fragment with value-of uid to repositoryuid
+	}	
+}
+
+access360analytics_repository_groupglossary360NLS = NLS {
+	title [en "Group glossary management" fr "Gestion du glossaire des groupes"]
+	description [
+		en "This analysis helps you to manage your groups glossary. Description and sensitivity level."
+		fr "Cette analyse vous aide à gérer le glossaire de vos groupes. Description et niveau de sensibilité."
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+}
+access360analytics_repository_groupglossary360= Page {
+	title: $access360analytics_repository_groupglossary360NLS.title
+	description: $access360analytics_repository_groupglossary360NLS.description
+	tags: "group", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+
+	/* Parameters here */
+	search = SearchDefinition {
+		entity: Group
+		simple-mode-rule: br_group_simple_search
+	}
+	
+
+	selectedgroups = Variable { multivalued:True }
+	selectedgroup = Variable
+	selectedgroupsensitivitylevel = Variable
+	selectedgroupsensitivityreason = Variable
+	selectedgroupdescription = Variable
+	ismanaged = Variable { type:Boolean }
+	
+	onlyemptydescription = Variable { initial:False type:Boolean }
+	onlywithoutowner = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	groups = Dataset {
+		search:Search {
+			view:access360_repositorygroups with onlyemptydescription to withoutdescriptiononly, onlywithoutowner to withoutowneronly
+			definition:search
+		}
+	}
+	
+	editgroup = NamedAction (
+		Dialog bwfGroupDetailsMetadata_Dialog(	selectedgroup to paramPermissionUid,
+													selectedgroupsensitivitylevel to sensitivitylevel,
+													selectedgroupsensitivityreason to sensitivityreason,
+													selectedgroupdescription to description,
+													ismanaged to ismanaged), 
+												ReloadData (groups)	
+	)
+	
+	batcheditgroup = NamedAction (
+		Dialog bwfGroupDetailsBatchMetadata_Dialog(selectedgroups to groups), 
+											ReloadData (groups)	
+	)	
+	
+	batcheditmanager = NamedAction (
+		Dialog bwfGroupDetailsBatchAddManager_Dialog(selectedgroups to groups),
+											ReloadData (groups)					
+	)
+
+	showGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedgroup to inuid, 
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowperjob,
+										True to inshowperorg,
+										True to incanupdateowners,
+										True to incanupdatemetadata,										
+										False to inshowaccounts,
+										False to inshowcontrols,
+										False to inshowdecisionhistory
+										)
+	)
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn { fill:True width: grow }, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint:height 38 }
+		GridRow {
+			GridCell {
+				ButtonGroup {
+					Button {
+						actions:ExecuteNamedAction batcheditgroup, 
+								Unset selectedgroups
+						text:$repoglossary360FragmentNLS.bulk
+			            image:%collection_16.pencil
+			            disabled:StringPredicate(selectedgroups) { when IsEmpty then True otherwise False }
+					}
+//					Batch add managers is too time consuming
+//					Button {
+//						actions:ExecuteNamedAction batcheditmanager, 
+//								Unset selectedgroups
+//						text:$repoglossary360FragmentNLS.managerbulk
+//			            image:%collection_16.pencil
+//			            disabled:StringPredicate(selectedgroups) { when IsEmpty then True otherwise False }
+//					}					
+				}			
+			}
+			GridCell {
+				Checkbox {
+					variable:onlyemptydescription
+					modify-event: Unset selectedgroups
+					text:$access360r_group_glossary360NLS.onlyempty
+				}
+			}
+//			GridCell {
+//				Checkbox {
+//					variable:onlywithoutowner
+//					modify-event: Unset selectedgroups
+//					text:$access360r_group_glossary360NLS.onlywithoutowner
+//				}
+//			}			
+		}
+	}
+	Table {
+		data:groups
+		layout: Layout { grab: horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		label:Label { break:True value:$permission.concept }
+		checkboxes:groupuid to selectedgroups
+		
+		Column {
+			column:repositorydisplayname
+			tooltip:Current repositorydisplayname
+			header:$repository.concept
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:groupcode
+			header:$group.code
+			width:220px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction showGroupDetails
+		}
+		Column {
+			column:groupdisplayname
+			tooltip:Current groupdisplayname
+			header:$group.displayname
+			width:260px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction showGroupDetails
+		}
+		Column {
+			column:groupsensitivitylevel
+			text:Transform Current groupsensitivitylevel using bwfGroupSensitivityLevelMapping
+			header:$group.sensitivitylevel
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedgroupsensitivitylevel
+		}
+		Column {
+			column:groupsensitivityreason
+			tooltip:Current groupsensitivityreason
+			header:$group.sensitivityreason
+			width:200px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedgroupsensitivityreason
+			initially-masked:True
+		}
+		Column {
+			column:groupdescription
+			tooltip:Current groupdescription
+			header:$group.description
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:selectedgroupdescription
+		}
+		Column {
+			column:ismanaged
+			text: Transform Current ismanaged using booleanDisplayMapping
+			header:$bwfGroupDetailsMetadata_Dialog_NLS.managed
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:ismanaged
+		}		
+		Column {
+			column: groupsid
+			header: $group.sid
+			width: 100%
+			initially-masked: True
+			sortable:True
+		}
+		Column {
+			column: groupguid
+			header: $group.guid
+			width: 100%
+			initially-masked: True
+			sortable:True
+		}	
+		Column {
+			column:groupcomment
+			header:$group.comment
+			width:160px
+			filterable:True
+			initially-masked: True
+			sortable:True
+			align:Right
+		}			
+		Column {
+			column: groupgrouptype
+			header: $group.grouptype
+			width: 100%
+			filterable:True
+			initially-masked: True
+			sortable:True
+		}
+		Column {
+			column: groupdynamic
+			header: $group.dynamic
+			width: 100%
+			initially-masked: True
+			sortable:True
+		}				
+		Column {
+			column:nbaccounts
+			header:$search.group.nbaccount.header
+			width: 160px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbidentities
+			header:$search.group.nbidentity.header
+			width: 160px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbdirectaccounts
+			header:$search.group.nbdirectaccounts.header
+			width: 160px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbdirectidentities
+			header:$search.group.nbdirectidentity.header
+			width: 160px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbshare
+			header:$search.group.nbshare.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}					
+		Column {
+			column:nbapplication
+			header:$search.group.nbapplication.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}				
+		Column {
+			column:groupuid
+			hidden:True
+			selection:selectedgroup
+		}
+	}
+	Text {
+		value:$repoglossary360FragmentNLS.limit
+		compact:True
+		styling:warningFieldStyle
+		hidden:IntPredicate(Count groups) { when =1000 then False otherwise True }
+	}
+}
+repoglossary360FragmentNLS = NLS {
+	bulk [en "Update Description" fr "Mise à jour des descriptions"]
+	managerbulk [en "Add a Manager" fr "Ajout d'un manager"]
+	limit [
+		en "Table limited to 1000 groups, please consider filtering the table to look for hidden groups."
+		fr "Affichage limité à 1000 groups, veuillez utiliser les capacités de filtrage du tableau pour rechercher des groupes."
+	]
+}
+repoglossary360Fragment = PageFragment {
+	/* Parameters here */
+    repositoryuid = Variable
+
+	/* Variables here */
+	selectedgroups = Variable { multivalued:True }
+	selectedgroup = Variable
+	selectedgroupsensitivitylevel = Variable
+	selectedgroupsensitivityreason = Variable
+	selectedgroupdescription = Variable
+	ismanaged = Variable { type:Boolean }
+		
+	onlyemptydescription = Variable { initial:False type:Boolean }
+	onlywithoutowner = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:bwf_repositoryDetail with repositoryuid to uid
+	}
+	
+	groups = Dataset {
+		view:access360_repositorygroups with repositoryuid to uid, onlyemptydescription to withoutdescriptiononly, onlywithoutowner to withoutowneronly
+		limit:1000
+	}
+	
+	editgroup = NamedAction (
+		Dialog bwfGroupDetailsMetadata_Dialog(	selectedgroup to paramGroupUid,
+													selectedgroupsensitivitylevel to sensitivitylevel,
+													selectedgroupsensitivityreason to sensitivityreason,
+													selectedgroupdescription to description,
+													ismanaged to ismanaged), 
+												ReloadData (groups)	
+	)
+	
+	batcheditgroup = NamedAction (
+		Dialog bwfGroupDetailsBatchMetadata_Dialog (selectedgroups to groups), 
+												ReloadData (groups)	
+	)
+
+	batcheditmanager = NamedAction (
+		Dialog bwfGroupDetailsBatchAddManager_Dialog (selectedgroups to groups), 
+												ReloadData (groups)	
+	)
+
+	showGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedgroup to inuid, 
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowperjob,
+										True to inshowperorg,
+										True to incanupdateowners,
+										True to incanupdatemetadata,
+										False to inshowaccounts,
+										False to inshowcontrols,
+										False to inshowdecisionhistory
+										)
+	)
+	
+	/* Page content */
+
+	Flow {
+		disposition:Horizontal
+		layout: Layout { grab: horizontal True vertical False hint: height 110 }
+		Group {
+			Text {
+				label:$repository.code
+				value:repository.code
+				compact:True
+			}
+			Text {
+				label:$repository.displayname
+				value:repository.displayname
+				compact:True
+			}
+			Text {
+				label:$repository.repositoryfamily
+				value: Transform repository.repositoryfamily using bwfRepoFamilyType
+				compact:True
+			}
+		}
+		Group {
+			Text {
+				label:$fragmentRepositoryDetailsNLS.category
+				value:repository.category
+				compact:True
+			}
+			Text {
+				label:$repository.sensitivityreason
+				value:repository.sensitivityreason
+				compact:True
+			}
+			Text {
+				label:$repository.sensitivitylevel
+				value:Transform repository.sensitivitylevel using bwfGroupSensitivityLevelMapping
+				compact:True
+			}
+			Text {
+				label:$repository.description
+				tooltip:repository.description
+				value:repository.description
+				compact:True
+					commands:Commands { position: After orientation: Horizontal 
+									Command{	actions:Dialog bwfRepositoryDetailsMetadata_Dialog(repositoryuid to paramRepositoryUid, repository.sensitivitylevel to sensitivitylevel, 
+																									repository.sensitivityreason to sensitivityreason, 
+																									repository.description to description, 
+																									repository.category to category,
+																									repository.repositorytype to repositorytype), 
+														ReloadData (repository)
+					                        	icon:%collection_16.pencil
+					                        	tooltip:$fragmentRepositoryDetailsNLS.updatemetadata
+					                       }
+					                  }
+			}
+		}
+	}
+
+
+	Separator {
+		width:1
+	}
+
+	Grid {
+		columns:GridColumn { fill:True width: grow }, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint:height 38 }
+		GridRow {
+			GridCell {
+				ButtonGroup {
+					Button {
+						actions:ExecuteNamedAction batcheditgroup
+						text:$repoglossary360FragmentNLS.bulk
+			            image:%collection_16.pencil
+			            disabled:StringPredicate(selectedgroups) { when IsEmpty then True otherwise False }
+					}
+//					Batch add managers is too time consuming
+//					Button {
+//						actions:ExecuteNamedAction batcheditmanager
+//						text:$repoglossary360FragmentNLS.managerbulk
+//			            image:%collection_16.pencil
+//			            disabled:StringPredicate(selectedgroups) { when IsEmpty then True otherwise False }
+//					}					
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:onlyemptydescription
+					text:$access360r_group_glossary360NLS.onlyempty
+				}
+			}
+//			GridCell {
+//				Checkbox {
+//					variable:onlywithoutowner
+//					text:$access360r_group_glossary360NLS.onlywithoutowner
+//				}
+//			}			
+		}
+	}
+	Table {
+		data:groups
+		layout: Layout { grab: horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		label:Label { break:True value:$group.concept }
+		checkboxes:groupuid to selectedgroups
+		
+		Column {
+			column:groupcode
+			header:$group.code
+			width:220px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction showGroupDetails
+		}
+		Column {
+			column:groupdisplayname
+			tooltip:Current groupdisplayname
+			header:$group.displayname
+			width:260px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction showGroupDetails
+		}
+		Column {
+			column:groupsensitivitylevel
+			text:Transform Current groupsensitivitylevel using bwfGroupSensitivityLevelMapping
+			header:$group.sensitivitylevel
+			width:100px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedgroupsensitivitylevel
+		}
+		Column {
+			column:groupsensitivityreason
+			tooltip:Current groupsensitivityreason
+			header:$group.sensitivityreason
+			width:200px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedgroupsensitivityreason
+			initially-masked:True
+		}
+		Column {
+			column:groupdescription
+			tooltip:Current groupdescription
+			header:$group.description
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:selectedgroupdescription
+		}
+		Column {
+			column:ismanaged 
+			text: Transform Current ismanaged using booleanDisplayMapping
+			header:$bwfGroupDetailsMetadata_Dialog_NLS.managed
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:ismanaged
+		}		
+		Column {
+			column: groupsid
+			header: $group.sid
+			width: 100%
+			initially-masked: True
+			sortable:True
+		}
+		Column {
+			column: groupguid
+			header: $group.guid
+			width: 100%
+			initially-masked: True
+			sortable:True
+		}		
+		Column {
+			column: groupgrouptype
+			header: $group.grouptype
+			width: 100%
+			filterable:True
+			initially-masked: True
+			sortable:True
+		}
+		Column {
+			column:groupcomment
+			header:$group.comment
+			width:160px
+			filterable:True
+			initially-masked: True
+			sortable:True
+			align:Right
+		}		
+		Column {
+			column: groupdynamic
+			header: $group.dynamic
+			width: 100%
+			initially-masked: True
+			sortable:True
+		}				
+		Column {
+			column:nbaccounts
+			header:$search.group.nbaccount.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbidentities
+			header:$search.group.nbidentity.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbdirectaccounts
+			header:$search.group.nbdirectaccounts.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbdirectidentities
+			header:$search.group.nbdirectidentity.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}
+		Column {
+			column:nbshare
+			header:$search.group.nbshare.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}					
+		Column {
+			column:nbapplication
+			header:$search.group.nbapplication.header
+			width: 100px
+			initially-masked: True
+			sortable:True
+			align:Right
+		}						
+		Column {
+			column:groupuid
+			hidden:True
+			selection:selectedgroup
+		}
+	}
+	Text {
+		value:$repoglossary360FragmentNLS.limit
+		compact:True
+		styling:warningFieldStyle
+		hidden:IntPredicate(Count groups) { when =1000 then False otherwise True }
+	}
+}

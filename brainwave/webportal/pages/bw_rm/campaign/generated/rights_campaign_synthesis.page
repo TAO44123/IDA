@@ -1,0 +1,548 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_campaignmanager/campaignManager.page"
+import "/webportal/pages/bw_campaignmanager/campaignFragments.page"
+
+/* Nationalized labels here */
+bw_rm_rights_campaign_synthesisNLS = NLS {
+	title [en "rights based campaign synthesis" fr "rights based campaign synthesis"]
+	status [en "status" fr "statut"]
+	comment [en "comment" fr "commentaires"]
+	by [en "by" fr "par"]
+	^on [en "on" fr "le"]
+	campaign [en "campaign" fr "campagne"]
+
+	remediationsubmissiondate [en "remediation starting date" fr "Démarrage de la remédiation"]
+	remediationclosedate [en "remediation close date" fr "Cloture de la remédiation"]
+	remediationstatus [en "remediation status" fr "statut de remédiation"]
+	remediationextref [en "remediation external ticket" fr "ticket externe de remédiation"]
+}
+
+bw_rm_synthesis_icons = StringImageTemplate {
+	//when "ok" then "16/famfamfam_silk_icons_v013/accept.png"
+	//when "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+	//when "update" then "16/famfamfam_silk_icons_v013/pencil.png"
+	when "ok" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+	when "update" then "16/famfamfam_silk_icons_v013/pencil.png"
+	
+}
+
+
+bw_rm_rights_campaign_synthesis = Page {
+	title: $bw_rm_rights_campaign_synthesisNLS.title
+	
+	/* Parameters here */
+	campaigncode = Parameter
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	campaign = Record {
+		view:bw_rm_campaign with campaigncode to code
+	}
+	
+	pending = Dataset {
+		view:bw_rm_rights_pendingreviewtickets with campaigncode to code
+	}
+	
+	inprogress = Dataset {
+		view:bw_rm_rights_inprogressremediationtickets with campaigncode to code
+	}
+
+	closed = Dataset {
+		view:bw_rm_rights_allclosedtickets with campaigncode to code
+	}
+
+	discrepancies = Dataset {
+		view:bw_rm_rights_closedremediationtickets with campaigncode to code
+	}
+	
+	/* Page content */
+	Splitter {
+		disposition:Vertical
+		size:25%
+	
+		Group {
+			Flow {
+				disposition:Horizontal
+				Group {
+					Text {
+						label:$br_campaignManagerNLS.dcode
+						value:campaign.code
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dctitle
+						value:campaign.title
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.ddescription
+						value:campaign.description
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.ddescription
+						value:campaign.description
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dtype
+						value:campaign.type
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dstatus
+						value:Transform campaign.status using campaignStatusMapping
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dactive
+						value:Transform campaign.active using booleanDisplayMapping
+						compact:True
+					}		
+				}
+				Group {
+					Text {
+						label:$br_campaignManagerNLS.downer
+						value:campaign.ownerfullname
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dtemplate
+						value:Transform campaign.template using booleanDisplayMapping
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dfrequency
+						value:Transform campaign.frequency using campaignFrequencyMapping
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dduration
+						value:campaign.duration
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dlastexecutiondate
+						value:campaign.lastexecutiondate
+						compact:True
+					}		
+					Text {
+						label:$br_campaignManagerNLS.dnextexecutiondate
+						value:campaign.nextexecutiondate
+						compact:True
+					}		
+				}
+			}
+		}	
+		Group {
+			TabFolder {
+				TabItem {
+					text:"Actions still pending"		
+					Table {
+						data:pending
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						persist-configuration:True
+						persist-configuration-key:campaigncode
+					
+						Column {
+							column:reviewstatus
+							header:$bw_rm_rights_campaign_synthesisNLS.status
+							filterable:True
+							sortable:True
+							image:TemplateImageSelection(Current reviewstatus) using bw_rm_synthesis_icons
+						}
+						Column {
+							column:reviewcomment
+							header:$bw_rm_rights_campaign_synthesisNLS.comment
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:accountlogin
+							header:$account.login
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:repositorydisplayname
+							header:$repository.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissioncode
+							header:$ppermission.code
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissiondisplayname
+							header:$ppermission.displayname
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:applicationdisplayname
+							header:$application.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:reviewbyname
+							header:$bw_rm_rights_campaign_synthesisNLS.by
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:requestedon
+							header:$bw_rm_rights_campaign_synthesisNLS.^on
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:campaigninstancetitle
+							header:$bw_rm_rights_campaign_synthesisNLS.campaign
+							filterable:True
+							sortable:True
+							width:200px
+						}
+					}		
+				}			
+				TabItem {
+					text:"Actions in-progress"				
+					Table {
+						data:inprogress
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						persist-configuration:True
+						persist-configuration-key:campaigncode
+					
+						Column {
+							column:reviewstatus
+							header:$bw_rm_rights_campaign_synthesisNLS.status
+							filterable:True
+							sortable:True
+							image:TemplateImageSelection(Current reviewstatus) using bw_rm_synthesis_icons
+						}
+						Column {
+							column:reviewcomment
+							header:$bw_rm_rights_campaign_synthesisNLS.comment
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:accountlogin
+							header:$account.login
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:repositorydisplayname
+							header:$repository.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissioncode
+							header:$ppermission.code
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissiondisplayname
+							header:$ppermission.displayname
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:applicationdisplayname
+							header:$application.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:reviewbyname
+							header:$bw_rm_rights_campaign_synthesisNLS.by
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:requestedon
+							header:$bw_rm_rights_campaign_synthesisNLS.^on
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:campaigninstancetitle
+							header:$bw_rm_rights_campaign_synthesisNLS.campaign
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationsubmissiondate
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationsubmissiondate
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationclosedate
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationclosedate
+							filterable:True
+							sortable:True
+							width:200px
+							hidden:True
+						}
+						Column {
+							column:remediationstatus
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationstatus
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationexternalreference
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationextref
+							filterable:True
+							sortable:True
+							width:200px
+						}
+					}		
+				}			
+				TabItem {
+					text:"Closed actions"				
+					Table {
+						data:closed
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						persist-configuration:True
+						persist-configuration-key:campaigncode
+					
+						Column {
+							column:reviewstatus
+							header:$bw_rm_rights_campaign_synthesisNLS.status
+							filterable:True
+							sortable:True
+							image:TemplateImageSelection(Current reviewstatus) using bw_rm_synthesis_icons
+						}
+						Column {
+							column:reviewcomment
+							header:$bw_rm_rights_campaign_synthesisNLS.comment
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:accountlogin
+							header:$account.login
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:repositorydisplayname
+							header:$repository.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissioncode
+							header:$ppermission.code
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissiondisplayname
+							header:$ppermission.displayname
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:applicationdisplayname
+							header:$application.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:reviewbyname
+							header:$bw_rm_rights_campaign_synthesisNLS.by
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:requestedon
+							header:$bw_rm_rights_campaign_synthesisNLS.^on
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:campaigninstancetitle
+							header:$bw_rm_rights_campaign_synthesisNLS.campaign
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationsubmissiondate
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationsubmissiondate
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationclosedate
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationclosedate
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationstatus
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationstatus
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationexternalreference
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationextref
+							filterable:True
+							sortable:True
+							width:200px
+						}
+					}		
+				}			
+				TabItem {
+					text:"Discrepancies"				
+					Table {
+						data:discrepancies
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						persist-configuration:True
+						persist-configuration-key:campaigncode
+					
+						Column {
+							column:reviewstatus
+							header:$bw_rm_rights_campaign_synthesisNLS.status
+							filterable:True
+							sortable:True
+							image:TemplateImageSelection(Current reviewstatus) using bw_rm_synthesis_icons
+						}
+						Column {
+							column:reviewcomment
+							header:$bw_rm_rights_campaign_synthesisNLS.comment
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:accountlogin
+							header:$account.login
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:repositorydisplayname
+							header:$repository.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissioncode
+							header:$ppermission.code
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:permissiondisplayname
+							header:$ppermission.displayname
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:applicationdisplayname
+							header:$application.concept
+							filterable:True
+							sortable:True
+						}
+						Column {
+							column:reviewbyname
+							header:$bw_rm_rights_campaign_synthesisNLS.by
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:requestedon
+							header:$bw_rm_rights_campaign_synthesisNLS.^on
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:campaigninstancetitle
+							header:$bw_rm_rights_campaign_synthesisNLS.campaign
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationsubmissiondate
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationsubmissiondate
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationclosedate
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationclosedate
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationstatus
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationstatus
+							filterable:True
+							sortable:True
+							width:200px
+						}
+						Column {
+							column:remediationexternalreference
+							header:$bw_rm_rights_campaign_synthesisNLS.remediationextref
+							filterable:True
+							sortable:True
+							width:200px
+						}
+					}		
+				}			
+			}
+		}	
+	}
+}

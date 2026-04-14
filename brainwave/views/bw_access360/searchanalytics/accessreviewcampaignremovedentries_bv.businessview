@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360_accessreviewcampaignremovedentries_bv" displayname="Access review campaign removed entries bv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/accessreviewcampaignremovedentries_bv.javascript" name="D1721143784317">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1721143784317" title="Retrieve revoke entries">
+			<InnerView name="bwaccess360_accessreviewcampaignremovedentries">
+				<Param name="F1721144477098" viewparam="accountableuid" viewparamvalue="{param.accountableuid.get()}"/>
+				<Param name="F1721144484169" viewparam="campaignid" viewparamvalue="{param.campaignid.get()}"/>
+				<Param name="F1721144492044" viewparam="revieweruid" viewparamvalue="{param.revieweruid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1721143886987" type="joinview" x="30" y="70" w="476" h="114" title="Retrieve removed entries - Account case" enable="{param.reviewtype.get() == &apos;account&apos;}">
+			<InnerView name="bwaccess360_repositoryaccountsremovedforactivecampaign" prefix="acc_"/>
+			<Join jointype="inner" key1="{dataset.reviewrecorduid.get()}" key2="{dataset.acc_recorduid.get()}"/>
+		</Component>
+		<Link name="L1721143887097" source="C1721143784317" target="C1721143886987" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1721143911660" type="joinview" x="30" y="180" w="476" h="114" title="Retrieve removed entries - Right/Safe case" enable="{param.reviewtype.get() == &apos;right&apos; || param.reviewtype.get() == &apos;safe&apos;}">
+			<InnerView name="bwaccess360_applicationaccessrightsremovedforactivecampaign" prefix="right_"/>
+			<Join jointype="inner" key1="{dataset.reviewrecorduid.get()}" key2="{dataset.right_recorduid.get()}"/>
+		</Component>
+		<Link name="L1721143911750" source="C1721143886987" target="C1721143911660" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1721144015524" type="joinview" x="30" y="290" w="477" h="114" title="Retrieve removed entries - Group member case" enable="{param.reviewtype.get() == &apos;groupmember&apos;}">
+			<InnerView name="bwaccess360_repositorygroupmembersremovedforactivecampaign" prefix="groupmember_"/>
+			<Join key1="{dataset.reviewrecorduid.get()}" key2="{dataset.groupmember_recorduid.get()}" jointype="inner"/>
+		</Component>
+		<Link name="L1721144015740" source="C1721143911660" target="C1721144015524" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="reviewtype" displayname="Review type" type="String"/>
+	<ViewParam name="campaignid" displayname="campaign id" type="String"/>
+	<ViewParam name="revieweruid" displayname="reviewer uid" type="String"/>
+	<ViewParam name="accountableuid" displayname="accountableuid" type="String"/>
+</View>

@@ -1,0 +1,861 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pickers.page"
+
+import "/webportal/pages/bw_access360/portalreports/control/sodmatrix.page"
+import "/webportal/pages/bw_fragments/businessactivity/details/businessActivityDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/control/details/controlDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_sodanalysis/rolesodproblemrootcauseanalysis.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+/* Nationalized labels here */
+bwa360_rolessodmatrixNLS = NLS {
+	title [en "Core Model SoD Defects Analysis" fr "Analyse des écarts de SoD du modèle de droits"]
+	
+	empty [
+		fr "Aucun problème de SoD trouvé"
+		en "No SoD Problems Found"
+	]
+
+	rolecode [en "Roles" fr "Rôles"]
+	roledefectdetails [en "SoD defects - Role level" fr "Ecarts Sod - Niveau Rôle"]
+
+	analytics.title [en "Core Model SoD Defects Analysis" fr "Analyse des écarts de SoD du modèle de droits"]
+
+	application.analytics.description [
+		en "This report provides a summary of the segregation of duties (SOD) control deviations found within permissions (core model analysis). The gaps are presented in the form of a SOD matrix. This analysis includes both the organization and the sub-organizations. The background color represents the level of risk associated with the control. It is possible to analyze the permissions involved by clicking on the relevant activities (rows or columns)."
+		fr "Ce rapport présente la synthèse des écarts de contrôle de séparation des tâches (SOD) trouvés au sein des permissions (analyse du modèle de droits). Les écarts sont présentés sous la forme d'une matrice de SOD. Cette analyse inclus à la fois l'organisation courante et les sous organisations. La couleur de fond représente le niveau de risque associé au contrôle. Il est possible d'analyser les permissions en cause en cliquant sur les activités concernées (lignes ou colonnes)."
+	]
+
+	permission.analytics.description [
+		en "This report provides a summary of the segregation of duties (SOD) control deviations found within this permission (core model analysis). The gaps are presented in the form of a SOD matrix. This analysis includes both the organization and the sub-organizations. The background color represents the level of risk associated with the control. It is possible to analyze the permissions involved by clicking on the relevant activities (rows or columns)."
+		fr "Ce rapport présente la synthèse des écarts de contrôle de séparation des tâches (SOD) trouvés au sein de cette permission (analyse du modèle de droits). Les écarts sont présentés sous la forme d'une matrice de SOD. Cette analyse inclus à la fois l'organisation courante et les sous organisations. La couleur de fond représente le niveau de risque associé au contrôle. Il est possible d'analyser les permissions en cause en cliquant sur les activités concernées (lignes ou colonnes)."
+	]
+	
+	risklevel [en "Risk Level" fr "Niveau de risque"]
+	controlcode [en "Control Code" fr "Code contrôle"]
+	control [en "Control" fr "Contrôle"]
+	controldescription [en "Control Description" fr "Description Contrôle"]
+	controltagtype [en "Control Tag type" fr "Type de tag du Contrôle"]
+	risk [en "Risk" fr "Risque"]
+	matrix [en "Matrix" fr "Matrice"]
+	nbrolesprb [en "(Shows the Number of Roles with the Problem)" fr "(Affiche le nombre de rôles avec le problème)"]
+	details [en "Details" fr "Détails"]
+	rootcause [en "Root Cause Analysis" fr "Analyse de la cause"]
+	minrisklevel [en "Minimum Risk Level" fr "Niveau de risque minimum"]
+	filtercontrol [en "Control filtering" fr "Filtrage sur le contrôle"]
+	remediation [en "Suggested Remediation" fr "Remédiation suggérée"]
+	firstactivitycode [en "First Activity Code" fr "Premier code activité"]
+	firstactivity [en "First Activity" fr "Première activité"]
+	secondactivitycode [en "Second Activity Code" fr "Deuxième code activité"]
+	secondactivity [en "Second Activity" fr "Deuxième activité"]
+	nbaccounts [en "Number of Accounts \nwith the Role" fr "Nombre de comptes \navec le rôle"]
+	selectcontrol [en "Select a Control" fr "Selectionner un contrôle"]
+	rcode [en "Role Code" fr "Code Rôle"]
+	rname [en "Role" fr "Rôle"]
+
+	showall [en "Display as a list" fr "Afficher en liste"]
+	showcontroldetails [en "Selected control details" fr "Détails du contrôle sélectionné"]
+	showcontrolresults [en "Selected defect details" fr "Détails du défaut"]
+	
+	showalltooltip [en "Show all Results as a List" fr "Afficher tous les résultats dans un tableau"]
+	showcontroldetailstooltip [en "Show Selected Control Detail" fr "Afficher le détail du contrôle sélectionné"]
+	showcontrolresultstooltip [en "Show Selected Control Results as a List" fr "Afficher les résultats du contrôle sélectionné dans un tableau"]
+	back [en "Back to the Matrix" fr "Retour à la matrice"]
+
+	risklevelprefix [en "Risk Level: " fr "Niveau de risque : "]
+	
+	nbofroles [en "Number of roles" fr "Nombre de rôles"]
+	
+	runningpercent [en "Running Percentage" fr "pourcentage cumulé"]
+	paretotitle [en "Pareto Analysis per SoD Control" fr "Analyse de pareto par contrôle de SoD"]
+}
+
+bwa360_rolessodmatrix_controlpicker = Dialog {
+	title:$bwa360_rolessodmatrixNLS.selectcontrol
+	width:1024
+	height:600
+	buttons:[
+		OkButton { disabled:StringPredicate(outControlCode) { when IsEmpty then True otherwise False } }
+		CancelButton
+		] 
+
+	controlcodes = Variable { multivalued:True }
+	
+	outControlCode = Variable
+	outControlName = Variable
+	
+	controls = Dataset {
+		view:bwa360_identitysodcontrols with controlcodes to controlcode
+	}
+
+	Table {
+		data:controls
+		layout: Layout { grab: horizontal True vertical True }
+		configurable:True
+		show-filter:True
+		
+		Column {
+			column:risklevel
+			text:Transform Current risklevel using bwf_ControlLevelMapping
+			header:$bwa360_rolessodmatrixNLS.risklevel
+			width:128px
+			sortable:True
+			filterable:True
+			image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+		}	
+		Column {
+			column:controlcode
+			tooltip:Current controlcode
+			header:$bwa360_rolessodmatrixNLS.controlcode
+			initially-masked:True
+			selection:outControlCode
+			sortable:True
+			filterable:True
+		}	
+		Column {
+			column:controldisplayname
+			tooltip:Current controldisplayname
+			header:$bwa360_rolessodmatrixNLS.control
+			selection:outControlName
+			sortable:True
+			filterable:True
+			width:100%
+		}	
+		Column {
+			column:controldescription
+			tooltip:Current controldescription
+			header:$bwa360_rolessodmatrixNLS.controldescription
+			initially-masked:True
+			sortable:True
+			filterable:True
+			width:100%
+		}	
+		Column {
+			column:riskinfo
+			tooltip:Current riskinfo
+			header:$bwa360_rolessodmatrixNLS.risk
+			initially-masked:True
+			sortable:True
+			filterable:True
+			width:100%
+		}	
+	}
+}
+
+bwa360_application_rolessodmatrix = Page {
+	title: $bwa360_rolessodmatrixNLS.analytics.title
+	description: $bwa360_rolessodmatrixNLS.application.analytics.description
+	tags: "application" priority 100, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	conditional-redirect:ConditionalRedirect { condition:BooleanPredicate(True) target:Page bwa360_rolessodmatrix_inner with uid to applicationuid }
+	feature:All(sod_license, bwa_controlrolesodmatrix, compliance_license)
+	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+}
+
+bwa360_permission_rolessodmatrix = Page {
+	title: $bwa360_rolessodmatrixNLS.analytics.title
+	description: $bwa360_rolessodmatrixNLS.permission.analytics.description
+	tags: "permission" priority 100, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	conditional-redirect:ConditionalRedirect { condition:BooleanPredicate(True) target:Page bwa360_rolessodmatrix_inner with uid to permissionuid }
+	feature:All(sod_license, bwa_controlrolesodmatrix, compliance_license)
+	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+}
+
+bwa360_rolessodmatrix = Page {
+	title: $bwa360_rolessodmatrixNLS.title
+	feature: All ( sod_license, bwa_controlrolesodmatrix, compliance_license)
+	conditional-redirect:
+		ConditionalRedirect {
+			condition: True
+			target:
+				Page bwa360_rolessodmatrix_inner with inmatrixuid to inmatrixuid unless-empty
+		}
+	inmatrixuid = Parameter { type: String mandatory: False }
+}
+
+bwa360_rolessodmatrix_inner = Page {
+	title: $bwa360_rolessodmatrixNLS.title
+	feature: All ( sod_license, bwa_controlrolesodmatrix, compliance_license)
+	enter-event:
+		Set minimumRiskLevel to selectedMinimumRiskLevel, 
+		BooleanCase using Not FeaturePredicate administratorHome in { 
+			when True then [ 
+				Set True to ownedPermissionsOnly
+			] 
+			when False then [ 
+			Set False to ownedPermissionsOnly
+			]
+		},
+		Set inmatrixuid to selectedsodmatrix
+	
+	/* Parameters here */
+    applicationuid = Parameter { type: String hidden: True }
+    permissionuid = Parameter { type: String multivalued: True hidden: True }
+	minimumRiskLevel = Parameter { type: Integer hidden: True }
+	inmatrixuid = Parameter { type: String mandatory: False }
+	
+	/* Variables here */
+	currentRiskID = Variable {multivalued:True}
+	currentRiskLevel = Variable {multivalued:True}
+	currentRiskInfo = Variable {multivalued:True}
+	currentSuggestedMitigation = Variable {multivalued:True}
+	
+	selectedKey1uid = Variable
+	selectedKey2uid = Variable
+
+	selectedbusinessactivityuid = Variable
+	selectedpermissionuid = Variable
+	selectedapplicationuid = Variable
+	
+	selectedcontrol = Variable
+	selectedactivityuid = Variable
+
+	tab_detail = Variable { initial:False }
+
+	selectedControlUid = Variable
+	selectedControlName = Variable
+	allcontrols = Variable { multivalued:True }
+	
+	selectedMinimumRiskLevel = Variable
+	
+	selectedsodmatrix = Variable
+	
+	ownedPermissionsOnly = Variable { type: Boolean }
+
+	/* Datasets and records here */
+	sodrules = Dataset {
+		view:bwa360_rolessodproblems with 
+			applicationuid to applicationuid unless-empty, 
+			permissionuid to roleuid unless-empty, 
+			selectedMinimumRiskLevel to minimumRiskLevel unless-empty,
+			selectedsodmatrix to sodmatrixuid unless-empty,
+			Principal.uid to permissionOwnerUid unless-empty,
+			ownedPermissionsOnly to ownedPermissionsOnly unless-empty
+	}
+
+	selectedsodrule = Dataset {
+		view:bwa360_matrixkeypair
+		includes:AndPredicate {
+			SameValuePredicate(selectedKey1uid, Current key1uid)
+			SameValuePredicate(selectedKey2uid, Current key2uid)
+		}
+	}
+	
+	matrixsoddiscrepancies = Dataset {
+		view: bwa360_rolesodproblemsmatrix_bv
+	}
+
+	showApplicationDetail = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedapplicationuid to inuid,
+												True to inshowperjob,
+												True to inshowperorg
+		)
+	)
+	showRoleDetail = NamedAction (
+		Dialog bwf_permissionDetailsDialog(selectedpermissionuid to inuid,
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsodmodeldefects
+		)
+	)
+	showBusinessActivityDetail = NamedAction (
+		Dialog bwf_businessActivityDetailsDialog(selectedbusinessactivityuid to inuid,
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsodmodeldefects
+		)
+	)
+	showActivityDetail = NamedAction (
+		Dialog bwf_businessActivityDetailsDialog(selectedactivityuid to inuid,
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsoddefects,
+												True to inshowsodmodeldefects
+		)
+	)
+	
+	showDetail = NamedAction (
+		BooleanCase(Eval "!selectedapplicationuid.isEmpty() && selectedbusinessactivityuid.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showApplicationDetail
+			]
+			when False then [
+			]
+		},
+		BooleanCase(Eval "!selectedbusinessactivityuid.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showBusinessActivityDetail
+			]
+			when False then [
+			]
+		}
+	)
+
+	showControlDetail = NamedAction (
+		Dialog bwf_controlDetailsDialog(currentRiskID to incontrolcode)
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn , GridColumn {width:grow}, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint: height 36 }
+		GridRow {
+			GridCell {
+				Combo {
+					options:Dynamic {data:matrixsoddiscrepancies text:Current matrix_displayname value:Current matrix_uid}
+					allow-none: True
+					variable:selectedsodmatrix
+					label:$bwa360_sodmatrixNLS.matrix
+				}
+			}
+			GridCell {
+				Combo {
+					variable:selectedMinimumRiskLevel
+					label: $bwa360_rolessodmatrixNLS.minrisklevel
+					allow-none:True
+					options:Static {
+						Option { value:4 text:$bwf_ControlLevel_NLS._4 }
+						Option { value:3 text:$bwf_ControlLevel_NLS._3 }
+						Option { value:2 text:$bwf_ControlLevel_NLS._2 }
+						Option { value:1 text:$bwf_ControlLevel_NLS._1 }
+						Option { value:0 text:$bwf_ControlLevel_NLS._0 }
+					}
+				}
+			}
+			GridCell {
+			}
+			GridCell {
+				ButtonGroup {
+					align: Right
+					uniform: True
+					Button {
+						actions:GoTo Page bwa360_rolessodmatrix_innerdetails with 
+											applicationuid to applicationuid unless-empty, 
+											permissionuid to permissionuid, 
+											selectedMinimumRiskLevel to minimumRiskLevel, 
+											selectedsodmatrix to inmatrixuid unless-empty,
+											True to cangoback unless-empty
+											save-state
+						text:$bwa360_rolessodmatrixNLS.showall
+						image: %collection_16.dashboard
+						disabled:IntPredicate(Count sodrules) { when =0 then True otherwise False }
+					}
+					Button {
+						actions:ExecuteNamedAction showControlDetail 
+						text:$bwa360_rolessodmatrixNLS.showcontroldetails
+						image: %concept_16.control
+						disabled:
+						StringPredicate(currentRiskID) { when IsEmpty then True otherwise False }
+					}
+					Button {
+						actions:GoTo Page bwa360_rolessodmatrix_innerdetails with 
+											applicationuid to applicationuid unless-empty, 
+											permissionuid to permissionuid, 
+											selectedKey1uid to activity1uidfilter unless-empty, 
+											selectedKey2uid to activity2uidfilter unless-empty, 
+											selectedsodmatrix to inmatrixuid unless-empty,
+											True to cangoback 
+											save-state 
+						text:$bwa360_rolessodmatrixNLS.showcontrolresults
+						image: %collection_16.magnify
+						disabled:
+						StringPredicate(currentRiskID) { when IsEmpty then True otherwise False }
+					}
+				}
+			}				
+		}
+	}
+	ConditionalGroup {
+		title: $bwa360_rolessodmatrixNLS.roledefectdetails
+		IntCondition(Count sodrules) {
+			when =0 then [
+				Header {
+					value:$bwa360_rolessodmatrixNLS.empty
+				}
+			]
+			otherwise [
+				CrossTable {
+					data:sodrules
+					layout: Layout{
+						cell-width: 30px 
+						cell-height: 24px 
+						row-headers-max-width: 80% 
+						grab:horizontal True vertical True
+					}
+					cluster-sortable:True
+					selection-changed-event: 
+							ReloadData(selectedsodrule),
+							TransferData selectedsodrule(uid, risklevel, riskinfo, suggestedmitigation) to (currentRiskID, currentRiskLevel, currentRiskInfo, currentSuggestedMitigation)
+			
+					column-header-click:ExecuteNamedAction showDetail
+					row-header-click:ExecuteNamedAction showDetail
+					columns:
+						Dim {
+							value:app1uid 
+							label:app1displayname 
+							header:$application.concept 
+							header-click:selectedapplicationuid
+						}, 
+						Dim {
+							value:key1uid 
+							label:key1displayname 
+							header:$bwa360_sodmatrixNLS.activity 
+							selection:selectedKey1uid 
+							header-click:selectedbusinessactivityuid
+						}
+					rows:
+						Dim {
+							value:app2uid 
+							label:app2displayname 
+							header:$application.concept 
+							header-click:selectedapplicationuid
+							width: 100px
+						}, 
+						Dim {
+							value:key2uid 
+							label:key2displayname 
+							header:$bwa360_sodmatrixNLS.activity 
+							selection:selectedKey2uid 
+							header-click:selectedbusinessactivityuid
+						}
+					cell-content:
+						CellContent {
+							text:Current nbroles 
+							tooltip:Concat(Current controlcode, '\n', Current controldisplayname, '\n', $bwa360_sodmatrixNLS.risklevelprefix, Transform Current risklevel using bwf_ControlLevelMapping, '\n', $bwa360_rolessodmatrixNLS.nbrolesprb) 
+							align:Center 
+							styling:IntStyling(Current risklevel) {
+								when =1 then bwsod_sodmatrix_risklevel1 
+								when =2 then bwsod_sodmatrix_risklevel2 
+								when =3 then bwsod_sodmatrix_risklevel3 
+								when =4 then bwsod_sodmatrix_risklevel4 
+								when =5 then bwsod_sodmatrix_risklevel5 
+								when >5 then bwsod_sodmatrix_risklevel5 
+						  	}
+						}
+				}
+			]
+		}
+	}
+}
+
+bwa360_rolessodmatrix_innerdetails = Page {
+	title: $bwa360_rolessodmatrixNLS.title
+	enter-event:Set minimumRiskLevel to selectedMinimumRiskLevel,
+				Set inmatrixuid to selectedsodmatrix,
+				BooleanCase using Not FeaturePredicate administratorHome in { when True then [ Set True to ownedPermissionsOnly] when False then [ Set False to ownedPermissionsOnly]}
+	feature:All(sod_license, bwa_controlallidentitysodmatrix, compliance_license)
+	
+	/* Parameters here */
+    applicationuid = Parameter { type: String hidden: True }
+    permissionuid = Parameter { type: String hidden: True }
+	cangoback = Parameter { type: Boolean default:False hidden: True }
+	activity1uidfilter = Parameter { type: String hidden: True }
+	activity2uidfilter = Parameter { type: String hidden: True }
+	minimumRiskLevel = Parameter { type: Integer hidden: True }
+	inmatrixuid = Parameter { type: String mandatory: False }
+	
+	/* Variables here */
+	currentRiskID = Variable {multivalued:True}
+	currentRiskLevel = Variable {multivalued:True}
+	currentRiskInfo = Variable {multivalued:True}
+	currentSuggestedMitigation = Variable {multivalued:True}
+	
+	selectedKey1uid = Variable
+	selectedKey2uid = Variable
+
+	selectedbusinessactivityuid = Variable
+	selectedpermissionuid = Variable
+	selectedapplicationuid = Variable
+	
+	selectedcontrol = Variable
+	selectedactivityuid = Variable
+	selectedcontroltagtype = Variable
+
+	selectedControlUid = Variable
+	selectedControlName = Variable
+	allcontrols = Variable { multivalued:True }
+	
+	selectedMinimumRiskLevel = Variable
+	selectedsodmatrix = Variable
+	
+	ownedPermissionsOnly = Variable {type: Boolean}
+
+	/* Datasets and records here */
+	details = Dataset {
+		view: bwa360_rolesodproblemsdetails_bv with 
+			selectedControlUid to controlcode, 
+			selectedMinimumRiskLevel to risklevel, 
+			applicationuid to applicationuid unless-empty, 
+			permissionuid to roleuid unless-empty,
+			selectedsodmatrix to sodmatrixuid unless-empty,
+			activity1uidfilter to perm1 unless-empty, 
+			activity2uidfilter to perm2  unless-empty,
+			Principal.uid to permissionOwnerUid unless-empty,
+			ownedPermissionsOnly to ownedPermissionsOnly unless-empty
+	}
+
+	sodrules = Dataset { // used by the chart
+		view:bwa360_rolesodproblemspareto with 
+			applicationuid to applicationuid unless-empty, 
+			selectedMinimumRiskLevel to minimumRiskLevel, 
+			$bwa360_rolessodmatrixNLS.runningpercent to runningpercentlabel,
+			selectedsodmatrix to sodmatrixuid unless-empty,
+			Principal.uid to permissionOwnerUid unless-empty,
+			ownedPermissionsOnly to ownedPermissionsOnly unless-empty
+		disabled:
+			OrPredicate {
+				StringPredicate(permissionuid) { when IsEmpty then False otherwise True }
+				StringPredicate(activity1uidfilter) { when IsEmpty then False otherwise True }
+			}
+	}
+	
+	selectedsodrule = Dataset {
+		view:bwa360_matrixkeypair
+		includes:AndPredicate {
+			SameValuePredicate(selectedKey1uid, Current key1uid)
+			SameValuePredicate(selectedKey2uid, Current key2uid)
+		}
+	}
+	
+	matrixsoddiscrepancies = Dataset {
+		view: bwa360_rolesodproblemsmatrix_bv
+	}
+
+	showApplicationDetail = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedapplicationuid to inuid,
+												True to inshowperjob,
+												True to inshowperorg
+		)
+	)
+	showRoleDetail = NamedAction (
+		Dialog bwf_permissionDetailsDialog(selectedpermissionuid to inuid,
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsodmodeldefects
+		)
+	)
+	showBusinessActivityDetail = NamedAction (
+		Dialog bwf_businessActivityDetailsDialog(selectedbusinessactivityuid to inuid,
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsodmodeldefects
+		)
+	)
+	showActivityDetail = NamedAction (
+		Dialog bwf_businessActivityDetailsDialog(selectedactivityuid to inuid,
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsoddefects,
+												True to inshowsodmodeldefects
+		)
+	)
+	
+	showDetail = NamedAction (
+		BooleanCase(Eval "!selectedapplicationuid.isEmpty() && selectedbusinessactivityuid.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showApplicationDetail
+			]
+			when False then [
+			]
+		},
+		BooleanCase(Eval "!selectedbusinessactivityuid.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showBusinessActivityDetail
+			]
+			when False then [
+			]
+		}
+	)
+
+	showControlDetail = NamedAction (
+		Dialog bwf_controlDetailsDialog(selectedcontrol to incontrolcode)
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn { width:300px }, GridColumn {width:grow}
+		layout: Layout { grab: horizontal True vertical False }
+		GridRow {
+			GridCell {
+				Combo {
+					options:Dynamic {data:matrixsoddiscrepancies text:Current matrix_displayname value:Current matrix_uid}
+					allow-none: True
+					hidden:StringPredicate(activity1uidfilter) { when IsEmpty then False otherwise True }
+					variable:selectedsodmatrix
+					label:$bwa360_sodmatrixNLS.matrix
+				}
+			}		
+			GridCell {
+				Combo {
+					variable:selectedMinimumRiskLevel
+					label: $bwa360_rolessodmatrixNLS.minrisklevel 
+					allow-none:True
+					hidden:StringPredicate(activity1uidfilter) { when IsEmpty then False otherwise True }
+					modify-event:Unset selectedControlUid, Unset selectedControlName
+					options:Static {
+						Option { value:4 text:$bwf_ControlLevel_NLS._4 }
+						Option { value:3 text:$bwf_ControlLevel_NLS._3 }
+						Option { value:2 text:$bwf_ControlLevel_NLS._2 }
+						Option { value:1 text:$bwf_ControlLevel_NLS._1 }
+						Option { value:0 text:$bwf_ControlLevel_NLS._0 }
+					}
+				}
+			}
+			GridCell {
+				Edit {
+					label: $bwa360_rolessodmatrixNLS.filtercontrol
+					variable:selectedControlName
+					tooltip:selectedControlName
+					disabled:True
+					hidden:StringPredicate(activity1uidfilter) { when IsEmpty then False otherwise True }
+					commands: Commands {
+						Command {
+							actions:
+								IntCase(SizeOf allcontrols) {
+									when =0 then [
+										TransferData details(controlcode) to (allcontrols),
+										MultivaluedDistinct allcontrols
+									]
+								},
+								Dialog bwa360_rolessodmatrix_controlpicker(allcontrols to controlcodes, selectedControlUid from outControlCode, selectedControlName from outControlName)
+							icon:%concept_16.control
+						}										
+						Command {
+							actions:
+								Unset selectedControlUid,
+								Unset selectedControlName
+							icon:%collection_16.delete
+						}										
+					}
+				}
+			}
+			GridCell {
+			
+			}
+		}
+	}
+
+	IncludeHTMLWidget {
+		layout: Layout { grab: horizontal True vertical False hint: height 150 }
+		template: barChart
+		datasets: sodrules ( controldisplayname, controlcode, nbroles, color, description) to chartdata ( label, code , count , color, description)
+		hidden:
+			OrPredicate {
+				StringPredicate(permissionuid) { when IsEmpty then False otherwise True }
+				StringPredicate(activity1uidfilter) { when IsEmpty then False otherwise True }
+			}
+		bindings: 
+			value-of $bwa360_rolessodmatrixNLS.paretotitle to title, 
+			value-of $bwa360_rolessodmatrixNLS.nbofroles to ylabel,
+			value-of False to showyAxesGrid,
+			value-of False to maintainAspectRatio,
+			value-of True to showyAxesGrid,
+			value-of True to beginAtZero,
+			value-of False to xAxesdisplay,
+			value-of True to yAxesdisplay
+		widget-events: {
+			when onclick then [
+				Set Current code to selectedControlUid,
+				Set Current label to selectedControlName
+			]
+		}
+	}
+
+	Table {
+		data:details
+		layout: Layout { grab: horizontal True vertical True }
+		show-filter:True
+		show-count:True
+		configurable:True
+		double-click:Dialog bwsod_rolesodproblemrootcauseanalysisDialog (selectedpermissionuid to roleuid, selectedcontrol to controlcode) 
+		
+		Column {
+			column:risklevel
+			text:Transform Current risklevel using bwf_ControlLevelMapping
+			header:$bwa360_rolessodmatrixNLS.risklevel
+			width:128px
+			sortable:True
+			image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+		}
+		Column {
+			column:roleuid
+			hidden:True
+			selection:selectedpermissionuid
+		}
+		Column {
+			column:rolecode
+			header:$bwa360_rolessodmatrixNLS.rcode
+			width:100%
+			initially-masked:True
+			sortable:True
+			filterable:True
+			actions:ExecuteNamedAction showRoleDetail
+		}
+		Column {
+			column:roledisplayname
+			header:$bwa360_rolessodmatrixNLS.rname
+			width:100%
+			sortable:True
+			filterable:True
+			actions:ExecuteNamedAction showRoleDetail
+		}
+		Column {
+			column:applicationdisplayname
+			header:$application.concept
+			width:160px
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:controlcode
+			header:$bwa360_rolessodmatrixNLS.controlcode
+			sortable:True
+			filterable:True
+			initially-masked:True
+			selection:selectedcontrol
+			actions:ExecuteNamedAction showControlDetail
+			
+		}
+		Column {
+			column:controltagtype
+			header:$bwa360_rolessodmatrixNLS.controltagtype
+			sortable:True
+			filterable:True
+			initially-masked:True
+			selection:selectedcontroltagtype
+			actions:ExecuteNamedAction showControlDetail
+			
+		}
+		Column {
+			column:controldisplayname
+			tooltip:Current controldisplayname
+			header:$bwa360_rolessodmatrixNLS.control
+			sortable:True
+			filterable:True
+			width:100%
+			actions:ExecuteNamedAction showControlDetail
+		}
+		Column {
+			column:controldescription
+			tooltip:Current controldescription
+			header:$bwa360_rolessodmatrixNLS.controldescription
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:100%
+		}
+		Column {
+			column:riskinfo
+			tooltip:Current riskinfo
+			header:$bwa360_rolessodmatrixNLS.risk
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:100%
+		}
+		Column {
+			column:suggestedmitigation
+			tooltip:Current suggestedmitigation
+			header:$bwa360_rolessodmatrixNLS.remediation
+			sortable:True
+			filterable:True
+			initially-masked:True
+			width:100%
+		}
+		Column {
+			column:key1code
+			header:$bwa360_rolessodmatrixNLS.firstactivitycode
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions:Set Current key1uid to selectedactivityuid, ExecuteNamedAction showActivityDetail
+		}
+		Column {
+			column:key1displayname
+			tooltip:Current key1displayname
+			header:$bwa360_rolessodmatrixNLS.firstactivity
+			sortable:True
+			filterable:True
+			width:100%
+			actions:Set Current key1uid to selectedactivityuid, ExecuteNamedAction showActivityDetail
+		}
+
+		Column {
+			column:key2code
+			header:$bwa360_rolessodmatrixNLS.secondactivitycode
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions:Set Current key2uid to selectedactivityuid, ExecuteNamedAction showActivityDetail
+		}
+		Column {
+			column:key2displayname
+			tooltip:Current key2displayname
+			sortable:True
+			filterable:True
+			header:$bwa360_rolessodmatrixNLS.secondactivity
+			width:100%
+			actions:Set Current key2uid to selectedactivityuid, ExecuteNamedAction showActivityDetail
+		}
+		Column {
+			column:rolebwa_permissionanalytics_nbaccount
+			header:$bwa360_rolessodmatrixNLS.nbaccounts
+			width:120px
+			sortable:True
+		}
+	}
+	Grid {
+		columns: GridColumn, GridColumn {width: grow}, GridColumn
+		layout: Layout {grab: horizontal True vertical False}
+		GridRow {
+			GridCell {
+				ButtonGroup {
+					align: Left
+					uniform: True
+					Button {
+						actions:GoTo BackInHistoryTruncate  
+						text:$bwa360_rolessodmatrixNLS.back
+						image:%browsing_16.back
+						hidden:Not BooleanPredicate(cangoback)			
+					}
+				}
+			}
+			GridCell {
+			
+			}
+			GridCell {
+				ButtonGroup {
+					align: Right
+					uniform: True
+					Button {
+						actions:Dialog bwsod_rolesodproblemrootcauseanalysisDialog (selectedpermissionuid to roleuid, selectedcontrol to controlcode, selectedcontroltagtype to controltagtype) 
+						text:$bwa360_rolessodmatrixNLS.rootcause				
+						disabled:StringPredicate(selectedpermissionuid) { when IsEmpty then True otherwise False }				
+						image:%collection_16.bulb
+					}
+				}
+			}
+		}
+	}
+}

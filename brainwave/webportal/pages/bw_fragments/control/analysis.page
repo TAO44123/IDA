@@ -1,0 +1,2222 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+
+fragmentControlAnalysis_NLS = NLS {
+	impact [en "Permissions impacted" fr "Permissions impactées" ]
+	impact_sod [ en "Separation of duties" fr "Séparation des tâches" ]
+	sod.list1 [ en "First set of Permisions" fr "Premier ensemble de permissions" ]
+	sod.list2 [ en "Second set of Permissions" fr "Second ensemble de permissions"]
+	org.directonly [en "only this organisation" fr "seulement cette organisation"]
+}
+
+fragmentControlAnalysisIdentityType1 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	inenabled = Variable { type: Boolean initial: True }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseIdentity = Dataset {
+		view: bwf_identityrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentIdentity = Record {
+		view: bwf_identitydetails with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $identity.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentIdentity.fullname
+			label: $identity.fullname
+			compact: True
+		}
+		Text {
+			value: currentIdentity.hrcode
+			label: $identity.hrcode
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseIdentity 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisIdentityType5 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	rootcauseIdentity = Dataset {
+		view: bwf_identityrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentIdentity = Record {
+		view: bwf_identitydetails with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	Group {
+		title: $identity.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentIdentity.fullname
+			label: $identity.fullname
+			compact: True
+		}
+		Text {
+			value: currentIdentity.hrcode
+			label: $identity.hrcode
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseIdentity 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisIdentityType9 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	inenabled = Variable { type: Boolean initial: True }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseIdentity = Dataset {
+		view: bwf_identityrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentIdentity = Record {
+		view: bwf_identitydetails with inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $identity.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentIdentity.fullname
+			label: $identity.fullname
+			compact: True
+		}
+		Text {
+			value: currentIdentity.hrcode
+			label: $identity.hrcode
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseIdentity 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisAccountType1 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseAccount = Dataset {
+		view: bwf_accountrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentAccount = Record {
+		view: bwf_accountDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $account.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentAccount.login
+			label: $account.login
+			compact: True
+		}
+		Text {
+			value: currentAccount.repository_code
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseAccount 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisAccountType2 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inresulttype = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	rootcauseAccountPerm = Dataset {
+		view: bwf_accountrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		excludes:
+			StringPredicate ( Current permissionuid ) {
+				when IsEmpty then True
+			}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	rootcauseAccount = Dataset {
+		view: bwf_accountrootcauseall with
+			inentityyuid to uid,
+			incontrolcode to controlcode,
+			inresulttype to resulttype,  
+			Count rootcauseAccountPerm to hasfullrootcause
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentAccount = Record {
+		view: bwf_accountDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	Group {
+		title: $account.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentAccount.login
+			label: $account.login
+			compact: True
+		}
+		Text {
+			value: currentAccount.repository_code
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseAccount 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisAccountType3 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseAccount = Dataset {
+		view: bwf_accountrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentAccount = Record {
+		view: bwf_accountDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $account.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentAccount.login
+			label: $account.login
+			compact: True
+		}
+		Text {
+			value: currentAccount.repository_code
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact_sod
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseAccount 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisAccountType4 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inresulttype = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	rootcauseAccountPerm = Dataset {
+		view: bwf_accountrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		excludes:
+			StringPredicate ( Current permissionuid ) {
+				when IsEmpty then True
+			}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	rootcauseAccount = Dataset {
+		view: bwf_accountrootcauseall with
+			inentityyuid to uid,
+			incontrolcode to controlcode,
+			inresulttype to resulttype,
+			True to norootcause,
+			Count rootcauseAccountPerm to hasfullrootcause
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+				
+	}
+	
+	currentAccount = Record {
+		view: bwf_accountDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	Group {
+		title: $account.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentAccount.login
+			label: $account.login
+			compact: True
+		}
+		Text {
+			value: currentAccount.repository_code
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseAccount 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisAccountType6 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	sodrootcause_list1 = Dataset {
+		view: bwf_controlrootcause_sod with
+			incontrolcode to controlcode,
+			inentityyuid to controlentityuid,
+			'Account' to controlentity
+		includes:
+			IntPredicate ( Current listnumber ) {
+				when = 1 then True
+			}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	sodrootcause_list2 = Dataset {
+		view: bwf_controlrootcause_sod with
+			incontrolcode to controlcode,
+			inentityyuid to controlentityuid,
+			'Account' to controlentity
+		includes:
+			IntPredicate ( Current listnumber ) {
+				when = 2 then True
+			}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentAccount = Record {
+		view: bwf_accountDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $account.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentAccount.login
+			label: $account.login
+			compact: True
+		}
+		Text {
+			value: currentAccount.repository_code
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Flow {
+		disposition:Horizontal
+		Group {
+			title: $fragmentControlAnalysis_NLS.sod.list1
+			Table {
+				data: sodrootcause_list1 
+				show-count: True
+				show-filter: True
+				layout: Layout { grab: horizontal True vertical True }
+				Column {
+					column: applicationuid
+					hidden: True
+					selection: outSelectedApplication
+				}
+				Column {
+					column: permissionuid
+					hidden: True
+					selection: outSelectedPermission
+				}
+				Column { 
+					header: $papplication.displayname
+					column: applicationdisplayname
+					width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsApplication
+				}
+				Column { 
+					header: $papplication.code
+					column: applicationcode
+					width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsApplication
+				}
+				Column { 
+					header: $ppermission.displayname
+					column: permissiondisplayname
+					width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsPermission
+				}
+				Column { 
+					header: $ppermission.code
+					column: permissioncode
+					width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsPermission
+				}
+				Column {
+					column: applicationapplicationtype
+					hidden: True
+					selection: outSelectedApplicationType
+				}
+			}
+		}
+		Group {
+			title: $fragmentControlAnalysis_NLS.sod.list2
+			Table {
+				data: sodrootcause_list2 
+				show-count: True
+				show-filter: True
+				layout: Layout { grab: horizontal True vertical True }
+				Column {
+					column: applicationuid
+					hidden: True
+					selection: outSelectedApplication
+				}
+				Column {
+					column: permissionuid
+					hidden: True
+					selection: outSelectedPermission
+				}
+				Column { 
+					header: $papplication.displayname column: applicationdisplayname width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsApplication
+				}
+				Column { 
+					header: $papplication.code  column: applicationcode width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsApplication
+				}
+				Column { 
+					header: $ppermission.displayname column: permissiondisplayname width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsPermission
+				}
+				Column { 
+					header: $ppermission.code column: permissioncode width: 100% 
+					sortable: True
+					filterable: True
+					actions: ExecuteNamedAction goDetailsPermission
+				}
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisAccountType9 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseAccount = Dataset {
+		view: bwf_accountrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentAccount = Record {
+		view: bwf_accountDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $account.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentAccount.login
+			label: $account.login
+			compact: True
+		}
+		Text {
+			value: currentAccount.repository_code
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseAccount 
+			show-count: True
+			show-filter: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisGroupType1 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseGroup = Dataset {
+		view: bwf_grouprootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentGroup = Record {
+		view: bwf_group with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $group.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentGroup.code
+			label: $group.code
+			compact: True
+		}
+		Text {
+			value: currentGroup.repositorycode
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseGroup 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisGroupType9 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseGroup = Dataset {
+		view: bwf_grouprootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentGroup = Record {
+		view: bwf_group with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $group.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentGroup.code
+			label: $group.code
+			compact: True
+		}
+		Text {
+			value: currentGroup.repositorycode
+			label: $prepository.code
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseGroup 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisApplicationType1 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseApplication = Dataset {
+		view: bwf_applicationrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentApplication = Record {
+		view: bwf_applicationDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $application.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentApplication.code
+			label: $application.code
+			compact: True
+		}
+		Text {
+			value: currentApplication.displayname
+			label: $application.displayname
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseApplication 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisApplicationType9 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcauseApplication = Dataset {
+		view: bwf_applicationrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentApplication = Record {
+		view: bwf_applicationDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $application.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentApplication.code
+			label: $application.code
+			compact: True
+		}
+		Text {
+			value: currentApplication.displayname
+			label: $application.displayname
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcauseApplication 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisPermissionType1 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcausePermission = Dataset {
+		view: bwf_permissionrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentPermission = Record {
+		view: bwf_permissionDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $permission.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentPermission.code
+			label: $permission.code
+			compact: True
+		}
+		Text {
+			value: currentPermission.displayname
+			label: $permission.displayname
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcausePermission 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisPermissionType9 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	
+	rootcausePermission = Dataset {
+		view: bwf_permissionrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentPermission = Record {
+		view: bwf_permissionDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $permission.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentPermission.code
+			label: $permission.code
+			compact: True
+		}
+		Text {
+			value: currentPermission.displayname
+			label: $permission.displayname
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rootcausePermission 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisOrganisationType1 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	inonlydirectselection = Variable { type: String }
+	
+	rootcauseOrganisation = Dataset {
+		view: bwf_organisationcontrolorganisationrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentOrganisation = Record {
+		view: bwf_organisationDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $organisation.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentOrganisation.code
+			label: $organisation.code
+			compact: True
+		}
+		Text {
+			value: currentOrganisation.displayname
+			label: $organisation.displayname
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Checkbox {
+			variable:inonlydirectselection
+			text:$fragmentControlAnalysis_NLS.org.directonly
+		}
+		Table {
+			data: rootcauseOrganisation 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname
+				column: applicationdisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}
+
+fragmentControlAnalysisOrganisationType9 = PageFragment {
+	/* Variables here */
+	incontrolcode = Variable { type: String }
+	inentityyuid = Variable { type: String }
+	incanshowdetails =  Variable { type: Boolean initial: True }
+	inenabled = Variable { type: Boolean initial: True }
+	
+	outSelectedApplication = Variable { type: String }
+	outSelectedApplicationType = Variable { type: String }
+	outSelectedPermission = Variable { type: String }
+	inonlydirectselection = Variable { type: String }
+	
+	rootcauseOrganisation = Dataset {
+		view: bwf_organisationcontrolorganisationrootcause with
+			inentityyuid to uid,
+			incontrolcode to controlcode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	currentOrganisation = Record {
+		view: bwf_organisationDetail with
+			inentityyuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate (inenabled)
+				StringPredicate ( inentityyuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetailsPermission = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+						Dialog bwf_permissionDetailsDialog(outSelectedPermission to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	goDetailsApplication = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedApplication to inuid)
+			]
+			when False then []
+		}
+	)
+	
+	Group {
+		title: $organisation.concept
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: currentOrganisation.code
+			label: $organisation.code
+			compact: True
+		}
+		Text {
+			value: currentOrganisation.displayname
+			label: $organisation.displayname
+			compact: True
+		}
+	}
+	Group {
+		title: $fragmentControlAnalysis_NLS.impact
+		layout: Layout { grab: horizontal True vertical True }
+		Checkbox {
+			variable:inonlydirectselection
+			text:$fragmentControlAnalysis_NLS.org.directonly
+		}
+		Table {
+			data: rootcauseOrganisation 
+			show-count: True
+			show-filter: True
+			configurable: True 
+			layout: Layout { grab: horizontal True vertical True }
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: outSelectedApplication
+			}
+			Column {
+				column: permissionuid
+				hidden: True
+				selection: outSelectedPermission
+			}
+			Column { 
+				header: $papplication.displayname column: applicationdisplayname width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $papplication.code
+				column: applicationcode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsApplication
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.displayname
+				column: permissiondisplayname
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column { 
+				header: $ppermission.code
+				column: permissioncode
+				width: 100% 
+				sortable: True
+				filterable: True
+				actions: ExecuteNamedAction goDetailsPermission
+				actions-disabled: Not BooleanPredicate(incanshowdetails)
+			}
+			Column {
+				column: applicationapplicationtype
+				hidden: True
+				selection: outSelectedApplicationType
+			}
+		}
+	}
+}

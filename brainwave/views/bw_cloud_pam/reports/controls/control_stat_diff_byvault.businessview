@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_control_stat_diff_byvault" displayname="control stat diff byvault">
+	<Definition scriptfile="/views/bw_cloud_pam/reports/controls/control_stat_diff.javascript" name="D1632994442448">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1632994442448" title="controls by vault">
+			<InnerView name="control_stat_byvault"/>
+		</Component>
+		<Component name="C1632994489420" type="trendview" x="820" y="267" w="300" h="50" title="diff">
+			<Trend usereferencedtimeslots="false" timeslot="-1" key="{dataset.controlcode.get()}${dataset.vault_uid.get()}${dataset.account_uid.get()}" comparing_column="val" include_removed="true" exclude_same="false" trend_column_name="status"/>
+		</Component>
+		<Link name="L1632994489514" source="C1632994442448" target="C1632994489420" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1633531322830" type="scriptview" x="1170" y="274" w="300" h="50" title="aggregate by vault">
+			<Script onscriptread="onAggregate"/>
+			<Attributes>
+				<Attribute name="A1633532910017" attribute="nb_new_defects" type="Integer" multivalued="false"/>
+				<Attribute name="A1633532921058" attribute="nb_removed_defects" type="Integer" multivalued="false"/>
+				<Attribute name="A1633532930023" attribute="list_new_defects" type="String" multivalued="false"/>
+				<Attribute name="A1633532937027" attribute="list_removed_defects" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1633538335001" type="joinview" x="739" y="350" w="300" h="50" title="add nb defects">
+			<InnerView name="control_stat_count_byvault"/>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+		</Component>
+		<Link name="L1633538336547" source="C1633538335001" target="C1633531322830" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637606478360" type="joinview" x="660" y="206" w="300" h="50" title="filter out old vaults">
+			<InnerView name="bwpam_vault_trends_vault_list" prefix="filter_"/>
+			<Join jointype="inner" key1="{dataset.vault_uid.get()}" key2="{dataset.filter_uid.get()}"/>
+		</Component>
+		<Link name="L1637606478919" source="C1632994489420" target="C1637606478360" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1637606479329" source="C1637606478360" target="C1633538335001" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+</View>

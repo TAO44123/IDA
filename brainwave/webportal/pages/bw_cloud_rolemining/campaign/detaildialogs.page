@@ -1,0 +1,303 @@
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_rolemining/resources/nls/stagechecks.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+import "/webportal/pages/bw_access360/portalreports/repository/reconciliation.page"
+/* detail dialogs */
+
+bwcdrm_identitiesExtDialog = Dialog {
+
+     title: $bwcdrm_validatedatacubeNLS.details.identities_ext.title
+     width: 650
+     height: 350 
+		buttons: ActionButton { text: $bwcdrm_wizardsNLS.button.close actions:  CloseDialog Cancel}
+     
+     in_timeslotUID = Variable
+     in_orgs = Variable { multivalued: True }
+     
+     selectedOrg= Variable { private: True}
+     
+		details_identitiesextbyorg = Dataset {
+			view: bwcdrm_cube_identities_ext_byorg with in_orgs to orgUids
+			timeslot: in_timeslotUID
+		}
+     
+		goDetails = NamedAction (
+			GoTo Activity Organisation Detail with selectedOrg to paramOrganisationUid save-state
+			, CloseDialog Cancel
+		) 
+     
+		Table {
+			data: details_identitiesextbyorg
+			show-filter: True
+			show-count: True
+			initial-sort: displayname
+			layout: Layout { grab: horizontal True vertical True }
+			Column { column: uid hidden: True selection: selectedOrg }
+			Column {
+				column: displayname
+				sortable:True
+				filterable:True
+				header:$organisation.concept
+				width:100%
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: shortname
+				sortable:True
+				filterable:True
+				header: $organisation.shortname
+				width:100px
+			}
+			Column {
+				column: nb_members
+				sortable:True
+				header: $bwcdrm_validatedatacubeNLS.details.identities_ext.column.members  
+				width:100px align: Right
+			}
+			Column {
+				column:nb_members_ext
+				sortable:True
+				header: $bwcdrm_validatedatacubeNLS.details.identities_ext.column.members_ext
+				width:100px align: Right
+			}
+			Column {
+				column:ext_rate
+				//sortable:True  sort not working on computed columns 
+				text: Concat ( Current ext_rate, "%")
+				header:$bwcdrm_validatedatacubeNLS.details.identities_ext.column.ext_rate
+				width:100px align: Right
+			}
+		}
+}
+ 
+bwcdrm_identitiesNoOrgDetailDialog = Dialog {
+
+     title: $bwcdrm_validatedatacubeNLS.details.identities_noorg.title
+     width: 700
+     height: 400 
+		buttons: ActionButton { text: $bwcdrm_wizardsNLS.button.close actions:  CloseDialog Cancel}
+     
+     in_timeslotUID = Variable
+     
+     selectedIdentity= Variable { private: True}
+     
+		details_identitiesNoOrg = Dataset {
+			view: bwcdrm_allidentities_noorg
+			timeslot: in_timeslotUID
+		}
+     
+		doIdentityDetails = NamedAction (
+			GoTo Activity Identity Detail with selectedIdentity to paramIdentityUid save-state
+			, CloseDialog Cancel
+		) 
+     
+		Table {
+			data: details_identitiesNoOrg
+			show-filter: True
+			show-count: True
+			initial-sort: fullname
+			layout: Layout { grab: horizontal True vertical True }
+			Column { column: uid hidden: True selection: selectedIdentity }
+			Column {
+				column:fullname
+				sortable:True
+				filterable:True
+				header:$identity.fullname
+				width:160px
+				actions: ExecuteNamedAction doIdentityDetails
+			}
+			Column {
+				column:internal
+				text:Transform Current internal using booleanDisplayMapping
+				sortable:True
+				filterable:True
+				header:$identity.internal
+				width:96px
+			}
+			Column { 
+			   column: employeetypecode 
+			   sortable:True 
+			   header:  $businessowner.employeetypedisplayname} 
+			Column {
+				column:arrivaldate
+				sortable:True
+				filterable:True
+				header:$identity.arrivaldate
+				width:132px
+			}
+			Column {
+				column:departuredate
+				sortable:True
+				filterable:True
+				header:$identity.departuredate
+				width:132px
+			}
+		}
+}
+
+bwcdrm_permsNoDocByAppDetailDialog = Dialog {
+
+     title: $bwcdrm_validatedatacubeNLS.details.permnodoc.title
+     width: 700
+     height: 400 
+		buttons: ActionButton { text: $bwcdrm_wizardsNLS.button.close actions:  CloseDialog Cancel}
+     
+     in_timeslotUID = Variable
+     in_permRules = Variable { multivalued: True}
+     
+     selectedApp= Variable { private: True}
+     
+		details_permsByApp = Dataset {
+			view: bwcdrm_permNoDocApps with in_permRules to permRules unless-empty
+			timeslot: in_timeslotUID
+		}
+     
+		doIdentityDetails = NamedAction (
+			GoTo Activity Application Detail with selectedApp to paramApplicationUid save-state
+			, CloseDialog Cancel
+		) 
+     
+		Table {
+			data: details_permsByApp
+			show-filter: True
+			show-count: True
+			initial-sort: displayname
+			layout: Layout { grab: horizontal True vertical True }
+			Column { column: uid hidden: True selection: selectedApp }
+			Column {
+				column:displayname
+				sortable:True
+				filterable:True
+				header:$application.concept
+				width:100%
+				actions: ExecuteNamedAction doIdentityDetails
+			}
+			Column {
+				column: applicationtype
+				sortable:True
+				filterable:True
+				header:$application.applicationtype
+				width:100px
+			}
+			Column {
+				column: nb_perm
+				sortable:True
+				header: $bwcdrm_validatedatacubeNLS.details.apps.columns.nbpermissions 
+				width:100px align: Right
+			}
+			Column {
+				column:nb_perm_nodoc
+				sortable:True
+				header: $bwcdrm_validatedatacubeNLS.details.apps.columns.nbnodoc
+				width:100px align: Right
+			}
+			Column {
+				column:nodoc_rate
+				//sortable:True  sort not working on computed columns 
+				text: Concat ( Current nodoc_rate, "%")
+				header: $bwcdrm_validatedatacubeNLS.details.apps.columns.nodocrate
+				width:100px align: Right
+			}
+		}
+}
+
+
+bwcdrm_orgsNoMgrDetailDialog = Dialog {
+
+		title: $bwcdrm_validatedatacubeNLS.details.org.title 
+		width: 500
+		height: 330 
+		buttons: ActionButton { text: $bwcdrm_wizardsNLS.button.close actions:  CloseDialog Cancel}
+     
+     in_timeslotUID = Variable
+     in_orgs = Variable { multivalued: True }
+     
+     selectedOrgUID= Variable { private: True}
+     
+		details_orgsnomgr = Dataset {
+			view: bwcdrm_allorgs_nomanager with in_orgs to uids
+			timeslot: in_timeslotUID
+		}
+     
+		doOrgDetails = NamedAction (
+			Dialog bwf_organisationDetailsDialog ( selectedOrgUID to inuid, True to inshowteam, True to incanupdatemanagers )
+			, CloseDialog Cancel
+		) 
+     
+		Table {
+			data: details_orgsnomgr
+			show-filter: True
+			show-count: True
+			layout: Layout { grab: horizontal True vertical True }
+			Column { column: org_uid hidden: True selection: selectedOrgUID }
+			Column { column: org_displayname 
+				width: 100% 
+				actions: ExecuteNamedAction doOrgDetails 
+				sortable: True
+				header:  $bwcdrm_validatedatacubeNLS.details.orgs.columns.displayname}
+			Column { column: org_shortname
+				width: 50% 
+				actions: ExecuteNamedAction doOrgDetails 
+				sortable: True
+				header:  $bwcdrm_validatedatacubeNLS.details.orgs.columns.shortname}
+
+			Column { column: org_bwa_organisationanalytics_nbdirectmembers 
+				width: 120px align: Right 
+				sortable: True
+				header: $bwcdrm_validatedatacubeNLS.details.orgs.columns.nbidentity}
+		}
+}
+
+bwcdrm_orphanAccountsDetailDialog = Dialog {
+
+     title: $bwcdrm_validatedatacubeNLS.details.recon.title 
+     width: 600
+     height: 330 
+     buttons: ActionButton { text: $bwcdrm_wizardsNLS.button.close actions:  CloseDialog Cancel}
+     
+     in_timeslotUID = Variable
+     in_permRules = Variable { multivalued: True}
+     
+     selectedRepoUID= Variable { private: True}
+     
+     repos_with_orphan = Dataset {
+       view: bwcdrm_repo_with_orphan with in_permRules to permRules unless-empty
+       timeslot: in_timeslotUID 
+     }
+     
+     doRepoDetails = NamedAction (
+		Dialog bwf_repositoryDetailsDialog ( selectedRepoUID to inuid, True to inshowaccounts, True to inshowgroups , True to incanreconcile)
+		, CloseDialog Cancel
+	  )
+	  
+	  doRepoReconDetails = NamedAction (
+		GoTo Page access360r_repository_reconciliation with selectedRepoUID to uid save-state
+		, CloseDialog Cancel		
+	   )
+     
+		Table {
+			data: repos_with_orphan
+			layout: Layout { grab: horizontal True vertical True }
+			show-count: True
+			
+			Column { column: repo_code 
+			   width: 100% 
+			   actions: ExecuteNamedAction doRepoDetails 
+			   sortable: True
+			   header: $repository.concept}
+			Column { column: repo_bwa_repositoryanalytics_nbaccount 
+				width: 130px align: Right 
+			   sortable: True
+				header: $bwcdrm_validatedatacubeNLS.details.recon.columns.nbaccounts}
+			Column { column: nb_orphan 
+				width: 80px align: Right 
+				sortable:True
+			   header: $bwcdrm_validatedatacubeNLS.details.recon.columns.nborphan } 
+			Column { column: repo_uid width: 220px align: Center 
+			    header: "" text: $bwcdrm_validatedatacubeNLS.details.recon.link.recondetails 
+			    actions: ExecuteNamedAction doRepoReconDetails selection: selectedRepoUID }
+		}
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpm_identitiespermsperorg" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="organisation" displayname="identitiespermsperorg" notes="" begindate="" enddate="">
+	<ViewParam name="organisation" displayname="organisation">
+		<Value name="0" data="DP_SES_1521625199131_606355"/>
+	</ViewParam>
+	<ViewParam name="nbdays" displayname="nbdays" defaultvalue="180"/>
+	<ViewComputedAttribute name="realright" displayname="realright" type="Boolean" expression="true"/>
+	<ViewComputedAttribute name="accountusage" displayname="account usage" type="String" expression="dataset.isEmpty(&apos;lastlogindate&apos;)?&apos;V&apos;:dataset.lastlogindate.get().add(&apos;d&apos;,param.nbdays.get()).getTime()&gt;new Date().getTime()?&apos;V&apos;:&apos;X&apos;"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.identityuid.get()+&apos;$$&apos;+dataset.permissionuid.get()"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="A1522054793103_502" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1522054796123_0" reference="organisation" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1522054806720_504" prefix="identity" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="upidentity">
+		<ViewAttribute name="A1522054842929_508" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1522240924638_3264" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accountreconciliation">
+			<ViewAttribute name="A1522240929390_3265" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1522240946899_0" operation="isNull" ignoreifempty="false"/>
+				<ViewAttributeFilter name="F1522240950075_1" operation="isFalse" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1522240932402_3266" attribute="lastlogindate" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1522240940797_3267" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermissionright">
+				<ViewAttribute name="1522240944733_3269" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

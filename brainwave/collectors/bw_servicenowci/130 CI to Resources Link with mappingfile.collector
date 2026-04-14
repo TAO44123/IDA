@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="130 CI to Resources Link with mappingfile" scriptfile="/collectors/bw_servicenowci/130 CI to Resources Link with mappingfile.javascript" name="P1712311939568" startingpoint="C1712312034483">
+		<Component name="C1712312034483" type="discoverysource" x="129" y="67" w="300" h="64" title="idamapping">
+			<Discovery file="/discovery/bw_servicenowci/idamapping.discovery" datafile="{config.bw_servicenowcimapping_sourcefolder}/sncmdbcimapping/idamapping.csv"/>
+		</Component>
+		<Component name="C1704903923697_1" type="changefilter" x="129" y="208" w="300" h="64" title="update">
+			<Actions>
+				<Action name="U1704903945172" action="add" attribute="LINK_SEMANTIC" type="String" multivalued="false" errorexist="false" newvalue="is"/>
+			</Actions>
+		</Component>
+		<Component name="C1702473121937_4" type="confitemlink" x="511" y="366" w="300" h="64" title="Create CI Link to repository">
+			<SourceEntity sourceentity="R">
+				<ConfItem code="sys_id" error="true" event="CINOTFOUND"/>
+				<Repository code="repositorycode" error="true" event="CIREPOSITORYNOTFOUND"/>
+			</SourceEntity>
+			<TargetEntity targetentity="F">
+				<ConfItem code="cmdbcicode" error="true" event="CINOTFOUND"/>
+				<Application code="name" error="true" event="CIAPPLICATIONNOTFOUND"/>
+				<Repository code="name" error="true" event="CIREPOSITORYNOTFOUND"/>
+			</TargetEntity>
+			<ConfItemLink semantic="LINK_SEMANTIC"/>
+		</Component>
+		<Component name="C1702473121937_5" type="confitemlink" x="129" y="366" w="300" h="64" title="Create CI Link to application">
+			<SourceEntity sourceentity="A">
+				<ConfItem code="sys_id" error="true" event="CINOTFOUND"/>
+				<Application code="applicationcode" error="true" event="CIAPPLICATIONNOTFOUND"/>
+			</SourceEntity>
+			<TargetEntity targetentity="F">
+				<ConfItem code="cmdbcicode" error="true" event="CINOTFOUND"/>
+				<Application code="name" error="true" event="CIAPPLICATIONNOTFOUND"/>
+			</TargetEntity>
+			<ConfItemLink semantic="LINK_SEMANTIC"/>
+		</Component>
+		<Link name="L1704904063531_1" source="C1704903923697_1" target="C1702473121937_4" priority="1" labelcustom="true" label="repository mapping" expression="(! dataset.isEmpty(&apos;repositorycode&apos;))"/>
+		<Link name="L1712312090499" source="C1712312034483" target="C1704903923697_1" priority="1"/>
+		<Link name="L1712312091447" source="C1704903923697_1" target="C1702473121937_5" priority="1" expression="(! dataset.isEmpty(&apos;applicationcode&apos;))" labelcustom="true" label="application mapping"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bws_applicationaccountcontrols" displayname="applicationaccountcontrols">
+	<Definition scriptfile="/views/bw_subscription/application/applicationaccountcontrols.javascript" name="D1639070558372">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1639070558372" title="accounts">
+			<InnerView name="bws_application_accounts">
+				<Param name="F1639070595837" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1639070691329" type="trendview" x="630" y="173" w="300" h="50" title="detect new accounts">
+			<Trend timeslot="-1" key="{dataset.key.get()}" comparing_column="nb_permission" trend_column_name="status" include_removed="true"/>
+			<ExcludeList>
+				<Exclude name="key"/>
+			</ExcludeList>
+		</Component>
+		<Component name="C1639070816920" type="joinview" x="422" y="322" w="300" h="50" title="get controls flags">
+			<InnerView name="bws_application_controlscolumns" prefix="control_">
+				<Param name="F1639070856527" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.accountuid.get()}" key2="{dataset.control_accountuid.get()}"/>
+			<ExcludeList>
+				<Exclude name="control_accountuid"/>
+			</ExcludeList>
+		</Component>
+		<Component name="C1639144020865_1" type="scriptview" x="77" y="261" w="300" h="50" title="force disabled flag to True for removed account">
+			<Script onscriptread="forceDisabled"/>
+		</Component>
+		<Link name="L1639144026577" source="C1639144020865_1" target="C1639070816920" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1640355368629" source="C1639070558372" target="C1639070691329" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1640355550394" source="C1639070691329" target="C1639144020865_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1641215379299_1" data="CASHPOOLER_1639568925844_142204"/>
+	</ViewParam>
+	<ViewParam name="RefTimeslot" displayname="RefTimeslot" defaultvalue="true" type="Boolean"/>
+</View>

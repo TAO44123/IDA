@@ -1,0 +1,118 @@
+/* styles OK */
+
+/* Import other pages here */
+
+import "/webportal/pages/bw_cloud_base/widgets/protips/protipsfragments.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/dashboard.page"
+import "/webportal/pages/bw_cloud_base/widgets/stepper/stepper.page"
+
+
+bwcdrm_home_sample = Page {
+  // homepage-for: All priority 5000  //TODO set the right feature
+	title: "Home Page Sample"
+	mixins: dashboardMixin
+	icon: %steps_32.home
+	large-icon: %steps_48.home
+	header: PageHeader{
+	    hide-favorites: True
+	    styling: cssPageHeader
+	     IncludeFragment {
+			fragment: bwcd_protips_fragment with value-of "risk" to paramCurrentState
+			layout: Layout { grab: horizontal True vertical False }
+		}
+	}
+
+	language = Variable { type: String initial: $bwcdrm_mylang.currentnls  }
+	
+	ds_id = Variable { multivalued: True  } 
+	ds_label = Variable { multivalued: True  } 
+	ds_description = Variable { multivalued: True  } 
+	ds_icon = Variable { multivalued: True } 
+	ds_order = Variable { multivalued: True } 
+	
+	
+	/* Page Content */		
+    		
+    Group {
+       layout: Layout { grab:horizontal True vertical True  }
+       styling: cssPageDashboard
+       
+      Grid {
+	   layout: Layout { grab:horizontal True vertical True  }
+	   columns: GridColumn { width: 400px gap:20 } , GridColumn { width: 300px gap:20  }, GridColumn { width: grow }
+	   GridRow {
+	   
+	     // left panel
+	     GridCell {  
+       
+		 	Group {
+			 styling: cssRound
+		  
+			} 
+		}
+		
+		//Right Panels
+		GridCell {
+		     // status message 		     
+
+
+				Group {
+					mixins: linksPanelMixin
+					Header { value:  $bwcdrm_stagedashboardNLS.dashboard.actions}
+					
+					// template, don't need style or layout , thanks to mixins
+					 Button {
+						actions: Flash "Do Something"
+						text: "Do Something"
+						image: %dashboardicons_24.deletecube
+					}
+				}	
+				
+				
+				Group {
+					mixins: linksPanelMixin
+					Header { value: $bwcdrm_stagedashboardNLS.dashboard.links}
+					 Button {
+						actions: BrowseURL "https://elearning.brainwavegrc.com/catalog/info/id:185"
+						text: $bwcdrm_stagedashboardNLS.section.links.elearning
+						image: %dashboardicons_24_darkgray.wizard
+					}					
+				}
+		}
+		// Filler 
+		GridCell {
+ 	        Group {
+ 	          mixins: helpDashboardMixin
+	            Header { value: $bwcdrm_stagedashboardNLS.dashboard.guide }
+	            ConditionalGroup {
+	            	StringCondition(language) {
+	            		when "fr" then [
+							Browser {
+								static: "static/bw_cloud_rolemining/guides/guide_home_fr.html"
+								layout: Layout { grab: horizontal True vertical True }
+							}
+	            		]
+	            		otherwise [
+							Browser {
+								static: "static/bw_cloud_rolemining/guides/guide_home_en.html"
+								layout: Layout { grab: horizontal True vertical True }
+							}
+	            		]
+	            	}
+				}
+	        }
+
+		}
+	  }
+	}
+	
+    }
+
+}  			
+			   
+
+

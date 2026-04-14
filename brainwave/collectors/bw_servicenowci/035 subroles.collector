@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="035 subroles" scriptfile="/collectors/bw_servicenowci/035 subroles.javascript" name="P1714408057918" startingpoint="C1714408069446">
+		<Component name="C1714408069446" type="discoverysource" x="69" y="93" w="300" h="64" title="subroles">
+			<Discovery file="/discovery/bw_servicenowci/subroles.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/roles.csv"/>
+		</Component>
+		<Component name="C1714408139006" type="enumfilter" x="69" y="253" w="300" h="64" title="sub roles">
+			<Multivalued>
+				<Value name="M1714410025100" attribute="includes_roles"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1714408147556" source="C1714408069446" target="C1714408139006" priority="1" expression="dataset.includes_roles.length&gt;0" labelcustom="true" label="Role includes subroles"/>
+		<Component name="C1714408199650" type="permissionchildren" x="69" y="563" w="300" h="64" title="Create role hierarchy">
+			<Permission code="sys_id" application="_APPLICATION_CODE_"/>
+			<Roles roles="true" members="subrole_sys_id" multierror="true" multievent="SELF-REFERENCING" error="true" event="CHILDREN_NOTFOUND"/>
+		</Component>
+		<Component name="C1714408069446_1" type="discoverysource" x="484" y="413" w="300" h="64" title="roles id">
+			<Discovery file="/discovery/bw_servicenowci/subroles.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/roles.csv"/>
+		</Component>
+		<Component name="C1714409543694" type="joinfilter" x="69" y="413" w="300" h="64" title="get role id">
+			<Cache active="true" main="includes_roles" join="sys_name"/>
+			<Attributes>
+				<Attribute name="A1714410068990" attribute="subrole_sys_id" source="sys_id" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1714408069446_1"/>
+		</Component>
+		<Link name="L1714409551093" source="C1714408139006" target="C1714409543694" priority="1"/>
+		<Link name="L1714409551881" source="C1714408069446_1" target="C1714409543694" priority="1"/>
+		<Link name="L1714409553673" source="C1714409543694" target="C1714408199650" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

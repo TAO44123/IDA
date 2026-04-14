@@ -1,0 +1,1188 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/resources/constants.page"
+
+import "/webportal/pages/bw_comparison/group_comparison.page"
+
+fragmentRepositoryGroupsNLS = NLS {
+	nbdirectaccounts [en "Nb direct \naccounts" fr "Nb de comptes \ndirects"]
+	nballaccounts [en "Nb accounts" fr "Nb de comptes"] 
+	detaillabel [en "Shows selected group details" fr "Afficher les détails du groupe"]
+	lastmodifiedby [en "Last modified by" fr "Dernière modification par"]
+	empty [en "No groups found for this repository" fr "Ce référentiel ne contient pas de groupes"]
+	comparewith [en "Compare {0} with ..." fr "Comparer {0} avec ..."]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository groups as a list
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the repository uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outgroupuid </b>the selected group uid</li>
+ * <li><b>outgroupcode </b>the selected group code</li>
+ * <li><b>outgroupname </b>the selected group display name</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryGroups = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outgroupuid = Variable
+	outgroupcode = Variable
+	outgroupname = Variable
+
+	groups = Dataset {
+		view: bwf_repositorygroups with inuid to uid
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:nbaccounts
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid, 
+												True to inshowaccounts,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(Count groups) {
+			when =0 then [
+				Header {
+					value:$fragmentRepositoryGroupsNLS.empty
+					styling:bigTitleStyle
+				}
+			]
+			otherwise [
+				Table {	
+					data:groups
+					layout:Layout {grab:horizontal True vertical True}
+					double-click:ExecuteNamedAction goDetails
+					configurable:True
+					show-filter:True
+					show-count:True
+				
+					Column {
+						column:uid
+						hidden:True
+						selection:outgroupuid
+					}
+					
+					Column {
+						column:displayname
+						width:240px
+						header:$group.displayname
+						filterable:True
+						sortable:True
+						selection:outgroupname
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:code
+						width:160px
+						initially-masked:True
+						header:$group.code
+						filterable:True
+						sortable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+			
+					Column {
+						column:creationdate
+						width:160px
+						initially-masked:True
+						header:$group.creationdate
+						filterable:True
+						sortable:True
+					}
+					Column {
+						column:modificationdate
+						width:160px
+						initially-masked:True
+						header:$group.modificationdate
+						filterable:True
+						sortable:True
+					}
+					Column {
+						column:lastmodifiedby
+						width:160px
+						initially-masked:True
+						header:$fragmentRepositoryGroupsNLS.lastmodifiedby
+						filterable:True
+						sortable:True
+					}
+					Column {
+						column:dynamic
+						width:160px
+						initially-masked:True
+						header:$group.dynamic
+						filterable:True
+						sortable:True
+					}
+					Column {
+						column:filter
+						width:160px
+						initially-masked:True
+						header:$group.filter
+						filterable:True
+						sortable:True
+					}
+					Column {
+						column:grouptype
+						width:160px
+						initially-masked:True
+						header:$group.grouptype
+						filterable:True
+						sortable:True
+					}
+					Column {
+						column:guid
+						width:160px
+						initially-masked:True
+						header:'guid'
+						filterable:True
+						sortable:True
+					}
+			
+					Column {
+						column:comment
+						width:100%
+						header:$group.comment
+						filterable:True
+						sortable:True
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository groups as a list, including the number of active accounts
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the repository uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incancompare </b>optional, boolean value, true to group comparison (false by default). Disabled if nbgroups is greater than bwf_groupCanCompareThreshold</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outgroupuid </b>the selected group uid</li>
+ * <li><b>outgroupcode </b>the selected group code</li>
+ * <li><b>outgroupname </b>the selected group display name</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryGroupsWithAccountsNumber = PageFragment {
+	enter-event:IntCase(repository.bwa_repositoryanalytics_nbgroup) { when >Constant bwf_groupCanCompareThreshold then [ Set False to incancompare ] }
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incancompare = Variable { multivalued:False type:Boolean initial:False }
+	outgroupuid = Variable
+	outgroupcode = Variable
+	outgroupname = Variable
+
+	selectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+
+	repository = Record {
+		view: bwf_repositoryDetail with inuid to uid
+//		 disabled:Not BooleanPredicate(inenabled)
+	}
+
+	groups_wcompare = Dataset {
+		view: bwf_repositorygroups with inuid to uid
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:nbaccounts
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				 Not BooleanPredicate(inenabled)
+				 Not BooleanPredicate(incancompare)
+				 StringPredicate ( inuid ) {
+				 	when IsEmpty then True
+				 }
+		 	}
+	}
+	groups_wocompare = Dataset {
+		view: bwf_repositorygroups with inuid to uid
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:nbaccounts
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				 Not BooleanPredicate(inenabled)
+				 BooleanPredicate(incancompare)
+				 StringPredicate ( inuid ) {
+				 	when IsEmpty then True
+				 }
+		 	}
+	}
+	
+	comparisonGroup = Record {
+		view: br_groupDetail with compareFrom to uid
+		disabled:
+			StringPredicate(compareFrom) { when IsEmpty then True }
+	}
+	
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid, 
+												True to inshowaccounts,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				ConditionalGroup {
+					IntCondition(Count groups_wcompare) {
+						when =0 then [
+							Header {
+								value:$fragmentRepositoryGroupsNLS.empty
+								styling:bigTitleStyle
+							}
+						]
+						otherwise [
+							ButtonGroup {
+								Button {
+								actions:
+									Set ElementAt 1 of selectedUids to compareFrom,
+									Set selectedUids to compareTo,
+									MultivaluedRemove compareFrom from compareTo,
+									GoTo Page bwc_group_comparison with compareFrom to uid, compareTo to uids  save-state 
+								text:$fragmentRepositoryGroupsNLS.comparewith(NonEmpty(comparisonGroup.displayname,' '))
+								disabled:IntPredicate(SizeOf selectedUids) { when <2 then True otherwise False }
+								layout:Layout { hint:width 300 }
+								presentation:Button
+								}
+							}
+							Table {	
+								data:groups_wcompare
+								double-click:ExecuteNamedAction goDetails
+								layout:Layout {grab:horizontal True vertical True}
+								configurable:True
+								show-filter:True
+								show-count:True
+								persist-configuration:True
+								disabled:Not BooleanPredicate(incancompare)
+								checkboxes:uid to selectedUids
+								checkboxes-changed-event:Set ElementAt 1 of selectedUids to compareFrom
+							
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								
+								Column {
+									column:displayname
+									width:240px
+									header:$group.displayname
+									filterable:True
+									sortable:True
+									selection:outgroupname
+									actions:ExecuteNamedAction goDetails
+									actions-disabled:Not BooleanPredicate(incanshowdetails)
+								}
+								Column {
+									column:code
+									width:160px
+									initially-masked:True
+									header:$group.code
+									filterable:True
+									sortable:True
+									actions:ExecuteNamedAction goDetails
+									actions-disabled:Not BooleanPredicate(incanshowdetails)
+								}
+						
+								Column {
+									column:creationdate
+									width:160px
+									initially-masked:True
+									header:$group.creationdate
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:modificationdate
+									width:160px
+									initially-masked:True
+									header:$group.modificationdate
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:lastmodifiedby
+									width:160px
+									initially-masked:True
+									header:$fragmentRepositoryGroupsNLS.lastmodifiedby
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:dynamic
+									width:160px
+									initially-masked:True
+									header:$group.dynamic
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:filter
+									width:160px
+									initially-masked:True
+									header:$group.filter
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:grouptype
+									width:160px
+									initially-masked:True
+									header:$group.grouptype
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:guid
+									width:160px
+									initially-masked:True
+									header:'guid'
+									filterable:True
+									sortable:True
+								}
+						
+								Column {
+									column:comment
+									width:100%
+									header:$group.comment
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbdirectaccounts
+									text:Transform Current nbdirectaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nbdirectaccounts
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbaccounts
+									text:Transform Current nbaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nballaccounts
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+					}
+				}
+			]
+			when False then [
+				ConditionalGroup {
+					IntCondition(Count groups_wocompare) {
+						when =0 then [
+							Header {
+								value:$fragmentRepositoryGroupsNLS.empty
+								styling:bigTitleStyle
+							}
+						]
+						otherwise [
+							Table {	
+								data:groups_wocompare
+								layout:Layout {grab:horizontal True vertical True}
+								double-click:ExecuteNamedAction goDetails
+								configurable:True
+								show-filter:True
+								show-count:True
+								disabled:BooleanPredicate(incancompare)
+							
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								
+								Column {
+									column:displayname
+									width:240px
+									header:$group.displayname
+									filterable:True
+									sortable:True
+									selection:outgroupname
+									actions:ExecuteNamedAction goDetails
+									actions-disabled:Not BooleanPredicate(incanshowdetails)
+								}
+								Column {
+									column:code
+									width:160px
+									initially-masked:True
+									header:$group.code
+									filterable:True
+									sortable:True
+									actions:ExecuteNamedAction goDetails
+									actions-disabled:Not BooleanPredicate(incanshowdetails)
+								}
+						
+								Column {
+									column:creationdate
+									width:160px
+									initially-masked:True
+									header:$group.creationdate
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:modificationdate
+									width:160px
+									initially-masked:True
+									header:$group.modificationdate
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:lastmodifiedby
+									width:160px
+									initially-masked:True
+									header:$fragmentRepositoryGroupsNLS.lastmodifiedby
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:dynamic
+									width:160px
+									initially-masked:True
+									header:$group.dynamic
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:filter
+									width:160px
+									initially-masked:True
+									header:$group.filter
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:grouptype
+									width:160px
+									initially-masked:True
+									header:$group.grouptype
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:guid
+									width:160px
+									initially-masked:True
+									header:'guid'
+									filterable:True
+									sortable:True
+								}
+						
+								Column {
+									column:comment
+									width:100%
+									header:$group.comment
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbdirectaccounts
+									text:Transform Current nbdirectaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nbdirectaccounts
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbaccounts
+									text:Transform Current nbaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nballaccounts
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository groups as a tree
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the repository uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outgroupuid </b>the selected group uid</li>
+ * <li><b>outgroupcode </b>the selected group code</li>
+ * <li><b>outgroupname </b>the selected group display name</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryGroupsHierarchy = PageFragment {
+	// Lazy loading when the number of groups is higher than 10000
+	enter-event:IntCase(repository.bwa_repositoryanalytics_nbgroup) { when < 10000 then [ Set False to lazyloading ] }
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outgroupuid = Variable
+	outgroupcode = Variable
+	outgroupname = Variable
+
+	lazyloading = Variable { type:Boolean initial:True }
+
+	repository = Record {
+		view: bwf_repositoryDetail with inuid to uid
+//		 disabled:Not BooleanPredicate(inenabled)
+	}
+
+	groups = HierarchicalData {
+		view: bwf_repositorygroupswparents with inuid to uid
+		initial:parentuid IsNull
+		connect:parent uid to child parentuid
+		max-level: 5
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate(inenabled)
+				BooleanPredicate(lazyloading)
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}		 	
+		 	}
+	}
+
+	groups_lazy = HierarchicalData {
+		roots-view: bwf_repositoryrootgroups with inuid to uid
+		attribute:uid
+		children-view: bwf_repositorychildgroups with inuid to uid
+		parameter:parentuid
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate(inenabled)
+				Not BooleanPredicate(lazyloading)
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}		 	
+		 	}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid, 
+												True to inshowaccounts,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(repository.bwa_repositoryanalytics_nbgroup) {
+			when =0 then [
+				Header {
+					value:$fragmentRepositoryGroupsNLS.empty
+					styling:bigTitleStyle
+				}
+			]
+			otherwise [
+				ConditionalGroup {
+					BooleanCondition(lazyloading) {
+						when True then [
+							Tree {	
+								data:groups_lazy
+								layout:Layout {grab:horizontal True vertical True}
+								configurable:True
+								persist-configuration:True
+								double-click:ExecuteNamedAction goDetails
+								disabled:Not BooleanPredicate(lazyloading)
+							
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								
+								Column {
+									column:displayname
+									width:240px
+									header:$pgroup.displayname
+									filterable:True
+									sortable:True
+									selection:outgroupname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:code
+									width:160px
+									initially-masked:True
+									header:$pgroup.code
+									filterable:True
+									sortable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:comment
+									width:100%
+									header:$pgroup.comment
+									filterable:True
+									sortable:True
+								}
+							}
+						]					
+						when False then [
+							Tree {	
+								data:groups
+								layout:Layout {grab:horizontal True vertical True}
+								configurable:True
+								show-filter:True
+								persist-configuration:True
+								double-click:ExecuteNamedAction goDetails
+								disabled:BooleanPredicate(lazyloading)
+							
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								
+								Column {
+									column:displayname
+									width:240px
+									header:$pgroup.displayname
+									filterable:True
+									sortable:True
+									selection:outgroupname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:code
+									width:160px
+									initially-masked:True
+									header:$pgroup.code
+									filterable:True
+									sortable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:comment
+									width:100%
+									header:$pgroup.comment
+									filterable:True
+									sortable:True
+								}
+							}
+						]					
+					}
+				}
+			]
+		}
+	}
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository groups as a tree with accounts number
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the repository uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outgroupuid </b>the selected group uid</li>
+ * <li><b>outgroupcode </b>the selected group code</li>
+ * <li><b>outgroupname </b>the selected group display name</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryGroupsHierarchyWithAccountsNumber = PageFragment {
+	enter-event:Set 1 to lazyloading
+	// LazyLoading is forced for now as otherwise we cannot display inter groups relationships in a good way
+	// Lazy loading when the number of groups is higher than 10000
+	//IntCase(repository.bwa_repositoryanalytics_nbgroup) { when > 10000 then [ Set 1 to lazyloading ] otherwise [ Set 0 to lazyloading ] }
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outgroupuid = Variable
+	outgroupcode = Variable
+	outgroupname = Variable
+
+	lazyloading = Variable { type:Integer }
+
+	repository = Record {
+		view: bwf_repositoryDetail with inuid to uid
+//		 disabled:Not BooleanPredicate(inenabled)
+	}
+
+	groups = HierarchicalData {
+		view: bwf_repositorygroupswparents with inuid to uid
+		initial:parentuid IsNull
+		connect:parent uid to child parentuid
+		max-level: 9
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate(inenabled)
+				IntPredicate(lazyloading) { when =0 then False otherwise True }
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}		 	
+		 	}
+	}
+
+	groups_lazy = HierarchicalData {
+		roots-view: bwf_repositoryrootgroups with inuid to uid
+		attribute:uid
+		children-view: bwf_repositorychildgroups with inuid to uid
+		parameter:parentuid
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate(inenabled)
+				IntPredicate(lazyloading) { when =1 then False otherwise True }
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}		 	
+		 	}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid, 
+												True to inshowaccounts,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(repository.bwa_repositoryanalytics_nbgroup) {
+			when =0 then [
+				Header {
+					value:$fragmentRepositoryGroupsNLS.empty
+					styling:bigTitleStyle
+				}
+			]
+			otherwise [
+				ConditionalGroup {
+					IntCondition(lazyloading) {
+						when =1 then [
+							Tree {	
+								data:groups_lazy
+								layout:Layout {grab:horizontal True vertical True}
+								configurable:True
+								persist-configuration:True
+								double-click:ExecuteNamedAction goDetails
+								disabled:IntPredicate(lazyloading) { when =1 then False otherwise True }
+							
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								
+								Column {
+									column:displayname
+									width:240px
+									header:$pgroup.displayname
+									filterable:True
+									sortable:True
+									selection:outgroupname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:code
+									width:160px
+									initially-masked:True
+									header:$pgroup.code
+									filterable:True
+									sortable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:repositorydisplayname
+									width:160px
+									initially-masked:True
+									header:$repository.concept
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:comment
+									width:100%
+									header:$pgroup.comment
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbdirectaccounts
+									text:Transform Current nbdirectaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nbdirectaccounts
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbaccounts
+									text:Transform Current nbaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nballaccounts
+									filterable:True
+									sortable:True
+								}
+							}
+						]
+						when =0 then [
+							Tree {	
+								data:groups
+								layout:Layout {grab:horizontal True vertical True}
+								configurable:True
+								show-filter:True
+								persist-configuration:True
+								double-click:ExecuteNamedAction goDetails
+								disabled:IntPredicate(lazyloading) { when =0 then False otherwise True }
+							
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								
+								Column {
+									column:displayname
+									width:240px
+									header:$pgroup.displayname
+									filterable:True
+									sortable:True
+									selection:outgroupname
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:code
+									width:160px
+									initially-masked:True
+									header:$pgroup.code
+									filterable:True
+									sortable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:comment
+									width:100%
+									header:$pgroup.comment
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbdirectaccounts
+									text:Transform Current nbdirectaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nbdirectaccounts
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:nbaccounts
+									text:Transform Current nbaccounts using bwf_defaultsTo0
+									align:Right
+									width:140px
+									header:$fragmentRepositoryGroupsNLS.nballaccounts
+									filterable:True
+									sortable:True
+								}
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentRepositoryGroupsSelectionNLS = NLS {
+	direct [en "groups" fr "groupes"]
+	directnb [en "groups with accounts number" fr "groupes avec le nombre de comptes"]
+	hierarchy [en "groups hierarchy" fr "hiérarchie de groupes"]
+	hierarchynb [en "groups hierarchy with accounts number" fr "hiérarchie de groupes avec le nombre de comptes"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository groups in various forms
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the repository uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incancompare </b>optional, boolean value, true to enable group comparison (false by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outgroupuid </b>the selected group uid</li>
+ * <li><b>outgroupcode </b>the selected group code</li>
+ * <li><b>outgroupname </b>the selected group display name</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryGroupsSelection = PageFragment {
+	enter-event:ExecuteNamedAction updateActiveFlags,
+				MultivaluedAdd "directnb" to selectionkey,
+				MultivaluedAdd $fragmentRepositoryGroupsSelectionNLS.directnb to selectionlabel,
+				IntCase(repository.bwa_repositoryanalytics_nbgroup) {
+					when <50000 then [
+						MultivaluedAdd "hierarchynb" to selectionkey,
+						MultivaluedAdd $fragmentRepositoryGroupsSelectionNLS.hierarchynb to selectionlabel
+					]
+				}
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incancompare = Variable { multivalued:False type:Boolean initial:False }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outgroupuid = Variable
+	outgroupcode = Variable
+	outgroupname = Variable
+
+	selection = Variable { private:True initial:"directnb" }
+	
+	active_direct = Variable { initial:False multivalued:False type:Boolean }
+	active_directnb = Variable { initial:False multivalued:False type:Boolean }
+	active_hierarchy = Variable { initial:False multivalued:False type:Boolean }
+	active_hierarchynb = Variable { initial:False multivalued:False type:Boolean }
+
+	selectionkey = Variable { multivalued:True }
+	selectionlabel = Variable { multivalued:True }
+	
+	selectionlist = Dataset {
+		columns:selectionkey, selectionlabel
+	}
+
+	repository = Record {
+		view: bwf_repositoryDetail with inuid to uid
+//		 disabled:Not BooleanPredicate(inenabled)
+	}
+
+	updateActiveFlags = NamedAction (
+		StringCase(selection) {
+			when "direct" then [
+				Set True to active_direct
+			]		
+			when "directnb" then [
+				Set True to active_directnb
+			]		
+			when "hierarchy" then [
+				Set True to active_hierarchy
+			]		
+			when "hierarchynb" then [
+				Set True to active_hierarchynb
+			]		
+		}
+	)
+
+	Combo {
+		variable:selection
+		layout: Layout { hint: width 300 }
+		modify-event:ExecuteNamedAction updateActiveFlags
+		options:Dynamic {
+			data:selectionlist
+			value:Current selectionkey
+			text:Current selectionlabel
+		
+		}
+	}
+
+	ConditionalGroup {
+		StringCondition(selection) {
+//			when "direct" then [
+//				IncludeFragment (fragmentRepositoryGroups with 	value-of inuid to inuid, 
+//																	value-of incanshowdetails to incanshowdetails,
+//																	outgroupuid binds-to outgroupuid, 
+//																	outgroupcode binds-to outgroupcode,
+//																	outgroupname binds-to outgroupname,
+//																	value-of Eval "inenabled.get()&&active_direct.get()" to inenabled
+//																	) 
+//			]	
+			when "directnb" then [
+				IncludeFragment (fragmentRepositoryGroupsWithAccountsNumber with 	value-of inuid to inuid, 
+																	value-of incanshowdetails to incanshowdetails,
+																	value-of incancompare to incancompare,
+																	outgroupuid binds-to outgroupuid, 
+																	outgroupcode binds-to outgroupcode,
+																	outgroupname binds-to outgroupname,
+																	value-of Eval "inenabled.get()&&active_directnb.get()" to inenabled
+																	) 
+			]	
+//			when "hierarchy" then [
+//				IncludeFragment (fragmentRepositoryGroupsHierarchy with 	value-of inuid to inuid, 
+//																	value-of incanshowdetails to incanshowdetails,
+//																	outgroupuid binds-to outgroupuid, 
+//																	outgroupcode binds-to outgroupcode,
+//																	outgroupname binds-to outgroupname,
+//																	value-of Eval "inenabled.get()&&active_hierarchy.get()" to inenabled
+//																	) 
+//			]	
+			when "hierarchynb" then [
+				IncludeFragment (fragmentRepositoryGroupsHierarchyWithAccountsNumber with 	value-of inuid to inuid, 
+																	value-of incanshowdetails to incanshowdetails,
+																	outgroupuid binds-to outgroupuid, 
+																	outgroupcode binds-to outgroupcode,
+																	outgroupname binds-to outgroupname,
+																	value-of Eval "inenabled.get()&&active_hierarchynb.get()" to inenabled
+																	) 
+			]	
+		}
+	}
+}

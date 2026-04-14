@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="assetsindiscrepancy_bycontrol" prefix="secret_" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="asset" displayname="assetsindiscrepancy_bycontrol" notes="" begindate="" enddate="">
+	<ViewParam name="controlid" displayname="controlid">
+		<Value name="0" data="CA_SAFE_ASSET01"/>
+	</ViewParam>
+	<ViewParam name="vaults" displayname="vaults"/>
+	<ViewParam name="scope" displayname="scope">
+		<Value name="0" data="safe"/>
+	</ViewParam>
+	<ViewParam name="showExceptions" displayname="showExceptions" type="Boolean" defaultvalue="false">
+		<Value name="0" data="true"/>
+	</ViewParam>
+	<ViewComputedAttribute name="val" displayname="val" type="Integer" expression="1"/>
+	<ViewComputedAttribute name="exception" type="Boolean" expression="!dataset.isEmpty(&apos;ex_recorduid2&apos;)"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1625578064343_5353" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1625578064344_5354" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1625578064345_5355" attribute="custom1" alias="secret_login" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1625578064348_5356" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1625578064351_5357" attribute="custom1" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1625578064353_5358" attribute="custom2" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1625578064356_5359" attribute="custom3" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1625578064359_5360" attribute="custom4" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1625578091330_5361" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="safe_to_secrets_join1_metadata">
+		<ViewJoin name="J1625578094465_5362" prefix="safe_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="A1625578105916_5363" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1625578106582_5364" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1625578107143_5365" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1625578107684_5366" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1619001064707_476" prefix="vault_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="! param.isEmpty(&apos;vaults&apos;)" join="repository">
+				<ViewAttribute name="1690362632133_445" attribute="code" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1619001085428_0" reference="vaults" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewJoin name="J1625578316448_5367" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.scope.get()==&apos;safe&apos;" join="controldiscrepancy">
+		<ViewJoin name="J1619011989177_684" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controllog">
+			<ViewAttribute name="1625578345298_5377" attribute="controltagcustom9" alias="controlid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1619012013648_0" reference="controlid" operation="eq" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewJoin name="J1625578364344_5380" prefix="ex_" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.showExceptions.get() != true" join="controlexception">
+		<ViewAttribute name="1625578375814_5383" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="true">
+			<ViewAttributeFilter name="F1620769794769_0" operation="isNull" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1625578365260_5381" prefix="ex_" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.showExceptions.get() == true" join="controlexception">
+		<ViewAttribute name="1625578387001_5386" attribute="recorduid" alias="ex_recorduid2" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="1625578387005_5387" attribute="reason" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewAttribute name="A1625578786060_5418" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+</View>

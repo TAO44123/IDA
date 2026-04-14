@@ -1,0 +1,219 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_cloud_pam/safe/search.page"
+import "/webportal/pages/bw_cloud_pam/safe/analytics/resources.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+import "/webportal/pages/bw_cloud_pam/resources/pamuserDetails.page"
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ""
+	otherwise current
+}
+
+analytics_safe_userscsNLS = NLS {
+	title [en "Active User Analysis" fr "Analyse des utilisateurs actifs"]
+	directrightsonly [en "only direct rights" fr "seulement les droits directs"]
+	description [
+		en "This report analyses the safe users with a pivot table. Only active users are taken into account. It is possible to identify only changes that have occurred since a given date. You can also filter on user types such as 'Built-in Users', 'AIM Accounts', 'EPV Users' and so on."
+		fr "Ce rapport analyse les utilisateurs des safes avec un tableau croisé. Seuls les utilisateurs actifs sont pris en compte. Il est possible d'identifier uniquement les changements survenus depuis une date donnée. Il est également possible de filtrer par type d''utilisateur tel que 'Built-in Users', 'AIM Accounts', 'EPV Users' etc."
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+}
+
+analytics_safe_userscs= Page {
+	title: $analytics_safe_userscsNLS.title
+	description: $analytics_safe_userscsNLS.description
+	feature:bwpam_safeuserscs
+	tags: "ca_safe", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	mixins: simpleReport	
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_resourcesNLS.localfiltertitle
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	comparisontimeslot inline,		
+						exclRemoved inline,
+						exclSimilar inline,
+						includebuiltin inline
+		}
+		
+		Spacer {
+			height:Fill
+		}
+		
+//		Button {
+//			actions:Dialog access360analytics_application_FilterEdition(SerializeSearch search to applicationSearch)
+//			text:$access360analytics_resourcesNLS.displayfilterbutton
+//			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+//		}
+		Button {
+			actions:GoTo Activity CASafe Search with SerializeSearch search to casafeSearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	comparisontimeslot = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:String
+		label:$session_comparisonTimeslotTeam360NLS.label
+		tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+		constraint:Lookup {
+			data:session_comparisontimeslots
+			text:Current commitdate
+			value:Current uid
+		}
+	}
+	exclRemoved = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:True
+		label:$session_exclRemovedNLS.label
+		tooltip:$session_exclRemovedNLS.tooltip
+	}
+	exclSimilar = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:False
+		label:$session_exclSimilarNLS.label
+		tooltip:$session_exclSimilarNLS.tooltip
+	}
+	includebuiltin = Parameter {
+		type:Boolean
+		default:False
+		label:$analytics_resourcesNLS.includebuiltin_label
+		tooltip:$analytics_resourcesNLS.includebuiltin_tooltip
+	}
+	search = SearchDefinition {
+		entity: CASafe
+		simple-mode-rule: brpam_casafe_simple_search
+	}
+	
+		
+	/* Variables here */
+//	inpermissiontypes = Variable { multivalued:True initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+
+	outsafeuid = Variable
+	outpermissionuid = Variable
+	outidentityuid = Variable
+	outaccountuid = Variable
+
+//	applications = Variable { multivalued:True }
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	/* Datasets and records here */
+	users = Dataset {
+		search: Search {
+			view:bwpam_casafeusers_bv with comparisontimeslot to comparisontimeslot unless-empty, exclRemoved to excluderemoved, exclSimilar to excludesimilar, includebuiltin to includebuiltin
+			definition:search
+		}
+		
+		excludes:BooleanPredicate(False) /* Contournement de bug produit */
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	goSafeDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_casafeDetailsDialog ( outsafeuid to inuid )
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goUserDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwpam_userDetailsDialog(outaccountuid to inuid, 
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowowner,
+												True to inshowcontrols
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:users
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:32px  row-headers-max-width:480px grab: horizontal True vertical True}
+					columns:Dim {value:vaultuid label:vaultdisplayname header:$casafeSearchPageNLS.vault },
+							Dim {value:safeuid label:safedisplayname header:$casafeSearchPageNLS.safe header-click:outsafeuid}  
+					rows:	Dim {value:orgcode label:orgdisplayname header:$organisation.concept width:160px},
+							Dim {value:jobtitledisplayname label:jobtitledisplayname header:$identity.jobtitledisplayname width:160px tooltip:jobtitledisplayname initially-masked:True},
+							Dim {value:identityinternal label:identityinternal header:$identity.internal width:100px initially-masked:True},
+							Dim {value:identityuid label:identityfullname header:$identity.fullname width:160px},
+							Dim {value:UserType label:UserType header:$analytics_resourcesNLS.type initially-masked: True},							
+							Dim {value:accountuid label:accountlogin header:$account.login header-click:outaccountuid}  
+					cell-content:CellContent {text: 'X' cluster-value:'X' align:Center styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 }}
+					row-header-click:ExecuteNamedAction goUserDetails
+					column-header-click:ExecuteNamedAction goSafeDetails
+				}
+			}
+		}	
+	}
+}

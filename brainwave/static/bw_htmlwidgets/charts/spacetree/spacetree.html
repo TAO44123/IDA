@@ -1,0 +1,679 @@
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script src="bw_pages.js"></script>
+    <script src="echarts.min.js"></script>
+    <script language="javascript" type="text/javascript" src="jit.min.js"></script>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            margin: auto;
+            position: relative;
+        }
+
+        .node {
+            font: 12px sans-serif;
+            line-height: 12px;
+            overflow: hidden;
+            position: absolute;
+            text-indent: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .tip {
+            font: 12px sans-serif;
+            position: absolute;
+            text-align: center;
+            word-wrap: break-word;
+            white-space: pre;
+            width: 256px;
+            height: 16px;
+            background: #333;
+            color: #ddd;
+            padding: 2px;
+            border: 0px;
+            border-radius: 8px;
+            opacity: 0.9;
+        }
+
+        .spinner {
+            margin: 100px auto 0;
+            width: 70px;
+            text-align: center;
+        }
+
+        .spinner>div {
+            width: 18px;
+            height: 18px;
+            background-color: #333;
+            border-radius: 100%;
+            display: inline-block;
+            -webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+            animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+        }
+
+        .spinner .bounce1 {
+            -webkit-animation-delay: -0.32s;
+            animation-delay: -0.32s;
+        }
+
+        .spinner .bounce2 {
+            -webkit-animation-delay: -0.16s;
+            animation-delay: -0.16s;
+        }
+
+        @-webkit-keyframes sk-bouncedelay {
+            0%,
+            80%,
+            100% {
+                -webkit-transform: scale(0)
+            }
+
+            40% {
+                -webkit-transform: scale(1.0)
+            }
+        }
+
+        @keyframes sk-bouncedelay {
+            0%,
+            80%,
+            100% {
+                -webkit-transform: scale(0);
+                transform: scale(0);
+            }
+
+            40% {
+                -webkit-transform: scale(1.0);
+                transform: scale(1.0);
+            }
+        }
+
+
+        #breadcrumb {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 8px 15px;
+            border-radius: 3px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+
+
+        #breadcrumb span {
+            cursor: pointer;
+            margin: 0 5px;
+            color: #23A4FF;
+        }
+
+
+        #breadcrumb span[style*="font-weight: bold"] {
+            cursor: default;
+            color: #333 !important;
+        }
+
+
+        #breadcrumb span:hover:not([style*="font-weight: bold"]) {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+
+<body>
+    <div id="loading" class="spinner">
+        <div class="bounce1"></div>
+        <div class="bounce2"></div>
+        <div class="bounce3"></div>
+    </div>
+    <div id="breadcrumb"></div>
+    <div id="chart" style="width:100%; height: 100vh;"></div>
+</body>
+
+<script>
+
+    var treeOrientation = 'left'; // left, right, top, bottom
+    var treeAlign = 'center'; // left, right
+    var treeIndent = 0;
+    var alignBeginning = false;
+    var levelsToShow = 2;
+    var levelDistance = 20;
+    var animationDuration = 400;
+    var defaultNodeColor = '#d5dadc';
+    var selectedNodeColor = null; // "#bac1c4";
+    var leafNodeColor = null; // "#d5dadc";
+    var selectedLinkSize = 1;
+    var nodeWidth = null;
+    var nodeHeight = null;
+    var clickLabel = 'Click to see the details';
+    var defaultRootID = 'root';
+    var defaultRootLabel = 'root';
+    var defaultRootDescription = null;
+    var fontColor = "#333";
+    var fontSize = '0.8em';
+    var edgeType = 'bezier'; // bezier, line
+
+    Pages.listenInit(function (varName, initialValue) {
+        if (varName == "defaultNodeColor") {
+            defaultNodeColor = initialValue;
+        }
+        if (varName == "selectedNodeColor") {
+            selectedNodeColor = initialValue;
+        }
+        if (varName == "leafNodeColor") {
+            leafNodeColor = initialValue;
+        }
+        if (varName == "treeOrientation") {
+            treeOrientation = initialValue;
+        }
+        if (varName == "treeAlign") {
+            treeAlign = initialValue;
+        }
+        if (varName == "treeIndent") {
+            treeIndent = initialValue;
+        }
+        if (varName == "alignBeginning") {
+            alignBeginning = initialValue;
+        }
+        if (varName == "levelsToShow") {
+            levelsToShow = initialValue;
+        }
+        if (varName == "levelDistance") {
+            levelDistance = initialValue;
+        }
+        if (varName == "animationDuration") {
+            animationDuration = initialValue;
+        }
+        if (varName == "defaultNodeColor") {
+            defaultNodeColor = initialValue;
+        }
+        if (varName == "selectedNodeColor") {
+            selectedNodeColor = initialValue;
+        }
+        if (varName == "leafNodeColor") {
+            leafNodeColor = initialValue;
+        }
+        if (varName == "selectedLinkSize") {
+            selectedLinkSize = initialValue;
+        }
+        if (varName == "forceNodeWidth") {
+            nodeWidth = initialValue;
+        }
+        if (varName == "forceNodeHeight") {
+            nodeHeight = initialValue;
+        }
+        if (varName == "clickLabel") {
+            clickLabel = initialValue;
+        }
+        if (varName == "defaultRootID") {
+            defaultRootID = initialValue;
+        }
+        if (varName == "defaultRootLabel") {
+            defaultRootLabel = initialValue;
+        }
+        if (varName == "defaultRootDescription") {
+            defaultRootDescription = initialValue;
+        }
+        if (varName == "fontColor") {
+            fontColor = initialValue;
+        }
+        if (varName == "fontSize") {
+            fontSize = initialValue;
+        }
+        if (varName == "edgeType") {
+            edgeType = initialValue;
+        }
+    });
+
+    var json = {};
+    var lastclick = null;
+    var myChart = null;
+    var fullTreeData = null;
+    var currentFocusNode = null;
+    var hasMultipleRoots = false;
+
+
+    var labelType, useGradients, nativeTextSupport, animate;
+
+    (function () {
+        document.documentElement.style.overflow = 'hidden';
+        document.body.scroll = "no";
+
+        var ua = navigator.userAgent,
+            iStuff = ua.match(/iPhone/i) || ua.match(/iPad/i),
+            typeOfCanvas = typeof HTMLCanvasElement,
+            nativeCanvasSupport = (typeOfCanvas == 'object' || typeOfCanvas == 'function'),
+            textSupport = nativeCanvasSupport
+                && (typeof document.createElement('canvas').getContext('2d').fillText == 'function');
+        labelType = (!nativeCanvasSupport || (textSupport && !iStuff)) ? 'Native' : 'HTML';
+        nativeTextSupport = labelType == 'Native';
+        useGradients = nativeCanvasSupport;
+        animate = !(iStuff || !nativeCanvasSupport);
+    })();
+
+
+    function deepCopyNode(node, forceCollapsed) {
+        var copy = {
+            id: node.id,
+            name: node.name,
+            value: node.value,
+            data: Object.assign({}, node.data),
+            children: []
+        };
+
+
+        if (node.children && node.children.length > 0) {
+            copy.collapsed = forceCollapsed !== undefined ? forceCollapsed : (node.collapsed !== undefined ? node.collapsed : true);
+            copy.children = node.children.map(function (child) {
+                return deepCopyNode(child, forceCollapsed);
+            });
+        }
+
+
+        return copy;
+    }
+
+
+    function findNodeById(node, targetId) {
+        if (node.id === targetId) {
+            return node;
+        }
+
+
+        if (node.children) {
+            for (var i = 0; i < node.children.length; i++) {
+                var found = findNodeById(node.children[i], targetId);
+                if (found) return found;
+            }
+        }
+
+
+        return null;
+    }
+
+
+    function findParentNode(node, targetId, parent) {
+        if (node.id === targetId) {
+            return parent;
+        }
+
+
+        if (node.children) {
+            for (var i = 0; i < node.children.length; i++) {
+                var found = findParentNode(node.children[i], targetId, node);
+                if (found) return found;
+            }
+        }
+
+
+        return null;
+    }
+
+
+    function getPathToNode(node, targetId, path) {
+        if (!node) return null;
+        path = path || [];
+        path.push({
+            id: node.id,
+            name: node.name
+        });
+        if (node.id === targetId) {
+            return path;
+        }
+        if (node.children) {
+            for (var i = 0; i < node.children.length; i++) {
+                var p = getPathToNode(node.children[i], targetId, path.slice());
+                if (p) return p;
+            }
+        }
+        return null;
+    }
+
+
+    function createFocusedTree(focusNodeId) {
+        if (!focusNodeId || !fullTreeData) {
+            var treeCopy = deepCopyNode(fullTreeData, true);
+            treeCopy.collapsed = false;
+            return treeCopy;
+        }
+
+
+        var focusNode = findNodeById(fullTreeData, focusNodeId);
+        if (!focusNode) return fullTreeData;
+
+
+        // Créer une copie du nœud focalisé avec ses enfants
+        var focusedCopy = deepCopyNode(focusNode, true);
+        focusedCopy.collapsed = false;
+        
+        // Retourner le nœud focalisé comme racine
+        return focusedCopy;
+    }
+
+
+    function updateBreadcrumb() {
+        var breadcrumb = document.getElementById('breadcrumb');
+        var html = '';
+
+
+        var path = [];
+        if (currentFocusNode && fullTreeData) {
+            path = getPathToNode(fullTreeData, currentFocusNode);
+        } else if (fullTreeData) {
+            path = [{id: fullTreeData.id, name: fullTreeData.name}];
+        }
+
+
+        path = path || [];
+
+
+        path.forEach(function (node, idx) {
+            if (idx === path.length - 1) {
+                html += '<span style="color: #333; font-weight: bold;">' + node.name + '</span>';
+            } else {
+                html += '<span onclick="navigateToNode(\'' + node.id + '\')">' + node.name + '</span> > ';
+            }
+        });
+
+
+        breadcrumb.innerHTML = html;
+    }
+
+
+    window.navigateToNode = function (nodeId) {
+        currentFocusNode = nodeId || null;
+        updateTreeDisplay();
+    }
+
+
+    function updateTreeDisplay() {
+        var treeData = createFocusedTree(currentFocusNode);
+
+
+        myChart.clear();
+
+
+        var option = {
+            tooltip: {
+                trigger: 'item',
+                triggerOn: 'mousemove',
+                formatter: function (params) {
+                    if (params.data.id && params.data.id.startsWith('virtual_root_')) {
+                        return '';
+                    }
+                    return params.data.value || params.data.name;
+                }
+            },
+            series: [
+                {
+                    type: 'tree',
+                    id: 0,
+                    name: 'tree1',
+                    data: [treeData],
+                    top: '15%',
+                    left: '15%',
+                    bottom: '5%',
+                    right: '25%',
+                    symbolSize: 7,
+                    edgeShape: 'polyline',
+                    edgeForkPosition: '63%',
+                    initialTreeDepth: 2,
+                    lineStyle: {
+                        width: 2
+                    },
+                    label: {
+                        backgroundColor: '#fff',
+                        position: 'left',
+                        verticalAlign: 'middle',
+                        align: 'right',
+                        padding: [2, 4],
+                        fontSize: 12,
+                        distance: 15,
+                        overflow: 'breakAll',
+                        formatter: function (params) {
+                            if (params.data.id && params.data.id.startsWith('virtual_root_')) {
+                                return '';
+                            }
+                            return params.data.name;
+                        }
+                    },
+                    leaves: {
+                        label: {
+                            position: 'right',
+                            verticalAlign: 'middle',
+                            align: 'left',
+                            padding: [2, 4]
+                        }
+                    },
+                    emphasis: {
+                        focus: 'descendant'
+                    },
+                    roam: 'move',
+                    expandAndCollapse: true,
+                    animationDuration: 550,
+                    animationDurationUpdate: 750
+                }
+            ]
+        };
+
+
+        myChart.setOption(option);
+        updateBreadcrumb();
+    }
+
+
+    function handleNodeClick(params) {
+        var clickedNodeId = params.data.id;
+
+
+        if (clickedNodeId && clickedNodeId.startsWith('virtual_root_')) {
+            return;
+        }
+
+
+        if (lastclick === clickedNodeId) {
+            Pages.sendEvent('onclick', { code: clickedNodeId, label: params.data.name });
+            return;
+        }
+
+
+        if (params.data.children && params.data.children.length > 0) {
+            if (currentFocusNode !== clickedNodeId) {
+                currentFocusNode = clickedNodeId;
+                updateTreeDisplay();
+            }
+        }
+
+
+        Pages.sendEvent('onanimationclick', { code: clickedNodeId, label: params.data.name });
+        lastclick = clickedNodeId;
+    }
+
+
+    function init2() {
+        var html = document.documentElement;
+        var chartDom = document.getElementById('chart');
+        myChart = echarts.init(chartDom);
+        var divwidth = html.clientWidth;
+        var divheight = html.clientHeight;
+        chartDom.style.width = divwidth + 'px';
+        chartDom.style.height = divheight + 'px';
+
+
+        myChart.on('click', handleNodeClick);
+
+
+        updateTreeDisplay();
+
+
+        document.getElementById('loading').style.display = 'none';
+    }
+
+
+    var tooltips = null;
+    function initData() {
+        Pages.fetchDataset("chartdata", function (rows) {
+
+
+            json = {};
+
+
+            tooltips = new Map();
+            var allcodes = new Map();
+            var allparentcodes = new Map();
+            for (var index = 0; index < rows.length; index++) {
+                var code = rows[index]["code"];
+                var label = rows[index]["label"];
+                var value = rows[index]["description"];
+                var parentcode = rows[index]["parentcode"];
+                var cssattributes = rows[index]["cssattributes"];
+                if (cssattributes != null) {
+                    try {
+                        cssattributes = cssattributes.replace(new RegExp("'", 'g'), '"');
+                        cssattributes = JSON.parse(cssattributes);
+                    } catch (e) {
+                        cssattributes = null;
+                    }
+                }
+                if (cssattributes == null)
+                    cssattributes = {};
+
+                allcodes.set(code, null);
+                tooltips.set(code, value);
+                if (parentcode != null) {
+                    var items = allparentcodes.get(parentcode);
+                    if (items == null) {
+                        items = [];
+                        allparentcodes.set(parentcode, items);
+                    }
+                    items.push({ code: code, label: label, value: value, cssattributes: cssattributes });
+                }
+            }
+
+            // identity all root nodes
+            var roots = [];
+            for (var index = 0; index < rows.length; index++) {
+                var code = rows[index]["code"];
+                var parentcode = rows[index]["parentcode"];
+                if (parentcode === code) // a node whom parent is itself is considered as a root node
+                    parentcode = null;
+                if (!allcodes.has(parentcode)) {
+                    var label = rows[index]["label"];
+                    var value = rows[index]["description"];
+                    var cssattributes = rows[index]["cssattributes"];
+                    if (cssattributes != null) {
+                        try {
+                            cssattributes = JSON.parse(cssattributes);
+                        } catch (e) {
+                            cssattributes = null;
+                        }
+                    }
+                    if (cssattributes == null)
+                        cssattributes = {};
+                    roots.push({ code: code, label: label, value: value, cssattributes: cssattributes });
+                }
+            }
+
+            if (roots.length == 0) {
+                // no roots? no hierarchy...
+                return json;
+            }
+            else if (roots.length == 1) {
+                var code = roots[0].code;
+                var label = roots[0].label;
+                var cssattributes = roots[0].cssattributes;
+
+                json.id = code;
+                json.name = label;
+                json.data = cssattributes;
+                json.collapsed = false;
+
+
+                var childrens = getChildrens(allparentcodes, code);
+                json.children = childrens;
+            }
+            else {
+                hasMultipleRoots = true;
+                json.id = defaultRootID;
+                json.name = defaultRootLabel;
+                json.data = {};
+                json.collapsed = false;
+
+
+                if (defaultRootID != null && defaultRootDescription != null)
+                    tooltips.set(defaultRootID, defaultRootDescription);
+
+
+                var n = [];
+                for (var i = 0; i < roots.length; i++) {
+                    var element = {};
+                    element.id = roots[i].code;
+                    element.name = roots[i].label;
+                    element.value = roots[i].value;
+                    element.data = roots[i].cssattributes;
+                    element.collapsed = true;
+                    var childrens = getChildrens(allparentcodes, roots[i].code);
+                    element.children = childrens;
+                    n.push(element);
+                }
+
+                n.sort(function compare(a, b) {
+                    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+                });
+                json.children = n;
+            }
+
+
+            fullTreeData = json;
+
+
+            // init graph
+            init2();
+        });
+    }
+
+    function getChildrens(nodes, rootnode) {
+        var directchildrens = nodes.get(rootnode);
+        nodes.delete(rootnode); // prevent loops
+
+        var result = [];
+        if (directchildrens != null) {
+            for (var i = 0; i < directchildrens.length; i++) {
+                var child = {};
+                var code = directchildrens[i].code;
+                var label = directchildrens[i].label;
+                var value = directchildrens[i].value;
+                var cssattributes = directchildrens[i].cssattributes;
+                child.id = code;
+                child.name = label;
+                child.value = value;
+                child.data = cssattributes;
+                child.collapsed = true;
+
+
+                var childrens = getChildrens(nodes, code);
+                child.children = childrens;
+
+                result.push(child);
+            }
+        }
+
+        result.sort(function compare(a, b) {
+            return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+        });
+
+        return result;
+    }
+
+    Pages.listenInitDone(function () {
+        initData();
+    });
+</script>
+</html>

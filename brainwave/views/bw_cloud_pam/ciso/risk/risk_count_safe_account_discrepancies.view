@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="ciso_risk_count_safe_account_discrepancies" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="controllogv2" displayname="ciso_risk_count_safe_account_discrepancies" notes="" begindate="" enddate="">
+	<ViewParam name="get_vault_code" displayname="get_vault_code" type="Boolean"/>
+	<ViewComputedAttribute name="isvault" displayname="isvault" type="Boolean" expression="false"/>
+	<ViewComputedAttribute name="vault_name" displayname="vault_name" type="String" expression="dataset.vault_code.get() == null ? &apos;$$$all-vaults$$$&apos; : dataset.vault_code.get()"/>
+	<ViewComputedAttribute name="isquality" displayname="isquality" type="Integer" expression="0"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="A1617385691137_7585" attribute="controltagtype" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1617385693125_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="risk"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="A1617385804356_8278" attribute="controltagfamily" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1617385806636_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="pam"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="A1617385811806_8280" attribute="controltagscope" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1619000918659_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="safe"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="A1617385851413_8285" attribute="controltagcustom9" alias="controlidentifier" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1617385889673_8291" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controldiscrepancy">
+		<ViewJoin name="J1617385898235_8292" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+			<ViewAttribute name="A1617385920612_8294" attribute="recorduid" alias="nbdiscrepancies" displayname="nbdiscrepancies" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1620771355560_1661" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controlexception">
+				<ViewAttribute name="A1620771360138_1662" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="true">
+					<ViewAttributeFilter name="F1620771362471_0" operation="isNull" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1617311319981_4297" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="((! param.isEmpty(&apos;get_vault_code&apos;)) &amp;&amp; ((&apos;&apos; + param.get_vault_code.get()) == &apos;true&apos;))" join="controlrootcause">
+			<ViewJoin name="J1617311346155_4299" prefix="safe_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+				<ViewJoin name="J1619001064707_476" prefix="vault_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+					<ViewAttribute name="A1619001070508_477" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+				</ViewJoin>
+				<ViewAttribute name="A1664893437690_601" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1664893445919_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="ca_safe"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

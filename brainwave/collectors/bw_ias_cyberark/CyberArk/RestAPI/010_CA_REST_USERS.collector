@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="195 CA REST IDENTITY safe members" scriptfile="/collectors/bw_ias_cyberark/CyberArk/RestAPI/checkIdentity.javascript" name="P1730217093253_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1730293004461">
+		<Component name="C1730285879663" type="changefilter" x="353" y="142" w="300" h="64" title="check Identity">
+			<Actions function="init">
+				<Action name="U1730293420643" action="add" attribute="identity_repo" type="String" multivalued="false" errorexist="false"/>
+				<Action name="U1732198507842" action="add" attribute="cyberark_path" type="String" multivalued="false" newvalue="{config.siloIteratedFileFullname.substring(0, config.siloIteratedFileFullname.indexOf(config.siloName))}" errorexist="false"/>
+			</Actions>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Component name="C1730293004461" type="library/components/start.component" x="357" y="30" w="300" h="64" title="start"/>
+		<Link name="L1730293011053" source="C1730293004461" target="C1730285879663" priority="1"/>
+		<Component name="C1732009572835" type="callfilter" x="182" y="282" w="300" h="64" title="CA_REST_users">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk/RestAPI/160_CA_REST_users.collector"/>
+		</Component>
+		<Component name="C1732009586994" type="callfilter" x="565" y="281" w="300" h="64" title="CA_REST_identity_users">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk/RestAPI/170_CA_REST_identity_users.collector">
+				<Configuration name="A1732198597472" variable="cyberark_folder" content="{dataset.cyberark_path}"/>
+				<Configuration name="A1732200259600" variable="identity_repo" content="{dataset.identity_repo}"/>
+			</Line>
+		</Component>
+		<Link name="L1732009604019" source="C1730285879663" target="C1732009572835" priority="1" expression="(dataset.isEmpty(&apos;identity_repo&apos;))" labelcustom="true" label="CyberArk on prem"/>
+		<Link name="L1732009604987" source="C1730285879663" target="C1732009586994" priority="2" labelcustom="true" label="CyberArk Identity" expression="(! dataset.isEmpty(&apos;identity_repo&apos;))"/>
+		<Component name="N1733217332880" type="note" x="738" y="46" w="300" h="137" title="Check the presence of CyberArk Identity&#xA;go to the on-premise collect if there is Identity&#xA;else go to the Identity collect"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

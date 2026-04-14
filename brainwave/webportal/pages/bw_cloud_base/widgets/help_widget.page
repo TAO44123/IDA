@@ -1,0 +1,58 @@
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+
+bw_help_NLS = NLS {
+  guide [ en "Guide" fr "Guide"]
+}
+
+bw_help = JsWidgetTemplate {
+	source-directory: "static/bw_cloud_base/widgets/help" 
+	bindings:
+		url as in String,  // url of the html help file, in the static directory , eg. 
+		locales as in String,  // comma separated list of locales for the url. default language is first . eg "en,fr"
+		opened as in out Boolean,
+		title as in String,
+		^width as in String
+}
+
+/* demo page */
+
+bw_help_frag = PageFragment {
+
+ url = Parameter{ mandatory: True}
+ locales = Parameter { } // comma separated list of locales for the url. default language is first . eg "en,fr"
+ title = Parameter { default: $bw_help_NLS.guide}
+ ^width = Parameter { default: "25%" }
+ help_opened = Variable { type: Boolean}
+ 
+	 Button {
+	      image: %dashboardicons_24.help
+	      //text: help_opened
+	      actions: Set Eval "help_opened.get()? 'False': 'True' " to help_opened 
+	      presentation: Link
+		   styling: stdLink
+	    }  
+  IncludeHTMLWidget { 
+   template: bw_help  
+   layout: Layout { grab: horizontal False vertical False hint: width 0 height 0 }   
+   bindings: 
+      value-of url to url, 
+      value-of locales to locales,
+      value-of title to title,
+      value-of ^width to ^width,
+      help_opened binds-to opened           
+ }
+      
+}
+
+//bw_demo_help = Page {
+//  title: "Help demo"
+//  homepage-for: All
+//  header: PageHeader {
+//     //IncludeFragment { fragment: bw_help_frag with  value-of "static/bw_cloud_pam/guides/guide_funnel_en.html" to url inline: True }
+//     // localized variant:
+//     IncludeFragment { fragment: bw_help_frag with  value-of "static/bw_cloud_pam/guides/guide_funnel.html" to url ,value-of "en,fr" to locales inline: True }
+//  }
+//  
+// 
+//}

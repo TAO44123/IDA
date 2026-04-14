@@ -1,0 +1,375 @@
+/* Import other pages here */
+import "/webportal/pages/bw_dsm/cfg/fragments/ds_edit_select.page"
+import "/webportal/pages/bw_dsm/cfg/fragments/ds_edit_options.page"
+import "/webportal/pages/bw_dsm/cfg/ds_edit_mapping.page"
+import "/webportal/pages/bw_dsm/cfg/fragments/ds_edit_schedule.page"
+import "/webportal/pages/bw_dsm/services/services.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/widgets/stepper_js/stepper_js.page"
+
+/* edit if inId is not empty
+ * add otherwise, will return newly created cfg
+ */
+ STEP_1SELECT = Constant {  value: "1select" }
+ STEP_2OPTIONS = Constant {  value: "2options" }
+ STEP_4SCHEDULE = Constant { value: "4scheduled" }
+ STEP_5SUMMARY = Constant {  value: "5summary" } 
+ 
+dsm_cfg_add_edit_wizard = Dialog {
+    
+    title: title
+    width: 900
+    height: 750
+    mixins: defaultPage
+    enter-event: ExecuteNamedAction doInit 
+    
+    buttons: [
+      ActionButton {
+        text: $dsm_cfg_NLS.cfg.button_next
+        actions: ExecuteNamedAction doNext
+        disabled: Not BooleanPredicate ( canNext)
+      }
+      ActionButton {
+        text: $dsm_cfg_NLS.cfg.button_finish
+        actions:  ExecuteNamedAction doFinish
+        disabled: Not BooleanPredicate ( canFinish)
+        status: Ok
+        close: True
+      }
+      CancelButton
+    ]
+    
+    title = Variable 
+    inId = Variable { } // edit => id of edited datasource , null otherwise
+    outId = Variable { } // create => id of created datasource
+    edit = Variable { type: Boolean }
+    errorMessage = Variable 
+    ret = Variable
+    retMkDir = Variable
+    outError = Variable 
+    confirmed = Variable
+    
+    // connector info 
+     connector = Variable
+     connectorTitle = Variable 
+     connectorDescription = Variable 
+     connectorCategory = Variable
+     connectorIcon = Variable 
+     hasMapping = Variable { type: Boolean } 
+     hasScript = Variable { type: Boolean}
+     multiFile = Variable { type: Boolean }
+     
+    
+    
+    // running config
+	 ds_name = Variable 
+    ds_description = Variable 
+    ds_destDir = Variable
+    ds_enabled = Variable { type: Boolean initial: True}
+    ds_options = Variable { type: String }
+    ds_scheduling = Variable 
+ //   ds_sourcePath = Variable
+ //   ds_destPath = Variable
+    
+    // state variables
+    currentStep = Variable { type: String}
+    canNext = Variable { type: Boolean }
+    canFinish = Variable { type: Boolean }
+    selectCanNext = Variable { type: Boolean }
+    selectMessage = Variable
+    optionsCanNext = Variable { type: Boolean }
+    optionsMessage = Variable
+    scheduleCanNext = Variable { type: Boolean }
+    scheduleMessage = Variable 
+    
+    //steps variables
+    steps_id = Variable { multivalued: True initial: [ Constant STEP_1SELECT, Constant STEP_2OPTIONS, Constant STEP_4SCHEDULE, Constant STEP_5SUMMARY ] }
+    steps_label = Variable { multivalued: True 
+      initial: [ $dsm_cfg_NLS.cfg.stepper_select, $dsm_cfg_NLS.cfg.stepper_options, $dsm_cfg_NLS.cfg.stepper_schedule, $dsm_cfg_NLS.cfg.stepper_summary ] } 
+     steps_hidden = Variable { multivalued: True initial: [ False, False,False,False ] } 
+
+   
+    // datasets and records
+    
+    steps = Dataset {
+	  columns: steps_id as _id , steps_label as _label , steps_hidden as _hidden
+	}
+    
+    datasource = Record {
+      service: bwdsm_getDsCfg with inId to pid unless-empty
+      //disabled: Not BooleanPredicate ( edit)        
+    }
+    
+    datasource_def = Record {
+      view: bwdsm_getdatasource_def with inId to id unless-empty
+    }
+    
+    connector_desc = Record {
+		  page: connector
+	 } 
+	 
+	  savedef_task = TaskRecord( create "bwdsm_save_datasource_def")
+	    
+    doInit = NamedAction (
+
+      Set Eval "!inId.isEmpty()" to edit  ,
+      //init stepper  
+      BooleanCase(edit) {     
+        when True then [
+          
+          Set datasource.type to connector,
+		    Set datasource.name to ds_name, 
+		    Set datasource.description to ds_description,
+		    Set datasource.enabled to ds_enabled,
+		    Set datasource.config to ds_options,
+		    Set datasource.scheduling to ds_scheduling,		
+		    Set datasource_def.destdir to ds_destDir,    
+          Set Constant STEP_2OPTIONS to currentStep,
+          Set $dsm_cfg_NLS.cfg.dialog_title_edit1(ds_name) to title, 
+          MultivaluedSet True to steps_hidden where steps_id is Constant STEP_1SELECT,
+          ExecuteNamedAction doUpdateConnectorInfo,
+          Set inId to outId          
+        ]
+        when False then [
+          Set $dsm_cfg_NLS.cfg.dialog_title_add to title, 
+          Set Constant STEP_1SELECT to currentStep      
+        ]
+       } 
+    )
+    
+    doUpdateConnectorInfo = NamedAction (
+    	Set connector_desc.title to connectorTitle,
+    	Set connector_desc.description to connectorDescription,
+    	Set connector_desc.icon to connectorIcon,
+    	Set connector_desc.hasMapping to hasMapping,
+    	Set Transform connector_desc.action using stringValueToBoolMapping to hasScript,
+    	Set Transform connector_desc.multiFile using stringBoolToBoolMapping  to multiFile   	
+    ) 
+        
+    doUpdateButtons = NamedAction (
+      StringCase( currentStep){
+        when Constant STEP_1SELECT then [
+          Set selectCanNext to canNext , 
+          Set selectMessage to errorMessage
+        ]
+        when Constant STEP_2OPTIONS then [
+          Set optionsCanNext to canNext
+        ]
+        when Constant STEP_4SCHEDULE then [
+          Set scheduleCanNext to canNext
+        ]        
+      }      
+    )
+             
+    doNext = NamedAction (
+      StringCase ( currentStep) {
+        when Constant STEP_1SELECT then [        
+          ExecuteFragmentNamedAction selectFrag.doCommitNext,
+          ExecuteNamedAction doUpdateConnectorInfo,
+          Set Constant STEP_2OPTIONS to currentStep
+        ] 
+        when Constant STEP_2OPTIONS then [  
+          //required for options
+          ExecuteFragmentNamedAction optionsFrag.doCommitNext,
+          Set Constant STEP_4SCHEDULE to currentStep
+        ]
+        when Constant STEP_4SCHEDULE then [      
+          ExecuteFragmentNamedAction scheduleFrag.doCommitNext,
+          Set True to canFinish,
+          Set False to canNext,
+          Set Constant STEP_5SUMMARY to currentStep
+        ]                              
+      },
+
+     // Set Eval "selectedTab.get() + 1 " to selectedTab  , 
+      Set False to canNext,
+      // init currentStep tab ( compute next status) 
+      StringCase ( currentStep) {
+       when Constant STEP_1SELECT then [
+       
+       ]
+       when Constant STEP_2OPTIONS then [
+          // end cfg        
+          ExecuteFragmentNamedAction optionsFrag.doInit
+        ]  
+      } ,
+      ExecuteNamedAction doUpdateButtons   
+    )   
+    
+    doFinish  = NamedAction (    
+      BooleanCase ( edit) {
+        when True then [
+        // commit editing 
+          Set @bwdsm_updateDsCfg ( inId to pid, 
+            ds_description to description , 
+            ds_enabled to enabled, 
+            ds_options to config,
+            ds_scheduling to scheduling
+            ) to ret , 
+          Set Eval "ret.get() == 'OK'? '': 'Error updating:\n' + ret.get() "  to outError 
+        ]
+        when False then [      
+           // creating           
+				Set @bwdsm_createDsCfg (connector to type, 
+				   connector_desc.category to category, 
+				   ds_name to name,
+				   ds_description to description , 
+				   ds_enabled to enabled, 
+				   ds_options to config,
+				   ds_scheduling to scheduling  ) to outId ,
+				Set Eval "outId.isEmpty()? 'Error creating': ''"  to outError           
+        ]
+        },
+          StringCase (outError){
+            when IsEmpty then [
+		         // save or updat edef MD configuration 
+		         Set ds_name to savedef_task.name ,
+			      Set connector to savedef_task.connector,
+			      Set connector_desc.collector to savedef_task.collector,
+			      Set outId to savedef_task.id,
+			      Set ds_name to savedef_task.sourcePath,
+			      Set connector_desc.destPathVar to savedef_task.destPathVar,
+			      Set connector_desc.filePattern to savedef_task.filePattern,
+			      Set ds_destDir to savedef_task.destDir,
+			      Set multiFile to savedef_task.multifile,
+			      Set ds_options to savedef_task.options,
+			      TaskComplete savedef_task wait-end              
+            ]
+            otherwise [
+              Message Error outError 
+            ]
+          },
+          BooleanCase( Eval "!edit.get() && hasMapping.get()") {
+	         when True then [
+	           Dialog bwdsm_confirmEditMapping(confirmed from confirmed ),
+	           GoTo Page dsm_edit_mapping with ds_name to pcode , connector to pconnector //save-state
+	         ]
+	         when False then []
+          }
+   
+    )
+              
+	 IncludeHTMLWidget {
+			layout: Layout { grab:horizontal True vertical False hint: height 80  }				
+			template: bw_stepper
+			datasets:steps( _id, _label, _hidden ) to stepsdata (id, label, hidden)
+			bindings:
+			   value-of "horizontal" to orientation 
+			  , value-of currentStep to currentStep
+			 // , value-of True to showState
+			  , value-of False to showIcons  	   				
+	} 
+   Grid {
+      columns: GridColumn{ width: 50 },GridColumn{ width: grow}
+      GridRow {
+        hidden: SameValuePredicate( currentStep ,  Constant STEP_1SELECT)
+      //  height: 60
+	     GridCell {
+    			 Image { image: connector_desc.icon    }
+        }
+        GridCell {
+       		Text { value: connector_desc.title  compact: True styling: bwdsm_info_title }
+       		Text {
+	       		value: connector_desc.description
+	       		lines: 2
+	       		compact: True
+	       		 layout: Layout { hint:  height 40 }
+	       		
+       	   }
+       	}      	 
+       }
+    }
+    ConditionalGroup {
+	  layout: Layout { grab: horizontal True vertical True } 
+     StringCondition ( currentStep ) {
+       when Constant STEP_1SELECT then [
+          selectFrag = IncludeFragment { fragment: dsm_cfg_select 
+           with connector binds-to outSelectedConnector, 
+           selectCanNext binds-to outCanNext, 
+           selectMessage binds-to outMessage
+            inline: True
+           fragment-events: {
+             when "changed" then  [ExecuteNamedAction doUpdateButtons  ]
+           }
+         }
+       ]
+      when Constant STEP_2OPTIONS then [
+          optionsFrag = IncludeFragment { fragment: dsm_cfg_options with 
+         	value-of connector to inConnector, 
+         	value-of connector_desc.fixedName to fixedName,
+         	value-of edit to edit, 
+         	ds_name binds-to name,         	
+         	ds_description binds-to description,
+         	ds_destDir binds-to destDir,
+         	ds_enabled binds-to enabled,       	
+         	ds_options binds-to options,
+         	optionsCanNext binds-to outCanNext        	
+           inline: True
+           fragment-events: {
+             when "changed" then  [ ExecuteNamedAction doUpdateButtons]
+           }          
+        }         
+       ]
+       when Constant STEP_4SCHEDULE then [
+         scheduleFrag = IncludeFragment { fragment: dsm_cfg_schedule        
+          with value-of edit to edit, 
+          ds_scheduling binds-to scheduling,
+          value-of hasScript to hasScript, 
+          scheduleCanNext binds-to outCanNext
+          inline: True
+          fragment-events: {
+             when "changed" then  [ ExecuteNamedAction doUpdateButtons]
+          }
+        }
+       ]
+     }
+   }
+   Text {
+     value: errorMessage
+     styling: wizard_error_message
+   }
+
+}
+
+stringBoolToBoolMapping = StringMapping {
+  when 'true' then True
+  otherwise False
+}
+
+stringValueToBoolMapping = StringMapping {
+  when IsEmpty then False
+  otherwise True
+}
+
+bwdsm_confirmEditMapping = Dialog {
+  title: $dsm_cfg_NLS.cfg.dialog_confirm_mapping_title
+  width: 750
+  height: 160
+  buttons: [
+    ActionButton {
+      text: $dsm_cfg_NLS.cfg.dialog_confirm_mapping_button
+      close: True
+      status: Ok
+      actions: Set True to confirmed
+    }
+    ActionButton {
+      text: $dsm_cfg_NLS.cfg.dialog_confirm_mapping_button_later
+      close: True
+      status: Cancel
+      actions: Set False to confirmed
+    }    
+  ]
+  confirmed = Variable { type: Boolean }
+  Text {
+    value: $dsm_cfg_NLS.cfg.dialog_confirm_mapping_msg
+    compact: True
+  }
+}
+
+
+
+
+
+

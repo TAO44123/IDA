@@ -1,0 +1,377 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the over allocations for a given permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outidentity </b>the selected identity</li>
+ * <li><b>outidentityname </b>the selected identity name</li>
+ * <li><b>outnbproblems </b>number of problems</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentPermissionOverAllocationsList = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outnbproblems = Variable { type:Integer }
+	outidentity = Variable
+	outidentityname = Variable
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_permissionoverallocations with inuid to uid
+		 trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		 }
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		 count-variable: outnbproblems
+	}
+
+	ConditionalGroup {
+		IntCondition ( Count data ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noOver
+					compact: True
+				}
+			] otherwise [
+				Group {
+//					title: $bwf_theoreticalrightsNLS.overAllocs
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						persist-configuration:True
+
+						Column {
+							column: controlcode
+							hidden: True
+							header: $controlresult.controlcode
+						}
+						Column {
+							column: controlrisklevel
+							header: $bwf_theoreticalrightsNLS.risklevel
+							width: 96px
+							sortable: True
+							filterable: True
+							image: TemplateImageSelection(Current controlrisklevel) using bwf_controllevel
+							initially-masked: True
+						}
+						Column {
+							column: controldisplayname
+							header: $controlresult.controldisplayname
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked: True
+						}
+						Column {
+							column: controldescription
+							initially-masked: True
+							header: $controlresult.controldescription
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlriskinfo
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.riskinfo
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlsuggestedmitogation
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.suggestedmitigation
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: uid
+							selection: outidentity
+							hidden:True
+						}
+						Column {
+							column: hrcode
+							header: $identity.hrcode
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: fullname
+							header: $identity.fullname
+							width: 100%
+							sortable: True
+							filterable: True
+							selection:outidentityname
+						}
+						Column {
+							column: mail
+							header: $identity.mail
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked:True
+						}
+						Column {
+							column: internal
+							header: $identity.internal
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked:True
+						}
+						Column {
+							column: active
+							header: $identity.active
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked:True
+						}
+						Column {
+							column: trends
+							header: $bw_fragment.trends
+							text:Transform Current trends using bwf_trendStatusColumn 
+							styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+							image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+							tooltip:$bwf_trendStatusColumnNLS.tooltip
+	
+							sortable: True
+							filterable: True
+							width: 10%
+						}												
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentPermissionOverAllocationsListNLS = NLS {
+	directfilter [en "Accounts whom owners are direct members of {0}" fr "Comptes dont les membres sont des membres directs de {0}"]
+	subfilter [en "Accounts whom owners are direct or indirect members of {0}" fr "Comptes dont les membres sont des membres directs ou indirects de {0}"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the over allocations for a given permission and a given organisation
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inorganisationuid </b>the organisation uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outidentity </b>the selected identity</li>
+ * <li><b>outidentityname </b>the selected identity name</li>
+ * <li><b>outnbproblems </b>number of problems</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentPermissionOverAllocationsListfororganisation = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+
+	outnbproblems = Variable { type:Integer }
+	outidentity = Variable
+	outidentityname = Variable
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_permissionoverallocationsfororganisation with
+			inuid to uid,
+			inorganisationuid to organisationuid,
+			inonlydirectselection to directonly
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		 count-variable: outnbproblems
+	}
+
+	organisation = Record {
+		view: br_organisationDetail with inorganisationuid to uid
+	}
+
+	Header {
+		value:$fragmentPermissionOverAllocationsListNLS.directfilter(organisation.displayname)
+		hidden:Not BooleanPredicate(inonlydirectselection)
+	}
+	Header {
+		value:$fragmentPermissionOverAllocationsListNLS.subfilter(organisation.displayname)
+		hidden:BooleanPredicate(inonlydirectselection)
+	}
+	ConditionalGroup {
+		IntCondition ( Count data ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noOver
+					compact: True
+				}
+			] otherwise [
+				Group {
+//					title: $bwf_theoreticalrightsNLS.overAllocs
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						persist-configuration:True
+
+						Column {
+							column: controlcode
+							hidden: True
+							header: $controlresult.controlcode
+						}
+						Column {
+							column: controlrisklevel
+							header: $bwf_theoreticalrightsNLS.risklevel
+							width: 96px
+							sortable: True
+							filterable: True
+							image: TemplateImageSelection(Current controlrisklevel) using bwf_controllevel
+							initially-masked: True
+						}
+						Column {
+							column: controldisplayname
+							header: $controlresult.controldisplayname
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked: True
+						}
+						Column {
+							column: controldescription
+							initially-masked: True
+							header: $controlresult.controldescription
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlriskinfo
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.riskinfo
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlsuggestedmitogation
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.suggestedmitigation
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: uid
+							selection: outidentity
+							hidden:True
+						}
+						Column {
+							column: hrcode
+							header: $identity.hrcode
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: fullname
+							header: $identity.fullname
+							width: 100%
+							sortable: True
+							filterable: True
+							selection:outidentityname
+						}
+						Column {
+							column: mail
+							header: $identity.mail
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked:True
+						}
+						Column {
+							column: internal
+							header: $identity.internal
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked:True
+						}
+						Column {
+							column: active
+							header: $identity.active
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked:True
+						}
+						Column {
+							column: trends
+							header: $bw_fragment.trends
+							text:Transform Current trends using bwf_trendStatusColumn 
+							styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+							image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+							tooltip:$bwf_trendStatusColumnNLS.tooltip
+	
+							sortable: True
+							filterable: True
+							width: 10%
+						}												
+					}
+				}
+			]
+		}
+	}
+}

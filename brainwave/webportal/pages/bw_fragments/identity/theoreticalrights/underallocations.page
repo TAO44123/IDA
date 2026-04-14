@@ -1,0 +1,150 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the under allocations for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionname </b>the selected permission</li>
+ * <li><b>outapplicationname </b>the selected application</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentIdentityUnderAllocationsList = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inApplicationUid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outpermissionname = Variable
+	outapplicationname = Variable
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_identityunderallocations with
+			inuid to uid,
+			inApplicationUid to app_uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	ConditionalGroup {
+		IntCondition ( Count data ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noUnder
+					compact: True
+				}
+			] otherwise [
+				Group {
+					title: $bwf_theoreticalrightsNLS.underAllocs
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						
+						Column {
+							column: controlcode
+							hidden: True
+							header: $controlresult.controlcode
+						}
+						Column {
+							column: controlrisklevel
+							header: $bwf_theoreticalrightsNLS.risklevel
+							width: 96px
+							sortable: True
+							filterable: True
+							initially-masked: True
+							image: TemplateImageSelection ( Current controlrisklevel ) using bwf_controllevel
+						}
+						Column {
+							column: controldisplayname
+							header: $controlresult.controldisplayname
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked: True
+						}
+						Column {
+							column: controldescription
+							initially-masked: True
+							header: $controlresult.controldescription
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlriskinfo
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.riskinfo
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlsuggestedmitogation
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.suggestedmitigation
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: app_displayname
+							selection: outapplicationname
+							initially-masked: False
+							header: $application.concept
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: perm_uid
+							initially-masked: True
+							header: $ppermission.uid
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: perm_code
+							initially-masked: False
+							header: $ppermission.code
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: perm_displayname
+							selection: outpermissionname
+							initially-masked: False
+							header: $ppermission.displayname
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+					}
+				}
+			]
+		}
+	}
+}

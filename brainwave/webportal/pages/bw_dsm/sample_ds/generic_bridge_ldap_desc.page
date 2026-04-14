@@ -1,0 +1,148 @@
+
+ds_generic_bridge_ldap_NLS = NLS {
+  title [ en "Generic bridge - LDAP" fr "Passerelle générique - LDAP"]
+  description [ 
+    en "Extracts custom directory entries through an LDAP query to be processed by custom collect"
+    fr "Extrait des entrées d'un répertoire à travers une requête LDAP pour qu'ils soient pris en charge par une collecte personnalisée."]
+  label_url [ en "LDAP Server URL" fr "URL du serveur LDAP"]
+  label_url_TT [
+    en "URL to the LDAP server to perform the extraction, in the form of ldap://dns_name_or_ipaddress"
+    fr "URL du serveur LDAP pour effectuer l'extraction, au format ldap://nom_dns_ou_adresseip" ]
+  label_login [en "Login" fr "Login"]
+  label_login_TT [
+    en "user login for extraction"
+    fr "login pour l'extraction"]
+  label_password [en "Password" fr "Mot de passe"]
+
+  label_searchbase [en "Search base" fr "Base de recherche"]
+  label_searchbaseTT [
+   en "LDAP search base to perform the data extraction, such as DC=mycompany,DC=com"
+   fr "Base de recherche LDAP pour l'extraction de données, par exemple DC=acme,DC=com"]
+  label_searchcriteria [en "Search filter" fr "Filtre de recherche"]
+  label_searchcriteriaTT [
+    en "LDAP filter of objects to retrieve. For instance (|(objectClass=groupofnames)(objectClass=inetOrgPerson))"
+   fr "Filtre LDAP pour préciser les objets à remonter. Par exemple (|(objectClass=groupofnames)(objectClass=inetOrgPerson))"
+  ]
+  label_attributes [ en "Attributes" fr "Attributs" ]
+  label_attributes_TT [ en "Optional attributes list to retrieve as a comma separated string. Retrieves all attributes if omitted."
+  fr "Liste optionnelle d'attributs à extraire, sous forme de chaines séparés par des virgules. Extrait tous les attributs si omis."
+   ]
+  
+ }
+
+
+ds_generic_bridge_ldap = Page {
+	title: $ds_generic_bridge_ldap_NLS.title
+	tags: "bwds_connector" , "ldap" , "custom", "bridge"
+	description: $ds_generic_bridge_ldap_NLS.description
+	icon: "bw_dsm/L/bw_genericapp.png"
+	large-icon: "bw_dsm/XL/bw_genericapp.png"	
+	 metadata: ( 	  
+	    category -> "infrastructure", 
+	    family -> "Custom",
+	    hasMapping -> False,
+	    multiFile -> False,
+	    hasDestDir -> True,
+	    action ->"ldap"
+	 )
+}
+
+/* config dynamic fragment */
+generic_bridge_ldap_params = Constant { value: "login,password,ldapurl,searchbase,searchcriteria,attributes"}
+
+deserializeOptions_generic_bridge_ldap = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant generic_bridge_ldap_params }
+  options = Input
+  login = Output { }
+  password = Output { }
+  domain = Output { }  
+  ldapurl = Output { }
+  searchbase = Output { }
+  searchcriteria = Output
+  attributes = Output
+}
+
+serializeOptions_generic_bridge_ldap = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant generic_bridge_ldap_params }
+  secretnames = Input { default: "password"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/  
+  login = Input { }
+  password = Input { }
+  domain = Input { } 
+  ldapurl = Input { }
+  searchbase = Input { }  
+  searchcriteria = Input { }
+  attributes = Input      
+}
+
+ds_generic_bridge_ldap_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  outValid = Variable { type: Boolean initial: False } 
+ 
+  // custom
+  ldapurl = Variable { initial: "ldap://"}
+  login = Variable
+  password = Variable
+  searchbase = Variable
+  searchcriteria = Variable
+  attributes = Variable
+  
+
+    doInit = NamedAction(
+     Call deserializeOptions_generic_bridge_ldap ( options to options, ldapurl from ldapurl, login from login, password from password, 
+      searchbase from searchbase, searchcriteria from searchcriteria, attributes from attributes )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_generic_bridge_ldap ( dsname to secretdsname, 
+          ldapurl to ldapurl, login to login, password to password, 
+          searchbase to searchbase, searchcriteria to searchcriteria, attributes to attributes   ) to options
+   )
+   
+  Edit { 
+     label: $ds_generic_bridge_ldap_NLS.label_url
+     variable: ldapurl
+     match: "ldap:\\/\\/.+"
+     not-empty:True
+     tooltip: $ds_generic_bridge_ldap_NLS.label_url_TT
+  }
+  Edit { 
+     label: $ds_generic_bridge_ldap_NLS.label_login
+     variable: login
+     not-empty:True
+     tooltip: $ds_generic_bridge_ldap_NLS.label_login_TT
+  }
+  Edit { 
+     label: $ds_generic_bridge_ldap_NLS.label_password
+     variable: password
+     not-empty:True
+     password-mode: True
+  }
+  Edit { 
+     label: $ds_generic_bridge_ldap_NLS.label_searchbase 
+     variable: searchbase
+     not-empty:True
+     tooltip: $ds_generic_bridge_ldap_NLS.label_searchbaseTT
+  }
+  Edit { 
+     label: $ds_generic_bridge_ldap_NLS.label_searchcriteria 
+     variable: searchcriteria
+     not-empty:True
+     tooltip: $ds_generic_bridge_ldap_NLS.label_searchcriteriaTT
+  }
+  Edit { 
+     label: $ds_generic_bridge_ldap_NLS.label_attributes
+     variable: attributes
+     not-empty:False
+     tooltip: $ds_generic_bridge_ldap_NLS.label_attributes_TT
+  } 
+  	  
+}
+

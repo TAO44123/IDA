@@ -1,0 +1,383 @@
+
+import "/webportal/pages/bw_ledger_admin/timing/services.page"
+import "/webportal/pages/bw_ledger_admin/timing/dialogs.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+compare = Dialog {
+	title: $compareitemdialog.title
+	height: 300
+	width: 750
+	
+	treeType = Variable 
+	treeMeta = Variable
+	itemName = Variable
+	key = Variable
+	
+	currentTimeslot = Variable
+	previousTimeslot = Variable
+	
+	allsilos = Dataset {
+		view: timeslot_silos with currentTimeslot to timeslot_uid
+	}
+	
+	silosChildren = Dataset { 
+		view: timeslot_silo_items with currentTimeslot to timeslot_uid 
+	}
+	
+	displayData = Dataset {
+		union: Union { datasets: allsilos, silosChildren discriminator-column: source }
+		excludes: Not SameValuePredicate ( key, Current tree_key )
+	}
+	
+	allsilos_parent = Dataset {
+		view: timeslot_silos with previousTimeslot to timeslot_uid
+	}
+	
+	silosChildren_parent = Dataset { 
+		view: timeslot_silo_items with previousTimeslot to timeslot_uid 
+	}
+	
+	displayData_parent = Dataset {
+		union: Union { datasets: allsilos_parent, silosChildren_parent discriminator-column: source }
+		excludes: Not SameValuePredicate ( key, Current tree_key )
+	}
+	
+	allTimes = Dataset {
+		union: Union { datasets: displayData, displayData_parent discriminator-column: source2 }
+	}
+	
+	Header { value: $compareitemdialog.header }
+	Spacer { height: 5}
+	Text { value: $timingfragmentcollect.item.displayname  ( Transform treeType using itemtype ,  treeMeta, itemName) compact: True 
+		decorator: Decorator {
+			width: Fill
+			before: Image { image: TemplateImageSelection ( treeType ) using itemIcon  width: 32 }
+		}
+	}
+	Text {
+		value: $compareitemdialog.messages.parentnotfound
+		layout: Layout { hint: indent: horizontal 10 vertical 5}
+		compact: True 
+		styling: normalBoldText
+		decorator: Decorator {
+			width: Fill 
+			before: Image { image: "16/famfamfam_silk_icons_v013/exclamation.png" width: 24}
+		}
+		hidden: IntPredicate ( Count displayData_parent ) { when != 0 then True }
+	}
+	
+	Spacer { height: 5}
+	
+	Table {
+		data: allTimes
+		layout: Layout { grab: horizontal True vertical True }
+		
+		
+		Column {
+			column: displayname
+			width: 100%
+			header: $importlog.concept
+		}
+		
+		Column {
+			header: $timing.totaltime column: totaltime text: @fromatMs( Current totaltime to inMs, True to includeMs ) width: 88px
+		}
+		Column {
+			header: $timing.sqltime column: sqltime text: @fromatMs( Current sqltime to inMs, True to includeMs )  width: 85px 
+		}
+		Column {
+			header: $timing.nbitems column: nbitems width: 70px align: Right
+		}
+		Column {
+			header: $timing.nbselect column: nbselect  width: 70px align: Right	
+		}
+		Column {
+			header: $timing.nberrors column: nberrors width: 70px align: Right	
+		}
+		
+		
+	}
+}
+
+fragment_collect = PageFragment {
+	mixins: timingMixin
+	
+	selectedTimeslotUid = Variable { type: String }
+	selectedKey = Variable { type: String }
+	selectedType = Variable { type: String }
+	selectedMeta = Variable { type: String }
+	selectedName = Variable { type: String }
+
+	
+	selectedParentTimeslotUid = Variable { type: String }
+	
+	alltimelslots = Dataset {
+		view: timeslot_all
+	}
+	
+	allsilos = Dataset {
+		view: timeslot_silos with selectedTimeslotUid to timeslot_uid
+	}
+	
+	silosChildren = Dataset { 
+		view: timeslot_silo_items with selectedTimeslotUid to timeslot_uid 
+	}
+	
+	displayData = Dataset {
+		union: Union { datasets: allsilos, silosChildren discriminator-column: source }
+	}
+	
+	allsilos_parent = Dataset {
+		view: timeslot_silos with selectedParentTimeslotUid to timeslot_uid
+	}
+	
+	silosChildren_parent = Dataset { 
+		view: timeslot_silo_items with selectedParentTimeslotUid to timeslot_uid 
+	}
+	
+	displayData_parent = Dataset {
+		union: Union { datasets: allsilos_parent, silosChildren_parent discriminator-column: source }
+	}
+	
+	joinData = Dataset {
+		join: Join { 
+			primary-dataset: displayData
+			primary-column: tree_key
+			primary-optional: False
+			
+			secondary-dataset: displayData_parent
+			secondary-column: tree_key
+			secondary-prefix: prev_
+			secondary-cardinality: optional
+			
+		}
+	}
+	
+	hierarchy = HierarchicalData {
+		dataset:  joinData
+		connect: parent tree_id to child tree_parent
+		initial: tree_parent = '$$parent$$'
+		
+	}
+	
+	Grid {
+		columns: GridColumn { width: 360px}, GridColumn{ width: 10px }, GridColumn { width: grow}, GridColumn{ width: 10px }
+		layout: Layout { grab: horizontal True vertical True  indent: horizontal 0 vertical 5}
+		GridRow{
+			GridCell {
+				Header { value: $timingfragmentcollect.header layout: Layout { indent: horizontal 18 vertical 0} }
+				
+				Spacer { height: 10}
+				
+				TemplateTable {
+					data: alltimelslots
+					layout: Layout { grab: horizontal True vertical True }
+					row-height: 55
+					show-lines: True
+					
+					ImageCell {
+						top: 5
+						left: 10
+						width: 32
+						height: 32
+						image: "bw_ledger_admin/time_32.png"
+	
+					}
+
+					TextCell {
+						column: displayname
+						top: 10
+						left: 60
+						height: 20
+						width: 300
+						styling: normalBoldText
+					}
+					
+					TextCell {
+						column: displayname
+						text: $timingfragmentall.labels.importdate
+						top: 30
+						left: 80
+						height: 20
+						width: 300
+						styling: normalText
+					}
+					
+					TextCell {
+						column: importdate
+						top: 30
+						left: 180
+						height: 20
+						width: 300
+						styling: normalText
+					}
+					
+					HiddenCell {
+						column: uid 
+						selection: selectedTimeslotUid
+					}
+					
+					HiddenCell {
+						column: parent_uid 
+						selection: selectedParentTimeslotUid
+					}
+					
+				}
+			}
+			GridCell { }
+			GridCell { 
+				//content
+				ConditionalGroup { 
+					StringCondition ( selectedTimeslotUid )
+					{
+						when IsEmpty then  [
+							Text { value: $timingpage.messages.selectformore styling: normalText compact: True }
+						]
+						
+						otherwise  [
+						
+							Header { value: $timingfragmentcollect.subheader layout: Layout { indent: horizontal 18 vertical 0} }
+				
+							Spacer { height: 2}
+				
+							
+							IncludeHTMLWidget {
+								template: treemapChart
+								datasets: allsilos ( siloname , siloname, totaltime_int ) to chartdata (  label ,code, count )
+								layout: Layout { grab: horizontal True vertical False hint: height 200}
+							}
+								
+							Tree {
+								data: hierarchy
+								layout: Layout { grab: horizontal True vertical True }
+								expand-level: 0
+								double-click: Dialog compare ( selectedKey to key, selectedType to treeType, selectedMeta to treeMeta, selectedName to itemName, selectedTimeslotUid to currentTimeslot , selectedParentTimeslotUid to previousTimeslot)
+								
+								commands: Commands {
+									presentation: Icon
+									position:After
+									Command { 
+										actions: Dialog compare ( selectedKey to key, selectedType to treeType, selectedMeta to treeMeta, selectedName to itemName, selectedTimeslotUid to currentTimeslot , selectedParentTimeslotUid to previousTimeslot)
+										icon: "16/famfamfam_silk_icons_v013/timeline_marker.png"
+										tooltip: $timingfragmentcollect.labels.comparewithparent
+										disabled: StringPredicate ( selectedKey ) { when IsEmpty then True otherwise False}
+									}
+									
+								}
+								
+								Column { column: tree_key  hidden: True selection: selectedKey}
+								Column { column: tree_type hidden: True selection:selectedType}
+								Column { column: tree_meta hidden: True selection: selectedMeta}
+								Column { column: itemname  hidden: True selection: selectedName}
+								
+								Column { column: tree_id width: 100% 
+									image: TemplateImageSelection ( Current tree_type ) using itemIcon
+									text:  $timingfragmentcollect.item.displayname  ( Transform Current tree_type using itemtype , Current tree_meta, Current itemname)
+									styling: StringStyling(Current tree_type) {when "silo" then normalBoldText}
+									header: $timingfragmentcollect.table.header.item
+								}
+								
+								Column {
+									header: ""
+									width: 25px
+									text: ""
+									column: prev_uid
+									image: StringImageSelection ( Current prev_uid ){
+										when IsEmpty then "16/famfamfam_silk_icons_v013/add.png" 
+										otherwise "16/famfamfam_silk_icons_v013/timeline_marker.png" 
+									}
+									
+									
+								}
+								
+								Column { header: $timing.start column: startdate text: DateLDAP( Current startdate).value("yyyy-MM-dd HH:mm:ss") width: 130px align: Center	styling: StringStyling(Current tree_type) {when "silo" then normalBoldText}}
+								Column { header: $timing.totaltime column: totaltime text: @fromatMs( Current totaltime to inMs, True to includeMs ) width: 88px		styling: StringStyling(Current tree_type) {when "silo" then normalBoldText}}
+								Column {
+									column: totaltime
+									width: 25px
+									fixed-width: True
+									header: ""
+									text: ""
+									image:  TemplateImageSelection ( Concat( Transform Current prev_uid using matched , Difference ( Current totaltime , Current prev_totaltime )) ) using evolutionNeutroIconsItems 
+									
+								}
+								Column { header: $timing.sqltime column: sqltime text: @fromatMs( Current sqltime to inMs, True to includeMs )  width: 85px 				styling: StringStyling(Current tree_type) {when "silo" then normalBoldText}}
+								Column {
+									column: sqltime
+									width: 25px
+									fixed-width: True
+									header: ""
+									text: ""
+									image:  TemplateImageSelection ( Concat( Transform Current prev_uid using matched , Difference ( Current sqltime , Current prev_sqltime )) ) using evolutionNeutroIconsItems 
+								}
+								Column { header: $timing.nbitems column: nbitems width: 50px align: Right																	styling: StringStyling(Current tree_type) {when "silo" then normalBoldText}}
+								Column {
+									column: nbitems
+									width: 25px
+									fixed-width: True
+									header: ""
+									text: ""
+									image:  TemplateImageSelection ( Concat( Transform Current prev_uid using matched , Difference ( Current nbitems , Current prev_nbitems )) ) using evolutionNeutroIconsItems 
+								}
+								Column { header: $timing.nbselect column: nbselect  width: 55px align: Right																styling: StringStyling(Current tree_type) {when "silo" then normalBoldText}}
+								Column {
+									column: nbselect
+									width: 25px
+									fixed-width: True
+									header: ""
+									text: ""
+									image:  TemplateImageSelection ( Concat( Transform Current prev_uid using matched , Difference ( Current nbselect , Current prev_nbselect )) ) using evolutionNeutroIconsItems 
+								}
+								Column { header: $timing.nberrors column: nberrors width: 55px align: Right																	styling: StringStyling(Current tree_type) {when "silo" then normalBoldText}}
+								Column {
+									column: nberrors
+									width: 25px		
+									fixed-width: True						
+									header: ""
+									text: ""
+									image:  TemplateImageSelection ( Concat( Transform Current prev_uid using matched , Difference ( Current nberrors , Current prev_nberrors )) ) using evolutionNeutroIconsItems 
+								}
+								
+								
+							}
+							Tiles {
+								tile-height: 20
+								columns: 2
+								layout: Layout { grab: horizontal True vertical False hint: height 25}
+								
+								Tile {
+									Text {
+										value: $timingfragmentcollect.messages.parentnotfound
+										compact: True
+										decorator: Decorator {
+											width: Fill
+											before: Image { image: "16/famfamfam_silk_icons_v013/add.png" width: 24  }
+										}
+									}
+								}
+								Tile {
+									Text {
+										value: $timingfragmentcollect.messages.parentfound
+										compact: True
+										decorator: Decorator {
+											width: Fill
+											before: Image { image: "16/famfamfam_silk_icons_v013/timeline_marker.png" width: 24  }
+										}
+									}
+								}
+							}
+						] 
+					}
+				}
+			}
+		}
+	}
+}

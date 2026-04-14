@@ -1,0 +1,335 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+/* Nationalized labels here */
+teamaccounts360NLS = NLS {
+	title [en "Team accounts list" fr "Liste des comptes d''accès de l'équipe"]
+	dyntitle [en "Team accounts list for {0}" fr "Liste des comptes d''accès de l''équipe de {0}"]
+	privileged [en "privileged" fr "privilégié"]
+	description [
+		en "This report lists the accounts of the team members. Only active accounts are taken into account. It is possible to choose to display only the direct team or the whole team. It is possible to filter the results to display only the differences compared to a given date. It is possible to modify the columns or export the results by right clicking on the table."
+		fr "Ce rapport liste les comptes d'accès des membres de l'équipe. Seuls les comptes actifs sont pris en compte. Il est possible de choisir d'afficher seulement l'équipe directe ou toute l'équipe. Il est possible de filtrer les résultats pour n'afficher que les différences par rapport à une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant un clic droit sur le tableau."
+	]
+}
+
+tactimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tactimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tacmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+teamaccounts360detail = Page {
+	title: $teamaccounts360NLS.title
+	description: $teamaccounts360NLS.description
+	tags: "identityext" priority 200, "byuid" , "browsing", "operationalmanager"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_teamaccounts
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page teamaccounts360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+teamaccounts360hp = Page {
+	title: $teamaccounts360NLS.title
+	description: $teamaccounts360NLS.description
+	tags: "myteam_access360" priority 1
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_teamaccounts
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page teamaccounts360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+teamaccounts360 = Page {
+	title: $teamaccounts360NLS.title
+	dynamic-title: $teamaccounts360NLS.dyntitle(identity.fullname)
+	description: $teamaccounts360NLS.description
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_teamaccounts
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:br_identityDetail with uid to uid
+	}
+
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	teamaccounts = Dataset {
+		view:enduser360_teamaccounts with uid to uid, UserVariable session_indirectTeam360 to indirectteam,UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_indirectTeam360
+					label:$session_indirectTeam360NLS.label
+					tooltip:$session_indirectTeam360NLS.tooltip
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				Table {
+					data:teamaccounts
+					layout:Layout {grab: horizontal True vertical True }
+					show-count:True
+					show-filter:True
+					configurable:True
+					persist-configuration:True
+					persist-configuration-key:uid
+					
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tactimeline_highlightnew360 when 'Removed' then tactimeline_highlightremoved360 when 'Invalid' then tactimeline_highlightremoved360 } text:Transform Current status using tacmapping360 }
+					Column {
+						sortable:True
+						filterable:True
+						column:hrcode
+						header:$identity.hrcode
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:fullname
+						header:$identity.fullname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:mail
+						header:$identity.mail
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:internal
+						header:$identity.internal
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:arrivaldate
+						header:$identity.arrivaldate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:departuredate
+						header:$identity.departuredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:orgdisplayname
+						header:$organisation.department
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:repositorydisplayname
+						header:$repository.concept
+						initially-masked:False
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountidentifier
+						header:$account.identifier
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlogin
+						width:200px
+						header:$account.login
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountusername
+						header:$paccount.username
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlocked
+						header:$account.locked
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountcreationdate
+						header:$account.creationdate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountexpiredate
+						header:$account.expiredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountpasswordlastsetdate
+						header:$account.passwordlastsetdate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountbadpasswordcount
+						header:$account.badpasswordcount
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlogincount
+						header:$account.logincount
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountpasswordnotrequired
+						header:$account.passwordnotrequired
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountpasswordcantchange
+						header:$account.passwordcantchange
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountprivilegedaccount
+						header:$teamaccounts360NLS.privileged
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountdontexpirepassword
+						header:$account.dontexpirepassword
+						initially-masked:True
+					}
+				}
+			}
+		}	
+	}
+}

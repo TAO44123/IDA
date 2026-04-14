@@ -1,0 +1,197 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+/* Nationalized labels here */
+access360analytics_identitygroupselfserviceNLS = NLS {
+	title [en "Self-Service Direct Group Characteristics Analysis" fr "Analyse des caractéristiques des groupes directs en self-service"]
+	description [
+		en "This report presents the active accounts direct groups' characteristics in a dynamic pivot table.You can choose your dimensions to perform analysis based on the accounts' characteristics."
+		fr "Ce rapport présente les caractéristiques des groupes directs des comptes actifs sous la forme d'un tableau croisé dynamique éditable. Vous pouvez choisir les dimensions d'analyse sur la base des caractéristiques des comptes."
+	]
+	measure [en "Number of membership" fr "Nombre de membres"]
+	grouprepocode [en "Group Repository Code" fr "Code référentiel du groupe" ]
+	grouprepository [en "Group Repository" fr "Référentiel du groupe"]
+}
+
+access360analytics_identitygroupselfservice = Page {
+	title: $access360analytics_identitygroupselfserviceNLS.title
+	tags: "identity", "searchresults"
+	description:$access360analytics_identitygroupselfserviceNLS.description
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwsa_identitygroupselfservice
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_identity_FilterEdition(SerializeSearch search to identitySearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Identity Search with SerializeSearch search to identitySearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+	
+	/* Parameters here */
+	search = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	data = Dataset {
+		search: Search {
+			view:access360r_identityaccountgroupinformation
+			definition:search
+		}
+	}
+	
+	/* Page content */
+	DynamicCrossTable {
+		data:data
+		layout:Layout { grab:horizontal True vertical True }
+	
+		dimensions:
+			Dim {
+				value: uid
+				label: fullname
+				header: $identity.fullname
+			},
+			Dim {
+				value: hrcode
+				label: hrcode
+				header: $identity.hrcode
+			},
+			Dim {
+				value: mail
+				label: mail
+				header: $identity.mail
+			},
+			Dim {
+				value: internal
+				label: internal
+				header: $identity.internal
+			},
+			Dim {
+				value: jobtitlecode
+				label: jobtitlecode
+				header: $identity.jobtitlecode
+			},
+			Dim {
+				value: jobtitledisplayname
+				label: jobtitledisplayname
+				header: $identity.jobtitledisplayname
+			},
+			Dim {
+				value: organisationcode
+				label: organisationcode
+				header: $porganisation.code
+			},
+			Dim {
+				value: organisationshortname
+				label: organisationshortname
+				header: $porganisation.shortname
+			},
+			Dim {
+				value: organisationdisplayname
+				label: organisationdisplayname
+				header: $organisation.concept
+			},
+			Dim {
+				value: accountuid
+				label: accountidentifier
+				header: $paccount.identifier
+			},
+			Dim {
+				value: accountlogin
+				label: accountlogin
+				header: $paccount.login
+			},
+			Dim {
+				value: accountdontexpirepassword
+				label: accountdontexpirepassword
+				header: $paccount.dontexpirepassword
+			},
+			Dim {
+				value: accountprivilegedaccount
+				label: accountprivilegedaccount
+				header: $paccount.privilegedaccount
+			},
+			Dim {
+				value: repositorycode
+				label: repositorycode
+				header: $prepository.code
+			},
+			Dim {
+				value: repositoryuid
+				label: repositorydisplayname
+				header: $repository.concept
+			},
+			Dim {
+				value: groupcode
+				label: groupcode
+				header: $pgroup.code
+			},
+			Dim {
+				value: groupuid
+				label: groupdisplayname
+				header: $group.concept
+			},
+			Dim {
+				value: grouprepositorycode
+				label: grouprepositorycode
+				header: $access360analytics_identitygroupselfserviceNLS.grouprepocode
+			},
+			Dim {
+				value: grouprepositoryuid
+				label: grouprepositorydisplayname
+				header: $access360analytics_identitygroupselfserviceNLS.grouprepository
+			}
+		measures:
+			Measure {
+				value: key
+				header: $access360analytics_identitygroupselfserviceNLS.measure
+			},
+			Measure {
+				value: organisationuid
+				header: $organisation.concept
+			},
+			Measure {
+				value: jobtitleuid
+				header: $identity.jobtitledisplayname
+			},
+			Measure {
+				value: uid
+				header: $identity.concept
+			},
+			Measure {
+				value: accountuid
+				header: $account.concept
+			},
+			Measure {
+				value: repositoryuid
+				header: $repository.concept
+			},
+			Measure {
+				value: groupuid
+				header: $group.concept
+			},
+			Measure {
+				value: grouprepositoryuid
+				header: $access360analytics_identitygroupselfserviceNLS.grouprepository
+			}
+	}
+}

@@ -1,0 +1,72 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+/* Add/Edit Dialogs */
+
+dlg_NLS = NLS {
+   title [ en "Edit Connector Server Configuration"  fr "Modifier la configuration du serveur de connexion"]
+   generalTab [en "General" fr "Général" ]
+   idLabel [en "Unique ID" fr "Identifiant"]
+   ipLabel [en "Connector Server Name or IP" fr "Nom ou adresse IP du serveur"]
+   portLabel [en "Port" fr "Port"]
+   passwordLabel [en "Password" fr "Mot de passe" ]
+   timeoutLabel [en "Connection Timeout (ms)" fr "Timeout de connexion (ms)"]
+   foldersTab [en "Folders" fr "Dossiers"]
+   readyLabel [en "Loading directory" fr "Dossier de chargement"]
+   archiveLabel [en "Archive directory" fr "Dossier des archives"]  
+   workLabel [en "Working directory" fr "Dossier de travail"]
+   scriptLabel [en "Scripts directory" fr "Dossier des paramètres"]
+   paramLabel [en "Parameters directory" fr "Dossier des paramètres"] 
+   
+}
+
+connector_edit = Dialog {  
+	title:   $dlg_NLS.title	
+	width: 460
+	height: 420
+	buttons: [ 
+		OkButton {
+		  disabled: Not AndPredicate{  BooleanPredicate( uidValid) BooleanPredicate(addressValid)  BooleanPredicate(portValid) BooleanPredicate(timeOutValid) } 
+		} 
+		CancelButton]
+		
+		/* connector server  variables */
+	   uid = Variable {   }
+	   address = Variable {   }
+	   port= Variable { initial: 8759 }
+	   password = Variable {  }
+	   timeOut = Variable {  initial: "0"}
+	   searchDir =  Variable { initial: "c:/connector/out/ready" }
+	   workDir =  Variable { initial: "c:/connector/out/work" }
+	   archiveDir =  Variable { initial: "c:/connector/out/archives" }
+	   scriptDir =  Variable {  initial: "c:/connector/scripts" }  
+	   paramsDir =  Variable { initial: "c:/connector/params"  }
+		
+		/* validation variables */
+		uidValid = Variable { type: Boolean}
+		addressValid = Variable {  type: Boolean}
+		portValid = Variable {  type: Boolean}
+		timeOutValid = Variable {  type: Boolean}
+				 
+		TabFolder {
+                  
+         TabItem {  text: $dlg_NLS.generalTab
+           Edit { variable: uid label: $dlg_NLS.idLabel not-empty: True validity: uidValid }  
+           Edit { variable: address label: $dlg_NLS.ipLabel not-empty: True validity: addressValid }
+           Edit { variable: port label: $dlg_NLS.portLabel match: "[0-9]+" validity: portValid not-empty: True}
+           Edit { variable: password label: $dlg_NLS.passwordLabel password-mode: True not-empty: True }   
+           Edit { variable: timeOut label: $dlg_NLS.timeoutLabel  match: "[0-9]+" validity: timeOutValid }               
+         }	 
+         TabItem { text: $dlg_NLS.foldersTab
+           Edit { variable: searchDir label: $dlg_NLS.readyLabel not-empty: True  }  
+           Edit { variable: archiveDir label: $dlg_NLS.archiveLabel not-empty: True}
+           Edit { variable: workDir label: $dlg_NLS.workLabel not-empty: True}
+           Edit { variable: scriptDir label: $dlg_NLS.scriptLabel  not-empty: True }   
+           Edit { variable: paramsDir label: $dlg_NLS.paramLabel  not-empty: True } 
+	              	       
+       }
+            
+	 }       
+}
+
+

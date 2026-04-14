@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwa_computerightsreviewstatus_inner" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketreview" displayname="compute rights with review status" notes="" begindate="" enddate="">
+	<ViewParam name="campaignid" displayname="campaignid"/>
+	<ViewParam name="perimeteruid" displayname="perimeteruid"/>
+	<ViewParam name="accountuid" displayname="accountuid"/>
+	<ViewParam name="permissionuid" displayname="permissionuid"/>
+	<ViewParam name="workflowcampaignid" displayname="workflow campaignid"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.accountuid.get()+&apos;$$&apos;+dataset.permissionuid.get()+&apos;$$&apos;+dataset.perimeteruid.get()"/>
+	<ViewSort name="sort" attribute1="A1666095851252_1186" direction1="DESC"/>
+	<ViewJoin name="J1666095425571_1141" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="rights">
+		<ViewJoin name="J1666095500204_1151" prefix="account" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+			<ViewAttribute name="A1666095508508_1154" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1666095549877_0" reference="accountuid" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewJoin name="J1666095500983_1152" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermission">
+			<ViewAttribute name="A1666095505971_1153" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1666095538718_0" reference="permissionuid" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="A1666095515992_1155" attribute="perimeteruid" operator="or" removedfromprojection="false" globalfilter="false" enabled="!param.isEmpty(&apos;perimeteruid&apos;)">
+			<ViewAttributeFilter name="F1666095600513_0" reference="perimeteruid" operation="in" ignoreifempty="false"/>
+			<ViewAttributeFilter name="F1666095610980_1" operation="isNull" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewAttribute name="1666095443307_1145" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1666091654387_426" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="!param.isEmpty(&apos;campaignid&apos;)" join="ticketaction">
+		<ViewJoin name="J1666091657761_427" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+			<ViewAttribute name="1666095465206_1150" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1666091672840_0" reference="campaignid" operation="eq" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1666095851252_1186" attribute="actiondate" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1666109309050_941" attribute="status" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1666109275890_0" operation="in" ignoreifempty="false">
+			<Value name="0" data="ok"/>
+			<Value name="1" data="revoke"/>
+			<Value name="2" data="update"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1666091654387_426" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="!param.isEmpty(&apos;workflowcampaignid&apos;)" join="ticketaction">
+		<ViewJoin name="J1666091657761_427" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+			<ViewJoin name="J1666796945113_612" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="parentticket">
+				<ViewAttribute name="1666796949275_614" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1666091672840_0" reference="workflowcampaignid" operation="eq" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

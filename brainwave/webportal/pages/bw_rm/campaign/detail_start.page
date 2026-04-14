@@ -1,0 +1,75 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+bw_rm_detail_startNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel process creation ?" fr "Annuler la création du processus ?"]
+	complete.buttontext [en "Start process" fr "Initier le processus"]
+	complete.confirm [en "Start process ?" fr "Démarrer le processus ?"]
+	complete.flashmessage [en "Process started" fr "Processus démarré"]
+	title [en "Start" fr "Start"]
+	_reviewitemuid [en "uid" fr "uid"]
+}
+
+
+bw_rm_detail_start = Page {
+	title: $bw_rm_detail_startNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	
+	/* variables here */
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord (create "bw_rm_detail")
+	reviewitemuidRecord = Record(workflow_organisationdisplayname with task.org_uid to uid)
+	
+	
+	/* Page content */
+	Text {
+		label: Concat($bw_rm_detail_startNLS._reviewitemuid,"*")
+		value: reviewitemuidRecord.displayname
+		mixins: workflowTextWithCommandMixin
+		commands: Command { 
+			actions: Dialog organisationPicker(task.org_uid from outUid)
+			icon: "16/audit/organisation_16.png"
+		}
+	}
+	
+	Header {
+		value: $bw_rm_detail_startNLS.mandatoryfields
+	}
+	
+	Group {
+		title: $bw_rm_detail_startNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		ButtonGroup {
+			Button { 
+				text: $bw_rm_detail_startNLS.cancel.buttontext
+				actions: Confirm $bw_rm_detail_startNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: StringPredicate (task.org_uid) { when IsEmpty then True }
+				
+				text: $bw_rm_detail_startNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $bw_rm_detail_startNLS.complete.confirm, TaskComplete task, Flash Information $bw_rm_detail_startNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+}
+

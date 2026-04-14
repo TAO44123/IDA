@@ -1,0 +1,224 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+
+/* Nationalized labels here */
+access360r_organisation_groups360NLS = NLS {
+	title [en "Groups List" fr "Liste des groupes"]
+	dyntitle [en "{0} Groups List" fr "Liste des groupes pour {0}"]
+	privileged [en "Privileged" fr "privilégié"]
+	directonly [en "Only this Organization" fr "seulement cette organisation"]
+	directgrouponly [en "only Direct Groups" fr "seulement les groupes directs"]
+
+	description [
+		en "This report lists the membership groups of the organization. Only active accounts are taken into account. It is possible to list only direct groups or all groups. It is possible to limit the results to direct members or to display all members. It is possible to filter the results to show only the differences since a given date. It is possible to modify the columns or to export the results by right clicking on the table."
+		fr "Ce rapport liste les groupes des membres de l'organisation. Seuls les comptes actifs sont pris en compte. Il est possible de lister seulement les groupes directs ou tous les groupes. Il est possible de limiter les résultats aux membres directs ou d'afficher tous les membres. Il est possible de filtrer les résultats pour ne faire apparaitre que les différences depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant un clic droit sur le tableau"
+	]
+}
+
+access360r_organisation_groups360 = Page {
+	title: $access360r_organisation_groups360NLS.title
+	description: $access360r_organisation_groups360NLS.description
+	dynamic-title: $access360r_organisation_groups360NLS.dyntitle(organisation.displayname)
+	tags: "organisation" priority 200, "byuid" , "analytics"
+	feature:bwa_organisationgroupslist
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+	inonlydirectselection = Parameter { multivalued:False default:True }
+	selectedgroup = Variable
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	onlydirectselection = Variable { multivalued:False initial:inonlydirectselection }
+	repositoryfilter = Variable
+	onlydirectgroup = Variable { initial:True type:Boolean }
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	organisation = Record {
+		view:br_organisationDetail with uid to uid 
+	}
+
+	repolist = Dataset {
+		view:bwaccess360r_organisationrepositorypicker with uid to uid
+	}
+	
+	teamgroups = Dataset {
+		view:bwaccess360r_organisationgroups_bv with uid to uid, onlydirectselection to directonly,UserVariable session_comparisonTimeslotTeam360 to dummy, repositoryfilter to repository unless-empty, onlydirectgroup to directgrouponly, UserVariable session_comparisonTimeslotTeam360 to comparisontimeslot unless-empty, UserVariable session_exclRemoved to excluderemoved, UserVariable session_exclSimilar to excludesimilar
+	}
+	
+	/* Page content */
+	goDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedgroup to inuid, 
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowperjob,
+										True to inshowperorg,
+										False to inshowaccounts,
+										False to inshowcontrols,
+										False to inshowdecisionhistory
+										)
+	)
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:onlydirectselection
+					label:$access360r_organisation_groups360NLS.directonly
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:onlydirectgroup
+					label:$access360r_organisation_groups360NLS.directgrouponly
+				}
+				Combo {
+					variable:repositoryfilter
+					allow-none:True
+					layout:Layout { hint: width 200 }
+					label:$repository.concept
+					options:Dynamic {
+						data:repolist
+						text:Current repositorydisplayname
+						value:Current repositoryuid
+					}
+				}
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+
+				PaginatedTable {
+					data:teamgroups
+					layout:Layout { grab:horizontal True vertical True }
+					page-size:1000
+					//show-count:True
+					show-filter:True
+					configurable:True
+					show-count-button: True
+				
+					Column {
+						column:hrcode
+						header:$identity.hrcode
+						sortable:True
+						filterable:True
+						width:128px
+					}
+					Column {
+						column:fullname
+						header:$identity.fullname
+						sortable:True
+						filterable:True
+						width:160px
+					}
+					Column {
+						column:mail
+						header:$identity.mail
+						sortable:True
+						filterable:True
+						width:160px
+					}
+					Column {
+						column:internal
+						text:Transform Current internal using booleanDisplayMapping
+						header:$identity.internal
+						sortable:True
+						filterable:True
+						width:96px
+					}
+					Column {
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						sortable:True
+						filterable:True
+						width:160px
+					}
+					Column {
+						column:orgdisplayname
+						header:$organisation.concept
+						sortable:True
+						filterable:True
+						width:160px
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						width:128px
+					}
+					Column {
+						column:groupuid
+						hidden:True
+						selection:selectedgroup
+					}
+					Column {
+						column:groupcode
+						initially-masked:True
+						header:$pgroup.code
+						sortable:True
+						filterable:True
+						width:320px
+						actions:ExecuteNamedAction goDetails
+					}
+					Column {
+						column:groupdisplayname
+						header:$group.concept
+						sortable:True
+						filterable:True
+						width:160px
+						actions:ExecuteNamedAction goDetails
+					}
+					Column {
+						column:repositorydisplayname
+						header:$repository.concept
+						sortable:True
+						filterable:True
+						width:160px
+					}
+				}
+			}
+		}	
+	}
+}

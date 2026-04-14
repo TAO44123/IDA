@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360_accessreviewcampaignsbv" displayname="accessreviewcampaignsbv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/accessreviewcampaignsbv.javascript" name="D1658927789026" description="main view for campaign management &#xA;- gets all campaign instances (optionally for a given definition)&#xA;- compute counters (nbtotal / nbprogress) [ SLOW] if option set&#xA;&#xA;Used by:&#xA;- old management pages ( obsolete)&#xA;- admin home page &#xA;&#xA;&#xA;&#xA;">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1658927789025" title="access review ticket logs">
+			<InnerView name="bwaccess360_accessreviewcampaigns">
+				<Param name="F1658928355406" viewparam="campaignid" viewparamvalue="{param.campaignid}"/>
+				<Param name="F1702628985809" viewparam="includecounters" viewparamvalue="{param.includecounters.get()}"/>
+				<Param name="F1702670661034" viewparam="def_uid" viewparamvalue="{param.def_uid.get()}"/>
+				<Param name="F1711112788899" viewparam="v22only" viewparamvalue="{param.v22only.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1658927797234" type="joinview" x="513" y="197" w="300" h="50" title="finalized states">
+			<InnerView name="bwaccess360_accessreviewcampaignsfinalized" prefix="finalized_">
+				<Param name="F1658928365194" viewparam="campaignid" viewparamvalue="{param.campaignid}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.finalized_key.get()}"/>
+			<ViewComputedAttribute name="currentcampaignstatus" displayname="currentcampaignstatus" type="String" expression="!dataset.isEmpty(&apos;campaigninstancecurrentstatus&apos;)?dataset.campaigninstancecurrentstatus.get():(dataset.ticketopen.get()?&apos;init&apos;:!dataset.isEmpty(&apos;finalized_key&apos;)?&apos;closed&apos;:&apos;active&apos;)"/>
+		</Component>
+		<Component name="C1658927885487" type="joinview" x="509" y="388" w="300" h="50" title="counters" enable="{param.includecounters.get()}">
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.reviewed_key.get()}"/>
+			<InnerView name="bwaccess360_accessreviewcampaigns_nbentries" prefix="reviewed_">
+				<Param name="F1658928299293" viewparam="filterbystatus" viewparamvalue="{param.filterbystatus}"/>
+				<Param name="F1658928449477" viewparam="campaignid" viewparamvalue="{param.campaignid}"/>
+			</InnerView>
+		</Component>
+		<Link name="L1658927886056" source="C1658927797234" target="C1658927885487" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1662111072368" type="joinview" x="416" y="369" w="300" h="50" title="additional infos md">
+			<InnerView name="bwr_getcampaigninstanceadditionalinfos" prefix="campaigninstance">
+				<Param name="F1702760751632" viewparam="campaignid" viewparamvalue="{param.campaignid}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.campaigninstancesubkey.get()}"/>
+		</Component>
+		<Link name="L1662111072744" source="C1658927789025" target="C1662111072368" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1662111073304" source="C1662111072368" target="C1658927797234" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1717693926695" type="note" x="425" y="34" w="332" h="57" title="recorduid = unique numeric id of each &#xA;campaign instance"/>
+	</Definition>
+	<ViewParam name="filterbystatus" displayname="filterbystatus" type="String"/>
+	<ViewParam name="campaignid" displayname="campaignid" type="Integer">
+	</ViewParam>
+	<ViewParam name="includecounters" displayname="includecounters" type="Boolean" defaultvalue="true">
+	</ViewParam>
+	<ViewParam name="def_uid" displayname="def_uid" type="String">
+	</ViewParam>
+	<ViewParam name="v22only" displayname="version 2.2 only" type="Boolean">
+	</ViewParam>
+	<ViewSort name="sort" attribute1="recorduid" direction1="DESC"/>
+</View>

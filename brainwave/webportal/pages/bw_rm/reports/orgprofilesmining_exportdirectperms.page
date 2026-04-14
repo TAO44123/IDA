@@ -1,0 +1,89 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+/* Nationalized labels here */
+bwpm_orgprofilesmining_exportiderectpermsNLS = NLS {
+	title [en "Permission export" fr "Export des permissions"]
+	dyntitle [en "Direct permissions/identity export for organisation {0}" fr "Export des permissions directes/identités pour l''organisation {0}"]
+}
+
+bwpm_orgprofilesmining_exportidirectperms = Page {
+	title: $bwpm_orgprofilesmining_exportiderectpermsNLS.title
+	dynamic-title: $bwpm_orgprofilesmining_exportiderectpermsNLS.dyntitle(organisation.shortname)
+	
+	/* Parameters here */
+	uid = Parameter
+	permRules = Parameter { multivalued: True  }
+	processIdentifier = Parameter
+		
+	/* Variables here */
+	
+	/* Datasets and records here */
+	export = Dataset {
+		view:bvprofilesminingperorg_md_full with uid to organisation, permRules to permRules, processIdentifier to processIdentifier
+		excludes:StringPredicate(Current role_code) { when IsEmpty then False otherwise True}
+	}
+	organisation = Record {
+		view:br_organisation_picker with uid to paramUid
+	}
+	
+	/* Page content */
+	
+	Table {
+		data:export
+		layout:Layout {grab:horizontal True vertical True}
+		show-count:True
+		show-filter:True
+		
+		Column {
+			column:identityhrcode
+			width:200px
+			header: $permminingNLS.hrcode
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:identityfullname
+			width:200px
+			header: $permminingNLS.fullname
+			sortable:True
+			filterable:True
+		}
+/* 		Column {
+			column:mail
+			width:200px
+			header: $permminingNLS.mail
+			sortable:True
+			filterable:True
+		}*/
+/* 	Column {
+			column:permissioncode
+			width:200px
+			header: $permminingNLS.permcode
+			sortable:True
+			filterable:True
+		}*/
+		Column {
+			column:permissiondisplayname
+			width:200px
+			header: $permminingNLS.permname
+			sortable:True
+			filterable:True
+		}
+/* 		Column {
+			column:permissiondescription
+			width:200px
+			header: $permminingNLS.permdesc
+			sortable:True
+			filterable:True
+		}*/
+		Column {
+			column:applicationdisplayname
+			width:200px
+			header: $permminingNLS.app
+			sortable:True
+			filterable:True
+		}
+	}
+}

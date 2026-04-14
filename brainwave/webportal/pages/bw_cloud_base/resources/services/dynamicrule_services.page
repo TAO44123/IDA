@@ -1,0 +1,134 @@
+
+// DynmaicRule
+
+getDynamicRuleLabelByUid = StringService {
+	reference: dynamicrule
+	selection: getRuleLabelByUid	
+	uid = Input {
+		type: String
+		mandatory: True
+	}
+}
+
+getDynamicRuleContentByUid = StringService {
+	reference: dynamicrule
+	selection: getRuleContentByUid	
+	uid = Input {
+		type: String
+		mandatory: True
+	}
+}
+
+//saves or update dynamic rule 
+saveRule = EventService {
+  reference: dynamicrule
+	selection: saveRule
+	uid = Input { type: String } // if omitted, will create one with an auto id. if provided, will update the existing rule or create one if not exist
+	content = Input {	  type: String	  mandatory: True	}	// serialized content for the search
+	title = Input { type: String } // if empty, will compute automatically
+	scope =  Input { type: String }
+	family =  Input { type: String }
+	error = Output
+	uid = Output // actual uid of the created resource, typically will be DYN:xyz
+}
+
+deleteRule = EventService {
+  reference: dynamicrule
+	selection: deleteRule
+	uid = Input { type: String mandatory: True } 
+	error = Output
+}
+
+executeRules = EventService {
+  reference: dynamicrule
+	selection: executeRules
+	timeslot =  Input { type: String }		
+	family =  Input { type: String }
+	scope =  Input { type: String }
+	type =  Input { type: String }	
+	error = Output 
+	nbRulesSaved = Output  
+}
+
+/*test page for service,  uncomment homepage-for to activate */
+testRuleLabelByUid = Page {
+
+  title: "Test Rule Service"
+ // homepage-for: All
+ 
+  selectedRuleUid = Variable
+  dummy = Variable
+  error = Variable
+  
+  createdRuleUid = Variable 
+  
+	ruleResults = Dataset {
+    view: bw_perms_inrules with selectedRuleUid to rulename
+  }
+  
+  ButtonGroup {
+	  Button {
+	    text: "Create DRule Permissions"
+	    actions: 
+	       Call saveRule ( "myRule2" to uid, "permission(*|application(*eqDisplayName[displayNameParam=^\"BWVAULTSERVER\"]))" to content, 
+	         "Test" to family , createdRuleUid from uid,error from error ),
+	         Flash Concat( "create or update id=", createdRuleUid, " error=", error) 
+	  }	  
+	  Button {
+	    text: "Create DRule Permissions, auto ID"
+	    actions: 
+	       Call saveRule ( "permission" to content, "Test" to family , "Mes permissions" to title, createdRuleUid from uid, error from error),
+	       Flash Concat( "id=", createdRuleUid, " error=", error)
+	  }
+	  Button {
+	    text: "Delete Last created rule"
+	    actions: 
+	       Call deleteRule ( createdRuleUid to uid, error from error ),
+	       Flash Concat( "deleted id=", createdRuleUid, " error=", error) 
+	  }	
+	  Button {
+	    text: "Delete Selected rule"
+	    actions: 
+	       Call deleteRule ( selectedRuleUid to uid, error from error ),
+	       Flash Concat( "deleted id=", selectedRuleUid, " error=", error) 
+	  } 
+	  
+	  Button {
+	    text: "Execute PAM rules"
+	    actions:
+	    Call executeRules ( "bwcpam" to family, error from error),
+	    Flash Concat( " error=", error) 
+	  }
+	}
+	
+	Text {
+	  value: createdRuleUid
+	  label: "LAst Crated Rule UID"	
+	}
+  
+	RuleSelector {
+		entity: Permission
+		selection: selectedRuleUid
+		editable: True		
+		tag-family: "Test"
+		label: "Select Rolemining rule"
+		layout: Layout { grab: horizontal True vertical False }
+	}
+	
+	Text {
+	  value: @getDynamicRuleLabelByUid(selectedRuleUid to uid)
+	  label: "Selected Label"	
+	}
+	
+		Table {
+		  data: ruleResults
+		  show-count: True
+		  layout: Layout { grab: horizontal True vertical True }
+		  Column { column: displayname header: "perm"}
+		  Column { column: app_code header: "app"}
+		}
+	
+		    
+  
+  
+}

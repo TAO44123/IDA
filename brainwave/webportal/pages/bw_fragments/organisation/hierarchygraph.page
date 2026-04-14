@@ -1,0 +1,111 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+fragmentOrganisationHierarchyGraphNLS = NLS {
+	empty [ en "No child organisation found" fr "Pas d'organisations filles trouvées" ]
+}
+
+orgchart = HTMLWidgetTemplate {
+	source-file: "static/bw_fragments/hierarchy/organisation_hierarchy.html"
+	datasets: orgdataset ( recorduid as Integer , code as String, shortname as String, displayname as String,
+		organisationtypedisplayname as String , parent_recorduid as Integer,
+		parent_code as String,  managerrecorduid as Integer, manageruid as String, managerfullname as String, uid as String, nbtotalmembers as Integer, nbdirectmembers as Integer)
+	
+	widget-events: identity_details ( identityuid as String ), organisation_details ( organisationuid as String )
+}
+
+
+fragmentOrganisationHierarchyGraphError = Style {
+	background:Color red
+	foreground:white
+	bold:True
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation HierarchyGraph
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationHierarchyGraph = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outidentityuid = Variable
+	outorganisationuid = Variable
+	
+	/* Datasets and records here */
+	myOrgDataset = Dataset {
+		view: bwf_org_childrentree with inuid to uid unless-empty
+	}
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goOrganisationDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				GoTo Activity Organisation Detail with outorganisationuid to paramOrganisationUid
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	/* Page content */
+	
+	ConditionalGroup {
+		IntCondition(Count myOrgDataset) {
+			when <2 then [
+				Header {
+					value:$fragmentOrganisationHierarchyGraphNLS.empty
+				}
+			]
+			otherwise [
+				IncludeHTMLWidget {
+					layout: Layout { grab: horizontal True vertical True }
+					template: orgchart
+					datasets: 	myOrgDataset  ( uid, recorduid, code , shortname, displayname, 
+												organisationtypedisplayname,
+												parent_code, parent_recorduid,
+												manageruid, managerrecorduid, managerfullname,
+												nbdirectmembers, nbtotalmembers
+												) 
+								to orgdataset ( uid, recorduid, code , shortname, displayname, 
+												organisationtypedisplayname,
+												parent_code, parent_recorduid,
+												manageruid, managerrecorduid, managerfullname,
+												nbdirectmembers, nbtotalmembers
+												)
+					widget-events: {
+						when identity_details then [
+							Set Current identityuid to outidentityuid,
+							ExecuteNamedAction goIdentityDetails
+						]
+						when organisation_details then [
+							Set Current organisationuid to outorganisationuid,
+							ExecuteNamedAction goOrganisationDetails
+						]
+					}
+				}
+			]		
+		}
+	}
+}

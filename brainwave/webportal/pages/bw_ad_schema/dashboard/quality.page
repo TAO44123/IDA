@@ -1,0 +1,200 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+import "/webportal/pages/bw_ad_schema/resources/dashboards_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+
+
+ad_dashboard_quality = Page {
+	title: $ad_dashboard_qualityNLS.title
+	dynamic-title: $ad_dashboard_qualityNLS.dyntitle(repository.displayname)
+	description: $ad_dashboard_qualityNLS.description
+
+	mixins: dashboardPageMixin
+
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+	enter-event: Set uid to domainsCriteria
+	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	filterByDomains = Parameter {
+		type: String
+		multivalued: True
+	}
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+
+	/* selection and filtering variables */
+	domainsCriteria = Variable { type: String multivalued: True initial:uid }
+
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with domainsCriteria to uid	
+	}
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+	accountDisabled 			= Dataset { view: ad_account_disabled with domainsCriteria to domains unless-empty  }
+	accountDisabled_prev		= Dataset { view: ad_account_disabled with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountInactive 			= Dataset { view: ad_account_inactive with domainsCriteria to domains unless-empty  }
+	accountInactive_prev		= Dataset { view: ad_account_inactive with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	accountOrphan 				= Dataset { view: ad_account_orphan with domainsCriteria to domains unless-empty   }
+	accountOrphan_prev			= Dataset { view: ad_account_orphan with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	accountService 				= Dataset { view: ad_account_service with domainsCriteria to domains unless-empty   }
+	accountService_prev			= Dataset { view: ad_account_service with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	accountDisabledNoou			= Dataset { view: ad_account_disabled_noou with domainsCriteria to domains unless-empty   }
+	accountDisabledNoou_prev	= Dataset { view: ad_account_disabled_noou with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	groupEmpty 					= Dataset { view: ad_group_empty with domainsCriteria to domains unless-empty   }
+	groupEmpty_prev				= Dataset { view: ad_group_empty with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	groupDisabled 				= Dataset { view: ad_group_disabled with domainsCriteria to domains unless-empty   }
+	groupDisabled_prev			= Dataset { view: ad_group_disabled with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	groupCyclic 				= Dataset { view: ad_group_cyclic with domainsCriteria to domains unless-empty   }
+	groupCyclic_prev			= Dataset { view: ad_group_cyclic with domainsCriteria to domains unless-empty  timeslot: FromPage(-1)  }
+	
+	
+	/* Totals datasets */
+	accounts 				= Dataset { view: ad_allaccounts with domainsCriteria to domains unless-empty  }
+	accountsActive 			= Dataset { view: ad_activeaccounts with domainsCriteria to domains unless-empty  }
+	groups 					= Dataset { view: ad_groups with domainsCriteria to domains unless-empty  }
+	
+	/* Page content */
+	
+	
+	Grid {
+		fill: Both 
+		gap:0
+		insets:0
+		columns: GridColumn { width: 0 }, GridColumn { width: grow }
+		layout: Layout {  grab: horizontal True vertical True }
+		
+		
+		GridRow{
+			GridCell { }
+			
+			GridCell {
+				// Page content
+				
+				Grid { 
+					layout: Layout { indent: horizontal 0 vertical 20 }
+					columns: GridColumn { width: grow 1 }  ,GridColumn { width: grow 1}, GridColumn { width: grow 2}
+					GridRow { height: 8 GridCell { span: 3 } }
+					GridRow {
+						GridCell { }
+						GridCell {
+						
+							IncludeFragment {
+								fragment: deDetailsHeaders with
+									value-of $ad_dashboard_qualityNLS.kpi.headers.total to  firstHeader
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.account_disabled to label,
+									value-of Count accountDisabled to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.totalaccounts to valueOverString,
+									value-of Count accountDisabled_prev to previousValue,
+									value-of "analytics_account_disabled" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.account_inactive to label,
+									value-of Count accountInactive to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountInactive_prev to previousValue,
+									value-of "analytics_account_inactive" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.account_orphan to label,
+									value-of Count accountOrphan to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountOrphan_prev to previousValue,
+									value-of "analytics_account_orphan" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.account_service to label,
+									value-of Count accountService to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountService_prev to previousValue,
+									value-of "analytics_account_service" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.account_disabled_noou to label,
+									value-of Count accountDisabledNoou to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.totalaccounts to valueOverString,
+									value-of Count accountDisabledNoou_prev to previousValue,
+									value-of "analytics_account_disabled_noou" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.group_empty to label,
+									value-of Count groupEmpty to currentValue,
+									value-of Count groups to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.totalgroups to valueOverString,
+									value-of Count groupEmpty_prev to previousValue,
+									value-of "analytics_group_empty" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.group_disabled to label,
+									value-of Count groupDisabled to currentValue,
+									value-of Count groups to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.totalgroups to valueOverString,
+									value-of Count groupDisabled_prev to previousValue,
+									value-of "analytics_group_disabled" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_qualityNLS.kpi.label.group_cyclic to label,
+									value-of Count groupCyclic to currentValue,
+									value-of Count groups to currentValueOver,
+									value-of $ad_dashboard_qualityNLS.kpi.label.global.totalgroups to valueOverString,
+									value-of Count groupCyclic_prev to previousValue,
+									value-of "analytics_group_cyclic" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+						}
+						GridCell {}
+					}
+					GridRow {
+						height: grow 
+						GridCell { span: 3}
+					}
+				}
+			}
+		}
+	}
+}

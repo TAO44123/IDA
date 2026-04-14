@@ -1,0 +1,103 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_changes.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+
+import "/webportal/pages/bw_ledger_admin/resources/styles.page"
+import "/webportal/pages/bw_ledger_admin/timing/fragment_timeslots.page"
+import "/webportal/pages/bw_ledger_admin/timing/fragment_collect.page"
+import "/webportal/pages/bw_ledger_admin/timing/fragment_changes.page"
+import "/webportal/pages/bw_ledger_admin/timing/fragment_all.page"
+
+timeslot_timings = Page {
+	title: $timingspage.title
+	large-icon: '48/red/repository.png'
+	tags: "admin"
+	feature: ledgeradmin_showtimings
+	
+	mixins: timingMixin
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedFragment = Variable { type: String initial: "timeslots" }
+	
+	/* Datasets and records here */
+	latestTimeslot = Record { view: timeslot_all }
+
+	/* Page content */
+	
+	Grid {
+		columns: GridColumn { width: 100 px }, GridColumn { width: grow }
+		insets: 0
+		gap: 0
+		
+		layout: Layout { grab: horizontal True vertical True }
+		
+		GridRow {
+			GridCell {
+				background: Color RGB (240,240,240)
+				
+				Spacer { height: 5}
+				
+				Button { actions: Set "timeslots" to selectedFragment text: "" image: "bw_ledger_admin/time_32.png" layout: Layout { hint: width 100 height 40 } presentation: Link } 
+				Button { actions: Set "timeslots" to selectedFragment  text: $timingspage.section.timeslots layout: Layout { hint: width 100 height 20  } presentation: Link styling: normalText  } 
+				
+				Spacer { height: 5}
+				
+				Button { actions: Set "collect" to selectedFragment text: "" image: "bw_ledger_admin/collect_32.png" layout: Layout { hint: width 100 height 40 } presentation: Link } 
+				Button { actions: Set "collect" to selectedFragment  text: $timingspage.section.collect layout: Layout { hint: width 100 height 20  } presentation: Link styling: normalText  } 
+				
+				Spacer { height: 5}
+				
+				Button { actions: Set "changes" to selectedFragment text: "" image: "bw_ledger_admin/change_32.png" layout: Layout { hint: width 100 height 40 } presentation: Link } 
+				Button { actions: Set "changes" to selectedFragment  text: $timingspage.section.changes layout: Layout { hint: width 100 height 20  } presentation: Link styling: normalText  } 
+				
+				Spacer { height: 5}
+				
+				Button { actions: Set "seeall" to selectedFragment text: "" image: "bw_ledger_admin/seeall_32.png" layout: Layout { hint: width 100 height 40 } presentation: Link } 
+				Button { actions: Set "seeall" to selectedFragment  text: $timingspage.section.details layout: Layout { hint: width 100 height 20  } presentation: Link styling: normalText  } 
+				
+				
+			}
+			GridCell {
+				background: Color white
+				
+				ConditionalGroup {
+					StringCondition ( selectedFragment ){
+						when "timeslots" then [
+							IncludeFragment {
+								fragment: fragment_timeslots with value-of latestTimeslot.uid to initial
+								compact: True
+							}
+						]
+						
+						when "collect" then [
+							IncludeFragment {
+								fragment: fragment_collect 
+								compact: True
+							}
+						]
+						
+						when "changes" then [
+							IncludeFragment {
+								fragment: fragment_changes 
+								compact: True
+							}
+						]
+						
+						when "seeall" then [
+							IncludeFragment {
+								fragment: fragment_all
+								compact: True
+							}
+						]
+					}
+				}
+			}
+		}
+	}
+}

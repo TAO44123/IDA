@@ -1,0 +1,361 @@
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/cmdbci/details.page"
+import "/webportal/pages/bw_fragments/cmdbci/topdown.page"
+import "/webportal/pages/bw_fragments/cmdbci/bottomup.page"
+import "/webportal/pages/bw_fragments/cmdbci/applications.page"
+import "/webportal/pages/bw_fragments/cmdbci/repositories.page"
+import "/webportal/pages/bw_fragments/cmdbci/servers.page"
+import "/webportal/pages/bw_fragments/cmdbci/shares.page"
+import "/webportal/pages/bw_fragments/cmdbci/accounts.page"
+import "/webportal/pages/bw_fragments/cmdbci/serversaccounts.page"
+import "/webportal/pages/bw_fragments/cmdbci/applicationaccounts.page"
+import "/webportal/pages/bw_fragments/cmdbci/rights.page"
+import "/webportal/pages/bw_fragments/cmdbci/fsrights.page"
+import "/webportal/pages/bw_fragments/cmdbci/controls.page"
+import "/webportal/pages/bw_fragments/cmdbci/analytics.page"
+
+import "/webportal/pages/bw_fragments/custom/cmdbciExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+cmdbciDetailsPageNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	repository [en "Repository" fr "Référentiel"]
+	repositories [en "Repositories" fr "Référentiels"]
+	servers [en "Servers" fr "Serveurs"]
+	access [en "Access" fr "Accès"]
+	applications [en "Applications" fr "Applications"]
+	rights [en "Application Rights" fr "Droits Applicatifs"]
+	accounts [en "Repository Accounts" fr "Comptes des référentiels"]
+	serveraccounts [en "Server Accounts" fr "Comptes des serveurs"]
+	applicationaccounts [en "Application Accounts" fr "Comptes des applications"]
+	shares [en "Shares" fr "Partages"]
+	sharesrights [en "Data access rights" fr "Droits sur les données"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	topdown [en "Top-down dependencies" fr "Dépendances filles"]
+	bottomup [en "Bottom-up dependencies" fr "Dépendances pères"]
+
+
+	title [en "CMDB Element Details" fr "Détails de l'élément CMDB" ]
+	dynamictitle [en "CMDB Element Details {0}" fr "Détails de l''élément CMDB {0}" ]
+	cmdbci [en "CMDB Element" fr "Elément CMDB"]
+	pusage [en "Permission usage" fr "Usage de la permission"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	
+	notexists [
+		en "This CMDB element does not exist in the current timeslot, you should select a different timeslot"
+		fr "Cet élément CMDB n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+cmdbciDetailsParkingPage = Page {
+	title: $cmdbciDetailsPageNLS.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( cmdbci.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page cmdbciDetailsPage with-current-parameters
+		}
+	
+	paramCmdbciUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	cmdbci = Record {
+		view: bwf_cmdbciDetail with paramCmdbciUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$cmdbciDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+cmdbciDetailsPage = Page {
+	title: $cmdbciDetailsPageNLS.title
+	dynamic-title: $cmdbciDetailsPageNLS.dynamictitle ( cmdbci.displayname )
+	icon: %concept.cmdbci
+	feature: All(pam_license, Any(governance_license, compliance_license))
+	mixins: detailsPage
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( cmdbci.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page cmdbciDetailsParkingPage with-current-parameters
+		}
+	enter-event:BooleanCase using FeaturePredicate adminmenu in { when True then [ Set True to isAdmin ] when False then [ Set False to isAdmin ] }
+	
+	// Parameters Here
+	paramCmdbciUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedCmdbciUid = Variable {
+		type: String
+		initial: paramCmdbciUid
+	}
+	
+	nbdefects = Variable
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+
+	showextended = Variable { initial:False }
+
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_cmdbci = Variable { initial:False multivalued:False type:Boolean }
+	active_repositories = Variable { initial:False multivalued:False type:Boolean }
+	active_servers = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_applicationaccounts = Variable { initial:False multivalued:False type:Boolean }
+	active_serveraccounts = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_sharesrights = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	active_topdown = Variable { initial:False multivalued:False type:Boolean }
+	active_bottomup = Variable { initial:False multivalued:False type:Boolean }
+
+	allcis = Variable { type:String multivalued:True } // All sub CI elements including this one
+	
+	isAdmin = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Dataset for Reports
+	cmdbci = Record {
+		view: bwf_cmdbciDetail with selectedCmdbciUid to uid
+	}
+
+	Grid {
+		columns: GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$cmdbciDetailsPageNLS.details
+						activation-event:Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text:$cmdbciDetailsPageNLS.cmdbci
+								activation-event:Set True to active_cmdbci
+								IncludeFragment {
+									fragment: fragmentCmdbciFullDetails with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanupdateowners,
+										value-of Eval "active_detail.get() && active_cmdbci.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$cmdbciDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentCmdbciExtendedDetails with value-of selectedCmdbciUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$cmdbciDetailsPageNLS.servers
+								activation-event:Set True to active_servers
+
+								IncludeFragment {
+									fragment: fragmentCmdbciServers with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanredirectto,
+										value-of Eval "active_detail.get() && active_servers.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cmdbciDetailsPageNLS.repositories
+								activation-event:Set True to active_repositories
+
+								IncludeFragment {
+									fragment: fragmentCmdbciRepositories with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanredirectto,
+										value-of Eval "active_detail.get() && active_repositories.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cmdbciDetailsPageNLS.applications
+								activation-event:Set True to active_applications
+							
+								IncludeFragment {
+									fragment: fragmentCmdbciApplications with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanredirectto,
+										value-of Eval "active_detail.get() && active_applications.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cmdbciDetailsPageNLS.shares
+								feature:unstructureddata_license
+								activation-event:Set True to active_shares
+
+								IncludeFragment {
+									fragment: fragmentCmdbciShares with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanredirectto,
+										value-of Eval "active_detail.get() && active_shares.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cmdbciDetailsPageNLS.topdown
+								activation-event:Set True to active_topdown
+
+								IncludeFragment {
+									fragment: fragmentCmdbciTopDown with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanredirectto,
+										value-of Eval "active_detail.get() && active_topdown.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cmdbciDetailsPageNLS.bottomup
+								activation-event:Set True to active_bottomup
+
+								IncludeFragment {
+									fragment: fragmentCmdbciBottomUp with
+										value-of selectedCmdbciUid to inuid,
+										value-of isAdmin to incanredirectto,
+										value-of Eval "active_detail.get() && active_bottomup.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$cmdbciDetailsPageNLS.access
+						activation-event:Set True to active_access
+
+						TabFolder {
+							border:False
+
+							TabItem {
+								text:$cmdbciDetailsPageNLS.serveraccounts
+								activation-event:Set True to active_serveraccounts
+							
+								IncludeFragment {
+									fragment: fragmentCmdbciServerAccounts with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanredirectto,
+										value-of True to incanshowdisabled,
+										value-of True to incanreconcile,
+										value-of Eval "active_access.get() && active_serveraccounts.get()" to inenabled
+								}
+							}
+							
+							TabItem {
+								text:$cmdbciDetailsPageNLS.accounts
+								activation-event:Set True to active_accounts
+							
+								IncludeFragment {
+									fragment: fragmentCmdbciAccounts with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanredirectto,
+										value-of True to incanshowdisabled,
+										value-of True to incanreconcile,
+										value-of Eval "active_access.get() && active_accounts.get()" to inenabled
+								}
+							}
+
+							TabItem {
+								text:$cmdbciDetailsPageNLS.applicationaccounts
+								activation-event:Set True to active_applicationaccounts
+							
+								IncludeFragment {
+									fragment: fragmentCmdbciApplicationAccounts with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanredirectto,
+										value-of True to incanshowdisabled,
+										value-of True to incanreconcile,
+										value-of Eval "active_access.get() && active_applicationaccounts.get()" to inenabled
+								}
+							}
+							
+							TabItem {
+								text:$cmdbciDetailsPageNLS.rights
+								activation-event:Set True to active_rights
+							
+								IncludeFragment {
+									fragment: fragmentCmdbciRights with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of Eval "active_access.get() && active_rights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cmdbciDetailsPageNLS.sharesrights
+								feature:unstructureddata_license
+								activation-event:Set True to active_sharesrights
+
+								IncludeFragment {
+									fragment: fragmentCmdbciFSRights with
+										value-of selectedCmdbciUid to inuid,
+										value-of True to incanshowdetails,
+										value-of Eval "active_access.get() && active_sharesrights.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$cmdbciDetailsPageNLS.controls
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						activation-event:
+							Set True to active_control
+
+						IncludeFragment {
+							fragment: fragmentCmdbciControlDefectsList with
+								value-of selectedCmdbciUid to inuid,
+								value-of Eval "active_control.get()" to inenabled, value-of True to incanshowdetails, nbdefects binds-to outnbdefects
+						}
+					}
+					TabItem {
+						text:$cmdbciDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+
+						IncludeFragment {
+							fragment: fragmentCmdbciAnalytics with
+								value-of selectedCmdbciUid to inuid,
+								value-of Eval "active_analytics.get()" to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,1004 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/bw_iasreview/fragments.page"
+import "/webportal/pages/bw_iasreview/resources.page"
+import "/webportal/pages/resources/constants.page"
+import "/webportal/pages/bw_iasreview/fragments/missingReviewers.page"
+import "/webportal/pages/bw_iasreview/lib/nls.page"
+import "/webportal/pages/bw_iasreview/lib/constants.page"
+import "/webportal/pages/bw_iasreview/review/rolesContent/perimeterTable.page"
+import "/webportal/pages/bw_iasreview/review/rolesContent/explicitApprovalTable.page"
+import "/webportal/pages/bw_iasreview/review/rolesContent/actionsTable.page"
+import "/webportal/pages/bw_iasreview/review/rolesContent/compliance.page"
+import "/webportal/pages/bw_iasreview/lib/compliance.page"
+import "/webportal/pages/bw_iasreview/review/rolesContent/dialogs.page"
+
+// Roles content review management page
+bwaccess360_rolereviewmanagementdetail = Page {
+	title: $bwaccess360_rolereviewmanagementdetail.title
+	dynamic-title: campaign.title
+	sticky-timeslot: stickyTimeslot timeslot-label stickyTimeslotLabel
+	header:
+		PageHeader {
+			Header {
+				value: $bw_iasreview.warningreassign(nbreassign)
+				hidden:
+					IntPredicate ( nbreassign ) {
+						when >0 then False
+						otherwise True
+					}
+				styling: warningFieldStyle 
+			}
+			Text { 
+			  	value: $bw_iasreview.stickyTimeslot.header(stickyTimeslotLabel) 
+			  	compact: True align: Right
+			  	hidden:
+			  		StringPredicate ( stickyTimeslot ) {
+			  			when IsNull then True
+			  		}
+			  	layout: Layout { hint: width 300  indent: vertical 8 horizontal 0 }			  
+			}
+		}
+	enter-event:
+	    ExecuteNamedAction updateCounters
+		
+	campaignid = Parameter { type: String hidden: True }
+	campaignname = Parameter { type: String hidden: True }
+	campaigndescription = Parameter { type: String hidden: True }
+	campaigndeadline = Parameter { type: Date hidden: True }
+	campaignpriority = Parameter { type: Integer hidden: True }
+	filterbyreviewstatus = Parameter { type: String hidden: True }
+	stickyTimeslot = Parameter { type: String hidden: True }
+	stickyTimeslotLabel = Parameter { type: String hidden: True }
+		
+	outapplicationuid = Variable { type: String }
+	outpermissionuid = Variable { type: String }
+	outidentityuid = Variable { type: String }
+	outaccountuid = Variable { type: String }
+	
+	selectedRevieweruids = Variable { type: String multivalued: True }
+		
+	reviewperimetertab = Variable { type: Boolean initial: False }
+	explicitapprovaltab = Variable { type: Boolean initial: False }
+	reviewedentriestab = Variable { type: Boolean initial: False }
+	tobereviewedentriestab = Variable { type: Boolean initial: False }
+	revokedentriestab = Variable { type: Boolean initial: False }
+	removedentriestab = Variable { type: Boolean initial: False }
+	campaignprogresstab = Variable { type: Boolean initial: False }
+	reviewcompliancereporttab = Variable { type: Boolean initial: False }
+	counter = Variable { type: Integer initial: 0 }
+
+	nbperimeter = Variable { type: String }
+	nbremoved = Variable { type: String }
+	nbreviewers = Variable { type: String }
+	nbapplications = Variable { type: String }
+	nbroles = Variable { type: String }
+	nbreviewed = Variable { type: String }
+	nbtodo = Variable { type: String }
+	nbactions = Variable { type: String }
+	nbreassign = Variable { type: String }
+
+	managementfilter = Variable { type: String multivalued: True }
+	
+	activeTab = Variable { type: String }
+	selectedRevieweruid = Variable { type: String }
+	selectedReviewername = Variable { type: String }
+	selectedfilterbyreviewstatus = Variable { type: String multivalued: True }
+	selectedapplication = Variable { type: String }
+	selectedpermission = Variable { type: String }
+	
+	// For counters
+	cperimetersRecordsUids = Variable { type: Image multivalued: True }
+	cperimetersStatuses = Variable { type: String multivalued: True }
+	cperimetersSignOffStatuses = Variable { type: String multivalued: True }
+	ctoreviewed = Variable { type: String multivalued: True initial: [ Constant review_status_ok, Constant review_status_revoke, Constant review_status_update ] }
+	cremovedentriescomment = Variable { type: String initial: $bw_iasreview.cremovedentriescomment }
+	ctobereviewed = Variable { type: String multivalued: True initial: [ Constant review_status_toBeReviewed, Constant review_status_reassign ] }
+	csignedoff = Variable { type: Integer multivalued: True initial: ["1", "2"] }
+	cactions = Variable { type: String multivalued: True initial: [ Constant review_status_revoke, Constant review_status_update ] }
+	creassign = Variable { type: String multivalued: True initial: [ Constant review_status_reassign ] }
+	
+	// Explicit filter
+	explicitfilter = Variable { type: String initial: "1" }
+	explicitfilter_mv = Variable { type: String multivalued: True initial: ["1"] }
+
+	// ==============================================
+	// Enable/disable accurate timings computation
+	accurateTimings = Variable { type:Boolean initial:True }
+	// ==============================================
+	
+	// Active tabs & performance
+	activeReviewStatusTab = Variable { type: Boolean initial: False }
+	
+	// Missing reviewers (accountables + responsibles)
+	filterMissingReviewers = Variable { type: Boolean initial: False }
+	// List of missing reviewers (accountables + responsibles)
+	missingReviewers = Variable { type: String multivalued: True }
+
+	campaign = Record {
+		view: bwaccess360_accessreviewcampaigns with
+			campaignid to campaignid
+	}
+	
+	fcampaign = Record { // finalized campaigns suppl info
+		view: bwaccess360_accessreviewcampaignsfinalized with
+			campaignid to campaignid
+	}
+	
+	reviewers = Dataset {
+		view: bwaccess360r_applicationreviewers with
+			campaignid to campaignid
+		count-variable: nbreviewers
+	}
+
+	reviewersfinalized = Dataset {
+		view: bwaccess360r_applicationreviewers with
+			campaignid to campaignid,
+			True to filterFinalizedOnly
+	}
+
+	reviewersnotfinalized = Dataset {
+		view: bwiasr_campaignreviewers_bv with
+			campaignid to campaignid
+	}
+	
+	ticketreviewsremovedentries = Dataset {
+		view: bwaccess360_roleContentRemovedforactivecampaign_countbyreviewer with
+			campaignid to campaignid
+	}
+	
+	reviewersfinalized_bv = Dataset {
+		join: Join {
+			primary-dataset: reviewersfinalized
+			secondary-dataset: ticketreviewsremovedentries
+			primary-column: uid
+			secondary-column: reviewer_uid
+			primary-optional: False
+			secondary-cardinality: optional
+			secondary-prefix: removed_
+		}
+	}
+
+	applications = Dataset {
+		view: bwaccess360r_rolesContentReviewedapplications with
+			campaignid to campaignid
+		count-variable: nbapplications
+	}
+	
+	roles = Dataset {
+		view: bwaccess360r_rolesContentReviewedroles with
+			campaignid to campaignid
+		count-variable: nbroles
+	}
+	
+	// counters -----------------------------
+	cperimeter = Dataset {
+		view: bwaccess360_rolesContentCampaign_count with
+			campaignid to campaignid unless-empty
+		count-variable: nbperimeter
+	}
+	cremovedentries = Record {
+		view: bwaccess360_roleContentRemovedforactivecampaign_globalcount with
+			campaignid to campaignid unless-empty
+	}
+	ctobereviewed = Dataset {
+		columns:
+			cperimetersRecordsUids as recorduid,
+			cperimetersStatuses as status,
+			cperimetersSignOffStatuses as signoffstatus
+		includes:
+			AndPredicate {
+				MultivaluedPredicate ( ctobereviewed contains Current status )
+				Not MultivaluedPredicate ( csignedoff contains Current signoffstatus )
+			}
+		count-variable: nbtodo
+	}
+	cactions = Dataset {
+		columns:
+			cperimetersRecordsUids as recorduid,
+			cperimetersStatuses as status
+		includes:
+			MultivaluedPredicate ( cactions contains Current status )
+		count-variable: nbactions
+	}
+	creassign = Dataset {
+		columns:
+			cperimetersRecordsUids as recorduid,
+			cperimetersStatuses as status
+		includes:
+			MultivaluedPredicate ( creassign contains Current status )
+		count-variable: nbreassign
+	}
+
+	// Progress -----------------------------
+	reviewstatistics = Record {
+		view: bwaccess360r_applicationreviewstatistics with
+			campaignid to campaignid
+		disabled:
+			Not BooleanPredicate ( campaignprogresstab )
+	}
+	
+	nbreviewperday = Dataset {
+		view: bwaccess360r_applicationnbreviewperdate with
+			campaignid to campaignid
+		disabled:
+			Not BooleanPredicate ( campaignprogresstab )
+	}
+
+	backlog = Dataset {
+		view: bwaccess360r_applicationbacklog with
+			campaignid to campaignid,
+			reviewstatistics.sum to total
+		disabled:
+			Not BooleanPredicate ( campaignprogresstab )
+	}
+
+	nbrevieweditemchart = Dataset {
+		view: bwaccess360r_applicationnbitemsperstatus with
+			campaignid to campaignid
+	}
+
+	decision_synthesis = Dataset {
+		view: bwaccess360r_applicationnbcompleteditemsperstatus
+			with campaignid to campaignid
+	}
+	
+	updateCounters = NamedAction (
+		TransferData cperimeter( reviewrecorduid, reviewstatus, reviewsignoffstatus )
+			to ( cperimetersRecordsUids, cperimetersStatuses, cperimetersSignOffStatuses ),
+		Set Difference (Count cperimeter, Sum (cremovedentries.nb, nbtodo)) to nbreviewed
+	)
+	
+	setSignOffFilter = NamedAction (
+		Set '3' to explicitfilter,
+		Set [ '1', '2' ] to explicitfilter_mv,
+		ExecuteFragmentNamedAction explicitApprovalTable.setExplicitFilterToBoth
+	)
+	
+	clearFilters = NamedAction(
+		Unset selectedfilterbyreviewstatus,
+		Unset selectedRevieweruid,
+		Set "" to selectedRevieweruid,
+		Unset selectedReviewername,
+		Set "" to selectedReviewername,
+		Unset selectedapplication,
+		Set [] to selectedapplication,
+		Unset selectedpermission,
+		Set [] to selectedpermission
+	)
+	
+	reviewersfinalized_updateActiveTab = NamedAction(
+		StringCase(fcampaign.recorduid) {
+			when IsEmpty then [
+				Set Constant tabIndex_EntriesSignedOf to activeTab
+			] otherwise [
+				Set Constant tabIndex_ComplianceReport to activeTab
+			] 
+		}
+	)
+	
+	// Layout -------------------------------
+	TabFolder {
+		layout: Layout { indent:vertical 10 horizontal 0 }
+		selected-index: activeTab
+		border: False
+		// 0 - Review Status
+		TabItem {
+			text: $bw_iasreview.reviewstatus.tabitem.text
+			activation-event:
+				Set True to activeReviewStatusTab,
+				ExecuteNamedAction updateCounters,
+				ReloadData(reviewersfinalized_bv),
+				ReloadData(reviewersnotfinalized),
+				ExecuteFragmentNamedAction status_reviewStatusMissingReviewers.checkMissingReviewers
+			Group { // gray background  
+		       	layout: Layout { grab:horizontal True vertical True}
+		       	styling: cssPageDashboard
+				Grid {
+					columns: GridColumn,GridColumn,GridColumn,GridColumn,GridColumn,GridColumn,GridColumn
+					GridRow {
+						GridCell {
+							Group {
+						        styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.perimeter
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									template: liquidGaugeIndicator
+									layout: Layout { hint: width 150 height 150 grab: horizontal True vertical False align: horizontal Center vertical Center }
+									bindings:
+										value-of nbperimeter to count,
+										value-of nbperimeter to maxValue,
+										value-of False to displayPercent 
+								}
+							}
+						}
+						GridCell {
+							Group {
+								styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.nbroles
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									template: liquidGaugeIndicator
+									layout: Layout { hint: width 150 height 150 grab: horizontal True vertical False align: horizontal Center vertical Center }
+									bindings:
+										value-of nbroles to count,
+										value-of nbroles to maxValue,
+										value-of False to displayPercent
+									widget-events:
+										{
+											when onclick then [
+												Dialog bwaccess360_rolesContentReview_roles(
+													campaignid to incampaignid,
+													selectedpermission from outrole,
+													selectedfilterbyreviewstatus from outstatus
+												),
+												StringCase(fcampaign.recorduid) {
+													when IsEmpty then [
+														StringCase(selectedfilterbyreviewstatus) {
+															when Not IsEmpty then [
+																Set Constant tabIndex_EntriesToReview to activeTab
+															]
+														}
+													]
+												}
+											]
+										}
+								}
+							}
+						}
+						GridCell {
+							Group {
+								styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.nbreviewer
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									template: liquidGaugeIndicator
+									layout: Layout { hint: width 150 height 150 grab: horizontal True vertical False align: horizontal Center vertical Center }
+									bindings:
+										value-of nbreviewers to count,
+										value-of nbreviewers to maxValue,
+										value-of False to displayPercent 
+								}
+							}
+						}
+						GridCell {
+							Group {
+								styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.reviewedentries
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									template: liquidGaugeIndicator
+									layout: Layout { hint: width 150 height 150 grab: horizontal True vertical False align: horizontal Center vertical Center }
+									bindings:
+										value-of Sum (nbreviewed, cremovedentries.nb) to count,
+										value-of True to displayPercent,
+										value-of nbperimeter to maxValue,
+										value-of 0 to minValue,
+										value-of '#65BD70' to waveTextColor,
+										value-of '#65BD70' to textColor,
+										value-of '#46A862' to circleColor,
+										value-of '#46A862' to waveColor
+								}
+							}
+						}
+						GridCell {
+							Group {
+								styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.lefttoreview
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									template: liquidGaugeIndicator
+									layout: Layout { hint: width 150 height 150 grab: horizontal True vertical False align: horizontal Center vertical Center }
+									bindings:
+										value-of nbtodo to count,
+										value-of True to displayPercent,
+										value-of nbperimeter to maxValue,
+										value-of 0 to minValue,
+										value-of '#F99F36' to waveTextColor,
+										value-of '#F99F36' to textColor,
+										value-of '#F1773D' to circleColor,
+										value-of '#F1773D' to waveColor
+									widget-events:
+										{
+											when onclick then [
+												ExecuteNamedAction clearFilters,
+												Set [ Constant bwReviewStatus_Reassign, Constant bwReviewStatus_ToBeReviewed, Constant bwReviewStatus_NotReviewed ] to selectedfilterbyreviewstatus,
+												StringCase(fcampaign.recorduid) { 
+													when IsEmpty then [
+														Set Constant tabIndex_EntriesToReview to activeTab 
+													] otherwise [
+														Set Constant tabIndex_ComplianceReport to activeTab 
+													]
+												} 
+											]
+										}
+								}
+							}
+						}
+						GridCell {
+							Group {
+								styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.nbaction
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									template: liquidGaugeIndicator
+									layout: Layout { hint: width 150 height 150 grab: horizontal True vertical False align: horizontal Center vertical Center }
+									bindings:
+										value-of nbactions to count,
+										value-of False to displayPercent, 
+										value-of nbperimeter to maxValue,
+										value-of 0 to minValue,
+										value-of '#E96959' to waveTextColor,
+										value-of '#E96959' to textColor,
+										value-of '#CF4544' to circleColor,
+										value-of '#CF4544' to waveColor
+									widget-events:
+										{
+											when onclick then [
+												ExecuteNamedAction clearFilters,
+												Set Constant tabIndex_ActionsRequested to activeTab 
+											]
+										}
+								}
+							}
+						}
+					}
+					// Check if missing reviewers (not in latest timeslot)
+					GridRow {
+						GridCell {
+							span: 6
+							Group {
+								styling: cssRound
+								hidden:
+									IntPredicate ( SizeOf missingReviewers ) {
+										when < 1 then True
+									}
+								status_reviewStatusMissingReviewers = IncludeFragment {
+									layout: Layout { grab: horizontal True vertical False }
+									fragment: bw_ias_review_missingReviewers with
+										value-of campaignid to campaignTicketLogRecordUid,
+										value-of activeReviewStatusTab to enabled,
+										value-of Constant bw_ias_review_missingReviewers_sourceStatus to source,
+										activeTab binds-to activeTab,
+										filterMissingReviewers binds-to filterMissingReviewers,
+										missingReviewers binds-to missingReviewers
+								}
+							}
+						}
+					}
+					// Reviewers tables (signed off / pending)
+					GridRow {
+						height: grow
+						// Signed off reviewers
+						GridCell {
+							span: 3
+							Group {
+								styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.finalizedreview
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+								}
+								Spacer {
+									// Same height as the buttons to send notifications on the other column
+									height: 30
+								}
+								Group {
+									Table {
+										data: reviewersfinalized_bv
+										layout: Layout { grab: horizontal True vertical True }
+										configurable: True
+										persist-configuration: True
+										show-count: True
+										show-filter: True
+										Column {
+											column: hrcode
+											header: $identity.hrcode
+											width: 100px
+											filterable: True
+											sortable: True
+											align: Right
+											initially-masked: True
+											actions:
+												ExecuteNamedAction clearFilters,
+												Set Current uid to selectedRevieweruid,
+												Set Current fullname to selectedReviewername,
+												ExecuteNamedAction reviewersfinalized_updateActiveTab,
+												ExecuteNamedAction setSignOffFilter
+										}
+										Column {
+											column: fullname
+											header: $identity.fullname
+											width: 100%
+											filterable: True
+											sortable: True
+											align: Right
+											actions:
+												ExecuteNamedAction clearFilters,
+												Set Current uid to selectedRevieweruid,
+												Set Current fullname to selectedReviewername,
+												ExecuteNamedAction reviewersfinalized_updateActiveTab,
+												ExecuteNamedAction setSignOffFilter
+										}
+										Column {
+											column: mail
+											header: $identity.mail
+											width: 100%
+											filterable: True
+											sortable: True
+											align: Right
+										}
+										Column {
+											column: nbentries
+											text: Transform Difference (Current nbentries, Current removed_nb) using defaultsto0
+											header: $bw_iasreview.reviewstatus.nbsignedoffentries
+											width: 120px
+											filterable: True
+											sortable: True
+											align: Right
+											actions:
+												ExecuteNamedAction clearFilters,
+												Set Current uid to selectedRevieweruid,
+												Set Current fullname to selectedReviewername,
+												ExecuteNamedAction reviewersfinalized_updateActiveTab,
+												ExecuteNamedAction setSignOffFilter
+										}
+									}
+								}
+							}
+						}
+						GridCell {
+							span: 3
+							Group {
+								styling: cssRound
+								Header {
+									value: $bw_iasreview.reviewstatus.pendingreview
+									styling: mediumTitleStyle
+									layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+								}
+								IncludeFragment {
+									layout: Layout { grab: horizontal True vertical False }
+									fragment: bw_iasreview_followUpNotifications with
+										value-of campaignid to campaignid,
+										value-of campaignname to campaignname,
+										value-of campaigndescription to campaigndescription,
+										value-of campaigndeadline to campaigndeadline,
+										value-of campaignpriority to campaignpriority,
+										selectedRevieweruids binds-to selectedRevieweruids
+								}
+								Group {
+									Table {
+										data: reviewersnotfinalized
+										layout: Layout { grab: horizontal True vertical True }
+										configurable: True
+										persist-configuration: True
+										show-count: True
+										show-filter: True
+										checkboxes: uid to selectedRevieweruids	
+										initial-sort: _notreviewed_nbentries descending		
+										Column {
+											column: fullname
+											header: $identity.fullname
+											width: 100%
+											filterable: True
+											sortable: True
+											align: Right
+											actions-disabled:
+												StringPredicate(fcampaign.recorduid) {
+													when IsEmpty then False
+													otherwise True
+												}
+											actions:
+												ExecuteNamedAction clearFilters,
+												Set Current uid to selectedRevieweruid,
+												Set Current fullname to selectedReviewername,
+												Set Constant tabIndex_EntriesToReview to activeTab 
+										}
+										Column {
+											column: hrcode
+											header: $identity.hrcode
+											width: 100px
+											filterable: True
+											sortable: True
+											align: Right
+											initially-masked: True
+											actions-disabled:
+												StringPredicate(fcampaign.recorduid) {
+													when IsEmpty then False
+													otherwise True
+												}
+											actions:
+												ExecuteNamedAction clearFilters,
+												Set Current uid to selectedRevieweruid,
+												Set Current fullname to selectedReviewername,
+												Set Constant tabIndex_EntriesToReview to activeTab 
+										}
+										Column {
+											column: mail
+											header: $identity.mail
+											width: 100%
+											filterable: True
+											sortable: True
+											align: Right
+										}
+										Column {
+											column: _reviewed_nbentries
+											text: Transform Current _reviewed_nbentries using defaultsto0
+											header: $bw_iasreview.reviewstatus.nbreviewedentries
+											width: 120px
+											filterable: True
+											sortable: True
+											align: Right
+											actions-disabled:
+												StringPredicate(fcampaign.recorduid) {
+													when IsEmpty then False
+													otherwise True
+												}
+											actions:
+												ExecuteNamedAction clearFilters,
+												Set [ Constant bwReviewStatus_OK, Constant bwReviewStatus_Revoke, Constant bwReviewStatus_Update ] to selectedfilterbyreviewstatus,
+												Set Current uid to selectedRevieweruid,
+												Set Current fullname to selectedReviewername,
+												Set Constant tabIndex_EntriesToReview to activeTab 
+										}
+										Column {
+											column: _notreviewed_nbentries
+											text: Transform Current _notreviewed_nbentries using defaultsto0
+											header: $bw_iasreview.reviewstatus.nblefttoreviewentries
+											width: 120px
+											filterable: True
+											sortable: True
+											align: Right
+											actions-disabled:
+												StringPredicate(fcampaign.recorduid) {
+													when IsEmpty then False
+													otherwise True
+												}
+											actions:
+												ExecuteNamedAction clearFilters,
+												Set [ Constant bwReviewStatus_Reassign, Constant bwReviewStatus_ToBeReviewed, Constant bwReviewStatus_NotReviewed ] to selectedfilterbyreviewstatus,
+												Set Current uid to selectedRevieweruid,
+												Set Current fullname to selectedReviewername,
+												Set Constant tabIndex_EntriesToReview to activeTab
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		// 1 - Review Statistics
+		TabItem {
+			text: $bw_iasreview.reviewstatistics.tabitem.text
+			activation-event:
+				ReloadData(reviewstatistics), 
+				ReloadData(nbrevieweditemchart),
+				ReloadData(decision_synthesis),
+				ReloadData(nbreviewperday),
+				ReloadData(backlog),
+				Set True to campaignprogresstab
+			hidden:
+				// Hide this item if number of reviewers too big (for performance purposes)
+				IntPredicate (nbreviewers) {
+					when > NonEmpty (ConfigurationVariable "ias_reviewersdisplaylimitvalue", 1000) then True
+					otherwise False
+				}
+			Group { // gray background  
+				layout: Layout { grab:horizontal True vertical True}
+				styling: cssPageDashboard
+				Grid {
+					columns:GridColumn, GridColumn, GridColumn, GridColumn, GridColumn, GridColumn
+					layout:Layout { grab:horizontal True vertical True }  
+					GridRow {
+						GridCell {
+							span:2
+							Group {
+								styling:cssRound
+								Header {
+									value:$bwaccess360_accessreviewmanagementNLS.Review_statistics
+									styling:mediumTitleStyle
+									layout:Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								Text {
+									label:$bwaccess360_accessreviewmanagementNLS.Median
+									value:NonEmpty(reviewstatistics.med, $bwaccess360_accessreviewmanagementNLS.NA)
+									compact:True
+								}
+								Text {
+									label:$bwaccess360_accessreviewmanagementNLS.Average
+									value:NonEmpty(reviewstatistics.avg, $bwaccess360_accessreviewmanagementNLS.NA)
+									compact:True
+								}
+								Text {
+									label:$bwaccess360_accessreviewmanagementNLS.Minimum
+									value:NonEmpty(reviewstatistics.min, $bwaccess360_accessreviewmanagementNLS.NA)
+									compact:True
+								}
+								Text {
+									label:$bwaccess360_accessreviewmanagementNLS._10_percentile
+									value:NonEmpty(reviewstatistics.percentile10, $bwaccess360_accessreviewmanagementNLS.NA)
+									compact:True
+								}
+								Text {
+									label:$bwaccess360_accessreviewmanagementNLS._90_percentile
+									value:NonEmpty(reviewstatistics.percentile90, $bwaccess360_accessreviewmanagementNLS.NA)
+									compact:True
+								}
+								Text {
+									label:$bwaccess360_accessreviewmanagementNLS.Maximum
+									value:NonEmpty(reviewstatistics.max, $bwaccess360_accessreviewmanagementNLS.NA)
+									compact:True
+								}
+								Text {
+									label:$bwaccess360_accessreviewmanagementNLS.Total
+									value:NonEmpty(reviewstatistics.sum, $bwaccess360_accessreviewmanagementNLS.NA)
+									compact:True
+								}
+							}
+						}
+						GridCell {
+							span:2
+							Group {
+								styling:cssRound
+								Header {
+									value:$bwaccess360_accessreviewmanagementNLS.Completion_rate
+									styling:mediumTitleStyle
+									layout:Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									layout: Layout { hint: height 200 width 380 align: horizontal Center vertical Center }
+									template: doughnutChart
+									datasets: nbrevieweditemchart ( status, status, nb, color) to chartdata ( label, code , count , color)
+									bindings: 
+										value-of True to tooltipShowPercent,
+										value-of True to showLegend,
+										value-of True to showHalfOnly,
+										value-of "bottom" to legendPosition,
+										value-of Constant bwaccess360_accessreviewmanagement_completionratePalette to customColors
+								}
+							}
+						}
+						GridCell {
+							span:2
+							Group {
+								styling:cssRound
+								Header {
+									value:$bwaccess360_accessreviewmanagementNLS.Review_status
+									styling:mediumTitleStyle
+									layout:Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								ConditionalGroup {
+									IntCondition(Count decision_synthesis) {
+										when =0 then [
+											Header { value:$bwaccess360_accessreviewmanagementNLS.Review_status_nodecision}
+										]
+										otherwise [
+											IncludeHTMLWidget {
+												layout: Layout { grab:horizontal True vertical True }
+												template: barChart
+												datasets: decision_synthesis ( status, status, nb, color ) to chartdata ( label, code , count, color )
+												bindings: 
+													value-of True to tooltipShowPercent,
+													value-of False to maintainAspectRatio,
+													value-of True to beginAtZero,
+													value-of 2 to datasetMinSize,
+													value-of $bwaccess360_accessreviewmanagementNLS.nb_entries to ylabel,
+													value-of Constant bwaccess360_accessreviewmanagement_decisionPalette to customColors
+											}
+										]
+									}
+								}
+							}
+						}
+					}			
+					GridRow {
+						height:grow
+						GridCell {
+							span:3
+							Group {
+								styling:cssRound
+								Header {
+									value:$bwaccess360_accessreviewmanagementNLS.review_activity
+									styling:mediumTitleStyle
+									layout:Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								ConditionalGroup {
+									IntCondition(Count nbreviewperday) {
+										when =0 then [
+											Header { value:$bwaccess360_accessreviewmanagementNLS.review_noactivity}
+										]
+										otherwise [
+											IncludeHTMLWidget {
+												layout: Layout { grab:horizontal True vertical True }
+												template: barChart
+												datasets: nbreviewperday ( bucket, bucket, nb ) to chartdata ( label, code , count )
+												bindings: 
+													value-of False to tooltipShowPercent,
+													value-of False to maintainAspectRatio,
+													value-of $bwaccess360_accessreviewmanagementNLS.reviewed_entries to tooltipSuffix,
+													value-of True to beginAtZero,
+													value-of Eval "campaign.dueday-campaign.submissionday" to datasetMinSize,
+													value-of Constant bwaccess360_accessreviewmanagement_shadesOfGreen to customColors,
+													value-of $bwaccess360_accessreviewmanagementNLS.nb_reviewed_entries to ylabel
+											}
+										]
+									}
+								}
+							}
+						}
+						GridCell {
+							span:3
+							Group {
+								styling:cssRound
+								Header {
+									value:$bwaccess360_accessreviewmanagementNLS.Review_backlog
+									styling:mediumTitleStyle
+									layout:Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								ConditionalGroup {
+									IntCondition(Count backlog) {
+										when =0 then [
+											Header { value:$bwaccess360_accessreviewmanagementNLS.review_noactivity}
+										]
+										otherwise [
+											IncludeHTMLWidget {
+												layout: Layout { grab:horizontal True vertical True }
+												template: multilineChart
+												datasets: backlog ( bucket, bucket, status, status, nb ) to chartdata ( code, label, categorycode , category, count )
+												bindings: 
+													value-of "origin" to fill,
+													value-of False to maintainAspectRatio,
+													value-of 1 to pointRadius,
+													value-of True to isStacked,
+													value-of True to stacked100,
+													value-of "bottom" to legendPosition,
+													value-of Constant bwaccess360_accessreviewmanagement_backlogPalette to customColors
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		// 2 - Entries to review
+		TabItem {
+			text: $bw_iasreview.reviewmanagement.tabitem.text
+			activation-event:
+				Set True to reviewperimetertab,
+				ReloadData(creassign),
+				IntCase(nbreassign) {
+					when >0 then [
+						Set ["reassign"] to managementfilter
+					] otherwise [
+						Unset managementfilter
+					]
+				},
+				ExecuteFragmentNamedAction perimeterTable.refreshStatuses,
+				ExecuteFragmentNamedAction perimeterTable.checkMissingReviewers
+			hidden:
+				Not OrPredicate {
+					StringPredicate(campaignid) { when IsEmpty then True }
+					StringPredicate(fcampaign.recorduid) { when IsEmpty then True otherwise False }
+					Not HasComplianceReportPredicate(fcampaign.recorduid)
+				}
+			perimeterTable = IncludeFragment {
+				fragment: bwaccess360_roleContentReviewmanagementPerimeterTable with
+					value-of campaignid to campaignid,
+					value-of campaignname to campaignname,
+					value-of True to incanfilterbystatus,
+					value-of reviewperimetertab to inenabled,
+					value-of selectedRevieweruid to inrevieweruid,
+					value-of selectedReviewername to inreviewername,
+					value-of selectedapplication to infilterbyapplications,
+					value-of selectedpermission to infilterbypermissions,
+					value-of counter to intimestamp,
+					value-of selectedfilterbyreviewstatus to infilterbyreviewstatus,
+					value-of filterMissingReviewers to filterMissingReviewers
+			}
+		}
+		// 3 - Entries signed off
+		TabItem {
+			text: $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.tabitem.text 
+			activation-event:
+				Set True to explicitapprovaltab
+			hidden:
+				Not OrPredicate {
+					StringPredicate(campaignid) { when IsEmpty then True }
+					StringPredicate(fcampaign.recorduid) { when IsEmpty then True otherwise False }
+					Not HasComplianceReportPredicate(fcampaign.recorduid)
+				}
+			explicitApprovalTable = IncludeFragment {
+				fragment: bwaccess360_roleContentReviewmanagementExplicitApprovalTable with
+					value-of campaignid to campaignid,		
+					value-of True to incanfilterbystatus,
+					value-of explicitapprovaltab to inenabled,
+					value-of selectedRevieweruid to inrevieweruid,
+					value-of selectedReviewername to inreviewername,
+					value-of selectedapplication to infilterbyapplications,
+					value-of selectedpermission to infilterbypermissions,
+					value-of selectedfilterbyreviewstatus to infilterbyreviewstatus,
+					value-of counter to intimestamp,
+					value-of campaign.reviewtype to inreviewtype,
+					value-of explicitfilter to explicitfilter,
+					value-of explicitfilter_mv to explicitfilter_mv
+			}
+		}
+		// 4 - Actions requested
+		TabItem {
+			text: $bwaccess360_accessreviewmanagementActionsTable.text
+			activation-event:
+				Set True to revokedentriestab,
+				Set Sum(counter, 1) to counter,
+				ReloadData(cactions) // not ideal but cannot do it another way because of fragments... 
+			badge: Eval "nbactions.get()>0?nbactions.get():''"
+			ConditionalGroup {
+				IntCondition(nbactions) {
+					when >0 then [
+						IncludeFragment {
+							fragment: bwaccess360_roleContentReviewmanagementActionsTable with
+								value-of campaignid to campaignid,
+								value-of True to incanfilterbystatus,
+								value-of selectedRevieweruid to revieweruid,
+								value-of selectedReviewername to reviewername,
+								value-of [ Constant review_status_update, Constant review_status_revoke] to filterbyreviewstatus,
+								value-of selectedapplication to filterbyapplications,
+								value-of False to incanfilterbystatus,
+								value-of revokedentriestab to inenabled,
+								value-of counter to intimestamp
+						}
+					] otherwise [
+						Header {
+							value: $bwaccess360_accessreviewmanagementActionsTable.noaction
+						}
+					]
+				}
+			}
+		}
+		// 5 - Compliance Report
+		TabItem {
+			text: $bw_iasreview.reviewcompliance.tabitem.text
+			hidden:
+				OrPredicate {
+					StringPredicate(campaignid) { when IsEmpty then True }
+					StringPredicate(fcampaign.recorduid) { when IsEmpty then True otherwise False }
+					Not HasComplianceReportPredicate(fcampaign.recorduid)
+				}
+			activation-event:
+				Set True to reviewcompliancereporttab,
+				ExecuteFragmentNamedAction complianceTable.refreshStatuses
+			complianceTable = IncludeFragment {
+				fragment: bwaccess360_complianceTable with
+					value-of campaignid to incampaignid,
+					value-of reviewcompliancereporttab to inactive
+			}
+		}
+	}
+}

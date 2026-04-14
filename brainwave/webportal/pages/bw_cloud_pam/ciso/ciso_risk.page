@@ -1,0 +1,304 @@
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_risk.page"
+import "/webportal/pages/bw_cloud_pam/resources/styles.page"
+import "/webportal/pages/bw_cloud_pam/resources/mapping.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_cloud_pam/ciso/fragments/toprisksfragment.page"
+import "/webportal/pages/bw_cloud_pam/ciso/fragments/accountriskfragment.page"
+import "/webportal/pages/bw_cloud_pam/ciso/fragments/securitycontroldefects.page"
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_accounts_details.page"
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_secrets_details.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/mappings.page"
+import "/webportal/pages/bw_cloud_pam/resources/globals.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/controls.page"
+
+bwcpam_risk = Page {
+	title: $bwcpam_risk_NLS.title
+	mixins: dashboardMixin
+	icon: %steps_32.home
+	large-icon: %steps_48.home
+	feature: pam_risk_dashboard
+	
+	selectedVault = Variable
+	active_vault_tab = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Datasets for the filters
+	vaults = Dataset {
+		view: vault_list  
+	}
+	
+	// Datasets for the controls on the vaults
+	allcontrols_vault = Dataset {
+		view: ciso_risk_count_vault
+	}
+	allcontrols_vault_discrepancies = Dataset {
+		view: ciso_risk_count_discrepancies with selectedVault to vault_code unless-empty, 'true' to isvault, 0 to isquality
+		trend: Trend {
+			exclude-new: False
+			exclude-same: False 
+			include-removed: True
+			join-column: controlidentifier
+			value-column: nbdiscrepancies
+			other-column-name: prev_nbdiscrepancies
+			timeslot: FromPage(-1)
+		}
+	}
+	allcontrols_vault_display = Dataset {
+		join: Join {
+			primary-dataset: allcontrols_vault
+			primary-column: controlid
+			primary-optional: False
+			secondary-dataset: allcontrols_vault_discrepancies
+			secondary-column: controlidentifier
+			secondary-cardinality: optional
+			secondary-prefix: count_
+		}
+		disabled: Not BooleanPredicate (active_vault_tab)
+	}
+	
+	// Datasets for the controls on the safes
+	allcontrols_safe = Dataset {
+		view: ciso_risk_count_safe
+	}
+	allcontrols_safe_discrepancies = Dataset {
+		view: ciso_risk_count_discrepancies with selectedVault to vault_code unless-empty, 'false' to isvault, 0 to isquality
+		trend: Trend {
+			exclude-new: False
+			exclude-same: False 
+			include-removed: True
+			join-column: controlidentifier
+			value-column: nbdiscrepancies
+			other-column-name: prev_nbdiscrepancies
+			timeslot: FromPage(-1)
+		}
+	}
+	allcontrols_safe_display = Dataset {
+		join: Join {
+			primary-dataset: allcontrols_safe
+			primary-column: controlid
+			primary-optional: False
+			secondary-dataset: allcontrols_safe_discrepancies
+			secondary-column: controlidentifier
+			secondary-cardinality: optional
+			secondary-prefix: count_
+		}
+	}
+	
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		styling: cssPageDashboard
+		
+		Grid {
+			columns: GridColumn { width: 530px },  GridColumn { width: 530px } , GridColumn { width: grow }, GridColumn { width: 5px }
+			gap: 0
+			insets: 0
+			GridRow {
+				height: grow
+				
+				GridCell {
+					Grid {
+						columns: GridColumn {}
+						layout: Layout { grab: horizontal True vertical True }
+						gap: 0
+						insets: 0
+						GridRow {
+							height: 180 
+							GridCell {
+								// Account risks
+								IncludeFragment ( ciso_risk_securitycontroldefectsfragment )
+							}
+						}						
+						GridRow {
+							height: 250 
+							GridCell {
+								// Account risks
+								IncludeFragment ( ciso_risk_accountriskfragment )
+							}
+						}
+						GridRow {
+							height: grow
+							GridCell {
+								// Top Risks
+								IncludeFragment ( ciso_risk_toprisksfragment )
+							}
+						}
+					}
+				}
+				GridCell {
+					span: 2
+					Group {
+						mixins: homeLinksPanelMixin
+						Header { value:  $bwcpam_risk_NLS.subtitle }
+						
+						
+						TabFolder {
+							layout: Layout { grab:horizontal False vertical False indent: horizontal 0 vertical 30 }
+							border: False
+							TabItem {
+								text: $bwcpam_risk_NLS.tabs.safe.title
+								Grid {
+									columns: GridColumn {}, GridColumn { width: grow }
+									layout: Layout { grab: horizontal True vertical False }
+									insets: 20
+									gap: 20
+									GridRow {
+										GridCell {
+											Combo {
+												options: Dynamic {
+													data: vaults
+													text: Current displayname
+													value: Current code
+												}
+												label: $bwcpam_risk_NLS.filters.label.vaults
+												variable: selectedVault
+												allow-none: True
+											}
+										}
+										GridCell {
+											Button {
+												image: %collection_16.delete
+												actions: Unset selectedVault
+												presentation: Link
+												align: Left
+												tooltip: $bwcpam_risk_NLS.filters.tooltip.clear
+												layout: Layout { hint: width 20 indent: horizontal 0 vertical 4 }
+												disabled: StringPredicate ( selectedVault ) { when IsEmpty then True }
+											}
+										}
+									}
+								}
+								Grid {
+									columns: GridColumn{ width: grow}, GridColumn{ },GridColumn{ width: 50}
+									layout: Layout { indent: horizontal 0 vertical 0 }
+									GridRowGroup {
+										iterate-on: allcontrols_safe_display
+										GridRow{
+											height: 50px
+											GridCell {
+												Text { value: Transform Current controlid using controls_displayname_mapping styling: indLabelStyle }
+											}
+											GridCell {
+												Text { value: Eval "current.count_nbdiscrepancies ? current.count_nbdiscrepancies: 0 " styling: indCountSmallStyle align: Right}
+											}	
+											GridCell {
+												Image { image: TemplateImageSelection( Transform Difference ( Current count_nbdiscrepancies, Current count_prev_nbdiscrepancies) using nullToZeroMapping ) using bwcdrm_trend_16 }
+											}
+											GridCell {
+												Button {
+													image: %cmd_24.next
+													mixins: linkButtonMixin
+													actions: StringCase( Current controlid){
+													  when Constant  CTRL_CA_SAFE_ACCOUNT03_leavers then [
+													    GoTo Page bwcpam_accounts_leavers_details with 
+															  Current controlid to controlid, selectedVault to paramVaultFilter save-state
+													  ]
+													  when Constant CTRL_CA_SAFE_ACCOUNT09_sod_vault_safe then [
+													    GoTo Page bwcpam_accounts_sodvaultandsafeaccess_details with 
+															  Current controlid to controlid, selectedVault to paramVaultFilter save-state
+													  ]													  
+													  when Constant  CTRL_CA_SAFE_ASSET01_nocpm then [
+													    GoTo Page bwcpam_secrets_discrepancies_details with 
+															  Current controlid to controlid, selectedVault to paramVaultFilter save-state
+													  ]
+													  otherwise [ 
+														  GoTo Page bwcpam_accounts_discrepancies_details with 
+															Current controlid to controlid, selectedVault to paramVaultFilter save-state
+													  ]
+													
+													}
+													
+													disabled: IntPredicate ( Current count_nbdiscrepancies ) { when >0 then False otherwise True }
+												}
+											}  							      							      
+										}
+									}
+									GridRow { height: grow }
+								}
+							}
+							TabItem {
+								text: $bwcpam_risk_NLS.tabs.vaults.tilte
+								activation-event: Set True to active_vault_tab
+								Grid {
+									columns: GridColumn {}, GridColumn{}, GridColumn { width: grow }
+									layout: Layout { grab: horizontal True vertical False }
+									insets: 20
+									gap: 20
+									GridRow {
+										GridCell {
+											Combo {
+												options: Dynamic {
+													data: vaults
+													text: Current displayname
+													value: Current code
+												}
+												label: $bwcpam_risk_NLS.filters.label.vaults
+												variable: selectedVault
+												allow-none: True
+											}
+										}
+										GridCell {
+											Button {
+												image: %collection_16.delete
+												actions: Unset selectedVault
+												presentation: Link
+												align: Left
+												tooltip: $bwcpam_risk_NLS.filters.tooltip.clear
+												layout: Layout { hint: width 20 indent: horizontal 0 vertical 4 }
+												disabled: AndPredicate {
+													StringPredicate ( selectedVault ) { when IsEmpty then True }
+												}
+											}
+										}
+										GridCell {}
+									}
+								}
+								Grid {
+									columns: GridColumn{ width: grow}, GridColumn{ },GridColumn{ width: 50}
+									layout: Layout { indent: horizontal 0 vertical 0 }
+									GridRowGroup {
+										iterate-on: allcontrols_vault_display
+										GridRow{
+											height: 50px
+											GridCell {
+												Text { value: Transform Current controlid using controls_displayname_mapping styling: indLabelStyle }
+											}
+											GridCell {
+												Text { value: Eval "current.count_nbdiscrepancies ? current.count_nbdiscrepancies: 0 " styling: indCountSmallStyle align: Right}
+											}	
+											GridCell {
+												Image { image: TemplateImageSelection( Transform Difference ( Current count_nbdiscrepancies, Current count_prev_nbdiscrepancies) using nullToZeroMapping ) using bwcdrm_trend_16 }
+											}
+											GridCell {
+												Button {
+													image: %cmd_24.next
+													mixins: linkButtonMixin
+													actions: StringCase( Current controlid){
+													  when Constant  CTRL_CA_VAULT_ACCOUNT03_leavers then [
+													    GoTo Page bwcpam_accounts_leavers_details with 
+															  Current controlid to controlid, selectedVault to paramVaultFilter save-state
+													  ]
+													  otherwise [ 													  
+													  GoTo Page bwcpam_accounts_discrepancies_details with 
+														Current controlid to controlid, selectedVault to paramVaultFilter save-state
+														]
+													}
+													disabled: IntPredicate ( Current count_nbdiscrepancies ) { when >0 then False otherwise True }													
+												}
+											}  							      							      
+										}
+									}
+									GridRow { height: grow }
+								}
+							}
+						}
+					}
+				}
+			}
+			GridRow {
+				height: 10
+			}
+		}
+	}
+}

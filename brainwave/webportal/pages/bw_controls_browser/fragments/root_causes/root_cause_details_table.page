@@ -1,0 +1,259 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/share/resources.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/vaultDetails.page"
+
+caApplicationType = NLS {
+	label.safe [
+		fr "Safe"
+		en "Safe"
+	]
+	label.vault [
+		fr "Vault"
+		en "Vault"
+	]
+}
+
+applicationTypeMapping = StringMapping {
+	when 'CA_SA' then $caApplicationType.label.safe
+	when 'CA_VA' then $caApplicationType.label.vault
+	otherwise $papplication.code
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the table of a designed control root causes
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>hasRootCause</b> (out) a integer holding the number of root causes for the control </li>
+ * </ul>
+ * </span>
+ *
+ */
+bw_control_browser_root_cause = PageFragment {
+	
+	/* Variables here */
+	controlCode = Parameter { type: String }
+	// Table selection
+	applicationUid = Variable { type: String }
+	permissionUid = Variable { type: String }
+	// Is Active
+	isActive = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	control_root_cause = Dataset {
+		view: bw_control_browser_all_root_cause with
+			controlCode to controlCode
+		disabled:
+			Not BooleanPredicate ( isActive )
+	}
+	
+	goAppDetails = NamedAction (
+		StringCase(SubString(0, 5) controlCode) {
+			when 'CA_SA' then [
+				Dialog bwf_casafeDetailsDialog ( applicationUid to inuid )
+			]
+			when 'CA_VA' then [
+				Dialog bwf_cavaultDetailsDialog ( applicationUid to inuid )
+			]
+			otherwise [
+				Dialog bwf_applicationDetailsDialog (
+					applicationUid to inuid,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			]
+		}
+	)
+	
+	goPermDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog (
+			permissionUid to inuid,
+			True to inshowperjob,
+			True to inshowperorg
+		)
+	)
+	
+	/* Page content */
+	Group {
+		Table {
+			layout: Layout { grab: horizontal True vertical True }
+			data: control_root_cause
+			configurable: True
+			show-filter: True
+			show-count: True
+			persist-configuration: True
+			persist-configuration-key: "bw_control_browser_root_cause"
+			Column {
+				column: applicationuid
+				hidden: True
+				selection: applicationUid
+			}
+			Column {
+				header: $papplication.recorduid
+				column: applicationrecorduid
+				hidden: True
+			}
+			Column {
+				header: $permission.code
+				column: code
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				column: defaultassigned
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column{
+				header: $permission.deletedaction
+				column: deletedaction
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.displayname
+				column: displayname
+				sortable: True
+				initially-masked: False
+				actions: ExecuteNamedAction goPermDetails
+				width: 100%
+			}
+			Column {
+				header: $permission.folderdepth
+				column: folderdepth
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				column: fsnbcontrol
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				column: fsnbcontrolrepo
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $fragmentFolderNLS.fsnbread
+				column: fsnbread
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $fragmentFolderNLS.fsnbwrite
+				column: fsnbwrite
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header:$permission.importaction
+				column: importaction
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.inherited
+				column: inherited
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.lastaccessdate
+				column: lastaccessdate
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.lastaccessday
+				column: lastaccessday
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.lastmodifydate
+				column: lastmodifydate
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column{
+				header: $permission.lastmodifyday
+				column: lastmodifyday
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.numberoffiles
+				column: numberoffiles
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.permissionalias
+				column: permissionalias
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: $permission.permissiontype
+				column: permissiontype
+				sortable: True
+				initially-masked: False
+				width: 100%
+			}
+			Column {
+				header: $permission.recorduid
+				column: recorduid
+				hidden: True
+			}
+			Column {
+				header: $permission.totalsize
+				column: totalsize
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				column: uid
+				hidden: True
+				selection: permissionUid
+			}
+			Column {
+				header: $papplication.code
+				column: applicationcode
+				sortable: True
+				initially-masked: True
+				width: 100%
+			}
+			Column {
+				header: Transform SubString(0, 5) controlCode using applicationTypeMapping
+				column: applicationdisplayname
+				sortable: True
+				initially-masked: False
+				actions: ExecuteNamedAction goAppDetails
+				width: 100%
+			}
+		}
+	}
+}

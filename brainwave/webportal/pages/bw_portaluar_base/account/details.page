@@ -1,0 +1,447 @@
+import "/webportal/pages/resources/details_nls.page"
+
+import "/webportal/pages/bw_fragments/account/details.page"
+import "/webportal/pages/bw_fragments/account/groups.page"
+import "/webportal/pages/bw_fragments/account/serverrights.page"
+import "/webportal/pages/bw_fragments/account/rights.page"
+import "/webportal/pages/bw_fragments/account/cyberarkrights.page"
+import "/webportal/pages/bw_fragments/account/fsrights.page"
+import "/webportal/pages/bw_fragments/account/controls.page"
+import "/webportal/pages/bw_fragments/account/owner.page"
+import "/webportal/pages/bw_fragments/account/usages.page"
+import "/webportal/pages/bw_fragments/account/analytics.page"
+import "/webportal/pages/bw_fragments/account/decisionhistory.page"
+import "/webportal/pages/bw_fragments/account/businessactivities.page"
+import "/webportal/pages/bw_fragments/account/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/account/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/custom/accountExtendedDetails.page"
+import "/webportal/pages/bw_fragments/account/data.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+accountDetailsPageNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional Information" fr "Informations complémentaires"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Account" fr "Compte"]
+	groups [en "Groups" fr "Groupes"]
+	access [en "Access" fr "Accès"]
+	infrastructure [en "Servers" fr "Serveurs"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision History" fr "Historique des décisions"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted Rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated Rights" fr "Droits suralloués"]
+	cyberark.vault [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	cyberark.safe [en "CyberArk Safes" fr "Safes CyberArk"]
+	cyberark.graph [en "CyberArk Graph" fr "Graphe CyberArk"]
+	
+	notexists [
+		en "This account does not exist in the current timeslot, you should select a different timeslot"
+		fr "Ce compte n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+accountDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (account)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Account Detail with accountUid.uid to paramAccountUid }
+	feature: accountdetails_access
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Account
+		mandatory: True
+	}
+	
+	accountUid = Record {
+		view: br_accountDetail_uid with recorduid to recorduid
+	}
+}
+
+accountDetailsParkingPage = Page {
+	title: $accountDetails.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( account.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page accountDetailsPage with-current-parameters
+		}
+	
+	paramAccountUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	account = Record {
+		view: bwf_accountDetail with paramAccountUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$accountDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+accountDetailsPage = Page {
+	title: $accountDetails.title
+	dynamic-title: $accountDetails.dynamictitle (account.login)
+	icon: %concept.account
+	conditional-redirect:
+		ConditionalRedirect{
+			condition:
+				IntPredicate ( account.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page accountDetailsParkingPage with-current-parameters
+		}
+	enter-event:
+		Set account.bwa_accountanalytics_nbdirectgroup to nbgroups,
+		IntCase(account.bwa_accountanalytics_nbdirectinfrastructureright) { when >0 then [ Set True to hasinfrastructurerights ] },
+		IntCase(account.bwa_accountanalytics_nbdirectright) { when >0 then [ Set True to hasrights ] },
+		IntCase(account.bwa_accountanalytics_nbdirectfsright) { when >0 then [ Set True to hasfsrights ] },
+		IntCase(account.bwa_accountanalytics_nbbusinessactivity) { when >0 then [ Set True to hasbusinessactivities ] },
+		IntCase(account.bwa_accountanalytics_nbtheoretical) { when >0 then [ Set True to hastheoreticalrights ] },
+		IntCase(account.bwa_accountanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+		Set nbControls.nb to nbdefects
+					
+	// Parameters Here
+	paramAccountUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedAccountUid = Variable {
+		type: String
+		initial: paramAccountUid
+	}
+	
+	reconciliationResult = Variable {
+		type: String
+	}
+
+	active_detail = Variable { initial:False type:Boolean multivalued:False }
+	active_model = Variable { initial:False type:Boolean multivalued:False }
+	active_access = Variable { initial:False type:Boolean multivalued:False }
+	
+	active_account = Variable { initial:False type:Boolean multivalued:False }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_owner = Variable { initial:False type:Boolean multivalued:False }
+	active_groups = Variable { initial:False type:Boolean multivalued:False }
+	active_businessactivities = Variable { initial:False type:Boolean multivalued:False }
+	active_theoreticalrights = Variable { initial:False type:Boolean multivalued:False }
+	active_overallocatedrights = Variable { initial:False type:Boolean multivalued:False }
+	active_servers = Variable { initial:False type:Boolean multivalued:False }
+	active_applications = Variable { initial:False type:Boolean multivalued:False }
+	active_cavaults = Variable { initial:False multivalued:False type:Boolean }
+	active_casafes = Variable { initial:False multivalued:False type:Boolean }
+	active_cagraph = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False type:Boolean multivalued:False }
+	active_usages = Variable { initial:False type:Boolean multivalued:False }
+	active_control = Variable { initial:False type:Boolean multivalued:False }
+	active_anaytics = Variable { initial:False type:Boolean multivalued:False }
+	active_decisionhistory = Variable { initial:False type:Boolean multivalued:False }
+
+	nbgroups = Variable { initial:0 }
+	hastheoreticalrights = Variable { type:Boolean initial:False } 
+	hasbusinessactivities = Variable { type:Boolean initial:False } 
+	hasinfrastructurerights = Variable { type:Boolean initial:False } 
+	hasrights = Variable { type:Boolean initial:False } 
+	hasfsrights = Variable { type:Boolean initial:False } 
+	hasusages = Variable { type:Boolean initial:False } 
+	hascarights = Variable { type:Boolean initial:True } 
+
+	showextended = Variable { initial:False }
+
+	nbdefects = Variable 
+	nboverallocated = Variable 
+	nbdecision = Variable 
+	nbcavaults = Variable
+	nbcasafes = Variable
+
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	// Record for concept details
+	account = Record {
+		view: bwf_accountDetail with selectedAccountUid to uid
+	}
+	
+	// Number of control defects for current application (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_accountcontroldefects_nb with selectedAccountUid to uid
+	}
+	
+	// Start of the Layout based on a 1-column Grid
+	Grid {
+		columns: GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$accountDetailsPageNLS.details
+						activation-event:Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text:$accountDetailsPageNLS.account
+								activation-event:Set True to active_account
+								IncludeFragment {
+									fragment: fragmentAccountFullDetails with
+										value-of selectedAccountUid to inuid,
+										value-of True to inshowrisks,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_account.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$accountDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentAccountExtendedDetails with value-of selectedAccountUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$accountDetailsPageNLS.owner
+								activation-event:Set True to active_owner
+
+								IncludeFragment {
+									fragment:fragmentAccountOwnerFull
+									with value-of selectedAccountUid to inuid, value-of True to inenablemanualreconciliation, value-of True to incanupdateowners, value-of Eval "active_detail.get() && active_owner.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$accountDetailsPageNLS.groups
+								hidden: OrPredicate{
+									StringPredicate(nbgroups) { when IsEmpty then True otherwise False }
+									IntPredicate(nbgroups) { when >0 then False otherwise True }	
+								}
+								activation-event:Set True to active_groups
+
+								IncludeFragment {
+									fragment:fragmentAccountGroupsSelection
+									with value-of selectedAccountUid to inuid, value-of True to incanshowdetails, value-of Eval "active_detail.get() && active_groups.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$accountDetailsPageNLS.model
+						activation-event:Set True to active_model
+						feature:Any(sod_license, iam_license)
+						hidden: AndPredicate {
+								Not BooleanPredicate(hasbusinessactivities)
+								Not BooleanPredicate(hastheoreticalrights)
+								IntPredicate(nboverallocated) { when >0 then False otherwise True }
+						}
+					
+						TabFolder {
+							border:False
+							layout:Layout { indent: horizontal 0 vertical 6 }
+							TabItem {
+								text:$accountDetailsPageNLS.businessactivities
+								feature:sod_license
+								hidden:Not BooleanPredicate(hasbusinessactivities)
+								activation-event:Set True to active_businessactivities
+
+								IncludeFragment {
+									fragment:fragmentAccountBusinessActivities
+									with value-of selectedAccountUid to inuid, value-of True to incanshowdetails,  value-of Eval "active_model.get() && active_businessactivities.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$accountDetailsPageNLS.theoretical
+								feature:iam_license
+								hidden:Not BooleanPredicate(hastheoreticalrights)
+								activation-event:Set True to active_theoreticalrights
+							
+								IncludeFragment {
+									fragment:fragmentAccountTheoreticalRightsList
+									with value-of selectedAccountUid to inuid, value-of True to incanshowdetails, value-of Eval "active_model.get() && active_theoreticalrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$accountDetailsPageNLS.overallocated
+								feature:iam_license
+								activation-event:Set True to active_overallocatedrights
+								hidden:IntPredicate(nboverallocated) { when >0 then False otherwise True }
+
+								IncludeFragment {
+									fragment:fragmentAccountOverAllocationsList
+									with value-of selectedAccountUid to inuid, value-of Eval "active_model.get() && active_overallocatedrights.get()" to inenabled, nboverallocated binds-to outnbproblems
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$accountDetailsPageNLS.access
+						activation-event:Set True to active_access
+						hidden: 
+							AndPredicate {
+								Not BooleanPredicate(hasinfrastructurerights)
+								Not BooleanPredicate(hasrights)
+								Not BooleanPredicate(hasfsrights)
+								Not BooleanPredicate(hasusages)
+								Not BooleanPredicate(hascarights)
+							}
+
+						TabFolder {
+							border:False
+							TabItem {
+								text:$accountDetailsPageNLS.infrastructure
+								hidden:Not BooleanPredicate(hasinfrastructurerights)
+								activation-event:Set True to active_servers
+								feature: All(pam_license, Any(governance_license, compliance_license))
+
+								IncludeFragment {
+									fragment:fragmentAccountServerRightsList
+									with value-of selectedAccountUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_servers.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$accountDetailsPageNLS.applications
+								hidden:Not BooleanPredicate(hasrights)
+								activation-event:Set True to active_applications
+
+								IncludeFragment {
+									fragment:fragmentAccountRightsSelection
+									with value-of selectedAccountUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_applications.get()" to inenabled
+								}
+							}
+							TabItem {
+								text: $accountDetailsPageNLS.cyberark.vault
+								activation-event:Set True to active_cavaults
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									OrPredicate {
+										IntPredicate(nbcavaults) { when >0 then False otherwise True }
+										StringPredicate (nbcavaults) { when IsEmpty then True }
+									}
+								IncludeFragment {
+									fragment:fragmentAccountCAVaultsRights
+									with value-of selectedAccountUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_cavaults.get()" to inenabled,
+									nbcavaults binds-to nbvaults
+								}
+							}
+							TabItem {
+								text: $accountDetailsPageNLS.cyberark.safe
+								activation-event:Set True to active_casafes
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									OrPredicate {
+										IntPredicate(nbcasafes) { when >0 then False otherwise True }
+										StringPredicate (nbcasafes) { when IsEmpty then True }
+									}
+								IncludeFragment {
+									fragment:fragmentAccountCASafesRights
+									with value-of selectedAccountUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_casafes.get()" to inenabled,
+									nbcasafes binds-to nbsafes
+								}
+							}
+							TabItem {
+								text: $accountDetailsPageNLS.cyberark.graph
+								activation-event:Set True to active_cagraph
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									AndPredicate {
+										OrPredicate {
+											IntPredicate(nbcavaults) { when >0 then False otherwise True }
+											StringPredicate (nbcavaults) { when IsEmpty then True }
+										}
+										OrPredicate {
+											IntPredicate(nbcasafes) { when >0 then False otherwise True }
+											StringPredicate (nbcasafes) { when IsEmpty then True }
+										}
+									}
+								IncludeFragment {
+									fragment:fragmentAccountCAGraphRights360
+									with value-of selectedAccountUid to inuid, value-of nbcasafes to innbsafes, value-of Eval "active_access.get() && active_cagraph.get()" to inenabled
+								}
+							}
+							TabItem {
+								text: $accountDetailsPageNLS.shares
+								feature: unstructureddata_license
+								hidden:
+									Not BooleanPredicate(hasfsrights)
+								activation-event:
+									Set True to active_shares
+								IncludeFragment {
+									fragment: fragmentAccountData360 with
+										value-of selectedAccountUid to inuid,
+										value-of True to incanchangedepth, 
+										value-of True to incanshowdetails,
+										value-of Eval "active_access.get() && active_shares.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$accountDetailsPageNLS.usages
+								hidden:Not BooleanPredicate(hasusages)
+								activation-event:Set True to active_usages
+
+								IncludeFragment {
+									fragment:fragmentAccountUsages
+									with 	value-of selectedAccountUid to inuid, 
+											value-of True to incanshowdetails,
+											value-of Eval "active_access.get() && active_usages.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text: $accountDetailsPageNLS.controls
+						activation-event:
+							Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment: fragmentAccountControlDefectsList with
+								value-of selectedAccountUid to inuid,
+								value-of active_control to inenabled,
+								value-of True to incanshowdetails
+						}
+					}
+					TabItem {
+						text:$accountDetailsPageNLS.analytics
+						activation-event:Set True to active_anaytics
+
+						IncludeFragment {
+							fragment:fragmentAccountAnalytics
+							with value-of selectedAccountUid to inuid, value-of active_anaytics to inenabled
+						}
+					}
+					TabItem {
+						text:$accountDetailsPageNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decisionhistory
+
+						IncludeFragment {
+							fragment:fragmentAccountDecisionHistory
+							with value-of selectedAccountUid to inuid, nbdecision binds-to outnbdecision, value-of active_decisionhistory to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

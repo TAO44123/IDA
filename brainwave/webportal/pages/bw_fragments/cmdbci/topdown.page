@@ -1,0 +1,73 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+import "/webportal/pages/bw_portaluar_base/cmdbci/details.page"
+
+/* Nationalized labels here */
+bwsnci_networkNLS = NLS {
+	title [en "CMDB Dependency Check" fr "CMDB Dependency Check"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected CMDB CI top down dependencies as a network
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the cmdb ci uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanredirectto </b>double clic on an element to jump to its detail page (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentCmdbciTopDown = PageFragment {
+	feature: All(pam_license, Any(governance_license, compliance_license))
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:False }
+	incanredirectto = Variable { multivalued:False type:Boolean initial:False }
+	
+	temp = Variable
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	data = Dataset {
+		view:bw_cmdbtopdown with inuid to uid
+		disabled:Not BooleanPredicate(inenabled) 
+	}
+	
+	/* Page content */
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True /* hint:height 500 */ }
+		template: network
+		datasets:data(CI_uid, LABEL, CI_parent, CI_semantic, CI_type, ATTRS, EDGEATTRS) to chartdata(code, label, parentcode, edgelabel, description, nodeattributes, edgeattributes)
+		bindings:
+			value-of False to stopPhysics,
+			value-of 'LR' to hierarchical_direction,
+			value-of 300 to hierarchical_levelseparation,
+			value-of 200 to hierarchical_nodespacing,
+			value-of True to hierarchical_parentcentralization,
+			value-of True to hierarchical,
+			value-of 'box' to shape,
+			value-of 2000 to textboxsize,
+			value-of True to computegroupfontcolor,
+			value-of True to navigationButtons
+		widget-events:{
+			when ondoubleclick then [
+				Set Current code to temp,
+				BooleanCase(Eval "incanredirectto.get() && !inuid.get().equals(temp.get())") {
+					when True then [
+						GoTo Page cmdbciDetailsPage with Current code to paramCmdbciUid save-state 
+					]
+					when False then [
+					]
+				} 
+			]  
+		}
+	}
+}

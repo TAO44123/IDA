@@ -1,0 +1,795 @@
+/* Import other pages here */
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_comparison/folder_comparison.page"
+
+import "/webportal/pages/bw_fragments/share/resources.page"
+
+fragmentShareFoldersNLS = NLS {
+	subtitle [en '{1} ({0}) accounts' fr 'Comptes de {1} ({0})']
+	noownercode [en "technical account" fr "compte technique"]
+	pdescription [en "description" fr "description"]
+	psensitivitylevel [en "sensitivity level" fr "niveau sensibilité"]
+	nbaccount [en "Nb accounts" fr "Nb comptes"]
+	accounts [en "Active accounts list" fr "Liste des comptes actifs"]
+	showdetails [en "Show selected permission account list" fr "Afficher la liste des comptes pour la permission sélectionnée"]
+	empty [en "Select a permission in the upper table to display the corresponding accounts list" 
+	       fr "Sélectionnez une permission dans la table ci dessus pour afficher la liste des comptes correspondants"]
+	folderdepth [en "Folder depth" fr "Profondeur arborescence"]
+	aclonlylabel [en 'Display only folders with ACLs' fr 'Afficher seulement les partages avec des ACLs']
+	comparewith [en "compare {0} with ..." fr "comparer {0} avec ..."]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected shared folders for a given share as a list
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the share uid</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>incancompare </b>optional, boolean value, true to enable comparison button (false by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>infolderdepth </b>optional, integer value, folder depth (1 by default)</li>
+ * <li><b>inaclonly </b>optional, boolean value, show only entries with ACLs attached to them (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionuid</b>, selected permission uid</li>
+ * <li><b>outpermissioncode</b>, selected permission code</li>
+ * <li><b>outpermissionname</b>, selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentShareFolders = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incancompare = Variable { type:Boolean initial:False }
+
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+	inaclonly = Variable { multivalued:False type:Boolean initial:False }
+
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+	selectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+
+	folders = Dataset {
+		view: bwf_sharefolders with
+			inuid to uid,
+			infolderdepth to folderdepth,
+			inaclonly to aclonly
+		trend: Trend {
+		 	join-column:permissionuid
+		 	status-column-name:trends
+			value-column:nbaccounts
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	comparisonPermission = Record {
+		view: br_permissionDetail with compareFrom to uid
+		disabled:
+			StringPredicate(compareFrom) { when IsEmpty then True }
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid, 
+												True to inshowaccounts,
+												True to inshowacls,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				Grid {
+					columns:GridColumn,GridColumn,GridColumn,GridColumn { width:grow }
+					layout:Layout { grab: horizontal True vertical False hint:height 40 }
+					GridRow {
+						GridCell {
+							ButtonGroup {
+								Button {
+									layout:Layout { hint:width 300 }
+									
+									actions:
+										Set ElementAt 1 of selectedUids to compareFrom,
+										Set selectedUids to compareTo,
+										MultivaluedRemove compareFrom from compareTo,
+										GoTo Page bwc_folder_comparison with compareFrom to uid, compareTo to uids  save-state
+													  
+									text:$fragmentShareFoldersNLS.comparewith(NonEmpty(comparisonPermission.displayname,' '))
+									disabled:IntPredicate(SizeOf selectedUids) { when <2 then True otherwise False }
+									presentation:Button
+								}
+							}
+						}
+						GridCell {
+							Combo {
+								variable:infolderdepth
+								label:$fragmentShareFoldersNLS.folderdepth
+								layout: Layout { hint:width 120 }
+								options:Static {
+									Option { value:1 text:"<=1" }
+									Option { value:2 text:"<=2" }
+									Option { value:3 text:"<=3" }
+									Option { value:4 text:"<=4" }
+									Option { value:5 text:"<=5" }
+									Option { value:6 text:"<=6" }
+									Option { value:7 text:"<=7" }
+									Option { value:8 text:"<=8" }
+									Option { value:9 text:"<=9" }
+								}
+							}	
+						}
+						GridCell {
+							Checkbox {
+								variable:inaclonly
+								label:$fragmentShareFoldersNLS.aclonlylabel
+							}						
+						}
+						GridCell {
+						}
+					}
+				}
+				Table {
+					data:folders
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					checkboxes:permissionuid to selectedUids
+					checkboxes-changed-event:Set ElementAt 1 of selectedUids to compareFrom
+					double-click:ExecuteNamedAction goDetails
+					persist-configuration:True
+					
+					
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+			
+					Column {
+						column:permissioncode
+						header:$fragmentFolderNLS.code
+						selection:outpermissioncode
+						width:100%
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissiondisplayname
+						header:$fragmentFolderNLS.displayname
+						selection:outpermissionname
+						width:196px
+						sortable:True
+						filterable:True
+						initially-masked:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissionpermissiontype
+						text:Transform Current permissionpermissiontype using fragmentFolderTypeMapping
+						header:$fragmentFolderNLS.type
+						width:140px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissiondescription
+						header:$fragmentFolderNLS.description
+						width:260px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissionsensitivitylevel
+						header:$fragmentFolderNLS.sensitivitylevel
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+			
+					Column {
+						header:$fragmentFolderNLS.fsnbread
+						column:permissionfsnbread
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.fsnbwrite
+						column:permissionfsnbwrite
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.fsnbcontrol
+						column:permissionnfsnbcontrol_int
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.inherited
+						column:permissioninherited
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.lastaccessdate
+						column:permissionlastaccessdate
+						width:128px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.lastmodifydate
+						column:permissionlastmodifydate
+						width:128px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.numberoffiles
+						column:permissionnumberoffiles
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.totalsize
+						column:permissiontotalsize
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					
+					
+					Column {
+						column:nbaccounts
+						header:$fragmentShareFoldersNLS.nbaccount
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+			when False then [
+				Grid {
+					columns:GridColumn,GridColumn,GridColumn { width:grow }
+					layout:Layout { grab: horizontal True vertical False hint:height 40 }
+					GridRow {
+						GridCell {
+							Combo {
+								variable:infolderdepth
+								label:$fragmentShareFoldersNLS.folderdepth
+								layout: Layout { hint:width 120 }
+								options:Static {
+									Option { value:1 text:"<=1" }
+									Option { value:2 text:"<=2" }
+									Option { value:3 text:"<=3" }
+									Option { value:4 text:"<=4" }
+									Option { value:5 text:"<=5" }
+									Option { value:6 text:"<=6" }
+									Option { value:7 text:"<=7" }
+									Option { value:8 text:"<=8" }
+									Option { value:9 text:"<=9" }
+								}
+							}	
+						}
+						GridCell {
+							Checkbox {
+								variable:inaclonly
+								label:$fragmentShareFoldersNLS.aclonlylabel
+							}						
+						}
+						GridCell {
+						
+						}
+					}
+				}
+				Table {
+					data:folders
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					double-click:ExecuteNamedAction goDetails
+					
+					commands: Commands {
+						position:After
+						presentation:Icon
+						orientation:Vertical
+						Command {
+							actions:Message "nop"
+							icon:""
+							disabled:True
+						}
+						Command {
+							actions:ExecuteNamedAction goDetails
+							icon:%browsing_16.zoom
+							tooltip:'Shows selected permission details'
+							disabled:
+								OrPredicate {
+									Not BooleanPredicate(incanshowdetails)
+									StringPredicate(outpermissionuid) { when IsEmpty then True otherwise False }
+								}
+						}
+					}
+					
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+			
+					Column {
+						column:permissioncode
+						header:$fragmentFolderNLS.code
+						selection:outpermissioncode
+						width:100%
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissiondisplayname
+						header:$fragmentFolderNLS.displayname
+						selection:outpermissionname
+						width:196px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissionpermissiontype
+						text:Transform Current permissionpermissiontype using fragmentFolderTypeMapping
+						header:$fragmentFolderNLS.type
+						width:140px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissiondescription
+						header:$fragmentFolderNLS.description
+						width:260px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissionsensitivitylevel
+						header:$fragmentFolderNLS.sensitivitylevel
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+			
+					Column {
+						header:$fragmentFolderNLS.fsnbread
+						column:permissionfsnbread
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.fsnbwrite
+						column:permissionfsnbwrite
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.fsnbcontrol
+						column:permissionfsnbcontrol
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.inherited
+						column:permissioninherited
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.lastaccessdate
+						column:permissionlastaccessdate
+						width:128px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.lastmodifydate
+						column:permissionlastmodifydate
+						width:128px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.numberoffiles
+						column:permissionnumberoffiles
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						header:$fragmentFolderNLS.totalsize
+						column:permissiontotalsize
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					
+					
+					Column {
+						column:nbaccounts
+						header:$fragmentShareFoldersNLS.nbaccount
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected shared folders for a given share as a tree with lazy loading
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the share uid</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentShareFoldersTree = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+	tree = HierarchicalData {
+		roots-view: bwf_sharerootfolders with inuid to uid
+		children-view:bwf_sharechildfolders with inuid to uid
+		attribute:permissionuid
+		parameter:permissionparentuid
+		max-level: 9
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid, 
+												True to inshowaccounts,
+												True to inshowacls,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Tree {
+		data:tree
+		layout:Layout {grab: horizontal True vertical True}
+		configurable:True
+		double-click:ExecuteNamedAction goDetails
+		persist-configuration:True
+		expand-level:1
+		
+		
+		Column {
+			column:permissiondisplayname
+			header:$fragmentFolderNLS.displayname
+			selection:outpermissionname
+			width:100%
+			sortable:True
+			filterable:True
+			
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:permissioncode
+			header:$fragmentFolderNLS.code
+			selection:outpermissioncode
+			width:100%
+			sortable:True
+			filterable:True
+			initially-masked:True
+			
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:permissionpermissiontype
+			header:$fragmentFolderNLS.type
+			width:140px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:permissiondescription
+			header:$fragmentFolderNLS.description
+			width:260px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:permissionsensitivitylevel
+			header:$fragmentFolderNLS.sensitivitylevel
+			width:96px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			header:$fragmentFolderNLS.fsnbread
+			column:permissionfsnbread
+			width:96px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			header:$fragmentFolderNLS.fsnbwrite
+			column:permissionfsnbwrite
+			width:96px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			header:$fragmentFolderNLS.fsnbcontrol
+			column:permissionfsnbcontrol
+			width:96px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			header:$fragmentFolderNLS.inherited
+			column:permissioninherited
+			width:96px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			header:$fragmentFolderNLS.lastaccessdate
+			column:permissionlastaccessdate
+			width:128px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			header:$fragmentFolderNLS.lastmodifydate
+			column:permissionlastmodifydate
+			width:128px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			header:$fragmentFolderNLS.numberoffiles
+			column:permissionnumberoffiles
+			width:96px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			header:$fragmentFolderNLS.totalsize
+			column:permissiontotalsize
+			width:96px
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:nbaccounts
+			header:$fragmentShareFoldersNLS.nbaccount
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:permissionuid
+			hidden:True
+			selection:outpermissionuid
+		}
+	}
+}
+
+
+fragmentShareFoldersSelectionNLS =NLS {
+	direct [en "Folders list" fr "Liste des répertoires"]
+	hierarchy [en "Folders hierarchy" fr "hiérarchie des répertoires"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected shared folders for a given share in various forms
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the share uid</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incancompare </b>optional, boolean value, true to enable comparison button (false by default)</li>
+ * <li><b>infolderdepth </b>optional, integer value, folder depth (1 by default)</li>
+ * <li><b>inaclonly </b>optional, boolean value, show only entries with ACLs attached to them (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionuid</b>, selected permission uid</li>
+ * <li><b>outpermissioncode</b>, selected permission code</li>
+ * <li><b>outpermissionname</b>, selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentShareFoldersSelection = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incancompare = Variable { type:Boolean initial:False }
+
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+	inaclonly = Variable { multivalued:False type:Boolean initial:False }
+
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+	selection = Variable { private:True }
+
+	Combo {
+		variable:selection
+		layout: Layout { hint: width 300 }
+		options:Static {
+			Option { value:"list" text:$fragmentShareFoldersSelectionNLS.direct }
+			Option { value:"hierarchy" text:$fragmentShareFoldersSelectionNLS.hierarchy }
+		}
+	}
+
+	ConditionalGroup {
+		StringCondition(selection) {
+			when "list" then [
+				IncludeFragment (fragmentShareFolders with 	value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																		value-of infolderdepth to infolderdepth,
+																		value-of inaclonly to inaclonly,
+																		value-of incancompare to incancompare,
+																	outpermissionuid binds-to outpermissionuid, 
+																	outpermissioncode binds-to outpermissioncode,
+																	outpermissionname binds-to outpermissionname,
+																	value-of Eval "inenabled.get()&&selection.get().equals('list')" to inenabled
+																	) 
+			]	
+			when "hierarchy" then [
+				IncludeFragment (fragmentShareFoldersTree with value-of inuid to inuid, 
+																		value-of incanshowdetails to incanshowdetails,
+																	outpermissionuid binds-to outpermissionuid, 
+																	outpermissioncode binds-to outpermissioncode,
+																	outpermissionname binds-to outpermissionname,
+																	value-of Eval "inenabled.get()&&selection.get().equals('hierarchy')" to inenabled
+																	) 
+			]	
+		}
+	}	
+}

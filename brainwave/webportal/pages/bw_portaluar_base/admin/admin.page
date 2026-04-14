@@ -1,0 +1,41 @@
+import "/webportal/pages/styles/default_mixins.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+adminPage = Page {
+	title:$admin.label
+	feature: adminmenu
+	
+	adminPages = Dataset {
+		pages: Pages {tags: "admin"}
+		excludes: 
+			OrPredicate {
+				AndPredicate { 
+					StringPredicate(Current name) { when 'rm_config_admin' then True }
+					Not BooleanPredicate (  ConfigurationVariable "isRoleMiningActive") 
+				}
+				AndPredicate { 
+					StringPredicate(Current name) { when 'rm_globalroles_cfg' then True }
+					Not BooleanPredicate (  ConfigurationVariable "isRoleMiningActive") 
+				}
+			}	
+		}
+	
+	Tiles {
+		mixins: buttonPage
+		columns: 2
+		tile-height: 80
+				
+		TileGroup{
+			iterate-on: adminPages
+			initial-sort: ^priority
+			Tile{
+				Button {
+					actions: GoTo Dynamic ( Current type , Current name ) 
+					image: Current largeIcon
+					text: Current title
+				}
+			}
+		}
+	}
+	
+}

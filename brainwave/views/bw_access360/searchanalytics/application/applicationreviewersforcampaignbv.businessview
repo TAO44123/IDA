@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360_applicationreviewersforcampaignbv" displayname="applicationreviewersforcampaignbv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/application/applicationreviewersforcampaignbv.javascript" name="D1692778834413" description="returns the list of reviewer for a given campaign ( if the review tickets have been already created) &#xA;works for any type of campaign">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1692778834412" title="application reviewers for campaign">
+			<InnerView name="bwaccess360_applicationreviewersforcampaign">
+				<Param name="F1692779244187" viewparam="campaignid" viewparamvalue="{param.campaignid}"/>
+				<Param name="F1692779251205" viewparam="filterbyreviewstatus" viewparamvalue="{param.filterbyreviewstatus}"/>
+				<Param name="F1698412957047" viewparam="filternotsignedofonly" viewparamvalue="{param.filternotsignedofonly.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1692778856241" type="joinview" x="570" y="240" w="300" h="50" title="active delegations">
+			<InnerView name="bwaccess360_activedelegations"/>
+			<Join jointype="left" key1="{dataset.targetuid.get()}" key2="{dataset.delegatoruid.get()}"/>
+			<ViewComputedAttribute name="uid" displayname="uid" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetuid.get():dataset.delegateeuid.get()"/>
+			<ViewComputedAttribute name="hrcode" displayname="hrcode" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targethrcode.get():dataset.delegateehrcode.get()"/>
+			<ViewComputedAttribute name="fullname" displayname="fullname" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetfullname.get():dataset.delegateefullname.get()"/>
+			<ViewComputedAttribute name="mail" displayname="mail" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetmail.get():dataset.delegateemail.get()"/>
+			<ViewComputedAttribute name="preferredlanguage" displayname="preferredlanguage" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetpreferredlanguage.get():dataset.delegateepreferredlanguage.get()"/>
+			<ViewComputedAttribute name="isdelegated" displayname="isdelegated" type="Boolean" expression="!dataset.isEmpty(&apos;delegateeuid&apos;)"/>
+		</Component>
+		<Link name="L1692778856410" source="C1692778834412" target="C1692778856241" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="campaignid" displayname="campaignid" type="String">
+	</ViewParam>
+	<ViewParam name="filterbyreviewstatus" displayname="filter by review status" type="String"/>
+	<ViewParam name="filternotsignedofonly" displayname="filternotsignedofonly" type="Boolean" defaultvalue="false">
+	</ViewParam>
+</View>

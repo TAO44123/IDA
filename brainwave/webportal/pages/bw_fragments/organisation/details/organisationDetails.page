@@ -1,0 +1,247 @@
+import "/webportal/pages/bw_fragments/organisation/details.page"
+import "/webportal/pages/bw_fragments/organisation/managers.page"
+import "/webportal/pages/bw_fragments/organisation/team.page"
+import "/webportal/pages/bw_fragments/organisation/teambyci.page"
+import "/webportal/pages/bw_fragments/organisation/groups.page"
+import "/webportal/pages/bw_fragments/organisation/applications.page"
+import "/webportal/pages/bw_fragments/organisation/permissions.page"
+import "/webportal/pages/bw_fragments/organisation/folders.page"
+import "/webportal/pages/bw_fragments/organisation/accounts.page"
+import "/webportal/pages/bw_fragments/organisation/controls.page"
+import "/webportal/pages/bw_fragments/organisation/decisionhistory.page"
+import "/webportal/pages/bw_fragments/organisation/businessactivities.page"
+import "/webportal/pages/bw_fragments/organisation/hierarchygraph.page"
+import "/webportal/pages/bw_fragments/organisation/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/organisation/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/custom/organisationExtendedDetails.page"
+
+bwf_organisationDetailsDialogNLS = NLS {
+	title [en 'Organisation detail' fr "Détails de l'organisation"]
+	
+	owner [en "Owner" fr "Propriétaire"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	organisation [en "Organisation" fr "Organisation"]
+	team [en "Team" fr "Equipe"]
+	ciresourcesaccess [en "CI Resources Access" fr "Accès aux resources CMDB"]
+	managers [en "Managers" fr "Responsables"]
+	accounts [en "Accounts" fr "Comptes"]
+	groups [en "Groups" fr "Groupes"]
+	permissions [en "Permissions" fr "Permissions"]
+	folders [en "Folders" fr "Données"]
+	businessactivities [en "Business activities" fr "Activités métier"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	controls [en "Controls" fr "Contrôles"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	suborganisations [en "Hierarchy" fr "Hiérarchie"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Organisation details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>identity uid</li>
+ * <li><b>inshowsuborganisationtree </b>optional, boolean value, true to enable displaying selected organisation sub-organisations as a tree, false by default</li>
+ * <li><b>inshowmanagers </b>optional boolean, true to show managers tab, false by default</li>
+ * <li><b>inshowteam </b>optional boolean, true to show team tab, false by default</li>
+ * <li><b>inshowteamwithci </b>optional boolean, true to show team resources with a given CI tab, false by default</li>
+ * <li><b>infilterteambypermission </b>optional, filter team list to show only the ones with the given permission</li>
+ * <li><b>infilterteambyapplication </b>optional, filter team list to show only the ones with the given application</li>
+ * <li><b>infilterteambygroup </b>optional, filter team list to show only the ones with the given group</li>
+ * <li><b>infilterteambyrepository </b>optional, filter team list to show only the ones with the given repository</li>
+ * <li><b>inshowbusinessactivities </b>optional boolean, true to show assigned business activities tab, false by default</li>
+ * <li><b>inshowtheoretical </b>optional boolean, true to show granted rights tab, false by default</li>
+ * <li><b>inshowoverallocated </b>optional boolean, true to show over allocated rights tab, false by default</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, false by default</li>
+ * <li><b>inshowgroups </b>optional boolean, true to show groups tab, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show applications tab, false by default</li>
+ * <li><b>inshowpermissions </b>optional boolean, true to show permissions tab, false by default</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inshowrisks </b>optional, boolean value, true to show risks indicators in details tile (false by default)</li>
+ * <li><b>incanupdatemanagers </b>optional, boolean value, true to be able to update managers (false by default)</li>
+ * <li><b>indirectonly </b>optional, boolean value, true to start with direct members only (true by default)</li>
+ * <li><b>incmdbciuid </b>optional, CMDB CI uid, required if inshowteamwithci is selected</li>
+ * </ul>
+ * </span>
+ */
+bwf_organisationDetailsDialog = Dialog {
+	title:$bwf_organisationDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	
+	inuid = Variable
+	
+	inshowmanagers = Variable { type:Boolean initial:True }
+	inshowsuborganisationtree = Variable { type:Boolean initial:False }
+	inshowteam = Variable { type:Boolean initial:False }
+	inshowteamwithci = Variable { type:Boolean initial:False }
+	infilterteambypermission = Variable { multivalued:False type:String }
+	infilterteambyapplication = Variable { multivalued:False type:String }
+	infilterteambygroup = Variable { multivalued:False type:String }
+	infilterteambyrepository = Variable { multivalued:False type:String }
+	inshowbusinessactivities = Variable { type:Boolean initial:False }
+	inshowtheoretical = Variable { type:Boolean initial:False }
+	inshowoverallocated = Variable { type:Boolean initial:False }
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowgroups = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowpermissions = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inshowrisks = Variable { multivalued:False type:Boolean initial:False }
+	incanupdatemanagers = Variable { multivalued:False type:Boolean initial:False }
+	indirectonly = Variable { type:Boolean initial:True }
+	incmdbciuid = Variable
+	
+	nbdefects = Variable { private:True }
+	nboverallocated = Variable { private:True }
+
+	showextended = Variable { private:True initial:False }
+
+	active_organisation = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_suborganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_managers = Variable { initial:False multivalued:False type:Boolean }
+	active_team = Variable { initial:False multivalued:False type:Boolean }
+	active_teamwithci = Variable { initial:False multivalued:False type:Boolean }
+	active_businessactivities = Variable { initial:False multivalued:False type:Boolean }
+	active_theoretical = Variable { initial:False multivalued:False type:Boolean }
+	active_overallocated = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_permissions = Variable { initial:False multivalued:False type:Boolean }
+	active_folders = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.organisation
+			activation-event: Set True to active_organisation
+			
+			IncludeFragment (fragmentOrganisationFullDetails with value-of inuid to inuid, inshowrisks binds-to inshowrisks, indirectonly binds-to inonlydirect, value-of active_organisation to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentOrganisationExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.suborganisations
+			hidden:Not BooleanPredicate(inshowsuborganisationtree)
+			activation-event: Set True to active_suborganisation
+			
+			IncludeFragment (fragmentOrganisationHierarchyGraph with value-of inuid to inuid, value-of active_suborganisation to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.managers
+			hidden:Not BooleanPredicate(inshowmanagers)
+			activation-event: Set True to active_managers
+			
+			IncludeFragment (fragmentOrganisationManagers with value-of inuid to inuid, incanupdatemanagers binds-to incanupdateowners, value-of False to incanshowdetails, indirectonly binds-to inonlydirectselection, value-of active_managers to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.team
+			hidden:Not BooleanPredicate(inshowteam)
+			activation-event: Set True to active_team
+			
+			IncludeFragment (fragmentOrganisationTeam with value-of inuid to inuid, value-of infilterteambyrepository to infilterteambyrepository, value-of infilterteambygroup to infilterteambygroup, value-of infilterteambypermission to infilterteambypermission, value-of infilterteambyapplication to infilterteambyapplication, value-of False to incanshowdetails, indirectonly binds-to inonlydirectselection, value-of active_team to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.ciresourcesaccess
+			hidden:Not BooleanPredicate(inshowteamwithci)
+			activation-event: Set True to active_teamwithci
+			
+			IncludeFragment (fragmentOrganisationTeamByCI with value-of inuid to inuid, value-of incmdbciuid to incmdbciuid, value-of True to incanshowdetails, value-of active_teamwithci to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.businessactivities
+			hidden:Not BooleanPredicate(inshowbusinessactivities)
+			activation-event: Set True to active_businessactivities
+			feature:sod_license
+			
+			IncludeFragment (fragmentOrganisationBusinessActivities with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_businessactivities to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.theoretical
+			hidden:Not BooleanPredicate(inshowbusinessactivities)
+			activation-event: Set True to active_theoretical
+			feature:iam_license
+			
+			IncludeFragment (fragmentOrganisationTheoreticalRightsMasterDetails with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_theoretical to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.overallocated
+			hidden:Not BooleanPredicate(inshowoverallocated)
+			activation-event: Set True to active_overallocated
+			badge: Eval "nboverallocated.get()>0?nboverallocated.get():''"
+			feature:iam_license
+			
+			IncludeFragment (fragmentOrganisationOverAllocationsList with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, nboverallocated binds-to outnbproblems, value-of inshowoverallocated to inenabled )
+		}
+
+
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+			activation-event: Set True to active_accounts
+			
+			IncludeFragment (fragmentOrganisationAccounts with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_accounts to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.groups
+			hidden:Not BooleanPredicate(inshowgroups)
+			activation-event: Set True to active_groups
+			
+			IncludeFragment (fragmentOrganisationGroups with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_groups to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.applications
+			hidden:Not BooleanPredicate(inshowapplications)
+			activation-event: Set True to active_applications
+			
+			IncludeFragment (fragmentOrganisationApplications with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_applications to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.permissions
+			hidden:Not BooleanPredicate(inshowpermissions)
+			activation-event: Set True to active_permissions
+			
+			IncludeFragment (fragmentOrganisationPermissions with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_permissions to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.folders
+			hidden:Not BooleanPredicate(inshowshares)
+			activation-event: Set True to active_folders
+			feature:unstructureddata_license
+			
+			IncludeFragment (fragmentOrganisationFolders with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_folders to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentOrganisationControlDefectsList with value-of inuid to inuid, value-of True to incanshowdetails, nbdefects binds-to outnbdefects, indirectonly binds-to inonlydirectselection, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_organisationDetailsDialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentOrganisationDecisionHistory with value-of inuid to inuid, indirectonly binds-to inonlydirectselection, value-of active_decision to inenabled )
+		}
+	}
+}

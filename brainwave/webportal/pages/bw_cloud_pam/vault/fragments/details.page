@@ -1,0 +1,307 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/mixins.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/bw_cloud_pam/vault/search.page"
+import "/webportal/pages/bw_cloud_pam/resources/icons.page"
+
+fragmentCAVaultDetailsNLS = NLS {
+	category [en "Category" fr "Catégorie"]
+	family [en "Family" fr "Famille"]
+	credentials [en "# Credentials" fr "Secrets"]
+	nbacckpi [en "# Users taking a license seat" fr "Nb utilisateurs occupant une licence"]
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	nbaccounts [en "Number of Active Accounts" fr "Nombre de comptes actifs"]
+	nbfolders [en "Number of Folders" fr "Nombre de répertoires"]
+	expertise [en "Expertise" fr "Responsabilité"]
+	managers [en "Managers" fr "Responsables"]
+	kpis [en "KPIs" fr "KPIs"]
+	safes [en "Safes" fr "Safes"]
+	managetags [en "Manage Tags" fr "Gérer les labels"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected CA Vault details in 1366px wide
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the vault uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanupdatetags </b>optional, boolean value, true to enable tags update (false by default). Warning, this function is also restricted through a Feature</li>
+ * </ul>
+ * </span>
+ */
+fragmentCAVaultFullDetails = PageFragment {
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanupdatetags = Variable { multivalued: False type: Boolean initial: False }
+
+	cavault = Record {
+		view:bwpam_cavaultDetail with inuid to uid
+		 disabled:Not BooleanPredicate(inenabled)
+	}
+	prevcavault = Record {
+		view:bwpam_cavaultDetail with inuid to uid
+		 disabled:Not BooleanPredicate(inenabled)
+		timeslot:FromPage(-1)
+	}
+	tags = Dataset {
+		view:bwf_applicationtags with inuid to uid
+		 disabled:Not BooleanPredicate(inenabled)
+	}
+	tagsasString = Record {
+  		 view:bwa_applicationtagsasastring with inuid to uid
+		 disabled:Not BooleanPredicate(inenabled)
+	}
+
+	// standard
+	Grid {
+		columns:GridColumn { width: 160 px }, GridColumn { width:grow }
+		layout:Layout { grab:horizontal True vertical False hint: height 120 }
+		GridRow {
+			height:120
+			GridCell {
+				Header {
+					value:''
+					styling:bigTitleStyle
+					icon:%pam_cyberark_concepts_48.vault
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False}
+				}
+			}		
+			GridCell {
+				Header {
+					value:cavault.displayname
+					styling:bigTitleStyle
+					layout:Layout{indent:horizontal 0 vertical 0 hint:height 24}
+				}
+				Header {
+					layout:Layout{indent:horizontal 0 vertical 0 hint:height 20}
+					value:cavault.code
+					hidden:SameValuePredicate(cavault.code, cavault.displayname)
+				}
+				Text {
+					value: @srv_truncatestring (tagsasString.tag to string, 300 to maxlength)
+					tooltip:tagsasString.tag
+					label:Label { break:True }
+					compact: True
+					layout:Layout { grab:horizontal True vertical False indent:horizontal 0 vertical 0 hint: height 16}
+					commands:Commands { position: After orientation: Horizontal 
+								Command{	actions:Dialog fragmentApplicationTagsEditor(inuid to uid, incanupdatetags to canupdatetags), 
+													ReloadData (cavault), ReloadData (tags), ReloadData (tagsasString)
+				                        	icon:%collection_16.tag
+				                        	disabled:Not BooleanPredicate(incanupdatetags)
+				                        	tooltip:$fragmentCAVaultDetailsNLS.managetags
+				                       }
+				                  }
+				}
+			}		
+		}
+	}
+	
+	Grid {
+		columns:GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical False hint:height 200 }
+		GridRow {
+			GridCell {
+				Group {
+					title:$fragmentCAVaultDetailsNLS.kpis
+
+					Text {
+						value: Transform cavault.nb_users using nullToZeroMapping
+						label:$fragmentCAVaultDetailsNLS.nbacckpi
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_users using mayBeNullMapping, Transform prevcavault.nb_users using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_users, prevcavault.nb_users)) using bwf_trend
+								width:16
+							}
+						}
+					}
+//					Text {
+//						value: Transform cavault.nb_identities using nullToZeroMapping
+//						label:$search.application.nbidentities
+//						compact:True
+//						align:Right
+//						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_identities using mayBeNullMapping, Transform prevcavault.nb_identities using mayBeNullMapping)
+//						decorator:Decorator {
+//							width:60
+//							after:Image {
+//								image:TemplateImageSelection (Difference(cavault.nb_identities, prevcavault.nb_identities)) using bwf_trend
+//								width:16
+//							}
+//						}
+//					}
+					
+					// # Contractors
+//					Text {
+//						value: Transform cavault.nb_contractors using nullToZeroMapping
+//						label:$cavaultSearchPageNLS.metrics_nb_contractors
+//						compact:True
+//						align:Right
+//						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_contractors using mayBeNullMapping, Transform prevcavault.nb_contractors using mayBeNullMapping)
+//						decorator:Decorator {
+//							width:60
+//							after:Image {
+//								image:TemplateImageSelection (Difference(cavault.nb_contractors, prevcavault.nb_contractors)) using bwf_trend
+//								width:16
+//							}
+//						}
+//					}
+					// # EPV Users
+					Text {
+						value: Transform cavault.nb_epvusers using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_epv_users
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_epvusers using mayBeNullMapping, Transform prevcavault.nb_epvusers using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_epvusers, prevcavault.nb_epvusers)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					// # Application Users
+					Text {
+						value: Transform cavault.nb_aimusers using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_app_users
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_aimusers using mayBeNullMapping, Transform prevcavault.nb_aimusers using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_aimusers, prevcavault.nb_aimusers)) using bwf_trend
+								width:16
+							}
+						}
+					}
+				}
+			}
+			GridCell {
+				Group {
+					title:$fragmentCAVaultDetailsNLS.safes
+
+					Text {
+						value: Transform cavault.nb_safes using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_safes
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_safes using mayBeNullMapping, Transform prevcavault.nb_safes using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_safes, prevcavault.nb_safes)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					
+					// # Resources					
+					Text {
+						value: Transform cavault.nb_resources using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_resources
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_resources using mayBeNullMapping, Transform prevcavault.nb_resources using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_resources, prevcavault.nb_resources)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					// # Platforms					
+					Text {
+						value: Transform cavault.nb_platforms using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_platforms
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_platforms using mayBeNullMapping, Transform prevcavault.nb_platforms using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_platforms, prevcavault.nb_platforms)) using bwf_trend
+								width:16
+							}
+						}
+					}										
+										
+				}
+			}
+			// Credentials
+			GridCell {
+				Group {
+					title:$fragmentCAVaultDetailsNLS.credentials
+					// # Credentials					
+					Text {
+						value: Transform cavault.nb_credentials using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_secrets
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_credentials using mayBeNullMapping, Transform prevcavault.nb_credentials using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_credentials, prevcavault.nb_credentials)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					
+					// # Credentials without Active CPM
+					Text {
+						value: Transform cavault.nb_cpminactive using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_cpm_inactive
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_cpminactive using mayBeNullMapping, Transform prevcavault.nb_cpminactive using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_cpminactive, prevcavault.nb_cpminactive)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					// # Credentials with Failed CPM					
+					Text {
+						value: Transform cavault.nb_cpmfailed using nullToZeroMapping
+						label:$cavaultSearchPageNLS.metrics_nb_cpm_failed
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform cavault.nb_cpmfailed using mayBeNullMapping, Transform prevcavault.nb_cpmfailed using mayBeNullMapping)
+						decorator:Decorator {
+							width:60
+							after:Image {
+								image:TemplateImageSelection (Difference(cavault.nb_cpmfailed, prevcavault.nb_cpmfailed)) using bwf_trend
+								width:16
+							}
+						}
+					}										
+										
+				}
+			}
+			
+		}
+	}
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA MD user ad account" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617208030303_1_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039877974_1">
+		<Component name="C1617039877974_1" type="discoverysource" x="173" y="33" w="300" h="64" title="CA_ users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_users.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617208096422" type="metadata" x="18" y="315" w="209" h="64" title="bw_pam_useradaccount">
+			<Metadata schema="bw_pam_useradaccount" key=" " account="vaultuser_id" accountRepository="_REPOSITORY_CODE_" accountValue="userdn" accountValueRepository="repository_code" error="true" event="EntityNotFound"/>
+		</Component>
+		<Link name="L1617208108276" source="C1617039877974_1" target="C1617361043614" priority="1"/>
+		<Component name="C1617360880009" type="metadata" x="18" y="474" w="209" h="64" title="user ref account (LDAP)">
+			<Metadata schema="bw_pam_userrefaccount" key=" " account="vaultuser_id" accountRepository="_REPOSITORY_CODE_" accountValue="userdn" accountValueRepository="repository_code" error="true" event="EntityNotFound">
+				<Attribute name="valueboolean" attribute="account_isLDAP"/>
+			</Metadata>
+		</Component>
+		<Link name="L1617360920478" source="C1617208096422" target="C1617360880009" priority="1"/>
+		<Component name="C1617361043614" type="changefilter" x="172" y="155" w="300" h="64" title="flag LDAP">
+			<Actions>
+				<Action name="U1617361068966" action="add" attribute="account_isLDAP" type="Boolean" multivalued="false" newvalue="{dataset.source.get() == &apos;LDAP&apos;}" errorexist="false"/>
+			</Actions>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1617361761431" source="C1617361043614" target="C1617208096422" priority="1" expression="dataset.account_isLDAP.get() == true"/>
+		<Component name="C1617360880009_1" type="metadata" x="457" y="317" w="209" h="64" title="user ref account (CA)">
+			<Metadata schema="bw_pam_userrefaccount" key=" " account="vaultuser_id" accountRepository="_REPOSITORY_CODE_" accountValue="vaultuser_id" accountValueRepository="_REPOSITORY_CODE_" error="true" event="EntityNotFound">
+				<Attribute name="valueboolean" attribute="account_isLDAP"/>
+			</Metadata>
+		</Component>
+		<Link name="L1617362047219" source="C1617361043614" target="C1617360880009_1" priority="2"/>
+		<Component name="N1617362409315" type="note" x="659" y="42" w="300" h="88" title="write ref and AD account metadata for LDAP accounts&#xA;and ref account (self) for CyberArk accounts"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

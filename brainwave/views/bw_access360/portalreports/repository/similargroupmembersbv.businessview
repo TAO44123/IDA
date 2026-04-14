@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360r_repository_similargroupmembersbv" displayname="simular group members with threshold">
+	<Definition scriptfile="/views/bw_access360/portalreports/repository/similargroupmembersbv.javascript" name="D1594046006890">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1594046006890" title="similar group members">
+			<InnerView name="bwaccess360r_repository_similargroupmembers">
+				<Param name="F1594046064178" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1594048793719" viewparam="nbmembersThreshold" viewparamvalue="{param.nbmembersThreshold.get()}"/>
+				<Param name="F1613413114077" viewparam="codefilter" viewparamvalue="{param.codefilter.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1594046132268" expression="!param.isEmpty(&apos;threshold&apos;) &amp;&amp; (param.threshold.get()&gt;dataset.similarity.get())" type="Exclude"/>
+				<Filter name="F1594046283122" expression="dataset.grp1uid.get() == dataset.grp2uid.get()" type="Exclude"/>
+				<Filter name="F1594106377703" expression="param.dedup.get()?dataset.key.get():(dataset.grp1uid.get()+dataset.grp2uid.get())" comment="dedup if needed" type="Deduplicate"/>
+			</FilterList>
+			<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.grp1uid.get()&lt;dataset.grp2uid.get()?(dataset.grp1uid.get()+dataset.grp2uid.get()):(dataset.grp2uid.get()+dataset.grp1uid.get())"/>
+		</Component>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1594105921657_1" data="ACME_1591082659017_2055"/>
+	</ViewParam>
+	<ViewParam name="threshold" displayname="threshold" type="Integer" defaultvalue="80"/>
+	<ViewParam name="nbmembersThreshold" displayname="nbmembersThreshold" type="Integer" defaultvalue="20"/>
+	<ViewParam name="dedup" displayname="dedup" type="Boolean" defaultvalue="false"/>
+	<ViewSort name="sort" attribute1="similarity" direction1="DESC" attribute2="nbaccount" direction2="DESC"/>
+	<ViewParam name="codefilter" displayname="codefilter" type="String"/>
+</View>

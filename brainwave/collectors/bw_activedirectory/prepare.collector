@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="AD prepare" description="AD repository and public account " scriptfile="/collectors/bw_activedirectory/AD.javascript" name="P1423144150477_9_pTsbz1IEBe4KPTb0YmOQ" startingpoint="C1423143957674_1">
+		<Component name="C1337776139577_2" type="account" x="136" y="349" w="200" h="64" title="PUBLIC account">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Account key="public_name" error="true" event="empty account key">
+				<Attribute name="guid" attribute="public_account_sid_guid"/>
+				<Attribute name="sid" attribute="public_account_sid_guid"/>
+				<Attribute name="login" attribute="public_name"/>
+			</Account>
+		</Component>
+		<Component name="C1337776199240_2" type="changefilter" x="90" y="142" w="291" h="64" title="Add name for PUBLIC account">
+			<Actions>
+				<Action name="U1337776274496" action="add" attribute="public_name" type="String" multivalued="false" newvalue="PUBLIC" errorexist="false"/>
+				<Action name="U1445423118575" action="add" attribute="repoType" type="String" multivalued="false" newvalue="AD" errorexist="false"/>
+				<Action name="U1449147974193" action="add" attribute="group_everyone_id" type="String" multivalued="false" errorexist="false" newvalue="S-1-1-0"/>
+				<Action name="U1449148053536" action="add" attribute="public_account_sid_guid" type="String" multivalued="false" newvalue="{dataset.public_name.get() + &apos;_&apos; +dataset._REPOSITORY_CODE_.get()}" description="calculate sid guid of public group" errorexist="false"/>
+				<Action name="U1708523876893" action="add" attribute="LINEAGE" type="String" multivalued="false" newvalue="{(!dataset.isEmpty(&apos;IS_IDDM&apos;)&amp;&amp;dataset.IS_IDDM.get())?&quot;iddm&quot;:&quot;&quot;}" description="Lineage value, set to IDDM when the data comes from IDDM" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1355754302248_1" source="C1423143957674_1" target="C1337776199240_2" priority="1"/>
+		<Component name="C1423144224903" type="repository" x="136" y="247" w="200" h="64" title="Domain repository">
+			<Media type="A" code="_REPOSITORY_CODE_" label="_REPOSITORY_DISPLAYNAME_" repositorytype="repoType"/>
+			<Repository>
+				<Attribute name="repositoryfamily" attribute="repoType"/>
+				<Attribute name="custom9" attribute="LINEAGE"/>
+			</Repository>
+		</Component>
+		<Link name="L1423144236165" source="C1337776199240_2" target="C1423144224903" priority="1"/>
+		<Link name="L1423144237041" source="C1423144224903" target="C1337776139577_2" priority="1"/>
+		<Component name="C1448963242411_1" type="groupmembers" x="85" y="435" w="302" h="64" title="Add PublicGroup to Everyone group">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Group code="group_everyone_id"/>
+			<Content members="public_account_sid_guid" error="false"/>
+			<Domain isuniqueidentifier="true" repositorytype="repoType"/>
+		</Component>
+		<Link name="L1449148071365" source="C1337776139577_2" target="C1448963242411_1" priority="1"/>
+		<Component name="C1423143957674_1" type="discoverysource" x="134" y="41" w="200" h="64" title="IDDM detection">
+			<Discovery file="/discovery/bw_activedirectory/ad_is_iddm.discovery" datafile="{config.siloIteratedFileFullname}"/>
+		</Component>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+		</Variables>
+	</Configuration>
+</Provisioning>

@@ -1,0 +1,168 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+fragmentGroupChildGroupsNLS = NLS {
+	circularrefs [en "Circular References Detected" fr "Références circulaires détectées"]
+	nbaccount [en "Number of Accounts" fr "Nombre de comptes"]
+	nbdirectaccount [en "Number of Direct \nAccounts" fr "Nombre de comptes \ndirects"]
+	nbidentity [en "Number of Identities" fr "Nombre de personnes"]
+	nbdirectidentity [en "Number of Direct \nIdentities" fr "Nombre de personnes \ndirectes"]
+	nochild [en "No Child Groups" fr "Pas de groupes fils"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected group child groups
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, can show sub groups details (false by default)</li>
+ * <li><b>outnbdirectchildren </b>returns the number of direct children</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupChildGroups = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outnbdirectchildren = Variable { type:Integer }
+	
+	nbcircularrefs = Variable { private:True type:Integer }
+	selectedgroup = Variable
+
+	directchildgroups = Dataset {
+		view: bwf_groupdirectchildgroups with inuid to uid
+		count-variable:outnbdirectchildren
+	}
+	childgroups = HierarchicalData {
+		 roots-view: bwf_groupdirectchildgroups with inuid to uid
+		 attribute: uid
+		 children-view: bwf_groupdirectsubgroups
+		 parameter: parentuid
+		 max-level: 9
+		 disabled:
+		 	OrPredicate {
+				 IntPredicate(nbcircularrefs) { when >0 then True }		 	
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	circularrefs = Dataset {
+		view:bwf_grouphascircularrefs with inuid to uid
+		 count-variable:nbcircularrefs
+	}
+	
+
+	showdetails = NamedAction (
+		BooleanCase(incanshowdetails) { 
+			when False then [
+			]
+			when True then [
+				Dialog bwf_groupDetailsDialog(selectedgroup to inuid,
+					True to inshowaccounts,
+					True to inshowapplications,
+					True to inshowshares,
+					True to inshowperorg,
+					True to inshowperjob
+				)
+			]		
+		}
+	)
+
+	Image {
+		image:%status_32_orange.warning
+		hidden:IntPredicate(nbcircularrefs) { when =0 then True }
+	}
+	Text {
+		value:$fragmentGroupChildGroupsNLS.circularrefs
+		compact:True
+		styling:bwf_warningNG
+		hidden:IntPredicate(nbcircularrefs) { when =0 then True }
+	}
+	ConditionalGroup {
+		IntCondition(outnbdirectchildren) {
+			when =0 then [
+				Header {
+					value:$fragmentGroupChildGroupsNLS.nochild
+					hidden:IntPredicate(nbcircularrefs) { when >0 then True }
+				}			
+			]
+			otherwise [
+				Tree {
+					data:childgroups
+					configurable:True
+					persist-configuration:True
+					//expand-level:10
+					layout:Layout {grab:horizontal True vertical True}
+					hidden:IntPredicate(nbcircularrefs) { when >0 then True }
+
+					Column {
+						column:uid
+						hidden:True
+						selection:selectedgroup
+					}
+					Column {
+						column:displayname
+						header:$group.displayname
+						width:50%
+						actions:ExecuteNamedAction showdetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:comment
+						header:$group.comment
+						width:50%
+					}
+					Column {
+						column:code
+						header:$group.code
+						initially-masked:True
+						actions:ExecuteNamedAction showdetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:repositorydisplayname
+						initially-masked:True
+						header:$repository.concept
+						width:160px
+					}
+
+					Column {
+						column:nbdirectaccount
+						initially-masked:True
+						header:$fragmentGroupChildGroupsNLS.nbdirectaccount
+					}
+					Column {
+						column:nbaccount
+						initially-masked:True
+						header:$fragmentGroupChildGroupsNLS.nbaccount
+					}
+					Column {
+						column:nbdirectidentity
+						initially-masked:True
+						header:$fragmentGroupChildGroupsNLS.nbdirectidentity
+					}
+					Column {
+						column:nbidentity
+						initially-masked:True
+						header:$fragmentGroupChildGroupsNLS.nbidentity
+					}
+				}
+			]
+		}
+	}
+}

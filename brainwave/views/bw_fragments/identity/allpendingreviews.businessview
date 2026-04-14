@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_allpendingreviews" displayname="allpendingreviews">
+	<Definition scriptfile="/views/bw_fragments/identity/allpendingreviews.javascript" name="D1681380913449">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1681380913449" title="all reviews">
+			<InnerView name="bwf_identitylistactivecampaigns">
+				<Param name="F1681381131592" viewparam="includedcampaigns" viewparamvalue="{param.campaignid}"/>
+				<Param name="F1681381139053" viewparam="revieweruid" viewparamvalue="{param.revieweruid.get()}"/>
+				<Param name="F1681381415625" viewparam="filteractivetasks" viewparamvalue="{param.filteractivetasks.get()}"/>
+			</InnerView>
+			<ViewComputedAttribute name="timeslotkey" displayname="timeslot key" type="String" expression="dataset.isEmpty(&quot;stickytimeslot&quot;) ? param.currenttimeslot.get() : dataset.stickytimeslot.get()"/>
+		</Component>
+		<Component name="C1681381003601" type="joinview" x="245" y="243" w="300" h="50" title="Nb pending entries">
+			<InnerView name="bwf_identitylistpendingcampaigns" prefix="pendingcounter_">
+				<Param name="F1681381152678" viewparam="includedcampaigns" viewparamvalue="{param.campaignid}"/>
+				<Param name="F1681381166954" viewparam="revieweruid" viewparamvalue="{param.revieweruid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.pendingcounter_recorduid.get()}"/>
+			<ViewComputedAttribute name="_pendingcounter_nb" displayname="Pending entries counter" type="Integer" expression="! dataset.isEmpty(&quot;pendingcounter_nb&quot;) ? dataset.pendingcounter_nb.get() : 0"/>
+			<ExcludeList>
+				<Exclude name="pendingcounter_nb"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1681381003779" source="C1681380913449" target="C1681381003601" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1681394925489" type="joinview" x="212" y="287" w="300" h="50" title="Nb reviewed entries">
+			<InnerView name="bwf_accessreviewperreviewer_nbentries" prefix="notreviewedcounter_">
+				<Param name="F1681396562030" viewparam="campaignid" viewparamvalue="{param.campaignid}"/>
+				<Param name="F1681396568655" viewparam="revieweruid" viewparamvalue="{param.revieweruid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.notreviewedcounter_recorduid.get()}"/>
+			<ViewComputedAttribute name="_notreviewedcounter_nb" displayname="Not reviewed entries counter" type="Integer" expression="! dataset.isEmpty(&quot;notreviewedcounter_nb&quot;) ? dataset.notreviewedcounter_nb.get() : 0"/>
+			<ExcludeList>
+				<Exclude name="notreviewedcounter_nb"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1681394925672" source="C1681381003601" target="C1681394925489" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1738847551508" type="joinview" x="279" y="237" w="300" h="50" title="Filter out hidden timeslot sticky review">
+			<InnerView name="activetimeslots"/>
+			<Join jointype="inner" key1="{dataset.timeslotkey.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Link name="L1738847551848" source="C1681394925489" target="C1738847551508" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="revieweruid" displayname="revieweruid" type="String">
+		<Value name="V1718627420628_1" data="I61271478_1716803797513_11309"/>
+	</ViewParam>
+	<ViewParam name="campaignid" displayname="campaignid" type="String">
+		<Value name="V1718627439635_2" data="3"/>
+		<Value name="V1718627443093_3" data="9"/>
+		<Value name="V1718627446886_4" data="18"/>
+		<Value name="V1718627450362_5" data="25"/>
+		<Value name="V1718627453841_6" data="31"/>
+		<Value name="V1718627457116_7" data="106"/>
+		<Value name="V1718627460417_8" data="255"/>
+		<Value name="V1718627464237_9" data="392"/>
+		<Value name="V1718630672917_1" data="401"/>
+	</ViewParam>
+	<ViewParam name="filteractivetasks" displayname="filteractivetasks" type="Boolean">
+		<Value name="V1718627469880_10" data="true"/>
+	</ViewParam>
+	<ViewParam name="currenttimeslot" displayname="current timeslot"/>
+</View>

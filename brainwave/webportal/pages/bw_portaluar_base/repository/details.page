@@ -1,0 +1,324 @@
+import "/webportal/pages/resources/details_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/repository/details.page"
+import "/webportal/pages/bw_fragments/repository/accounts.page"
+import "/webportal/pages/bw_fragments/repository/groups.page"
+import "/webportal/pages/bw_fragments/repository/usages.page"
+import "/webportal/pages/bw_fragments/repository/controls.page"
+import "/webportal/pages/bw_fragments/repository/analytics.page"
+import "/webportal/pages/bw_fragments/repository/decisionhistory.page"
+import "/webportal/pages/bw_fragments/repository/applications.page"
+import "/webportal/pages/bw_fragments/repository/rights.page"
+import "/webportal/pages/bw_fragments/repository/shares.page"
+import "/webportal/pages/bw_fragments/repository/fsrights.page"
+import "/webportal/pages/bw_fragments/custom/repositoryExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+repositoryDetailsPageNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	repository [en "Repository" fr "Référentiel"]
+	accounts [en "Accounts" fr "Comptes"]
+	groups [en "Groups" fr "Groupes"]
+	access [en "Access" fr "Accès"]
+	usages [en "Usages" fr "Usages"]
+	applications [en "Applications" fr "Applications"]
+	rights [en "Rights" fr "Droits"]
+	shares [en "Shares access" fr "Partages accessibles"]
+	sharesrights [en "Data access rights" fr "Droits sur les données"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	
+	notexists [
+		en "This repository does not exist in the current timeslot, you should select a different timeslot"
+		fr "Ce référentiel n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+repositoryDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (repository)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Repository Detail with repositoryUid.uid to paramRepositoryUid }
+	feature: repositorydetails_access
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Repository
+		mandatory: True
+	}
+	
+	repositoryUid = Record {
+		view: br_repositoryDetail_uid with recorduid to recorduid
+	}
+}
+
+repositoryDetailsParkingPage = Page {
+	title: $repositoryDetails.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( repository.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page repositoryDetailsPage with-current-parameters
+		}
+	
+	paramRepositoryUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	repository = Record {
+		view: bwf_repositoryDetail with paramRepositoryUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$repositoryDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+repositoryDetailsPage = Page {
+	title: $repositoryDetails.title
+	dynamic-title: $repositoryDetails.dynamictitle ( repository.displayname )
+	icon: %concept.repository
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( repository.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page repositoryDetailsParkingPage with-current-parameters
+		}
+	mixins: detailsPage
+	enter-event:
+		IntCase(repository.bwa_repositoryanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+		IntCase(repository.bwa_repositoryanalytics_nbgroup) { when >0 then [ Set True to hasgroups ] },
+		IntCase(repository.bwa_repositoryanalytics_nbaccount) { when >0 then [ Set True to hasaccounts ] },
+		IntCase(repository.bwa_repositoryanalytics_nbapplication) { when >0 then [ Set True to hasapplications ] },
+		IntCase(repository.bwa_repositoryanalytics_nbshare) { when >0 then [ Set True to hasshares ] },
+		Set nbControls._total to nbdefects
+	
+	// Parameters Here
+	paramRepositoryUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedRepositoryUid = Variable {
+		type: String
+		initial: paramRepositoryUid
+	}
+	
+	nbdefects = Variable
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+
+	nbdecision = Variable
+	hasapplications = Variable { initial:False }
+	hasshares = Variable { initial:False }
+	hasaccounts = Variable { initial:False }
+	hasgroups = Variable { initial:False }
+	hasusages = Variable { initial:False }
+	
+	showextended = Variable { initial:False }
+
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_repository = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_sharesrights = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Dataset for Reports
+	repository = Record {
+		view: bwf_repositoryDetail with selectedRepositoryUid to uid
+	}
+	
+	// Number of control defects for current repository (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_repository_allcontroldefects_nb with selectedRepositoryUid to uid
+	}
+
+	Grid {
+		columns: GridColumn { width: grow }							
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$repositoryDetailsPageNLS.details
+						activation-event:Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text: $repositoryDetailsPageNLS.repository
+								activation-event:
+									Set True to active_repository
+								IncludeFragment {
+									fragment: fragmentRepositoryFullDetails with
+										value-of selectedRepositoryUid to inuid,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdateowners,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_repository.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$repositoryDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentRepositoryExtendedDetails with value-of selectedRepositoryUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$repositoryDetailsPageNLS.accounts
+								hidden:Not BooleanPredicate(hasaccounts)
+								activation-event:Set True to active_accounts
+
+								IncludeFragment {
+									fragment:fragmentRepositoryAccounts
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of True to incanreconcile, value-of True to incanshowdisabled, value-of True to inhidedisabled, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$repositoryDetailsPageNLS.groups
+								hidden:Not BooleanPredicate(hasgroups)
+								activation-event:Set True to active_groups
+
+								IncludeFragment {
+									fragment:fragmentRepositoryGroupsSelection
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of Eval "active_detail.get() && active_groups.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$repositoryDetailsPageNLS.access
+						activation-event:Set True to active_access
+
+						hidden:
+							AndPredicate {
+								Not BooleanPredicate(hasapplications)
+								Not BooleanPredicate(hasshares)
+								Not BooleanPredicate(hasusages)
+							}
+						
+						TabFolder {
+							border:False
+							TabItem {
+								text:$repositoryDetailsPageNLS.applications
+								activation-event:Set True to active_applications
+								hidden:	Not BooleanPredicate(hasapplications)
+
+								IncludeFragment {
+									fragment:fragmentRepositoryApplications
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_applications.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$repositoryDetailsPageNLS.rights
+								activation-event:Set True to active_rights
+								hidden:	Not BooleanPredicate(hasapplications)
+
+								IncludeFragment {
+									fragment:fragmentRepositoryRights
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_rights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$repositoryDetailsPageNLS.shares
+								feature:unstructureddata_license
+								activation-event:Set True to active_shares
+								hidden:	Not BooleanPredicate(hasshares)
+
+								IncludeFragment {
+									fragment:fragmentRepositoryShares
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_shares.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$repositoryDetailsPageNLS.sharesrights
+								feature:unstructureddata_license
+								activation-event:Set True to active_sharesrights
+								hidden:	Not BooleanPredicate(hasshares)
+
+								IncludeFragment {
+									fragment:fragmentRepositoryFSRights
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_sharesrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$repositoryDetailsPageNLS.usages
+								activation-event:Set True to active_usages
+								hidden:	Not BooleanPredicate(hasusages)
+
+								IncludeFragment {
+									fragment:fragmentRepositoryUsages
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_usages.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text: $repositoryDetailsPageNLS.controls
+						activation-event:
+							Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment: fragmentRepositoryAllControlDefectsList with
+								value-of selectedRepositoryUid to inuid,
+								value-of True to incanshowdetails,
+								value-of active_control to inenabled
+						}
+
+					}
+					TabItem {
+						text:$repositoryDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+
+						IncludeFragment {
+							fragment:fragmentRepositoryAnalytics
+							with value-of selectedRepositoryUid to inuid, value-of active_analytics to inenabled
+						}
+					}
+					TabItem {
+						text:$repositoryDetailsPageNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decision
+
+						IncludeFragment {
+							fragment:fragmentRepositoryDecisionHistory
+							with value-of selectedRepositoryUid to inuid, nbdecision binds-to outnbdecision, value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

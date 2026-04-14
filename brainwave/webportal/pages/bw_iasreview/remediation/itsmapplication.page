@@ -1,0 +1,208 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_iasreview/remediation/remediationstrategymanagement.page"
+
+/* Nationalized labels here */
+bwiasr_itsmapplicationNLS = NLS {
+	title [en "Repository Remediation Strategy" fr "Repository Remediation Strategy"]
+	error [
+		en "You cannot configure a repository with open tickets\nPlease close all open tickets first" 
+		fr "Vous ne pouvez pas configurer une référentiel qui a des tickets ouverts\nVeuillez fermer vos tickets au préalable"
+	]	
+	confirm [en "Are you sure?" fr "Etes-vous sûr?"]	
+	attach.short [en "Attach" fr "Associer"]
+	attach [en "Attach Remediation Strategy" fr "Associer une stratégie de remédiation"]
+	attachTt [en "Attach Remediation Strategy to selected applications" fr "Associer une stratégie de remédiation aux applications sélectionnées"]
+	reset.short [en "Reset" fr "Réinitialiser"]
+	reset [en "Reset Remediation Strategy" fr "Réinitialiser la stratégie de remédiation"]	
+	resetTt [en "Reset Remediation Strategy for selected applications" fr "Réinitialiser la stratégie de remédiation pour les applications sélectionnées"]
+	remove.short [en "Detach" fr "Retirer"]
+	remove [en "Detach Remediation Strategy" fr "Retirer la stratégie de remédiation"]	
+	removeTt [en "Detach Remediation Strategy for selected applications" fr "Retirer la stratégie de remédiation pour les applications sélectionnées"]
+	nbopren [en "Nb of \nopen tickets" fr "Nb de \ntickets ouverts"]
+	remediation.type [en "Remediation \nType" fr "Type de \nremédiation"]
+	remediation.instance [en "Remediation \nInstance" fr "Instance de \nremédiation"]
+}
+
+bwiasr_itsmapplication = PageFragment {
+//	title: $bwiasr_itsmrepositoryNLS.title
+//	tags:"admin"
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedapplications = Variable { type: String multivalued: True }
+	selectedremediationuid = Variable { type: String multivalued: True }
+
+	strategytype = Variable { type: String }
+	instancecode = Variable { type: String }
+	
+	/* Datasets and records here */
+	applications = Dataset {
+		view: bwiasr_applications
+	}
+	
+	applications_nbopentickets = Dataset {
+		view: bwiasr_applicationsnbopentickets
+	}
+	
+	allapplications = Dataset {
+		join: Join {
+			primary-dataset: applications
+			secondary-dataset: applications_nbopentickets
+			primary-column: uid
+			secondary-column: uid
+			primary-optional: False
+			secondary-cardinality: optional
+			secondary-prefix: open
+		}
+	}
+	
+	selectedappswithopentickets = Dataset {
+		view: bwiasr_applicationsnbopentickets
+		includes:
+			AndPredicate {
+				IntPredicate ( Current nb ) {
+					when >0 then True
+				}
+				MultivaluedPredicate ( selectedapplications contains Current uid )	
+			}
+	}
+	
+	appselection = Dataset {
+		view: bwiasr_applications with
+			selectedapplications to uids
+	}
+	
+	additsm = TaskRecord ( create "bwr_attachremediationstrategy" )
+	deleteitsm = TaskRecord ( create "bwr_deleteremediationstrategy" )
+	
+	/* Page content */
+	ButtonGroup {
+		align: Left
+		uniform: True
+		Button {
+			text: $bwiasr_itsmapplicationNLS.attach.short
+			tooltip: $bwiasr_itsmapplicationNLS.attachTt
+			image: "16/famfamfam_silk_icons_v013/connect.png"
+			actions:	
+				IntCase ( Count selectedappswithopentickets ) {
+					when >0 then [
+						Message $bwiasr_itsmapplicationNLS.error
+					] otherwise [
+						Dialog bwiasr_remediationstrategymanagement_add(
+							False to inallowiddmtype,
+							additsm.remediationtype from strategytype,
+							additsm.remediationinstanceid from instancecode
+						),
+						StringCase ( additsm.remediationtype ) {
+							when "embedded" then [
+								Set "" to additsm.remediationinstanceid
+							]
+						},
+						Set selectedapplications to additsm.application,
+						TaskComplete additsm wait-end,
+						ReloadData ( allapplications ),
+						Unset selectedapplications						
+					]
+				}
+			disabled:
+				IntPredicate ( SizeOf selectedapplications ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+		Button {
+			text: $bwiasr_itsmapplicationNLS.reset.short
+			tooltip: $bwiasr_itsmapplicationNLS.resetTt
+			image: "16/famfamfam_silk_icons_v013/disconnect.png"
+			actions:	
+				IntCase(Count selectedappswithopentickets) {
+					when >0 then [
+						Message $bwiasr_itsmapplicationNLS.error
+					]
+					otherwise [
+						Confirm $bwiasr_itsmapplicationNLS.confirm,
+						TransferData appselection(remediationuid) to (selectedremediationuid),
+						Set selectedremediationuid to deleteitsm.metadatauid,
+						TaskComplete deleteitsm wait-end,
+						ReloadData (applications),						
+						Unset selectedapplications
+					]
+				}						
+			disabled:
+				IntPredicate ( SizeOf selectedapplications ) {
+					when >0 then False otherwise True }
+		}
+	}
+	Table {
+		data: allapplications
+		label: Label { break: True }
+		layout: Layout { grab: horizontal True vertical True }
+		show-count: True
+		show-filter: True
+		configurable: True
+		persist-configuration: True
+		checkboxes:
+			uid to selectedapplications
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: remediationuid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $application.code
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: displayname
+			header: $application.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: applicationtype
+			header: $application.applicationtype
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: applicationfamily
+			header: $application.applicationfamily
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: remediationtype
+			header: $bwiasr_itsmapplicationNLS.remediation.type
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: remediationinstancecode
+			header: $bwiasr_itsmapplicationNLS.remediation.instance
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: opennb
+			text: Transform Current opennb using defaultsto0
+			header: $bwiasr_itsmapplicationNLS.nbopren
+			sortable: True
+			filterable: True
+			width: 100%
+			align: Right
+		}
+	}
+}

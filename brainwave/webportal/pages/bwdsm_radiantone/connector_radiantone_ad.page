@@ -1,0 +1,117 @@
+ds_radiantone_ad_NLS = NLS {
+  title [ en "RadiantOne - Active Directory" fr "RadiantOne - Active Directory" ]
+  description [ 
+    en "Collects AD account and group information."
+    fr "Collecte les informations sur les comptes et groupes AD."]
+    
+    label_domain [en "AD domains" fr "Domaines AD"]
+	  label_domain_TT [
+	    en "Search criteria to find the AD domaines."
+	    fr "Filtre LDAP pour préciser les domaines AD."]
+	  label_searchbase [en "Search base" fr "Bases de recherches"]
+	  label_searchbaseTT [
+	   en "Search base to perform the data extraction."
+	   fr "Base de recherche pour l'extraction de données"]
+	  label_searchcriteria [en "Search filter" fr "Filtre de recherche"]
+	  label_searchcriteriaTT [
+	    en "LDAP filter to fine tune objects to retrieve."
+	    fr "Filtre LDAP optionnel pour préciser les objets à remonter."
+	  ]
+}
+
+ds_radiantone_ad = Page {
+	title: $ds_radiantone_ad_NLS.title
+	tags: "bwds_connector" , "live" , "radiantone", "ldap"
+	icon: "bw_dsm/L/radiantone.png"
+	large-icon: "bw_dsm/XL/radiantone.png"
+	description: $ds_radiantone_ad_NLS.description
+
+	 metadata: ( 	    
+	    category -> "infrastructure", 
+	    family -> "LDAP",
+	    collector -> "bw_activedirectory",
+	    action ->"radiantad",
+	    destPathVar -> "ad_sourceFolder",
+	    filePattern -> "*.ldif",
+	    hasMapping -> False,
+	    multiFile -> True  
+	 )
+}
+
+/* config dynamic fragment */
+
+ds_radiantone_ad_params = Constant { value: "domain,searchbase,searchcriteria" }
+
+deserializeOptions_roadp = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant ds_radiantone_ad_params }
+  options = Input
+  
+  domain = Output { }
+  searchbase = Output { }  
+  searchcriteria = Output { }
+}
+
+serializeOptions_roadp = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant ds_radiantone_ad_params }
+  secretnames = Input { default: "password"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+  
+  domain = Input { }
+  searchbase = Input { }  
+  searchcriteria = Input { }
+}
+
+
+ds_radiantone_ad_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */ 
+  outValid = Variable { type: Boolean initial: False } 
+  domain = Variable 
+  searchbase = Variable 
+  searchcriteria = Variable
+  
+   doInit = NamedAction(
+   	 Call deserializeOptions_roadp ( options to options , domain from domain, searchbase from searchbase, searchcriteria from searchcriteria ),
+   	 StringCase(domain) {
+   	   when IsEmpty then [ Set "(objectClass=domain)" to domain]
+   	 },
+   	 StringCase(searchbase) {
+   	   when IsEmpty then [ Set "o=BWAD" to searchbase]
+   	 },
+     StringCase(searchcriteria) {
+   	   when IsEmpty then [ Set "(objectClass=*)" to searchcriteria]
+   	 }
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_roadp ( dsname to secretdsname, domain to domain, searchbase to searchbase, searchcriteria to searchcriteria ) to options
+   )
+   
+   doUpdateValid = NamedAction (
+     Set True to outValid
+   )
+   
+   Edit { 
+     label: $ds_radiantone_ad_NLS.label_searchbase 
+     variable: searchbase
+     tooltip: $ds_radiantone_ad_NLS.label_searchbaseTT
+     modify-event: ExecuteNamedAction doUpdateValid
+  }
+   Edit { 
+     label: $ds_radiantone_ad_NLS.label_domain
+     variable: domain
+     tooltip: $ds_radiantone_ad_NLS.label_domain_TT
+     modify-event: ExecuteNamedAction doUpdateValid
+  }
+  Edit { 
+     label: $ds_radiantone_ad_NLS.label_searchcriteria 
+     variable: searchcriteria
+     tooltip: $ds_radiantone_ad_NLS.label_searchcriteriaTT
+  }
+}

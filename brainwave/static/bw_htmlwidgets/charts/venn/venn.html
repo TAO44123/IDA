@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<script src="bw_pages.js"></script>
+	<script src="d3.min.js"></script>
+	<script src="venn.min.js"></script>
+	<title>Venn Diagram Chart</title>
+	<style>
+		body {
+			font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+			font-size: 14px;
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+	<div id="venn" style="width:100%"></div>
+</body>
+
+<style>
+	.venntooltip {
+		position: absolute;
+		text-align: center;
+		word-wrap: break-word;
+		white-space: pre;
+		width: 200px;
+		height: 16px;
+		background: #333;
+		color: #ddd;
+		padding: 2px;
+		border: 0px;
+		border-radius: 8px;
+		opacity: 0.9;
+	}
+</style>
+
+<script>
+	document.documentElement.style.overflow = 'hidden';
+	document.body.scroll = "no";
+
+	var NBMAXENTITY = 10; // WARNING Venn performance dramatically decrease based on the number of displayed entities (circles)
+	var NBMAXLINES = 50000; // MAX NUMBER OF LINES RETRIEVED THROUGH THE DATASET
+
+	var tooltipPrefix = '';
+	var tooltipSuffix = '';
+	var tooltipnPrefix = '';
+	var tooltipnSuffix = '';
+
+	Pages.listenInit(function (varName, initialValue) {
+		if (varName == "tooltipPrefix") {
+			tooltipPrefix = initialValue;
+		}
+		if (varName == "tooltipSuffix") {
+			tooltipSuffix = initialValue;
+		}
+		if (varName == "tooltipnPrefix") {
+			tooltipnPrefix = initialValue;
+		}
+		if (varName == "tooltipnSuffix") {
+			tooltipnSuffix = initialValue;
+		}
+	});
+
+	var sets = [];
+	var cachedsets = [];
+	var div;
+	var chart;
+
+	function initChart() {
+		d3.select("#venn").selectAll("*").remove();
+		d3.select(".venntooltip").style("opacity", 0);
+
+		var body = document.body;
+		var html = document.documentElement;
+		var width = html.clientWidth;
+		var height = html.clientHeight;
+		/*
+			var width = Math.max( body.scrollWidth, body.offsetWidth, 
+					html.clientWidth, html.scrollWidth, html.offsetWidth );
+			var height = Math.max( body.scrollHeight, body.offsetHeight, 
+							   html.clientHeight, html.scrollHeight, html.offsetHeight );
+			*/
+		chart = venn.VennDiagram()
+			.width(width)
+			.height(height);
+
+		div = d3.select("#venn")
+		div.datum(sets).call(chart);
+	}
+
+	var labels = null;
+
+	getLabel = function (code) {
+		var label = labels.get(code);
+		if (label == null)
+			label = code;
+		return label;
+	};
+
+	buildChart = function (rows) {
+		if (rows != null) {
+			// prepare data
+			var nbcodes = 0;
+			var codes = new Map();
+			var elements = new Map();
+			labels = new Map();
+			for (index = 0; index < rows.length; index++) {
+				var code = '' + rows[index]["code"];
+				var label = '' + (rows[index]["label"] != null ? rows[index]["label"] : code);
+				var element = '' + rows[index]["element"];
+
+				if (!labels.has(code))
+					labels.set(code, label);
+
+				if (codes.has(code))
+					codes.set(code, codes.get(code) + 1);
+				else {
+					if (nbcodes < NBMAXENTITY) {
+						codes.set(code, 1);
+						nbcodes++;
+					}
+					else {
+						continue;
+					}
+				}
+
+				if (elements.has(element)) {
+					var currentElements = elements.get(element);
+					currentElements.push(code);
+				}
+				else
+					elements.set(element, [code]);
+			}
+
+
+			// compute intersections
+			var intersections = new Map();
+			for (var elementkey of elements.keys()) {
+				// for each element we have all the codes where it is present
+				var currentcodes = elements.get(elementkey); // array of "code"
+				currentcodes.sort();
+
+				// compute pairs to increment the counters
+				for (var x = 0; x < currentcodes.length; x++) {
+					for (var y = x + 1; y < currentcodes.length; y++) {
+						var a = currentcodes[x];
+						var b = currentcodes[y];
+
+						var key = a + '$$' + b;
+
+						if (intersections.has(key)) {
+							var v = intersections.get(key);
+							v.value += 1;
+						}
+						else {
+							var v = {};
+							v.value = 1;
+							v.codes = [a, b];
+							intersections.set(key, v);
+						}
+						for (var z = y + 1; z < currentcodes.length; z++) {
+							var c = currentcodes[z];
+
+							var key = a + '$$' + b + '$$' + c;
+
+							if (intersections.has(key)) {
+								var v = intersections.get(key);
+								v.value += 1;
+							}
+							else {
+								var v = {};
+								v.value = 1;
+								v.codes = [a, b, c];
+								intersections.set(key, v);
+							}
+
+							for (var xx = z + 1; xx < currentcodes.length; xx++) {
+								var d = currentcodes[xx];
+
+								var key = a + '$$' + b + '$$' + c + '$$' + d;
+
+								if (intersections.has(key)) {
+									var v = intersections.get(key);
+									v.value += 1;
+								}
+								else {
+									var v = {};
+									v.value = 1;
+									v.codes = [a, b, c, d];
+									intersections.set(key, v);
+								}
+
+								for (var yy = xx + 1; yy < currentcodes.length; yy++) {
+									var e = currentcodes[yy];
+
+									var key = a + '$$' + b + '$$' + c + '$$' + d + '$$' + e;
+
+									if (intersections.has(key)) {
+										var v = intersections.get(key);
+										v.value += 1;
+									}
+									else {
+										var v = {};
+										v.value = 1;
+										v.codes = [a, b, c, d, e];
+										intersections.set(key, v);
+									}
+
+									for (var zz = yy + 1; zz < currentcodes.length; zz++) {
+										var f = currentcodes[zz];
+
+										var key = a + '$$' + b + '$$' + c + '$$' + d + '$$' + e + '$$' + f;
+
+										if (intersections.has(key)) {
+											var v = intersections.get(key);
+											v.value += 1;
+										}
+										else {
+											var v = {};
+											v.value = 1;
+											v.codes = [a, b, c, d, e, f];
+											intersections.set(key, v);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			sets = [];
+
+			// STEP 1: declare entities
+			for (var codeskey of codes.keys()) {
+				var item = {};
+				item.sets = [codeskey];
+				item.label = labels.get(codeskey);
+				item.size = codes.get(codeskey);
+				sets.push(item);
+			}
+
+			// STEP 2: declare intersections
+			for (var intersectionkey of intersections.keys()) {
+				var val = intersections.get(intersectionkey);
+				var item = {};
+				item.sets = val.codes;
+				item.size = val.value;
+				sets.push(item);
+			}
+
+			cachedsets = sets;
+		}
+		else {
+			sets = cachedsets;
+		}
+
+		// udpate graph
+		var div = d3.select("#venn")
+		div.datum(sets).call(chart);
+		var tooltip = d3.select("body").append("div")
+			.attr("class", "venntooltip");
+
+		div.selectAll("path")
+			.style("stroke-opacity", 0)
+			.style("stroke", "#fff")
+			.style("stroke-width", 3)
+
+		div.selectAll("g")
+			.on("click", function (event, d) {
+				venn.sortAreas(div, d);
+
+				var tsets = d.sets.slice(0);
+				tsets.reverse();
+
+				var label1 = getLabel(tsets[0]);
+				var label2 = getLabel(tsets[1]);
+				var label3 = getLabel(tsets[2]);
+				var label4 = getLabel(tsets[3]);
+				var label5 = getLabel(tsets[4]);
+				var label6 = getLabel(tsets[5]);
+
+				Pages.sendEvent('onclick', {
+					nbofitems: tsets.length,
+					code1: tsets[0], label1: label1,
+					code2: tsets[1], label2: label2,
+					code3: tsets[2], label3: label3,
+					code4: tsets[3], label4: label4,
+					code5: tsets[4], label5: label5,
+					code6: tsets[5], label6: label6,
+					count: d.size
+				});
+			})
+			.on("mouseenter", function (event, d) {
+				d3.select(this).style("cursor", "pointer");
+
+				// sort all the areas relative to the current item
+				venn.sortAreas(div, d);
+
+				// Display a tooltip with the current size
+				tooltip.transition().duration(200).style("opacity", .9);
+				if (d.sets.length == 1)
+					tooltip.text(tooltipPrefix + " " + d.size + " " + tooltipSuffix);
+				//tooltip.text(getLabel(d.sets[d.sets.length-1])+"\n"+tooltipPrefix + " " + d.size + " " + tooltipSuffix);
+				else
+					tooltip.text(tooltipnPrefix + " " + d.size + " " + tooltipnSuffix);
+
+				// highlight the current path
+				var selection = d3.select(this).transition("tooltip").duration(400);
+				selection.select("path")
+					.style("fill-opacity", d.sets.length == 1 ? .4 : .1)
+					.style("stroke-opacity", 1);
+			})
+
+			.on("mousemove", function (event) {
+				var body = document.body;
+				var html = document.documentElement;
+				var width = Math.max(body.scrollWidth, body.offsetWidth,
+					html.clientWidth, html.scrollWidth, html.offsetWidth);
+				var height = Math.max(body.scrollHeight, body.offsetHeight,
+					html.clientHeight, html.scrollHeight, html.offsetHeight);
+
+				var left = (event.pageX - 100);
+				var right = left + 100;
+				var top = (event.pageY - 28);
+				var bottom = top + 16;
+
+				if (top < 0)
+					top = 28;
+				if (left < 0)
+					left = 0;
+				if (right > width)
+					left = left - (right - width);
+
+				tooltip.style("left", (left) + "px")
+					.style("top", (top) + "px");
+			})
+
+			.on("mouseleave", function (event, d) {
+				d3.select(this).style("cursor", "default");
+
+				tooltip.transition().duration(200).style("opacity", 0);
+				var selection = d3.select(this).transition("tooltip").duration(200);
+				selection.select("path")
+					.style("fill-opacity", d.sets.length == 1 ? .25 : .0)
+					.style("stroke-opacity", 0);
+			});
+		document.getElementById('loading').style.display = 'none';
+	};
+
+	createChart = function () {
+		Pages.fetchDataset("chartdata", 0, NBMAXLINES, function (rows) {
+			buildChart(rows);
+		});
+	};
+
+	var myTimeout = null;
+
+	var fetchInvalidated = function () {
+		Pages.fetchDataset("chartdata", 0, NBMAXLINES, function (rows) {
+			buildChart(rows);
+			myTimeout = null;
+		});
+	};
+
+	Pages.listenToDatasetInvalidation("chartdata", function () {
+		if (myTimeout != null) {
+			clearTimeout(myTimeout);
+			myTimeout = setTimeout(fetchInvalidated, 500);
+			return;
+		}
+		myTimeout = setTimeout(fetchInvalidated, 500);
+	});
+
+	Pages.listenInitDone(function () {
+		initChart();
+		createChart();
+
+		d3.select(window).on('resize.updatesvg', function () {
+			initChart();
+			buildChart(null);
+		});
+	});
+
+</script>
+
+</html>

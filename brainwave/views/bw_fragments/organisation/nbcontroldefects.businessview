@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_organisationallcontroldefects_nb" displayname="Number of control defects for organization">
+	<Definition scriptfile="/views/bw_fragments/organisation/allcontroldefects.javascript" name="D1587745204766" description="Number of control defects for organization">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1587745204765" title="organisation">
+			<InnerView name="bwf_organisationDetail">
+				<Param name="F1587745324604" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1637771862266" type="joinview" x="839" y="173" w="300" h="50" title="# Organization defects">
+			<InnerView name="bwf_organisationcontrolorganisationdefects_nb" prefix="org_">
+				<Param name="F1637771924147" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637771929021" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.org_organisationuid.get()}"/>
+		</Component>
+		<Link name="L1637771862412" source="C1587745204765" target="C1637771862266" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637771930722" type="joinview" x="886" y="253" w="300" h="50" title="# Identity defects">
+			<InnerView name="bwf_organisationcontrolidentitydefects_nb" prefix="idt_">
+				<Param name="F1637771958606" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637771965240" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+				<Param name="F1637772015125" viewparam="directonly" viewparamvalue="{param.directonly.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.idt_org_uid.get()}"/>
+		</Component>
+		<Link name="L1637771930928" source="C1637771862266" target="C1637771930722" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637771974224" type="joinview" x="869" y="302" w="300" h="50" title="# Account defects">
+			<InnerView name="bwf_organisationcontrolaccountdefects_nb" prefix="acc_">
+				<Param name="F1637771997225" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637772002165" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+				<Param name="F1637772007878" viewparam="directonly" viewparamvalue="{param.directonly.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.acc_org_uid.get()}"/>
+			<ViewComputedAttribute name="_total" displayname="Total number of defects" type="Integer" expression="( dataset.isEmpty( &apos;org_nb&apos; ) ? 0 : dataset.org_nb.get() ) +( dataset.isEmpty( &apos;acc_nb&apos; ) ? 0 : dataset.acc_nb.get() ) + ( dataset.isEmpty( &apos;idt_nb&apos; ) ? 0 : dataset.idt_nb.get() )"/>
+		</Component>
+		<Link name="L1637771974418" source="C1637771930722" target="C1637771974224" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String"/>
+	<ViewParam name="directonly" displayname="directonly" type="Boolean"/>
+	<ViewSort name="sort" attribute1="controlrisklevel" direction1="DESC" attribute2="controldisplayname" attribute3="identityfullname"/>
+	<ViewParam name="minimumrisklevel" displayname="minimumrisklevel" type="Integer"/>
+</View>

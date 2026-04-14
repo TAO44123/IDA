@@ -1,0 +1,141 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+/* Nationalized labels here */
+access360r_groupsubpermissions360NLS = NLS {
+	title [en "360° view of the sub-permissions" fr "Vue à 360° des sous permissions"]
+	dyntitle [en "{0} 360° view of the sub-permissions" fr "Vue à 360° des sous permissions de {0}"]
+	
+	description [
+		en "This report presents the sub-groups of the group in the form of a network graph. The direction of the arrow means 'is in'. It is possible to display the details of the groups."
+		fr "Ce rapport présente les sous permissions de la permission sous la forme d'un graphique de type réseau. Le sens de la flêche signifie 'est dans'. Il est possible d'afficher le détail des permissions."
+	]
+
+	detailmode [en "Detail mode" fr "Mode détail"]
+	detailmode.tooltip [
+						en "In detail mode, a click on an item displays the detail of this item in a dialog box." 
+						fr "En mode détail, un clic sur un élément permet d'afficher le détail de cet élement dans une boite de dialogue."]
+
+	stopphysics [en "Freeze animation" fr "Geler l'animation"]
+	hierarchy [en "Hierarchy layout" fr "Affichage hiérarchique"]
+}
+
+tgtimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tgtimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tgtmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+access360r_groupsubpermissions360 = Page {
+	title: $access360r_groupsubpermissions360NLS.title
+	description: $access360r_groupsubpermissions360NLS.description
+	dynamic-title: $access360r_groupsubpermissions360NLS.dyntitle(permission.displayname)
+	tags: "permission" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa_permissionsubpermissions360
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedUID = Variable
+	
+	detailMode = Variable { initial:False type:Boolean }
+	stopPhysics = Variable { initial:False type:Boolean }
+	hierarchical = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	permission = Record {
+		view:br_permissionDetail with uid to uid 
+	}
+
+	subgroups = Dataset {
+		view:bwa_p360_subpermission360 with uid to uid, '' to tooltipsuffix
+	}
+
+	onPermissionDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog(selectedUID to inuid,
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn { group:a },  GridColumn { group:a },  GridColumn { group:a }
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:detailMode
+					text:$access360r_groupsubpermissions360NLS.detailmode
+					tooltip:$access360r_groupsubpermissions360NLS.detailmode.tooltip
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:hierarchical
+					text:$access360r_groupsubpermissions360NLS.hierarchy
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:stopPhysics
+					text:$access360r_groupsubpermissions360NLS.stopphysics
+					disabled:BooleanPredicate(hierarchical)
+				}
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				IncludeHTMLWidget {
+					layout: Layout { grab:horizontal True vertical True /* hint:height 500 */ }
+					template: network
+					datasets:subgroups(id, name, parentid, permissiontype, description) to chartdata(code, label, parentcode, group, description)
+					bindings:
+						value-of True to arrows_middle,
+						value-of hierarchical to hierarchical,
+						value-of 'permission' to shape,
+						value-of stopPhysics to stopPhysics,
+						value-of 2000 to textboxsize,
+						value-of False to computegroupfontcolor,
+						value-of True to navigationButtons
+					widget-events: {
+						when onclick then [
+							BooleanCase(detailMode) {
+								when True then [
+									Set Current code to selectedUID,
+									ExecuteNamedAction onPermissionDetails								
+								]
+								when False then [
+								]
+							}
+						]
+					}
+				}
+
+			}
+		}
+	}
+}

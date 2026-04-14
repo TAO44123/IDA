@@ -1,0 +1,255 @@
+import "/webportal/pages/bw_fragments/control/details.page"
+import "/webportal/pages/bw_fragments/control/analysis.page"
+
+bwf_controlDetailsDialogNLS = NLS {
+	title [ en "Control Details" fr "Détails du contrôle"]
+	control [en "Control" fr "Contrôle"]
+	analysis [en "Analysis" fr "Analyse"]
+	sod [en "SoD" fr "SoD"]
+}
+
+bwf_controlDetailsDialog = Dialog {
+	title: $bwf_controlDetailsDialogNLS.title
+	width: 1366
+	height: 720
+	buttons:
+		OkButton
+	
+	incontrolcode = Variable { type: String }
+	inresulttype = Variable { initial: 1 }
+	inorganisationuid = Variable { type: String }
+	inidentityuid = Variable { type: String }
+	inaccountuid = Variable { type: String }
+	ingroupuid = Variable { type: String }
+	inapplicationuid = Variable { type: String }
+	inpermissionuid = Variable { type: String }
+	tab = Variable { type: String }
+	
+	currentControl = Record {
+		view: bwf_controldetails with
+			incontrolcode to controlcode
+		disabled:
+			StringPredicate ( incontrolcode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	TabFolder {
+		border: False
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.control
+			activation-event:
+				Set 'control'to tab
+			IncludeFragment ( fragmentControlDetails with
+				value-of incontrolcode to incontrolcode,
+				inresulttype binds-to inresulttype,
+				value-of Eval "tab.get().equals('control')" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 1 || currentControl.controlentity != 'Organisation' || inorganisationuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisOrganisationType1 with
+				value-of incontrolcode to incontrolcode,
+				value-of inorganisationuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 1 && currentControl.controlentity == 'Organisation' && tab.get().equals('analysis') && !inorganisationuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 9 || currentControl.controlentity != 'Organisation' || inorganisationuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisOrganisationType9 with
+				value-of incontrolcode to incontrolcode,
+				value-of inorganisationuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 9 && currentControl.controlentity == 'Organisation' && tab.get().equals('analysis') && !inorganisationuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 1 || currentControl.controlentity != 'Identity' || inidentityuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisIdentityType1 with
+				value-of incontrolcode to incontrolcode,
+				value-of inidentityuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 1 && currentControl.controlentity == 'Identity' && tab.get().equals('analysis') && !inidentityuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 5 || currentControl.controlentity != 'Identity' || inidentityuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisIdentityType5 with
+				value-of incontrolcode to incontrolcode,
+				value-of inidentityuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 5 && currentControl.controlentity == 'Identity' && tab.get().equals('analysis') && !inidentityuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 9 || currentControl.controlentity != 'Identity' || inidentityuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisIdentityType9 with
+				value-of incontrolcode to incontrolcode,
+				value-of inidentityuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 9 && currentControl.controlentity == 'Identity' && tab.get().equals('analysis') && !inidentityuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 1 || currentControl.controlentity != 'Account' || inaccountuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisAccountType1 with
+				value-of incontrolcode to incontrolcode,
+				value-of inaccountuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 1 && currentControl.controlentity == 'Account' && tab.get().equals('analysis') && !inaccountuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 2 || currentControl.controlentity != 'Account' || inaccountuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisAccountType2 with
+				value-of incontrolcode to incontrolcode,
+				value-of inaccountuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 2 && currentControl.controlentity == 'Account' && tab.get().equals('analysis') && !inaccountuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 3 || currentControl.controlentity != 'Account' || inaccountuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisAccountType3 with
+				value-of incontrolcode to incontrolcode,
+				value-of inaccountuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 3 && currentControl.controlentity == 'Account' && tab.get().equals('analysis') && !inaccountuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 4 || currentControl.controlentity != 'Account' || inaccountuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisAccountType4 with
+				value-of incontrolcode to incontrolcode,
+				value-of inaccountuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 4 && currentControl.controlentity == 'Account' && tab.get().equals('analysis') && !inaccountuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 6 || currentControl.controlentity != 'Account' || inaccountuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisAccountType6 with
+				value-of incontrolcode to incontrolcode,
+				value-of inaccountuid to inentityyuid,
+				value-of Eval "currentControl.controltype ==6 && currentControl.controlentity == 'Account' && tab.get().equals('analysis') && !inaccountuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype !=9 || currentControl.controlentity != 'Account' || inaccountuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisAccountType9 with
+				value-of incontrolcode to incontrolcode,
+				value-of inaccountuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 9 && currentControl.controlentity == 'Account' && tab.get().equals('analysis') && !inaccountuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 1 || currentControl.controlentity != 'Group' || ingroupuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisGroupType1 with
+				value-of incontrolcode to incontrolcode,
+				value-of ingroupuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 1 && currentControl.controlentity == 'Group' && tab.get().equals('analysis') && !ingroupuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 9 || currentControl.controlentity != 'Group' || ingroupuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisGroupType9 with
+				value-of incontrolcode to incontrolcode,
+				value-of ingroupuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 9 && currentControl.controlentity == 'Group' && tab.get().equals('analysis') && !ingroupuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 1 || currentControl.controlentity != 'Application' || inapplicationuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisApplicationType1 with
+				value-of incontrolcode to incontrolcode,
+				value-of inapplicationuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 1 && currentControl.controlentity == 'Application' && tab.get().equals('analysis') && !inapplicationuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 9 || currentControl.controlentity != 'Application' || inapplicationuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisApplicationType9 with
+				value-of incontrolcode to incontrolcode,
+				value-of inapplicationuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 9 && currentControl.controlentity == 'Application' && tab.get().equals('analysis') && !inapplicationuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 1 || currentControl.controlentity != 'Permission' || inpermissionuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisPermissionType1 with
+				value-of incontrolcode to incontrolcode,
+				value-of inpermissionuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 1 && currentControl.controlentity == 'Permission' && tab.get().equals('analysis') && !inpermissionuid.isEmpty()" to inenabled
+			)
+		}
+		TabItem  {
+			text: $bwf_controlDetailsDialogNLS.analysis
+			activation-event:
+				Set 'analysis'to tab
+			hidden:
+				Eval "currentControl.controltype != 9 || currentControl.controlentity != 'Permission' || inpermissionuid.isEmpty()"
+			IncludeFragment ( fragmentControlAnalysisPermissionType9 with
+				value-of incontrolcode to incontrolcode,
+				value-of inpermissionuid to inentityyuid,
+				value-of Eval "currentControl.controltype == 9 && currentControl.controlentity == 'Permission' && tab.get().equals('analysis') && !inpermissionuid.isEmpty()" to inenabled
+			)
+		}
+	}
+}
+

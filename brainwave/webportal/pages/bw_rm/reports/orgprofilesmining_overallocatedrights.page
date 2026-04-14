@@ -1,0 +1,121 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+/* Nationalized labels here */
+bwpm_orgprofilesmining_overallocatedrightsNLS = NLS {
+	title [en "Over-allocated rights" fr "permission export"]
+	dyntitle [en "Over-allocated rights for organisation {0}" fr "Sur-allocation de droits pour l''organisation {0}"]
+}
+
+bwpm_orgprofilesmining_overallocatedrights = Page {
+	title: $bwpm_orgprofilesmining_overallocatedrightsNLS.title
+	dynamic-title: $bwpm_orgprofilesmining_overallocatedrightsNLS.dyntitle(organisation.shortname)
+	
+	/* Parameters here */
+	uid = Parameter
+	/* Variables here */
+	
+	/* Datasets and records here */
+	data = Dataset {
+		view:bwpm_bvsimulateorganisationrolesext with uid to organisation
+	}
+	filtereddata = Dataset {
+		view:bwpm_bvsimulateorganisationrolesext with uid to organisation
+		excludes:StringPredicate(Current realright) { when 'N' then False otherwise True }
+	}
+
+	organisation = Record {
+		view:br_organisation_picker with uid to paramUid
+	}
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text: $permminingNLS.allrights		
+			CrossTable { // all rights
+				data:data
+				layout:Layout{grab:horizontal True vertical True cell-width:100px}
+				cluster-sortable: True
+				rows:Dim {value:applicationdisplayname header: $permminingNLS.app}, Dim {value:permissionuid label:permissiondisplayname header:$permminingNLS.perm}
+				columns:Dim {value:organisationuid label:organisationshortname header:$permminingNLS.orga}, Dim {value:interncontractor header: $permminingNLS.employeetype},Dim{value:identityuid label:identityfullname header:$permminingNLS.name}
+				cell-content:CellContent { text:Transform Current rolename using bwpm_xifnull  align:Center  
+				styling:StringStyling(Current realright) { when "N" then bwpm_redStyle when "V" then bwpm_directStyle when 'X' then bwpm_grayStyle } }
+			}
+		}
+		TabItem {
+			text: $permminingNLS.overallocrightsonly	
+			CrossTable { // over allocated rights only
+				data:filtereddata
+				layout:Layout{grab:horizontal True vertical True cell-width:100px}
+				cluster-sortable: True
+				rows:Dim {value:applicationdisplayname header:$permminingNLS.app}, Dim {value:permissionuid label:permissiondisplayname header:$permminingNLS.perm}
+				columns:Dim {value:organisationuid label:organisationshortname header:$permminingNLS.orga}, Dim {value:interncontractor header:$permminingNLS.employeetype},Dim{value:identityuid label:identityfullname header:$permminingNLS.name}
+				cell-content:CellContent { text:Transform Current rolename using bwpm_xifnull  align:Center  
+				styling:StringStyling(Current realright) { when "N" then bwpm_redStyle when "V" then bwpm_directStyle when 'X' then bwpm_grayStyle } }
+			}
+		}
+		TabItem {
+			text: $permminingNLS.overallocrightslist
+			Table {
+				data:filtereddata
+				layout:Layout{grab:horizontal True vertical True}
+				configurable:True
+				persist-configuration:True
+				persist-configuration-key:uid
+				show-count:True
+				show-filter:True
+				
+				Column {
+					column:identityhrcode
+					header:$permminingNLS.hrcode
+					width:100px
+					initially-masked:True
+					sortable:True
+				}
+				Column {
+					column:identityfullname
+					header:$permminingNLS.fullname
+					width:200px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:identityinternal
+					header:$permminingNLS.internal
+					width:100px
+					sortable:True
+				}
+				Column {
+					column:permissioncode
+					header:$permminingNLS.permcode
+					width:200px
+					initially-masked:True
+					sortable:True
+					filterable:True
+				}
+				Column {
+					column:permissiondisplayname
+					header:$permminingNLS.permname
+					width:300px
+					sortable:True
+					filterable:True
+				}
+				Column {
+					column:permissiondescription
+					header:$permminingNLS.permdesc
+					width:400px
+					initially-masked:True
+					sortable:True
+				}
+				Column {
+					column:applicationdisplayname
+					header:$permminingNLS.app
+					width:200px
+					sortable:True
+					filterable:True
+				}
+			}
+		}
+	}
+}

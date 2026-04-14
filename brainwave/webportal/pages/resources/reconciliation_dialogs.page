@@ -1,0 +1,875 @@
+
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+refreshPendingRecon = EventService {
+	javascript-file: "/webportal/pages/resources/reconciliation.javascript"
+	javascript-method: refreshPendingRecon
+	accountUid = Input { type: String multivalued: False }
+	isPending = Output { type: Boolean multivalued: False }
+}
+
+reconciliationIdentityDialog = Dialog {
+	title: $reconciliationactions.reconcileaccount
+	width: 550
+	height: 180
+	mixins: pickerMixin 
+	post-render-event: StringCase(localIdentityUid) { when IsEmpty then [ Dialog identityPicker (localIdentityUid from outUid, localIdentityFullName from outDisplayname), Set "" to localComment ] }
+	
+	buttons: [
+		OkButton {
+			disabled: OrPredicate {
+				StringPredicate (localIdentityUid) {
+					when IsEmpty then True
+					otherwise False
+				}
+// we don't consider comments as mandatory anymore for identity reconciliation
+//				StringPredicate (localComment) {
+//					when IsEmpty then True
+//					otherwise False
+//				}
+			}
+			actions: 
+				StringCase(inAccountUid) { when IsEmpty then [ Set accountUid.uid to inAccountUid ] },
+				Set inAccountUid to reconciliation_owner.account, 
+				Set localIdentityUid to reconciliation_owner.identity , 
+				Set localComment to reconciliation_owner.comment,
+				Set Principal.uid to reconciliation_owner.by,
+				TaskComplete reconciliation_owner wait-end			
+		}
+		CancelButton
+	]
+
+	inAccountRecordUid = Variable {
+		type: Integer
+	}
+
+	inAccountUid = Variable {
+		type: String
+	}
+	
+	inAccountLogin = Variable {
+		type: String
+	}
+
+	localComment = Variable {
+		type: String
+	}
+
+	localIdentityUid = Variable {
+		type: String
+	}
+
+	localIdentityFullName = Variable {
+		type: String
+	}
+
+	outResult = Variable {
+		type: String
+	}
+
+	accountUid = Record {
+		view: br_accountDetail_uid with inAccountRecordUid to recorduid
+	}
+	
+	reconciliation_owner = TaskRecord ( create "bw_reconciliation_owner" )
+
+	Group {
+		Text {
+			label: $reconciliation.owner
+			compact: False
+			value: localIdentityFullName
+			layout: Layout {
+				grab: horizontal True vertical False
+			}
+			commands: [
+				Command {
+					icon: "16/audit/identity_16.png"
+					tooltip: $reconciliationactions.chooseowner
+					actions: Dialog identityPicker (localIdentityUid from outUid, localIdentityFullName from outDisplayname), Set "" to localComment
+				}
+				Command {
+					icon: "16/audit/reconciliation_16.png"
+					tooltip: $reconciliationactions.suggestowner
+					actions: Dialog reconciliationIdentityPicker (inAccountRecordUid to paramAccountRecordUid, localIdentityUid from outUid, localIdentityFullName from outDisplayname, localComment from outRuleComment)
+				}
+			]
+		}
+		Edit {
+			label: $reconciliation.comment
+			variable: localComment
+		}
+	}
+}
+
+reconciliationIdentityAllDialog = Dialog {
+	title: $reconciliationactions.reconcileaccount
+	width: 550
+	height: 180
+	mixins: pickerMixin 
+	post-render-event: StringCase(localIdentityUid) { when IsEmpty then [ Dialog identityPicker (localIdentityUid from outUid, localIdentityFullName from outDisplayname), Set "" to localComment ] }, 
+					   StringCase(localIdentityUid) { when IsEmpty then [ CloseDialog Cancel ] }  
+	
+	buttons: [
+		OkButton {
+			disabled: OrPredicate {
+				StringPredicate (localIdentityUid) {
+					when IsEmpty then True
+					otherwise False
+				}
+// we don't consider comments as mandatory anymore for identity reconciliation
+//				StringPredicate (localComment) {
+//					when IsEmpty then True
+//					otherwise False
+//				}
+			}
+			actions: 
+				MultivaluedIterate inAccountUids as inAccountUid [
+					Set Current inAccountUid to reconciliation_owner.account, 
+					Set localIdentityUid to reconciliation_owner.identity , 
+					Set localComment to reconciliation_owner.comment,
+					Set Principal.uid to reconciliation_owner.by,
+					TaskComplete reconciliation_owner wait-end timeout-seconds 60
+				]
+		}
+		CancelButton
+	]
+
+	inAccountUids = Variable {
+		type: String
+		multivalued:True
+	}
+	
+	localComment = Variable {
+		type: String
+	}
+
+	localIdentityUid = Variable {
+		type: String
+	}
+
+	localIdentityFullName = Variable {
+		type: String
+	}
+
+	outResult = Variable {
+		type: String
+	}
+
+	reconciliation_owner = TaskRecord ( create "bw_reconciliation_owner" )
+
+	Group {
+		Text {
+			label: $reconciliation.owner
+			compact: False
+			value: localIdentityFullName
+			layout: Layout {
+				grab: horizontal True vertical False
+			}
+			commands: [
+				Command {
+					icon: "16/audit/identity_16.png"
+					tooltip: $reconciliationactions.chooseowner
+					actions: Dialog identityPicker (localIdentityUid from outUid, localIdentityFullName from outDisplayname), Set "" to localComment
+				}
+			]
+		}
+		Edit {
+			label: $reconciliation.comment
+			variable: localComment
+		}
+	}
+}
+
+reconciliationLeaveDialog = Dialog {
+	title: $reconciliationactions.setleave
+	width: 550
+	height: 150
+	mixins: pickerMixin 
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (identityFullname) {
+				when IsEmpty then True
+				otherwise False
+			}
+			actions: 
+			
+			Set inAccountUID to task.account, Set "leave" to task.noownercode, Set identityFullname to task.leaverfullname,
+			Set Principal.uid to task.by,
+			TaskComplete task wait-end
+			
+		}
+		CancelButton
+	]
+
+	inAccountRecordUid = Variable {
+		type: Integer
+	}
+	
+	inAccountUID = Variable {
+		type: Integer
+	}
+
+	inAccountLogin = Variable {
+		type: String
+	}
+		
+	identityFullname = Variable {
+		type: String
+	}
+
+	outResult = Variable {
+		type: String
+	}
+	
+	task = TaskRecord ( create "bw_reconciliation_noowner" ) 
+
+	Edit {
+		label: $reconciliation.owner
+		variable: identityFullname
+		commands: 		
+			Command {
+				icon: "16/audit/identity_16.png"
+				tooltip: $reconciliationactions.chooseleaveowner
+				actions: Dialog deletedIdentityPicker ( identityFullname from outDisplayname )							
+			}		
+	}
+}
+
+reconciliationLeaveAllDialog = Dialog {
+	title: $reconciliationactions.setallleave
+	width: 550
+	height: 150
+	mixins: pickerMixin 
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (identityFullname) {
+				when IsEmpty then True
+				otherwise False
+			}
+			actions:
+			Confirm $reconciliationactions.leaveallconfirm, 
+			MultivaluedIterate inAccountUIDs as inAccountUID [
+				Set Current inAccountUID to task.account, Set "leave" to task.noownercode, Set identityFullname to task.leaverfullname,
+				Set Principal.uid to task.by,
+				TaskComplete task
+			] 
+		}
+		CancelButton
+	]
+
+	inAccountUIDs = Variable {
+		type: String
+		multivalued:True
+	}
+
+	identityFullname = Variable {
+		type: String
+	}
+
+	outResult = Variable {
+		type: String
+	}
+	
+	task = TaskRecord ( create "bw_reconciliation_noowner" ) 
+
+	Edit {
+		label: $reconciliation.owner
+		variable: identityFullname
+		commands: 		
+			Command {
+				icon: "16/audit/identity_16.png"
+				tooltip: $reconciliationactions.chooseleaveowner
+				actions: Dialog deletedIdentityPicker ( identityFullname from outDisplayname )							
+			}		
+	}
+}
+
+reconciliationNoOwnerDialog = Dialog {
+	title: $reconciliationactions.setnoowner
+	width: 550
+	height: 300
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: OrPredicate {
+				AndPredicate {
+					StringPredicate (localNoOwnerCode) {
+						when IsEmpty then True
+						otherwise False
+					}
+					Not BooleanPredicate(localIsServiceAccount)
+				}
+				StringPredicate (localComment) {
+					when IsEmpty then True
+					otherwise False
+				}
+				
+			}
+			actions: 
+				If localIsServiceAccount [ Set "service" to localNoOwnerCode], 
+				Set inAccountUID to task.account, 
+				Set localNoOwnerCode to task.noownercode,
+				Set localComment to task.comment,
+				Set Principal.uid to task.by,
+				TaskComplete task wait-end
+		}
+		CancelButton
+	]
+
+	inAccountRecordUid = Variable {
+		type: Integer
+	}
+	
+	inAccountUID = Variable {
+		type: String
+	}
+
+	inAccountLogin = Variable {
+		type: String
+	}
+
+	localNoOwnerCode = Variable {
+		type: String
+	}
+	
+	localComboNoOwnerCode = Variable {
+		type: String
+	}
+
+	localEditNoOwnerCode = Variable {
+		type: String
+	}
+
+	localComment = Variable {
+		type: String
+	}
+	
+	localNewOwnerCode = Variable {
+		type: Boolean
+	}
+	
+	localIsServiceAccount = Variable {
+		type: Boolean
+		initial: True
+	}
+
+	outResult = Variable {
+		type: String
+	}
+	
+	task = TaskRecord ( create "bw_reconciliation_noowner" ) 
+	
+	noownercodes = Dataset {
+		view: br_noownercodes
+	}
+	
+	Group {
+		RadioButtons {
+			variable: localIsServiceAccount
+			Option {
+				text: $reconciliationactions.isserviceaccount
+				value: True
+			}
+			Option {
+				text: $reconciliationactions.isothertypeaccount
+				value: False					
+			}
+		}
+	}
+	Group {
+		Combo {
+			label: $reconciliationactions.choosecode
+			options: Dynamic {
+				data: noownercodes
+				value: Current noownercode
+				text: Current noownercode
+			}
+			variable: localComboNoOwnerCode
+			hidden: BooleanPredicate(localIsServiceAccount)
+			disabled: BooleanPredicate(localNewOwnerCode)
+			modify-event: StringCase(localComboNoOwnerCode) { when Not IsEmpty then [ Set localComboNoOwnerCode to localNoOwnerCode ] }
+		}
+	}
+	Flow {
+		disposition: Horizontal
+		Group {			
+			Checkbox {
+				hidden: BooleanPredicate(localIsServiceAccount)
+				variable: localNewOwnerCode
+				text: $reconciliationactions.addcode
+				modify-event: BooleanCase(localNewOwnerCode) { when False then [ Set localComboNoOwnerCode to localNoOwnerCode ] when True then [ Set localEditNoOwnerCode to localNoOwnerCode ] }
+			}
+		}
+		Group {
+			Edit {
+				hidden: BooleanPredicate(localIsServiceAccount)
+				disabled: Not BooleanPredicate(localNewOwnerCode)
+				variable: localEditNoOwnerCode
+				modify-event: Set localEditNoOwnerCode to localNoOwnerCode
+				
+			}
+		}
+	}
+	Group {
+		Edit {
+			label: $reconciliation.comment
+			variable: localComment
+		}
+	}
+}
+
+reconciliationNoOwnerAllDialog = Dialog {
+	title: $reconciliationactions.setallnoowner
+	width: 550
+	height: 300
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: OrPredicate {
+				AndPredicate {
+					StringPredicate (localNoOwnerCode) {
+						when IsEmpty then True
+						otherwise False
+					}
+					Not BooleanPredicate(localIsServiceAccount)
+				}
+				StringPredicate (localComment) {
+					when IsEmpty then True
+					otherwise False
+				}
+				
+			}
+			actions:
+				Confirm $reconciliationactions.noownerallconfirm,
+				MultivaluedIterate inAccountUIDs as inAccountUID [
+					If localIsServiceAccount [ Set "service" to localNoOwnerCode], 
+					Set Current inAccountUID to task.account, 
+					Set localNoOwnerCode to task.noownercode,
+					Set localComment to task.comment,
+					Set Principal.uid to task.by,
+					TaskComplete task
+				]
+		}
+		CancelButton
+	]
+
+	inAccountUIDs = Variable {
+		type: String
+		multivalued:True
+	}
+
+	localNoOwnerCode = Variable {
+		type: String
+	}
+	
+	localComboNoOwnerCode = Variable {
+		type: String
+	}
+
+	localEditNoOwnerCode = Variable {
+		type: String
+	}
+
+	localComment = Variable {
+		type: String
+	}
+	
+	localNewOwnerCode = Variable {
+		type: Boolean
+	}
+	
+	localIsServiceAccount = Variable {
+		type: Boolean
+		initial: True
+	}
+
+	outResult = Variable {
+		type: String
+	}
+	
+	task = TaskRecord ( create "bw_reconciliation_noowner" ) 
+	
+	noownercodes = Dataset {
+		view: br_noownercodes
+	}
+	
+	Group {
+		RadioButtons {
+			variable: localIsServiceAccount
+			Option {
+				text: $reconciliationactions.isserviceaccount
+				value: True
+			}
+			Option {
+				text: $reconciliationactions.isothertypeaccount
+				value: False					
+			}
+		}
+	}
+	Group {
+		Combo {
+			label: $reconciliationactions.choosecode
+			options: Dynamic {
+				data: noownercodes
+				value: Current noownercode
+				text: Current noownercode
+			}
+			variable: localComboNoOwnerCode
+			hidden: BooleanPredicate(localIsServiceAccount)
+			disabled: BooleanPredicate(localNewOwnerCode)
+			modify-event: StringCase(localComboNoOwnerCode) { when Not IsEmpty then [ Set localComboNoOwnerCode to localNoOwnerCode ] }
+		}
+	}
+	Flow {
+		disposition: Horizontal
+		Group {			
+			Checkbox {
+				hidden: BooleanPredicate(localIsServiceAccount)
+				variable: localNewOwnerCode
+				text: $reconciliationactions.addcode
+				modify-event: BooleanCase(localNewOwnerCode) { when False then [ Set localComboNoOwnerCode to localNoOwnerCode ] when True then [ Set localEditNoOwnerCode to localNoOwnerCode ] }
+			}
+		}
+		Group {
+			Edit {
+				hidden: BooleanPredicate(localIsServiceAccount)
+				disabled: Not BooleanPredicate(localNewOwnerCode)
+				variable: localEditNoOwnerCode
+				modify-event: Set localEditNoOwnerCode to localNoOwnerCode
+				
+			}
+		}
+	}
+	Group {
+		Edit {
+			label: $reconciliation.comment
+			variable: localComment
+		}
+	}
+}
+
+reconciliationRemoveDialog = Dialog {
+	title: $reconciliationactions.delete
+	width: 550
+	height: 150
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			actions: 	
+				Set inAccountUID to task.account, 
+				Set Principal.uid to task.by,
+				TaskComplete task wait-end
+		}
+		CancelButton
+	]
+
+	inAccountUID = Variable {
+		type: String
+	}
+
+	task = TaskRecord ( create "bw_reconciliation_remove" ) 
+	
+	Text {
+		value: Concat($reconciliationactions.delete, " ?")
+		compact: True
+	}
+	
+}
+
+reconciliationIdentityPicker = Dialog {
+
+	title: $picker.identity.title
+	width: 750
+	height: 400
+	mixins: pickerMixin 
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outRecordUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	paramAccountRecordUid = Variable {
+		type: Integer
+	}
+
+	// output variables (recordUid, uid and displayname)
+	outRecordUid = Variable {
+		type: Integer
+	}
+	outUid = Variable {
+		type: String
+	}
+	outDisplayname = Variable {
+		type: String
+	}
+	outRuleName = Variable {
+		type: String
+	}
+	outRuleDescription = Variable {
+		type: String
+	}
+	outRuleComment = Variable {
+		type: String
+	}
+	selectedReconpolicy = Variable {
+		type: String
+	}
+	selectedReconpolicyDesc = Variable {
+		type: String
+	}
+	reconPolicy = Variable {
+		type: String
+	}
+	reconPolicyDesc = Variable {
+		type: String
+	}
+
+	// database view
+	identityList = Dataset {
+		service: srv_reconciliation_suggestidentities with paramAccountRecordUid to accountRecordUid, reconPolicy to reconPolicyName unless-empty
+	}
+	
+	reconPolicies = Dataset {
+		service: srv_reconciliation_listReconPolicies with True to excludeMainPolicy
+	}
+
+	ConditionalGroup {
+	
+		IntCondition ( Count identityList  ){
+		
+			when > 0 then [
+				// results
+				
+				Text {
+					value: reconPolicy
+					label: $reconpolicy.concept
+					compact: True
+					hidden: StringPredicate ( reconPolicy ) { when IsEmpty then True }
+					commands:
+						Commands { position:  Before
+							Command { icon: "16/famfamfam_silk_icons_v013/page_white_edit.png" actions: Unset reconPolicy }
+						}
+				}
+				Text {
+					value: reconPolicyDesc
+					label: $reconpolicy.description
+					compact: True
+					hidden: StringPredicate ( reconPolicy ) { when IsEmpty then True }
+				}
+				
+				Spacer { height: 5 }
+				
+				Table {
+					data: identityList
+					show-filter: True
+					label: Label {
+						value: $picker.identity.result
+						break: True
+						layout: Layout {
+							align: horizontal Beginning vertical Beginning
+						}
+					}
+					layout: Layout {
+						grab: horizontal True vertical True
+					}
+					show-count: True
+			
+					Column {
+						column: recorduid
+						selection: outRecordUid
+						hidden: True
+					}
+					Column {
+						column: uid
+						selection: outUid
+						hidden: True
+					}
+					Column {
+						column: rulename
+						selection: outRuleName
+						hidden: True
+					}
+					Column {
+						column: ruledescription
+						selection: outRuleDescription
+						hidden: True
+					}
+					Column {
+						column: rulecomment
+						selection: outRuleComment
+						hidden: True
+					}
+					Column {
+						column: hrcode
+						header: $identity.hrcode
+						image: "16/audit/identity_16.png"
+						width: 25%
+						filterable: True
+						sortable: True
+					}
+					Column {
+						column: fullname
+						header: $identity.fullname
+						width: 25%
+						selection: outDisplayname
+						filterable: True
+						sortable: True
+					}
+					Column {
+						column: mail
+						header: $identity.mail
+						width: 25%
+						filterable: True
+						sortable: True
+					}
+					Column {
+						column: arrivaldate
+						header: $identity.arrivaldate
+						width: 25%
+						filterable: True
+						sortable: True
+					}
+				}
+			]
+			otherwise [
+				
+				Text { value: $reconciliationactions.mainpolicyempty compact: True hidden: StringPredicate( reconPolicy ){ when Not IsEmpty then True } }
+				
+				Text { value: $reconciliationactions.curtompolicyempty( reconPolicy ) compact: True hidden: StringPredicate( reconPolicy ){ when IsEmpty then True } }
+
+				Spacer { height: 5 }
+				
+				Table {
+					data: reconPolicies
+					layout: Layout { grab: horizontal True vertical True }
+					hidden: IntPredicate ( Count reconPolicies ) { when = 0 then True }
+					commands: [
+						Command {
+							icon: "16/audit/reconciliation_16.png"
+							tooltip: $reconciliationactions.suggestowner
+							actions: Set selectedReconpolicyDesc to reconPolicyDesc , Set selectedReconpolicy to reconPolicy, ReloadData( identityList ), IntCase ( Count identityList ){ when =0 then [ Message $reconciliationactions.curtompolicyempty( reconPolicy ) ]}
+						}
+					]
+					
+					Column {
+						column: name
+						header: $reconpolicy.name
+						width: 40%
+						selection: selectedReconpolicy
+					}
+					Column {
+						column: description
+						header: $reconpolicy.description
+						width: 100%
+						selection: selectedReconpolicyDesc
+					}
+				}
+				
+				Text { 
+					value: $reconciliationactions.nomorepolicies compact: True  layout: Layout { indent: horizontal 20 vertical 0} 
+					hidden: IntPredicate( Count reconPolicies ) {
+						when !=0 then True
+					} 
+				}
+			
+			]
+			
+		}
+	}
+}
+
+deletedIdentityPicker = Dialog {
+
+	title: $picker.deletedidentity.title
+	width: 600
+	height: 450
+	mixins: pickerMixin 
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// output variables (recordUid, uid and displayname)
+	outUid = Variable {
+		type: String
+	}
+	outDisplayname = Variable {
+		type: String
+	}
+
+	// database view
+	identityList = Dataset {
+		view: br_deleted_identity_picker
+	}
+
+	// results
+	Table {
+		data: identityList
+		label: Label {
+			value: $picker.identity.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+
+		Column {
+			column: uid
+			selection: outUid
+			hidden: True
+		}
+		Column {
+			column: fullname
+			selection: outDisplayname
+			hidden: True
+		}
+		Column {
+			column: hrcode
+			header: $identity.hrcode
+			image: "16/audit/identity_16.png"
+			width: 33%
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: surname
+			header: $identity.surname
+			width: 33%
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: givenname
+			header: $identity.givenname
+			width: 33%
+			sortable: True
+			filterable: True
+		}
+	}
+}
+

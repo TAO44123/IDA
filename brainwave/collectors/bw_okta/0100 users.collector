@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0100 users" scriptfile="/collectors/bw_okta/0100 users.javascript" name="P1741093368603" startingpoint="C1741093385497">
+		<Component name="C1741093385497" type="discoverysource" x="240" y="97" w="300" h="64" title="users">
+			<Discovery file="/discovery/bw_okta/users.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-10)}/users.csv"/>
+		</Component>
+		<Component name="C1741093399651" type="repository" x="240" y="371" w="300" h="64" title="repository">
+			<Media type="A" code="SILO" label="SILO" source="C1741093385497"/>
+			<Repository>
+				<Attribute name="repositoryfamily" attribute="FAMILY"/>
+			</Repository>
+		</Component>
+		<Component name="C1741093403523" type="account" x="240" y="524" w="300" h="64" title="okta users">
+			<Account key="id">
+				<Attribute name="login" attribute="login"/>
+				<Attribute name="service" attribute="SERVICE"/>
+				<Attribute name="givenname" attribute="firstname"/>
+				<Attribute name="surname" attribute="lastname"/>
+				<Attribute name="username" attribute="USERNAME"/>
+				<Attribute name="disabled" attribute="ISDISABLED"/>
+				<Attribute name="mail" attribute="email"/>
+				<Attribute name="employeenumber" attribute="employeenumber"/>
+				<Attribute name="creationdate" attribute="created"/>
+				<Attribute name="lastlogindate" attribute="lastlogin"/>
+				<Attribute name="profile" attribute="status"/>
+				<Attribute name="passwordlastsetdate" attribute="passwordchanged"/>
+				<Attribute name="lastmodificationdate" attribute="lastupdated"/>
+				<Attribute name="passwordexpired" attribute="PASSWORDEXPIRED"/>
+				<Attribute name="locked" attribute="LOCKED"/>
+				<Attribute name="manager" attribute="managerid"/>
+			</Account>
+			<Media code="SILO"/>
+			<Manager check="true" error="true" event="OKTAMANAGERNOTFOUND"/>
+		</Component>
+		<Link name="L1741093421718" source="C1741093385497" target="C1741286900872" priority="1"/>
+		<Link name="L1741093422400" source="C1741093399651" target="C1741093403523" priority="1"/>
+		<Component name="C1741286900872" type="changefilter" x="240" y="228" w="300" h="64" title="update silo">
+			<Actions>
+				<Action name="U1741286982124" action="siloname" newvalue="{config.paramSiloName}"/>
+				<Action name="U1741287477720" action="add" attribute="SILO" type="String" multivalued="false" newvalue="{config.paramSiloName}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1741286915447" source="C1741286900872" target="C1741093399651" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="paramSiloName" description="paramSiloName"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

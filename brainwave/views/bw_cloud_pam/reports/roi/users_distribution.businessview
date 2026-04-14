@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_users_distribution" displayname="users distribution">
+	<Definition scriptfile="views/bw_cloud_pam/reports/roi/users_distrib.javascript" name="D1627327028350">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1627327028350" title="Human">
+			<InnerView name="bwpam_human_users">
+				<Param name="F1637155466266" viewparam="nbdays" viewparamvalue="{param.nbdays}"/>
+				<Param name="F1634400112661" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1627327038153" type="unionview" x="710" y="206" w="300" h="50" title="Other">
+			<InnerView name="bwpam_other_users">
+				<Param name="F1637155483989" viewparam="nbdays" viewparamvalue="{param.nbdays}"/>
+				<Param name="F1634400127680" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+				<Param name="F1638367405313" viewparam="type" viewparamvalue="{param.other_type.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="human" secondary_discriminator="builtin" discriminatorcolumn="disc1"/>
+			<ExcludeList>
+				<Exclude name="disc1"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627327038269" source="C1627327028350" target="C1627327038153" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1627327076813" type="unionview" x="749" y="237" w="300" h="50" title="Application">
+			<InnerView name="bwpam_application_users">
+				<Param name="F1637155495589" viewparam="nbdays" viewparamvalue="{param.nbdays}"/>
+				<Param name="F1634400138537" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="builtin" secondary_discriminator="application" discriminatorcolumn="disc2"/>
+			<ExcludeList>
+				<Exclude name="disc2"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627327076929" source="C1627327038153" target="C1627327076813" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1733797225308" type="unionview" x="647" y="340" w="300" h="50" title="CA Identity Service">
+			<InnerView name="bwpam_service_users">
+				<Param name="F1733797352957" viewparam="nbdays" viewparamvalue="{param.nbdays}"/>
+				<Param name="F1733797364006" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+			<Union discriminatorcolumn="disc3" primary_discriminator="human" secondary_discriminator="CA Identity Service"/>
+			<ExcludeList>
+				<Exclude name="disc3"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1733797225582" source="C1627327076813" target="C1733797225308" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="nbdays" displayname="nbdays" type="Integer">
+	</ViewParam>
+	<ViewParam name="vault_code" displayname="vault_code"/>
+	<ViewParam name="other_type" displayname="other_type">
+		<Value name="V1733802013422_1" data="Other"/>
+	</ViewParam>
+</View>

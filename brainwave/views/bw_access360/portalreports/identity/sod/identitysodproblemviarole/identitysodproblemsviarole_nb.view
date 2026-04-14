@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwa360_identitysodproblemsviarole_nb" prefix="roles_" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="permission" displayname="identitysodproblemsviarole1" notes="" begindate="" enddate="">
+	<ViewParam name="role_uid" displayname="role_uid"/>
+	<ViewParam name="applicationuid" displayname="applicationuid"/>
+	<ViewParam name="minimumRiskLevel" displayname="minimumRiskLevel" type="Integer"/>
+	<ViewParam name="ownedPermissionsOnly" displayname="ownedPermissionsOnly" type="Boolean" defaultvalue="false"/>
+	<ViewParam name="permissionOwnerUid" displayname="permissionOwnerUid" type="String"/>
+	<ViewParam name="identityuid" displayname="identityuid"/>
+	<ViewComputedAttribute name="id_controlcode" displayname="id_controlcode" type="String" expression="dataset.controlcode.get().substring(2)"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1557921901923_1367" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controldiscrepancy">
+		<ViewJoin name="J1539108778259_10442" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controllog">
+			<ViewAttribute name="1557921929472_1371" attribute="controltype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1539108787364_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="6"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+			<ViewAttribute name="1557921929473_1372" attribute="risklevel" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1646910486496_0" reference="minimumRiskLevel" operation="ge" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1646916282231_809" attribute="controldisplayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1646921782159_934" attribute="controlcode" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="1557922082225_1424" attribute="uid" operator="or" removedfromprojection="true" globalfilter="true">
+		<ViewAttributeFilter name="F1557922499207_0" reference="role_uid" operation="in" ignoreifempty="true"/>
+	</ViewAttribute>
+	<ViewAttribute name="1557922082212_1421" attribute="permissiontype" operator="or" removedfromprojection="true" globalfilter="true">
+		<ViewAttributeFilter name="F1432823799596_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="Role"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1646734821727_1658" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+		<ViewAttribute name="A1646734830083_1659" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1646734832969_0" reference="applicationuid" operation="eq" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1758018759171_545" prefix="permissionmanager" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.ownedPermissionsOnly.get()" join="managers">
+		<ViewAttribute name="A1758018774231_546" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1758018776082_0" reference="permissionOwnerUid" operation="eq" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1758037439797_1165" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="identityright">
+		<ViewAttribute name="1758037527581_1276" attribute="recorduid" alias="nbidentity_via_role" displayname="nb identity" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1758037527581_1277" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1550766571096_0" reference="identityuid" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+</View>

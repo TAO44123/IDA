@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bws_repository_accountsgroups_bv" displayname="accountsgroups bv">
+	<Definition scriptfile="/views/bw_subscription/repository/accountsgroups_bv.javascript" name="D1643034273992">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1643034273991" title="accounts groups">
+			<InnerView name="bws_repository_accountsgroups">
+				<Param name="F1643034475236" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1643034417910" type="joinview" x="731" y="172" w="300" h="50" title="direct accounts groups">
+			<InnerView name="bws_repository_accountsdirectgroups" prefix="is">
+				<Param name="F1643034482173" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.iskey.get()}"/>
+			<ExcludeList>
+				<Exclude name="isgroupuid"/>
+				<Exclude name="isaccountuid"/>
+				<Exclude name="iskey"/>
+				<Exclude name="accountuid"/>
+				<Exclude name="groupuid"/>
+			</ExcludeList>
+			<ViewComputedAttribute name="directassignement" displayname="directassignement" type="Integer" expression="dataset.isEmpty(&apos;isdirect&apos;)?0:1"/>
+		</Component>
+		<Link name="L1643034417979" source="C1643034273991" target="C1643034417910" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1643034663721" type="trendview" x="518" y="290" w="300" h="50" title="detect changes in accounts/groups">
+			<Trend key="{dataset.key.get()}" comparing_column="val" timeslot="-1" trend_column_name="status" include_removed="true"/>
+		</Component>
+		<Link name="L1643034663996" source="C1643034417910" target="C1643034663721" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1643034524724_1" data="ACME_1639568842077_5647"/>
+	</ViewParam>
+</View>

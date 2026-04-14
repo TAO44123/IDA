@@ -1,0 +1,372 @@
+import "/webportal/pages/bw_campaignmanager/resources.page"
+
+campaignStatusNLS = NLS {
+	_none [en "None" fr "Aucune"]
+	_inprogress [en "In progress" fr "En cours"]
+	_done [en "Done" fr "Réalisée"]
+}
+
+campaignInstanceStatusNLS = NLS {
+	_active [en "In progress" fr "En cours"]
+	_completed [en "Done" fr "Réalisée"]
+	_onhold [en "On hold" fr "En attente"]
+	_terminated [en "Interrupted" fr "Interrompue"]
+	_initializing [en "Initializing" fr "Initialisation"]
+	_none [en "None" fr "Aucune"]
+}
+
+br_campaignManager_fragmentNLS = NLS {
+	campaign.uniqueCode [en "Campaign unique code" fr "Identifiant unique de la campagne" ]
+	campaign.description [en "Campaign description" fr "Description de la campagne"]
+	campaign.type [en "Campaign type" de "Type de campagne"]
+	campaign.frequency [en "Campaign frequency" fr "Fréquence de la campagne"]
+	dayOfTheWeek [en "Day of the week" fr "Jour de la semaine"]
+	dayOfTheMonth [en "Day of the month" fr "Jour du mois"]
+	startingDate [en "Starting date" fr "Date de début"]
+}
+
+daysOfTheWeekNLS = NLS {
+	_monday [en "Monday" fr "Lundi"]
+	_tuesday [en "Tuesday" fr "Mardi"]
+	_wednesday [en "Wednesday" fr "Mercredi"]
+	_thursday [en "Thursday" fr "Jeudi"]
+	_friday [en "Friday" fr "Vendredi"]
+	_saturday [en "Saturday" fr "Samedi"]
+	_sunday [en "Sunday" fr "Dimanche"] 
+}
+
+campaignStatusMapping = StringMapping {
+	when "None" then $campaignStatusNLS._none
+	when "In progress" then $campaignStatusNLS._inprogress
+	when "In Progress" then $campaignStatusNLS._inprogress
+	when "Done" then $campaignStatusNLS._done
+	otherwise current
+}
+
+campaignInstanceStatusMapping = StringMapping {
+	when "Active" then $campaignInstanceStatusNLS._active
+	when "Completed" then $campaignInstanceStatusNLS._completed
+	when "OnHold" then $campaignInstanceStatusNLS._onhold
+	when "Initializing" then $campaignInstanceStatusNLS._initializing
+	when "Terminated" then $campaignInstanceStatusNLS._terminated
+	when IsNull then $campaignInstanceStatusNLS._none
+	otherwise current
+}
+
+campaignInstanceStatusIcon = StringImageTemplate {
+	when "Active" then "16/famfamfam_silk_icons_v013/control_play_blue.png"
+	when "Completed" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "OnHold" then "16/famfamfam_silk_icons_v013/control_pause_blue.png"
+	when "Initializing" then "16/famfamfam_silk_icons_v013/time.png"
+	when "Terminated" then "16/famfamfam_silk_icons_v013/cancel.png"
+	when IsNull then "16/famfamfam_silk_icons_v013/new.png"
+	otherwise ""
+}
+
+campaignTypeMappingNLS = NLS {
+	identities [en "Identity review" fr "Revue des personnes"]
+	applications [en "Application review" fr "Revue des applications"]
+	permissions [en "Permission review" fr "Revue des permissions"]
+	accounts [en "Account review" fr "Revue des comptes"]
+	groups [en "Group review" fr "Revue des groupes"]
+	repositories [en "Repository review" fr "Revue des référentiels"]
+	allocations [en "Allocation review" fr "Revue des affectations"]
+	rights [en "Rights review" fr "Revue des droits d'accès"]
+	folder_rights [en "Folder rights review" fr "Revue des droits d'accès aux données"]
+	reconciliations [en "Reconciliation review" fr "Revue des réconciliations"]
+	managers [en "Manager review" fr "Revue des responsables"]
+	organization_managers [en "Organization manager review" fr "Revue des responsables d'organisation"]
+	other [en "Other" fr "Autre"]
+}
+
+campaignTypeMapping = StringMapping {
+	when Constant identities_review then $campaignTypeMappingNLS.identities
+	when Constant applications_review then $campaignTypeMappingNLS.applications
+	when Constant permissions_review then $campaignTypeMappingNLS.permissions
+	when Constant accounts_review then $campaignTypeMappingNLS.accounts
+	when Constant groups_review then $campaignTypeMappingNLS.groups
+	when Constant repositories_review then $campaignTypeMappingNLS.repositories
+	when Constant allocations_review then $campaignTypeMappingNLS.allocations
+	when Constant rights_review then $campaignTypeMappingNLS.rights
+	when Constant fs_rights_review then $campaignTypeMappingNLS.folder_rights
+	when Constant folder_rights_review then $campaignTypeMappingNLS.folder_rights
+	when Constant reconciliations_review then $campaignTypeMappingNLS.reconciliations
+	when Constant managers_review then $campaignTypeMappingNLS.managers
+	when Constant organization_managers_review then $campaignTypeMappingNLS.organization_managers
+	when IsEmpty then $campaignTypeMappingNLS.other
+	when IsNull then $campaignTypeMappingNLS.other
+	otherwise current
+}
+
+campaignFrequencyMappingNLS = NLS {
+	adhoc [en "ad-hoc" fr "manuelle"]
+	d [en "daily" fr "journalière"]
+	w [en "weekly" fr "hebdomadaire"]
+	m [en "monthly" fr "mensuelle"]
+	q [en "quarterly" fr "trimestrielle"]
+	s [en "semesterly" fr "semestrielle"]
+	y [en "yearly" fr "annuelle"]
+}
+
+campaignFrequencyMapping = StringMapping {
+	when "" then $campaignFrequencyMappingNLS.adhoc
+	when "d" then $campaignFrequencyMappingNLS.d
+	when "w" then $campaignFrequencyMappingNLS.w
+	when "m" then $campaignFrequencyMappingNLS.m
+	when "q" then $campaignFrequencyMappingNLS.q
+	when "s" then $campaignFrequencyMappingNLS.s
+	when "y" then $campaignFrequencyMappingNLS.y
+}
+
+campaignParamsFragment = PageFragment {
+	outCode = Variable
+	outDescription = Variable
+	outType = Variable
+	outOwner = Variable {initial:Principal.uid}
+	outFrequency = Variable
+	
+	inUpdateonly = Variable { type: Boolean initial: False }
+	inreadonlytype = Variable { type: Boolean initial: False }
+	
+	Edit {
+		variable: outCode
+		label: $br_campaignManager_fragmentNLS.campaign.uniqueCode
+		disabled:
+			BooleanPredicate ( inUpdateonly )
+	}
+	Edit {
+		variable: outDescription
+		label: $br_campaignManager_fragmentNLS.campaign.description
+	}
+	Combo {
+		variable: outType
+		label: $br_campaignManager_fragmentNLS.campaign.type
+		options:
+			Static {
+				Option {
+					text: $campaignTypeMappingNLS.identities
+					value: Constant identities_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.applications
+					value: Constant applications_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.permissions
+					value: Constant permissions_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.accounts
+					value: Constant accounts_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.groups
+					value: Constant groups_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.repositories
+					value: Constant repositories_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.allocations
+					value: Constant allocations_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.rights
+					value: Constant rights_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.folder_rights
+					value: Constant folder_rights_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.reconciliations
+					value: Constant reconciliations_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.managers
+					value: Constant managers_review
+				}
+				Option {
+					text: $campaignTypeMappingNLS.organization_managers
+					value: Constant organization_managers_review
+				}
+			}
+		disabled:
+			BooleanPredicate ( inreadonlytype )
+	}
+	IncludeFragment ( campaignFrequencyFragment with
+		outFrequency binds-to localFrequency
+	)
+}
+
+campaignFrequencyFragment = PageFragment {
+
+	localFrequency = Variable
+	localDay = Variable
+	localInMonth = Variable
+	localStartingDate = Variable
+
+	Grid {
+		columns: GridColumn { width: 200px }, GridColumn { width: 200px }
+		fill: Horizontal
+		layout: Layout { hint: height 32 } 
+		GridRow {
+			height: 32px
+			GridCell {
+				Combo {
+					label: Label {
+						value: $br_campaignManager_fragmentNLS.campaign.frequency
+					}
+					variable: localFrequency
+					options:
+						Static {
+							Option {
+								text: $campaignFrequencyMappingNLS.adhoc
+								value: Constant adhoc_frequency
+							}
+							Option {
+								text: $campaignFrequencyMappingNLS.d
+								value: Constant daily_frequency
+							}
+							Option {
+								text: $campaignFrequencyMappingNLS.w
+								value: Constant weekly_frequency
+							}
+							Option {
+								text: $campaignFrequencyMappingNLS.m
+								value: Constant monthly_frequency
+							}
+							Option {
+								text: $campaignFrequencyMappingNLS.q
+								value: Constant quarterly_frequency
+							}
+							Option {
+								text: $campaignFrequencyMappingNLS.s
+								value: Constant semesterly_frequency
+							}
+							Option {
+								text: $campaignFrequencyMappingNLS.y
+								value: Constant yearly_frequency
+							}
+						}
+				}			
+			}
+			GridCell {
+				ConditionalGroup {
+					StringCondition ( localFrequency ) {
+						when IsEmpty then [ ]
+						when Constant weekly_frequency then [
+							Combo {
+								label: Label {
+									value: $br_campaignManager_fragmentNLS.dayOfTheWeek
+								}
+								variable: localDay
+								options:
+									Static {
+										Option {
+											text: $daysOfTheWeekNLS._monday
+											value: "1"
+										}
+										Option {
+											text: $daysOfTheWeekNLS._tuesday
+											value: "2"
+										}
+										Option {
+											text: $daysOfTheWeekNLS._wednesday
+											value: "3"
+										}
+										Option {
+											text: $daysOfTheWeekNLS._thursday
+											value: "4"
+										}
+										Option {
+											text: $daysOfTheWeekNLS._friday
+											value: "5"
+										}
+										Option {
+											text: $daysOfTheWeekNLS._saturday
+											value: "6"
+										}
+										Option {
+											text: $daysOfTheWeekNLS._sunday
+											value: "7"
+										}
+									}
+							}						
+						]					
+						when Constant monthly_frequency then [
+							Combo {
+								label: Label {
+									value: $br_campaignManager_fragmentNLS.dayOfTheMonth
+								}
+								variable: localInMonth
+								options:
+									Static {
+										Option {text:"1" value:"1"}
+										Option {text:"2" value:"2"}
+										Option {text:"3" value:"3"}
+										Option {text:"4" value:"4"}
+										Option {text:"5" value:"5"}
+										Option {text:"6" value:"6"}
+										Option {text:"7" value:"7"}
+										Option {text:"8" value:"8"}
+										Option {text:"9" value:""}
+										Option {text:"10" value:"10"}
+										Option {text:"11" value:"11"}
+										Option {text:"12" value:"12"}
+										Option {text:"13" value:"13"}
+										Option {text:"14" value:"14"}
+										Option {text:"15" value:"15"}
+										Option {text:"16" value:"16"}
+										Option {text:"17" value:"17"}
+										Option {text:"18" value:"18"}
+										Option {text:"19" value:"19"}
+										Option {text:"20" value:"20"}
+										Option {text:"21" value:"21"}
+										Option {text:"22" value:"22"}
+										Option {text:"23" value:"23"}
+										Option {text:"24" value:"24"}
+										Option {text:"25" value:"25"}
+										Option {text:"26" value:"26"}
+										Option {text:"27" value:"27"}
+										Option {text:"28" value:"28"}
+										Option {text:"29" value:"29"}
+										Option {text:"30" value:"30"}
+										Option {text:"31" value:"31"}
+									}
+							}
+						]					
+						when Constant quarterly_frequency then [
+							DateTime {
+								variable: localStartingDate
+								type: Date
+								label: Label {
+									value: $br_campaignManager_fragmentNLS.startingDate
+								}
+							}
+						]					
+						when Constant semesterly_frequency then [
+							DateTime {
+								variable: localStartingDate
+								type: Date
+								label: Label {
+									value: $br_campaignManager_fragmentNLS.startingDate
+								}
+							}
+						]					
+						when Constant yearly_frequency then [
+							DateTime {
+								variable: localStartingDate
+								type: Date
+								label: Label {
+									value: $br_campaignManager_fragmentNLS.startingDate
+								}
+							}
+						]					
+					}
+				}
+			}
+		}
+	}
+}

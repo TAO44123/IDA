@@ -1,0 +1,537 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_timeline/timelinenls.page"
+
+import "/webportal/pages/bw_timelinewidget/timeline.page"
+
+/* Nationalized labels here */
+causertimelineNLS = NLS {
+	title [en "CyberArk user timeline" fr "Evolutions de l'utilisateur"]
+	dyntitle [en "{0} timeline" fr "Evolutions de {0}"]
+	joborg [en "{0} in {1}" fr "{0} chez {1}"]
+//	share [en "Share" fr "Partage"]
+//	folder [en "Data" fr "Données"]
+	grouptooltip [en "Groups directly assigned to this account" fr "Groups directement associés à ce compte"]
+
+	description [
+		en "This report presents the evolutions that have occurred over time. The timeline presents the different timeslots as well as the major events that occurred at each loading. It is possible to select a date to display the details of the identified changes. It is also possible to select a time range by pressing the Ctrl key and clicking on two dates in the timeline."
+		fr "Ce rapport présente les évolutions survenues au fil du temps. la timeline présente les différents points de chargement ainsi que les evenements majeurs survenus à chaque chargement. Il est posible de sélectionner une date pour afficher le détail des changements identifiés. Il est aussi posible de sélectionner une page de temps en appuyant sur la touche Ctrl et en cliquant sur deux dates dans la timeline."
+	]	
+	user [en "User" fr "Utilisateur"]	
+	safe [en "CyberArk Safe" fr "Safe CyberArk"]
+	vault [en "CyberArk Vault" fr "Vault CyberArk"]
+	safenumber [en "Safe Number" fr "Numéro de Safe"]
+	managingcpm [en "Active CPM" fr "CPM actif"]
+	credentials [en "Credential" fr "Secrets"]
+	authorization [en "Authorization" fr "Autorisation"]
+	safeorvault [en "Safe or Vault" fr "Safe ou Vault"]
+	type [en "Type" fr "Type"]
+	username [en "Login" fr "Login"]
+	resource [en "Resource" fr "Ressource"]
+	platformid [en "Platform" fr "Plateforme"]
+	secrettype [en "Credential Type" fr "Type de secret"]
+	autocpm [en "CPM" fr "CPM"]
+	managementstatus [en "CPM Status" fr "Statut CPM"]
+	manualmanagement_reason [en "Reason" fr "Raison"]
+	lastreconciledtime [en "Last Reconciled" fr "Dernière réconciliation"]	
+	lastverifiedtime [en "Last Verified" fr "Dernière vérifictaion"]		
+	newuser [en "No history since this user account has just been created" fr "Pas d'historique, cet utilisateur venant d'être créé"]
+}
+
+accounttimeline_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+accounttimeline_highlightremoved = Style {
+	foreground:white
+	background:Color red
+}
+
+accounttimelinepicker = Dialog {
+	title:$timelineNLS.selecttimeslot
+	width:640
+	height:230
+	buttons:[OkButton CancelButton]
+	
+	selectedTimeslot = Variable
+	
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+
+	Combo {
+		variable:selectedTimeslot
+		
+		options:Dynamic {
+			data:timeslots
+			text:Concat (Current displayname, ' (', Current commitdate, ')')
+			value:Current uid
+		}
+	}
+
+}
+
+causertimeline = Page {
+	title: $causertimelineNLS.title
+	dynamic-title: $causertimelineNLS.dyntitle(useraccount.login)
+	description:$causertimelineNLS.description
+	tags: "causer","account" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwt_accounttimeline
+	
+	uid = Parameter {
+		label:"Concept Uid"
+		type:String
+		hidden:True
+		mandatory:True
+	}
+	initialTimeslot = Parameter { default:PortalTimeslot.UID }
+
+	/* Parameters here */
+	currentTimeslot = Variable
+	refTimeslot = Variable
+	
+	selectedRepository = Variable
+	selectedApplication = Variable
+	selectedShare = Variable
+	
+	showonlydiffgroups = Variable {initial:True}
+	showonlydiffapplications = Variable {initial:True}
+	showonlydiffpermissions = Variable {initial:True}
+	showonlydiffshares = Variable {initial:True}
+	showonlydiffdata = Variable {initial:True}
+	
+	currentTab = Variable {initial:0}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+	previoustimeslot = Record {
+		view:bwt_previoustimeslot with currentTimeslot to uid
+	}
+	reftimeslot = Record {
+		view:bwt_timeslot with refTimeslot to uid
+	}
+		
+	useraccount = Record {
+		view:br_accountDetail with uid to uid
+		timeslot:currentTimeslot
+	}
+	
+	usergroupsafe = Dataset {
+		view:bwt_usergroupsafe with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=0 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffgroups)
+		}
+	}
+	
+	causersafe = Dataset {
+		view:bwt_causersafe with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=2 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffapplications)
+		}
+	}
+	
+	userauthorizations = Dataset {
+		view:bwt_causerauthorization with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=3 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffpermissions)
+		}
+	}
+	
+	
+	usercredentials = Dataset {
+		view:bwt_causercreds with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=4 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffshares)
+		}
+	}
+	
+	causervault = Dataset {
+		view:bwt_causervault with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+
+		disabled:IntPredicate(currentTab) { when !=1 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffshares)
+		}
+	}
+	
+	timeline = Dataset {
+		view:bwt_causercomputechanges with uid to uid
+	}
+	
+	/* Page content */
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical False hint:height 230 }
+		hidden: StringPredicate(useraccount.importaction) { when "C" then True otherwise False}
+		label:Label {break:True}
+		template: timeline
+		datasets:timeline(previoustimeslotuid, timeslotuid, previoustimeslotcommitdate, timeslotcommitdate, label, description, group) to chartdata(from_timeslotuid,  to_timeslotuid, from_ts, to_ts, label, description, group)
+		bindings:
+			value-of True to navigationButtons,
+			value-of "background" to itemType
+		widget-events: {
+			when onclick then [
+				Set Current to_timeslotuid to currentTimeslot, Set Current from_timeslotuid to refTimeslot  
+			]
+		}
+	}
+	Group {
+		hidden: StringPredicate(useraccount.importaction) { when "C" then False otherwise True}
+		Header {value: $causertimelineNLS.newuser}
+	}
+	ConditionalGroup {
+		hidden: StringPredicate(useraccount.importaction) { when "C" then True otherwise False}
+		StringCondition(currentTimeslot) {
+		when IsEmpty then [
+			Header {
+				value:$timelineNLS.help
+			}
+		]
+		otherwise [
+			TabFolder {
+				TabItem {
+					text:$causertimelineNLS.user
+	
+					Text {
+						label:Label {break:False value:$account.identifier}
+						compact:True
+						value:useraccount.identifier
+					}
+					Flow {
+						disposition:Horizontal
+						Group {
+							Text {
+								label:Label {break:False value:$account.login}
+								compact:True
+								value:useraccount.login
+							}
+							Text {
+								label:Label {break:False value:$account.givenname}
+								compact:True
+								value:useraccount.givenname
+							}
+							Text {
+								label:Label {break:False value:$account.surname}
+								compact:True
+								value:useraccount.surname
+							}
+							Text {
+								label:Label {break:False value:$account.username}
+								compact:True
+								value:useraccount.username
+							}
+							Text {
+								label:Label {break:False value:$account.mail}
+								compact:True
+								value:useraccount.mail
+							}
+							Text {
+								label:Label {break:False value:$account.creationdate}
+								compact:True
+								value:useraccount.creationdate
+							}
+							Text {
+								label:Label {break:False value:$account.lastlogindate}
+								compact:True
+								value:useraccount.lastlogindate
+							}
+							Text {
+								label:Label {break:False value:$account.expiredate}
+								compact:True
+								value:useraccount.expiredate
+							}
+							Text {
+								label:Label {break:False value:$account.service}
+								compact:True
+								value:useraccount.service
+							}
+						}
+						Group {
+							Text {
+								label:Label {break:False value:$account.disabled}
+								compact:True
+								value:useraccount.disabled
+							}
+							Text {
+								label:Label {break:False value:$account.locked}
+								compact:True
+								value:useraccount.locked
+							}
+							Text {
+								label:Label {break:False value:$account.passwordlastsetdate}
+								compact:True
+								value:useraccount.passwordlastsetdate
+							}
+							Text {
+								label:Label {break:False value:$account.passwordexpired}
+								compact:True
+								value:useraccount.passwordexpired
+							}
+							Text {
+								label:Label {break:False value:$account.nextpwdchangedate}
+								compact:True
+								value:useraccount.nextpwdchangedate
+							}
+							Text {
+								label:Label {break:False value:$account.passwordcantchange}
+								compact:True
+								value:useraccount.passwordcantchange
+							}
+							Text {
+								label:Label {break:False value:$account.passwordnotrequired}
+								compact:True
+								value:useraccount.passwordnotrequired
+							}
+							Text {
+								label:Label {break:False value:$account.smartcardrequired}
+								compact:True
+								value:useraccount.smartcardrequired
+							}
+				
+							Text {
+								label:Label {break:False value:$reconciliation.noownercode}
+								compact:True
+								value:useraccount.reconciliation_noownercode
+							}
+							Text {
+								label:Label {break:False value:$identity.concept}
+								compact:True
+								value:useraccount.identity_fullname
+							}
+						}
+					}
+				}
+				TabItem {
+					text:$group.concept
+					tooltip:$causertimelineNLS.grouptooltip
+					activation-event:Set 0 to currentTab
+	
+				
+					Checkbox {
+						variable:showonlydiffgroups
+						text:$timelineNLS.showdiffonly
+						hidden: True
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:usergroupsafe
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then accounttimeline_highlightnew when 'Removed' then accounttimeline_highlightremoved } }
+						Column {sortable:True initially-masked:True filterable:True width:320px header:$group.code column:code}
+						Column {sortable:True filterable:True width:160px header:$group.displayname column:displayname}
+						Column {sortable:True filterable:True width:160px header:$repository.concept column:repositorydisplayname}
+						Column {filterable:True width:160px header:$group.comment column:comment}
+						Column {initially-masked:True filterable:True width:160px header:$group.grouptype column:grouptype}
+						Column {initially-masked:True filterable:True width:160px header:$group.creationdate column:creationdate}
+						Column {initially-masked:True filterable:True width:160px header:$group.modificationdate column:modificationdate}
+						Column {initially-masked:True filterable:True width:160px header:$timelineNLS.modificationby column:lastmodifiedby}
+					}			
+				}
+
+				TabItem {
+					text:$causertimelineNLS.vault
+					activation-event:Set 1 to currentTab
+					Checkbox {
+						variable:showonlydiffshares
+						text:$timelineNLS.showdiffonly
+						hidden: True						
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:causervault
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then accounttimeline_highlightnew when 'Removed' then accounttimeline_highlightremoved } }
+						Column {sortable:True initially-masked:True filterable:True width:320px header:$application.code column:code}
+						Column {sortable:True filterable:True width:160px header:$application.displayname column:displayname}
+					}			
+				}
+
+				TabItem {
+					text:$causertimelineNLS.safe
+					activation-event:Set 2 to currentTab
+					Checkbox {
+						variable:showonlydiffapplications
+						text:$timelineNLS.showdiffonly
+						hidden: True						
+					}	
+						
+					Spacer {
+						height:16
+					}
+				
+					Table {
+						data:causersafe
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then accounttimeline_highlightnew when 'Removed' then accounttimeline_highlightremoved } }
+						Column {sortable:True initially-masked:True filterable:True width:320px header:$application.code column:code}
+						Column {sortable:True filterable:True width:250px header:$application.displayname column:displayname}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$causertimelineNLS.safenumber column:safenumber}
+						Column {sortable:True initially-masked:False filterable:True width:250px header:$timelineNLS.description column:description}
+					}			
+				}
+				TabItem {
+					text:$causertimelineNLS.authorization
+					activation-event:Set 3 to currentTab
+	
+				
+					Checkbox {
+						variable:showonlydiffpermissions
+						text:$timelineNLS.showdiffonly
+						hidden: True						
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:userauthorizations
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then accounttimeline_highlightnew when 'Removed' then accounttimeline_highlightremoved } }
+						Column {sortable:True initially-masked:True filterable:True width:320px header:$permission.code column:code}
+						Column {sortable:True filterable:True width:320px header:$causertimelineNLS.authorization column:displayname}
+						Column {sortable:True filterable:True width:320px header:$causertimelineNLS.type column:catype}						
+						Column {sortable:True initially-masked:True filterable:True width:160px header:$timelineNLS.description column:description}
+						Column {sortable:True filterable:True width:160px header:$causertimelineNLS.safeorvault column:safeorvaultdisplayname}
+					}
+				}
+
+				TabItem {
+					text:$causertimelineNLS.credentials
+					activation-event:Set 4 to currentTab
+					Checkbox {
+						variable:showonlydiffdata
+						text:$timelineNLS.showdiffonly
+						hidden: True						
+					}	
+						
+					Spacer {
+						height:16
+					}
+	
+					Table {
+						data:usercredentials
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then accounttimeline_highlightnew when 'Removed' then accounttimeline_highlightremoved } }
+						Column {sortable:True initially-masked:False width:100px header:$causertimelineNLS.credentials column:displayname}
+						Column {sortable:True initially-masked:False filterable:True width:140px header:$causertimelineNLS.username column:username}
+						Column {sortable:True initially-masked:False filterable:True width:250px header:$causertimelineNLS.resource column:address}
+						Column {sortable:True initially-masked:False filterable:True width:250px header:$causertimelineNLS.platformid column:platformid}
+						Column {sortable:True initially-masked:True filterable:True width:60px header:$causertimelineNLS.secrettype column:secrettype}
+						Column {sortable:True initially-masked:False filterable:True width:60px header:$causertimelineNLS.autocpm column:automaticmanagement_enabled}
+						Column {sortable:True initially-masked:False filterable:True width:200px header:$causertimelineNLS.managementstatus column:managementstatus}
+						Column {sortable:True initially-masked:True filterable:True width:100px header:$causertimelineNLS.manualmanagement_reason column:manualmanagement_reason}
+						Column {sortable:True initially-masked:True filterable:True width:100px header:$causertimelineNLS.lastreconciledtime column:lastreconciledtime}	
+						Column {sortable:True initially-masked:True filterable:True width:100px header:$causertimelineNLS.lastverifiedtime column:lastverifiedtime}	
+																							
+					}
+				}
+			}
+		]
+		}
+	}
+}
+

@@ -1,0 +1,389 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>Pie Chart</title>
+	<script src="bw_pages.js"></script>
+	<script src="apexcharts.min.js"></script>
+	<style>
+		html,
+		body,
+		#canvas-holder {
+			height: 100%;
+			width: 100%
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+
+	<div id="chart"></div>
+
+	<script>
+		var clickMap = new Map();
+
+		document.documentElement.style.overflow = 'hidden';
+		document.body.scroll = "no";
+
+		var categoryorder = -1;
+		var labelorder = -1;
+		var heatmaporder = true;
+		var showLabels = true;
+		var labelScale = 0.4;
+		var labelColor = "#333333";
+		var rounded = true;
+		var maintainAspectRatio = true;
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "maintainAspectRatio") {
+				maintainAspectRatio = initialValue;
+			}
+			if (varName == "showLabels") {
+				showLabels = initialValue;
+			}
+			if (varName == "heatmapOrder") {
+				heatmaporder = initialValue;
+			}
+			if (varName == "reverseXorder") {
+				if (initialValue)
+					labelorder = 1;
+				else
+					labelorder = -1;
+			}
+			if (varName == "reverseYorder") {
+				if (initialValue)
+					categoryorder = 1;
+				else
+					categoryorder = -1;
+			}
+
+			if (varName == "showLabels") {
+				showLabels = initialValue;
+			}
+			if (varName == "labelFontColor") {
+				labelColor = initialValue;
+			}
+			if (varName == "labelFontSize") {
+				if (initialValue == "small") {
+					labelScale = 0.2;
+				}
+				else if (initialValue == "medium") {
+					labelScale = 0.4;
+				}
+				else if (initialValue == "large") {
+					labelScale = 0.6;
+				}
+			}
+			if (varName == "rounded") {
+				rounded = initialValue;
+			}
+		});
+
+		var COLOR_GREEN = "#2ecc71";
+		var COLOR_ORANGE = "#f39c12";
+		var COLOR_RED = "#e74c3c";
+
+		var DYNAMIC_MODE = "quantile";
+		var QUANTILES = [0.60, 0.85];
+		var INTERVAL_RATIOS = [0.50, 0.80];
+
+		function collectAllValues(data) {
+			var vals = [];
+			data.datasets.forEach(function (ds) {
+				ds.data.forEach(function (v) { vals.push(v); });
+			});
+			return vals;
+		}
+		function quantile(sortedVals, q) {
+			if (sortedVals.length === 0) return 0;
+			var pos = (sortedVals.length - 1) * q;
+			var base = Math.floor(pos), rest = pos - base;
+			if (sortedVals[base + 1] !== undefined) {
+				return sortedVals[base] + rest * (sortedVals[base + 1] - sortedVals[base]);
+			} else {
+				return sortedVals[base];
+			}
+		}
+
+		function computeDynamicThresholds(data) {
+			var vals = collectAllValues(data).filter(function (v) { return Number.isFinite(v); });
+			if (vals.length === 0) return { min: 0, max: 1, greenMax: 0, orangeMax: 1 };
+
+			vals.sort(function (a, b) { return a - b; });
+			var min = vals[0], max = vals[vals.length - 1];
+
+			if (DYNAMIC_MODE === "quantile") {
+				var g = quantile(vals, QUANTILES[0]);
+				var o = quantile(vals, QUANTILES[1]);
+				return { min, max, greenMax: Math.floor(g), orangeMax: Math.floor(o) };
+			} else {
+				var span = (max - min) || 1;
+				var g = min + span * INTERVAL_RATIOS[0];
+				var o = min + span * INTERVAL_RATIOS[1];
+				return { min, max, greenMax: Math.floor(g), orangeMax: Math.floor(o) };
+			}
+		}
+
+
+		function createChart() {
+			Pages.fetchDataset("chartdata", function (rows) {
+				var data = buildDataObject(rows);
+				var options = buildOptions(data);
+				var el = document.querySelector('#chart');
+				if (el) {
+					var chart = new ApexCharts(el, options);
+					chart.render();
+				}
+				document.getElementById('loading').style.display = 'none';
+			});
+		}
+
+		function buildOptions(data) {
+			var series = data.datasets.slice().reverse().map(function (ds) {
+				return {
+					name: ds.label,
+					data: data.labels.map(function (lbl, idx) { return { x: lbl, y: ds.data[idx] }; })
+				};
+			});
+
+			var th = computeDynamicThresholds(data);
+			var EPS = 1e-9;
+
+			var ranges = [
+				{ from: th.min, to: th.greenMax + EPS, color: COLOR_GREEN },
+				{ from: th.greenMax + EPS, to: th.orangeMax + EPS, color: COLOR_ORANGE },
+				{ from: th.orangeMax + EPS, to: th.max, color: COLOR_RED }
+			];
+
+			return {
+				series: series,
+				chart: {
+					type: 'heatmap',
+					height: 250,
+					toolbar: { show: false },
+					events: {
+						click: function (event, ctx, opts) {
+							if (!opts || opts.seriesIndex == null || opts.dataPointIndex == null) return;
+							var point = opts.config.series[opts.seriesIndex].data[opts.dataPointIndex];
+							var value = point.y;
+							var label = point.x;
+							var category = opts.config.series[opts.seriesIndex].name;
+							var key = label + '$$' + category + '$$' + value;
+							var cache = clickMap.get(key);
+							if (!cache) return;
+							Pages.sendEvent('onclick', { code: cache.code, label: label, categorycode: cache.categorycode, category: category, count: value });
+						}
+					}
+				},
+				legend: { show: false },
+				tooltip: { y: { show: true } },
+				dataLabels: {
+					enabled: showLabels,
+					style: { fontSize: (labelScale * 2.2) + 'em', colors: [labelColor], fontWeight: 'normal' }
+				},
+				plotOptions: {
+					heatmap: {
+						enableShades: true,
+						shadeIntensity: 0.5,
+						radius: rounded ? 4 : 0,
+						useFillColorAsStroke: true,
+						colorScale: { 
+							ranges: ranges 
+						}
+					}
+				},
+				xaxis: {
+					type: 'category',
+					categories: data.labels,
+					labels: {
+						 rotate: -45 
+						}
+				},
+				stroke: {
+					width: 0.5,
+					colors: ['#ffffff']
+				}
+			};
+		}
+
+		function buildDataObject(rows) {
+			var labelsmap = new Map();
+			var categoriesmap = new Map();
+			var valuesmap = new Map();
+			var labellist = [];
+			var categorylist = [];
+			var weight = 0;
+
+			for (var i = 0; i < rows.length; i++) {
+				var code = rows[i]["code"];
+				var label = rows[i]["label"];
+				var category = rows[i]["category"];
+				var categorycode = rows[i]["categorycode"];
+				var value = rows[i]["count"];
+
+
+				if (!labelsmap.has(code)) {
+					labellist.push({ code, label, weight });
+					labelsmap.set(code, label);
+				}
+				if (!categoriesmap.has(categorycode)) {
+					categorylist.push({ categorycode, category, weight });
+					categoriesmap.set(categorycode, category);
+				}
+				valuesmap.set(code + '$$' + categorycode, value);
+			}
+
+			if (heatmaporder) {
+				for (var y = 0; y < labellist.length; y++) {
+					var codeY = labellist[y].code;
+					for (var x = 0; x < categorylist.length; x++) {
+						var catcodeX = categorylist[x].categorycode;
+						var v = valuesmap.get(codeY + '$$' + catcodeX) || 0;
+						categorylist[x].weight += v * 100;
+					}
+				}
+				categorylist.sort(function (a, b) { return categoryorder * (a.weight < b.weight ? -1 : (a.weight > b.weight ? 1 : 0)); });
+			} else {
+				categorylist.sort(function (a, b) { return categoryorder * (a.category < b.category ? -1 : (a.category > b.category ? 1 : 0)); });
+			}
+
+			if (heatmaporder) {
+				for (var x2 = 0; x2 < categorylist.length; x2++) {
+					var catcode2 = categorylist[x2].categorycode;
+					for (var y2 = 0; y2 < labellist.length; y2++) {
+						var code2 = labellist[y2].code;
+						var v2 = valuesmap.get(code2 + '$$' + catcode2) || 0;
+						labellist[y2].weight += v2 * 100;
+					}
+				}
+				labellist.sort(function (a, b) { return -labelorder * (a.weight < b.weight ? -1 : (a.weight > b.weight ? 1 : 0)); });
+			} else {
+				labellist.sort(function (a, b) { return labelorder * (a.label < b.label ? -1 : (a.label > b.label ? 1 : 0)); });
+			}
+
+			var labels = [], codes = [];
+			for (var j = 0; j < labellist.length; j++) {
+				labels.push(labellist[j].label);
+				codes.push(labellist[j].code);
+			}
+
+			var data = { labels: labels, datasets: [] };
+			clickMap = new Map();
+
+			for (var k = 0; k < categorylist.length; k++) {
+				var catcode = categorylist[k].categorycode;
+				var catlabel = categorylist[k].category;
+
+
+				var current = { code: catcode, label: catlabel, data: [] };
+
+
+				for (var y3 = 0; y3 < labellist.length; y3++) {
+					var code3 = labellist[y3].code;
+					var label3 = labellist[y3].label;
+					var vv = valuesmap.get(code3 + '$$' + catcode) || 0;
+					current.data.push(vv);
+					clickMap.set(label3 + '$$' + catlabel + '$$' + vv, { code: code3, categorycode: catcode });
+				}
+				data.datasets.push(current);
+			}
+			return data;
+		}
+
+		var myTimeout = null;
+
+		var fetchInvalidated = function () {
+			Pages.fetchDataset("chartdata", function (rows) {
+				var data = buildDataObject(rows);
+				var options = buildOptions(data);
+				// var ctx = document.getElementById('chart-area').getContext('2d');
+				// window.myDoughnut = new Chart(ctx).HeatMap(data, options);
+				var chartOrigin = document.querySelector('#chart');
+				if (chartOrigin) {
+					var chart = new ApexCharts(document.querySelector('#chart'), options);
+					chart.render();
+				}
+
+				myTimeout = null;
+			});
+		};
+
+		Pages.listenToDatasetInvalidation("chartdata", function () {
+			if (myTimeout != null) {
+				clearTimeout(myTimeout);
+				myTimeout = setTimeout(fetchInvalidated, 500);
+				return;
+			}
+			myTimeout = setTimeout(fetchInvalidated, 500);
+		});
+
+		Pages.listenInitDone(function () {
+			createChart();
+		});
+	</script>
+</body>
+
+</html>

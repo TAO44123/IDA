@@ -1,0 +1,84 @@
+/* Import other pages here */
+import "/webportal/pages/bw_commons/admin/connectors_config_dialogs.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_commons/admin/connnectors_config_javascript.page"
+
+
+pageNLS = NLS {
+	title [en "Connector servers configuration" fr "Configuration des serveurs de connexion"]
+	cancelButton [en "Cancel" fr "Annuler"]
+	saveButton [ en "Save and Close" fr "Sauvegarder et fermer"]
+	serverListLabel [ en "Configured Connector Servers" fr "Serveurs de connection configurés"]
+	idHeader [ en "ID" fr "Identifiant"]
+	ipHeader [ en "Name or IP" fr "Nom ou IP"]
+	portHeader [en "Port" fr "Port"]
+}
+
+
+/* Page */
+connectors_config = Page {
+	title: $pageNLS.title
+	tags: "admin" , "collect"
+	priority 100
+	enter-event:
+	   Call loadConnectorServersConfig( cs_uid from uid, cs_address from address,   cs_port from port,    cs_password from password, cs_timeOut from timeOut,
+	     cs_searchDir from searchDir, cs_archiveDir from archiveDir, cs_workDir from workDir, cs_scriptDir from scriptDir, cs_paramsDir from paramsDir)
+    feature: configconnectorservers_read
+	/* Connector servers MV Variables */
+   cs_uid = Variable {  multivalued: True }
+   cs_address = Variable {  multivalued: True }
+   cs_port= Variable {  multivalued: True }
+   cs_password = Variable {  multivalued: True }
+   cs_timeOut = Variable {  multivalued: True }
+   cs_searchDir =  Variable {  multivalued: True }
+   cs_workDir =  Variable {  multivalued: True }
+   cs_archiveDir =  Variable {  multivalued: True }
+   cs_scriptDir =  Variable {  multivalued: True }  
+   cs_paramsDir =  Variable {  multivalued: True }
+      	
+	/* Datasets and records here */
+	connnectorConfigDS = Dataset { columns: cs_uid as uid, cs_address as address, cs_port as port, cs_password as password,
+	 cs_timeOut as timeOut,cs_searchDir as searchDir,cs_workDir as workDir,cs_archiveDir as archiveDir,cs_scriptDir as scriptDir,cs_paramsDir as paramsDir
+	}
+					
+	/* Page content */
+   ButtonGroup {
+        Button {
+          actions: GoTo BackInHistoryTruncate
+          text: $pageNLS.cancelButton
+        }
+        Button { 
+          actions: 
+             Call saveConnectorServersConfig(cs_uid to uid, cs_address to address,   cs_port to port,    cs_password to password, cs_timeOut to timeOut,
+	     cs_searchDir to searchDir, cs_archiveDir to archiveDir, cs_workDir to workDir, cs_scriptDir to scriptDir, cs_paramsDir to paramsDir)
+           , GoTo BackInHistoryTruncate
+          text: $pageNLS.saveButton
+          feature: configconnectorservers_modify // attention, marche pas cf: IGRC-1929
+        }
+        
+      }
+	
+	MultiEdit {
+	  layout: Layout { grab: horizontal True vertical True}
+	  show-header: True
+	  label: Label { value: $pageNLS.serverListLabel break: True}
+	  unique: cs_uid
+	  add-dialog: connector_edit returning uid, address, port, password, timeOut, searchDir , archiveDir,  workDir, scriptDir, paramsDir 
+	  edit-dialog: connector_edit editing cs_uid as uid, cs_address as address, cs_port as port, cs_password as password, cs_timeOut as timeOut,
+	      cs_searchDir as searchDir, cs_archiveDir as archiveDir, cs_workDir as workDir, cs_scriptDir as scriptDir , cs_paramsDir as paramsDir     
+      Element { variable: cs_uid  header: $pageNLS.idHeader width: 0px fixed-width: True}       
+      Element { variable: cs_address header: $pageNLS.ipHeader width: 150px   }
+      Element { variable: cs_port header: $pageNLS.portHeader width: 50px   }
+      Element { variable: cs_password header: "" width: 0px fixed-width: True  }   
+      Element { variable: cs_timeOut header: "" width: 0px  fixed-width: True } 
+      Element { variable: cs_searchDir header: "" width: 0px fixed-width: True  }
+      Element { variable: cs_archiveDir header: "" width: 0px fixed-width: True  }
+      Element { variable: cs_workDir header: "" width: 0px fixed-width: True  }   
+      Element { variable: cs_scriptDir header: "" width: 0px fixed-width: True  }         
+      Element { variable: cs_paramsDir header: "" width: 0px fixed-width: True }         
+	}
+		
+}
+
+
+

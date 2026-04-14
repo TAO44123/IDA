@@ -1,0 +1,414 @@
+/* Import other pages here */
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_base/resources/services/missionwave_services.page"
+
+// some constants
+PROTIPREAD_DB_TYPE = Constant { value: "PROTIP_READ" }
+RISKREAD_DB_TYPE = Constant { value: "RISK_READ" }
+RISKRATING_DB_TYPE = Constant { value: "RISK_RATING" }
+
+
+protipsassistant = HTMLWidgetTemplate {
+	source-file: "static/bw_cloud_base/widgets/protipsassistant/protipsassistant.html"
+	bindings: 	showassistant as in out Boolean,
+				label_hide as in String,
+				label_showmore as in String,
+				label_simplerisk_ok as in String,
+				label_simplerisk_notok as in String,
+				label_protip_discard as in String
+				
+	datasets: itemstodisplay ( code, title, description, status, riskinfo1, riskinfo2, riskinfo3, riskinfo4, riskinfo5, riskrating )
+	widget-events: 	onAssistantHide, 
+					onClickMore ( code as String ) ,
+					onClickDiscard ( code as String ) ,
+					onClickRead ( code as String ), 
+					onClickRating ( code as String, rating as Integer ), 
+					onHide 
+}
+
+bwcd_protips_fragment = PageFragment {
+	post-render-event: ExecuteNamedAction doLoadDataFromDB
+
+	// parameters
+	paramCurrentState = Variable { initial: ""}
+	paramStageID = Variable
+	paramTimeslotUID = Variable
+	
+	// internal vars
+	currentCode = Variable
+	currentRating = Variable
+	currentType = Variable
+	
+	// counters
+	protipsCount = Variable
+	protipsUnreadCount = Variable
+	risksCount = Variable
+	riskUnreadCount = Variable
+	severeRisksCount = Variable
+	selectedItem = Variable
+	
+	// variable to show or not
+	showAssitant = Variable { initial: False }
+	hideRisks = Variable { type: Boolean initial: False }
+	filterByType = Variable { type: String } // values: 'risks', 'protips' or <empty> ( show all )
+	
+	// variables for db cache
+	dbrecord_type = Variable { multivalued: True }
+	dbrecord_key = Variable { multivalued: True }
+	dbrecord_value = Variable { multivalued: True }
+	dbrecord_recorduid = Variable { multivalued: True }
+	dbrecord_found = Variable { type: Boolean initial: False }
+	dbrecord_found_recorduid = Variable
+	
+	
+	// Datasets to cache records from the db
+	dbrecords = Dataset {
+		service: listMissionWaveStages with paramStageID to missionWaveId
+		excludes: StringPredicate ( Current type ) { 
+			when StartsWith "PROTIP_" then False
+			when StartsWith "RISK_" then False 
+			otherwise True 
+		}
+	}
+	dbrecords_cached = Dataset {
+		columns: dbrecord_key as key, dbrecord_value as val, dbrecord_type as type
+	}
+	
+	// Datasets to get the protips
+	rawprotips = Dataset {
+		pages: Pages { tags: "protip" and Eval "paramCurrentState" }
+	}
+	protipsstatus = Dataset {
+		union: Union { datasets: dbrecords_cached discriminator-column: protipsstatus }
+		excludes: StringPredicate ( Current type ) { when "PROTIP_READ" then False otherwise True  }
+	}
+	protipsToDisplay = Dataset {
+		join: Join {
+			primary-dataset: rawprotips
+			primary-optional: False
+			primary-column: name
+			secondary-dataset: protipsstatus
+			secondary-column: key
+			secondary-cardinality: optional
+			secondary-prefix: status_
+		}
+		count-variable: protipsCount
+		excludes: SameValuePredicate ( Current status_val, "discarded" )
+	}
+	protipsToDisplayUnread = Dataset {
+		union: Union {
+			datasets: protipsToDisplay discriminator-column: dummy
+		}
+		includes: Eval "current.status_val == null || current.status_val == ''"
+		count-variable: protipsUnreadCount
+	}
+	
+	// Datasets to get the risks
+	rawrisk = Dataset {
+		pages: Pages { tags: "risk" and Eval "paramCurrentState" }
+		disabled: BooleanPredicate ( hideRisks )
+	}
+	riskratinginfo1 = Dataset { pages: Pages { tags: "riskratinginfo1" } }
+	riskratinginfo2 = Dataset { pages: Pages { tags: "riskratinginfo2" } }
+	riskratinginfo3 = Dataset { pages: Pages { tags: "riskratinginfo3" } }
+	riskratinginfo4 = Dataset { pages: Pages { tags: "riskratinginfo4" } }
+	riskratinginfo5 = Dataset { pages: Pages { tags: "riskratinginfo5" } }
+	rawriskwithratinginfo1 = Dataset {
+		join: Join {
+			primary-dataset: rawrisk
+			primary-column: name
+			primary-optional: False
+			secondary-dataset: riskratinginfo1
+			secondary-column: title
+			secondary-prefix: riskinfo1_
+			secondary-cardinality: optional
+		}
+	}
+	rawriskwithratinginfo2 = Dataset {
+		join: Join {
+			primary-dataset: rawriskwithratinginfo1
+			primary-column: name
+			primary-optional: False
+			secondary-dataset: riskratinginfo2
+			secondary-column: title
+			secondary-prefix: riskinfo2_
+			secondary-cardinality: optional
+		}
+	}
+	rawriskwithratinginfo3 = Dataset {
+		join: Join {
+			primary-dataset: rawriskwithratinginfo2
+			primary-column: name
+			primary-optional: False
+			secondary-dataset: riskratinginfo3
+			secondary-column: title
+			secondary-prefix: riskinfo3_
+			secondary-cardinality: optional
+		}
+	}
+	rawriskwithratinginfo4 = Dataset {
+		join: Join {
+			primary-dataset: rawriskwithratinginfo3
+			primary-column: name
+			primary-optional: False
+			secondary-dataset: riskratinginfo4
+			secondary-column: title
+			secondary-prefix: riskinfo4_
+			secondary-cardinality: optional
+		}
+	}
+	rawriskwithratinginfo5 = Dataset {
+		join: Join {
+			primary-dataset: rawriskwithratinginfo4
+			primary-column: name
+			primary-optional: False
+			secondary-dataset: riskratinginfo5
+			secondary-column: title
+			secondary-prefix: riskinfo5_
+			secondary-cardinality: optional
+		}
+	}
+	risksstatus = Dataset {
+		union: Union { datasets: dbrecords_cached discriminator-column: protipsstatus }
+		excludes: StringPredicate ( Current type ) { when "RISK_READ" then False otherwise True }
+	}
+	riskWithStatus = Dataset {
+		join: Join {
+			primary-dataset: rawriskwithratinginfo5
+			primary-column: name
+			primary-optional: False
+			secondary-dataset: risksstatus
+			secondary-column: key
+			secondary-cardinality: optional
+			secondary-prefix: status_
+		}
+	}
+	riskraiting = Dataset {
+		union: Union { datasets: dbrecords_cached discriminator-column: protipsstatus }
+		excludes: StringPredicate ( Current type ) { when "RISK_RATING" then False otherwise True  }
+	}
+	riskToDisplay = Dataset {
+		join: Join {
+			primary-dataset: riskWithStatus
+			primary-column: name
+			primary-optional: False
+			secondary-dataset: riskraiting
+			secondary-column: key
+			secondary-cardinality: optional
+			secondary-prefix: rating_
+		}
+		count-variable: risksCount
+	}
+	riskToDisplayUnread = Dataset {
+		union: Union {
+			datasets: riskToDisplay discriminator-column: dummy
+		}
+		includes: Eval "current.status_val == null || current.status_val == ''"
+		count-variable: riskUnreadCount
+	}
+	severeRisksCount = Dataset {
+		union: Union {
+			datasets: riskToDisplay discriminator-column: dummy
+		}
+		includes: Eval "current.rating_val == null || current.rating_val == '' || Number(current.rating_val) >= 4 "
+		count-variable: severeRisksCount
+	}
+	
+	// Union of both protis and risks
+	allItemsToDisplay = Dataset {
+		union: Union {
+			datasets: riskToDisplay discriminator 'risks', protipsToDisplay discriminator 'protips'  
+			discriminator-column: displaysource
+		}
+		excludes: AndPredicate {
+			StringPredicate ( filterByType ) { when Not IsEmpty then True otherwise False }
+			Not SameValuePredicate ( Current displaysource, filterByType )
+		}
+	}
+	
+	// Actions for user interaction
+	doNotifyRead = NamedAction (
+		StringCase ( currentCode ) {
+			when StartsWith "PR" then [
+				Set Constant PROTIPREAD_DB_TYPE to currentType
+			]
+			when StartsWith "RK" then [
+				Set Constant RISKREAD_DB_TYPE to currentType
+			]
+		},
+		Unset dbrecord_found, Unset dbrecord_found_recorduid,
+		MultivaluedIterate dbrecord_recorduid as irecorduid index-as i [
+			BooleanCase using AndPredicate {
+				SameValuePredicate ( ElementAt Current i of dbrecord_type, currentType )
+				SameValuePredicate ( ElementAt Current i of dbrecord_key, currentCode )
+			} in {
+				when False then []
+				when True then [
+					Set True to dbrecord_found,
+					Set ElementAt Current i of dbrecord_recorduid to dbrecord_found_recorduid
+				]
+			}
+		],
+		BooleanCase ( dbrecord_found ) {
+			when False then [
+				Call saveMissionWaveStage (
+					paramStageID to missionWaveId,
+					currentType to type, 
+					currentCode to  key,
+					"read" to val 
+				)
+			]
+			when True then [
+				Call saveMissionWaveStage (
+					dbrecord_found_recorduid to recordUid,
+					currentType to type, 
+					currentCode to  key,
+					"read" to val  
+				)
+			]
+		}
+	)
+	
+	doNotifyDiscard = NamedAction (
+		ExecuteNamedAction doLoadDataFromDB,
+		StringCase ( currentCode ) {
+			when StartsWith "PR" then [
+				Set Constant PROTIPREAD_DB_TYPE to currentType
+			]
+			when StartsWith "RK" then [
+				Set Constant RISKREAD_DB_TYPE to currentType
+			]
+		},
+		Unset dbrecord_found, Unset dbrecord_found_recorduid,
+		MultivaluedIterate dbrecord_recorduid as irecorduid index-as i [
+			BooleanCase using AndPredicate {
+				SameValuePredicate ( ElementAt Current i of dbrecord_type, currentType )
+				SameValuePredicate ( ElementAt Current i of dbrecord_key, currentCode )
+			} in {
+				when False then []
+				when True then [
+					Set True to dbrecord_found,
+					Set ElementAt Current i of dbrecord_recorduid to dbrecord_found_recorduid
+				]
+			}
+		],
+		BooleanCase ( dbrecord_found ) {
+			when False then [
+				Call saveMissionWaveStage (
+					paramStageID to missionWaveId,
+					currentType to type, 
+					currentCode to  key,
+					"discarded" to val 
+				)
+			]
+			when True then [
+				Call saveMissionWaveStage (
+					dbrecord_found_recorduid to recordUid,
+					currentType to type, 
+					currentCode to  key,
+					"discarded" to val  
+				)
+			]
+		}
+	)
+	
+	doSaveRating = NamedAction (
+		ExecuteNamedAction doLoadDataFromDB,
+		Unset dbrecord_found, Unset dbrecord_found_recorduid,
+		MultivaluedIterate dbrecord_recorduid as irecorduid index-as i [
+			BooleanCase using AndPredicate {
+				SameValuePredicate ( ElementAt Current i of dbrecord_type, Constant RISKRATING_DB_TYPE )
+				SameValuePredicate ( ElementAt Current i of dbrecord_key, currentCode )
+			} in {
+				when False then []
+				when True then [
+					Set True to dbrecord_found,
+					Set ElementAt Current i of dbrecord_recorduid to dbrecord_found_recorduid
+				]
+			}
+		],
+		BooleanCase ( dbrecord_found ) {
+			when False then [
+				Call saveMissionWaveStage (
+					paramStageID to missionWaveId,
+					Constant RISKRATING_DB_TYPE to type, 
+					currentCode to  key,
+					currentRating to val 
+				)
+			]
+			when True then [
+				Call saveMissionWaveStage (
+					dbrecord_found_recorduid to recordUid,
+					Constant RISKRATING_DB_TYPE to type, 
+					currentCode to  key,
+					currentRating to val  
+				)
+			]
+		}
+		
+	)
+	
+	doLoadDataFromDB = NamedAction (
+		Unset dbrecord_type, Unset dbrecord_key, Unset dbrecord_value, Unset dbrecord_recorduid,
+		TransferData dbrecords ( type, key, val, recordUid ) to ( dbrecord_type, dbrecord_key, dbrecord_value , dbrecord_recorduid)
+	)
+	
+	
+	// Start of the fragment
+	Grid {
+		columns: GridColumn { width: grow }, GridColumn { width: 60 }, GridColumn { width: grow }, GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical False align: horizontal End vertical Beginning }
+		GridRow {
+			GridCell {
+				skip: 1
+				Button {
+					presentation: Link
+					text: $bwcd_protips_assistantNLS.label.counter.protips ( protipsUnreadCount )
+					actions: Set "protips" to filterByType, Set True to showAssitant
+					align: Right
+					disabled: BooleanPredicate ( showAssitant )
+				}
+			}
+			GridCell {
+				Button {
+					presentation: Link
+					text: $bwcd_protips_assistantNLS.label.counter.risks ( severeRisksCount )
+					actions: Set "risks" to filterByType, Set True to showAssitant
+					align: Left
+					disabled: BooleanPredicate ( showAssitant )
+					hidden: BooleanPredicate ( hideRisks )
+				}
+			}
+		}
+	}
+	
+	
+	IncludeHTMLWidget {
+		template: protipsassistant
+		bindings: 	showAssitant binds-to showassistant,
+					value-of $bwcd_protips_assistantNLS.label.buttonhide to label_hide,
+					value-of $bwcd_protips_assistantNLS.label.link.showmore to label_showmore,
+					value-of $bwcd_protips_assistantNLS.label.protip.dontshow to label_protip_discard,
+					value-of $bwcd_protips_assistantNLS.label.simplerisk.confirm to label_simplerisk_notok,
+					value-of $bwcd_protips_assistantNLS.label.simplerisk.discard to label_simplerisk_ok
+					
+		datasets: 	allItemsToDisplay( name , title, description, status_val , riskinfo1_description, riskinfo2_description, riskinfo3_description, riskinfo4_description, riskinfo5_description, rating_val ) 
+					to itemstodisplay ( code, title, description, status, riskinfo1, riskinfo2, riskinfo3, riskinfo4, riskinfo5 , riskrating )
+		hidden: True
+		widget-events: {
+			when onClickRead then [  Set Current code to currentCode , ExecuteNamedAction doNotifyRead ]
+			when onClickMore then [  GoTo Dynamic ( "page", Current code ) ]
+			when onClickDiscard then [ Set Current code to currentCode , ExecuteNamedAction doNotifyDiscard ]
+			when onClickRating then [ Set Current code to currentCode, Set Current rating to currentRating, ExecuteNamedAction doSaveRating ]
+			when onHide then [ ExecuteNamedAction doLoadDataFromDB  ]
+		}
+		
+	}
+	
+	/* debug */
+	/*Combo {
+	  options: Dynamic { data: rawprotips text: Current title value: Current name }
+	  variable: selectedItem
+	}*/
+
+}

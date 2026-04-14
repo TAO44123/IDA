@@ -1,0 +1,135 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/lib/mixins.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+fragmentIdentityRoleModelNLS = NLS {
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display role model for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>nbiamapplications </b>the number of IAM applications on which this identity has roles</li>
+ * <li><b>outpermissionuid </b>the selected permission</li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * <li><b>outapplicationname </b>the selected application</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentIdentityRoleModel = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inapplicationuids = Variable {multivalued: True}
+
+	nbiamapplications = Variable { type:Integer }
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	outapplicationname = Variable
+	
+	applicationfamily = Variable
+	
+	/* Dataset here */
+	iamapplications = Dataset {
+		view:bwf_identityhasiamapplications with inuid to uid
+		count-variable:nbiamapplications
+	}
+	tree = HierarchicalData {
+		view:bwf_identityrolemodeltree with inuid to uid
+		initial:parentkey IsNull
+		connect:parent key to child parentkey
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+												True to inshowperjob,
+												True to inshowperorg
+				)
+			]
+			when False then [
+			]
+		}
+	)	
+	
+	Tree {
+		data:tree
+		layout: Layout { grab: horizontal True vertical True }
+		configurable:True
+		show-filter:True
+		show-count:True
+		
+		Column {
+			column:permissioncode
+			header:$role.code
+			width:160px
+			filterable:True
+			sortable:True
+			actions:ExecuteNamedAction goDetails
+		}
+		Column {
+			column:permissiondisplayname
+			header:$role.concept
+			selection:outpermissionname
+			width:300px
+			filterable:True
+			sortable:True
+			actions:ExecuteNamedAction goDetails
+		}
+		Column {
+			column:applicationcode
+			header:$application.code
+			width:160px
+			filterable:True
+			sortable:True
+			initially-masked:True
+		}
+		Column {
+			column:applicationdisplayname
+			header:$application.concept
+			selection:outapplicationname
+			width:200px
+			filterable:True
+			sortable:True
+		}
+		Column {
+			column:perimeterdisplayname
+			header:$right.perimeterdisplayname
+			width:200px
+			filterable:True
+			sortable:True
+		}
+		Column {
+			column:permissionuid
+			selection:outpermissionuid
+			hidden:True
+		}
+		Column {
+			column:applicationapplicationfamily
+			selection:applicationfamily
+			hidden:True
+		}
+	}	
+}

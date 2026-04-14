@@ -1,0 +1,409 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+
+/* Nationalized labels here */
+ad_securitygroupsdashboardNLS = NLS {
+	title [en "Security Groups" fr "Groupes de sécurité"]
+	dyn_title [en "{0} Security Groups" fr "Groupes de sécurité {0}"]
+	issuestrend [en "{0}  policy issues difference identified\n({1} now, {2} previously)" fr "{0} différences de contrôle identifiées\n({1} sur cette période d''analyse, {2} sur la période d''analyse précédente)"]
+	unknown [en "unknown" fr "inconnu"]
+	moreinfos [en "Click here for more information about this security group" fr "Cliquez ici pour obtenir plus d'informations sur ce groupe de sécurité"]
+	accountlist [en "Click here to access the account list" fr "Cliquez ici pour accéder à la liste de comptes"]
+}
+
+ad_securitygroupsdashboard_kpimayBeNullMapping = StringMapping {
+  when IsNull then $ad_securitygroupsdashboardNLS.unknown
+  otherwise current
+}
+
+ad_securitygroupsdashboard_emptyequals0Mapping = StringMapping {
+  when IsEmpty then "-"
+  otherwise current
+} 
+
+ad_securitygroupsdashboard_redTitleStyle = Style {
+	foreground: RGB(45,94,144)
+	size: 16px
+}
+
+ad_securitygroupsdashboard_kpistype = Style {
+	bold:True
+	size:36px
+	font:"Calibri"
+	foreground:RGB(98, 98, 98)	
+}
+
+ad_securitygroupsdashboard = Page {
+	title: $ad_securitygroupsdashboardNLS.title
+	dynamic-title:$ad_securitygroupsdashboardNLS.dyn_title(Transform domain.displayname using mayBeNullMapping)
+	tags: "ADreports"
+	enter-event:
+		IntCase ( SizeOf filterByDomains ) {
+			when =0 then [
+				// filter domain is empty, apply perimeter
+				TransferData domainperimeterdataset (uid) to ( domainsCriteria )
+			]
+			when =1 then [
+				Set ElementAt 1 of filterByDomains to singleDomain,
+				MultivaluedAdd filterByDomains to domainsCriteria
+			]
+			when >1 then [
+				// Move filter to the criteria variable
+				MultivaluedAdd filterByDomains to domainsCriteria
+			]
+		}
+	
+	/* Parameters here */
+	filterByDomains = Parameter  {
+		hidden:True
+		mandatory:False
+		multivalued: True
+	}
+	
+	/* Variables here */
+	domainsCriteria = Variable { multivalued: True }
+	singleDomain = Variable { multivalued: False }
+	
+	/* Datasets and records here */
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+	domain = Record {view:ad_domain with singleDomain to domain unless-empty}
+	
+	securitygroups = Dataset { view:ad_securitygroups with domainsCriteria to domains unless-empty}
+
+	nbaccountsbysecuritygroup_current = Dataset { view:ad_nbaccountsbysecuritygroup with domainsCriteria to domains unless-empty}	
+	nbaccountsbysecuritygroup_prev = Dataset { view:ad_nbaccountsbysecuritygroup with domainsCriteria to domains unless-empty timeslot:FromPage(-1)}	
+	
+	nbaccountsbysecuritygroup = Dataset {
+		join:Join{
+			primary-dataset:nbaccountsbysecuritygroup_current
+			primary-column:controlcode
+			primary-optional:False
+			secondary-dataset:nbaccountsbysecuritygroup_prev
+			secondary-column:controlcode
+			secondary-cardinality:optional
+			secondary-prefix:prev_
+		}
+	}
+	
+	
+	
+	controls = Dataset {
+		join:Join {
+			primary-dataset:securitygroups
+			primary-column:controlcode
+			primary-optional:False
+			primary-prefix:ctrl_
+			secondary-dataset:nbaccountsbysecuritygroup
+			secondary-column:controlcode
+			secondary-cardinality:optional
+		}
+	}
+	
+	/* Page content */
+	Tiles {
+		columns:3
+		tile-height:96
+		
+		TileGroup {
+			iterate-on:controls
+			
+			Tile {
+				Group {
+					border:True
+					Grid {
+						columns:GridColumn{width:64},GridColumn{width:grow},GridColumn{width:64}, GridColumn {width:64}
+						GridRow {
+							GridCell {
+								Button {
+									presentation:Link
+									actions:Message Current ctrl_riskinfo
+									image:"bw_ad_schema/dashboard/magnifier.png"
+									tooltip:$ad_securitygroupsdashboardNLS.moreinfos
+								}
+							}					
+							GridCell {
+								Text {
+									value:Current ctrl_controldisplayname
+									styling:ad_securitygroupsdashboard_redTitleStyle
+									layout:Layout{indent:vertical 18 horizontal 0 hint:height 40}
+									compact:True
+									lines:2
+								}
+							}					
+							GridCell {
+								Button {
+									actions:IntCase(Current nb) { when Not InvalidInteger then [ GoTo Page ad_securitygroupsdashboard_details with Current ctrl_controlcode to securitygroup, domainsCriteria to filterByDomains ] }
+									presentation:Link
+									text:Transform Current nb using ad_securitygroupsdashboard_emptyequals0Mapping
+									styling:ad_securitygroupsdashboard_kpistype
+									layout:Layout{align:horizontal Beginning vertical Center}
+									tooltip:$ad_securitygroupsdashboardNLS.accountlist
+								}
+							}
+							GridCell {
+								Image {
+									image:IntImageSelection(Difference(Current nb, Current prev_nb )) { 
+										when >0 then "/bw_ad_schema/dashboard/trendup.png"
+										when <0 then "/bw_ad_schema/dashboard/trenddown.png"
+										when =0 then "/bw_ad_schema/dashboard/trendsame.png"
+										when InvalidInteger then "/bw_ad_schema/dashboard/trendsame.png"
+									}
+									tooltip:$ad_securitygroupsdashboardNLS.issuestrend(Transform Difference(Current nb, Current prev_nb ) using ad_securitygroupsdashboard_emptyequals0Mapping, 
+									                                               Transform Current nb using ad_securitygroupsdashboard_kpimayBeNullMapping, 
+									                                               Transform Current prev_nb using ad_securitygroupsdashboard_kpimayBeNullMapping)
+	  							}					
+							}
+						}
+					}
+				}			
+			}
+		}
+	}
+	
+}
+
+ad_securitygroupsdashboard_details_NLS = NLS {
+	title [en "Security Group members" fr "Membres du groupe de sécurité"]
+	dyn_title [en "''{0}'' Security Group members" fr "Membres du groupe de sécurité ''{0}''"]
+}
+
+ad_securitygroupsdashboard_details = Page {
+	title:$ad_securitygroupsdashboard_details_NLS.title
+	dynamic-title:$ad_securitygroupsdashboard_details_NLS.dyn_title(securitygroup.controldisplayname)
+
+	// filterByDomains cannot be empty
+	filterByDomains = Parameter {
+		hidden:True
+		mandatory:True
+		multivalued: True
+	}
+	securitygroup = Parameter {
+		hidden:True
+		mandatory:False
+	}
+	
+	selectedAccount = Variable
+	
+	securitygroup = Record { view:ad_securitygroups with securitygroup to controlcode}
+
+	accounts = Dataset {view:ad_accountsbysecuritygroup with filterByDomains to domains, securitygroup to securitygroup 
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:False
+			timeslot:FromPage(-1)
+			join-column:uid
+			value-column:val
+			status-column-name:trendstatus
+		}
+	}
+	
+	showAccountDetails= NamedAction (
+		Dialog bwf_accountDetailsDialog (
+			selectedAccount to inuid,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowgroups,
+			True to inshowshares,
+			True to inshowowner,
+			True to inshowusages
+		)
+	)
+	
+	
+	Text {
+		value:securitygroup.riskinfo
+		compact:True
+		lines:10
+		layout: Layout {
+			grab:horizontal True vertical False
+		}
+	}
+	
+	Table {
+		data:accounts
+		layout:Layout {grab: horizontal True vertical True}
+		show-count:True
+		show-filter:True
+		configurable:True
+		
+		double-click:GoTo Activity Account Detail with Current uid to paramAccountUid
+		
+		Column {header:$account.uid column:uid  hidden:True selection:selectedAccount}
+		Column {header:$account.guid column:guid sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.sid column:sid sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.identifier column:identifier  sortable:True filterable:True actions:ExecuteNamedAction showAccountDetails initially-masked:True}
+		Column {header:$account.login column:login sortable:True filterable:True actions:ExecuteNamedAction showAccountDetails image:StringImageSelection(Current trendstatus) {
+				when "New" then "16/famfamfam_silk_icons_v013/add.png"} width:118px}
+		Column {header:$account.givenname column:givenname sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.surname column:surname sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.username column:username sortable:True filterable:True width:128px}
+		Column {header:$account.employeenumber column:employeenumber sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.mail column:mail sortable:True filterable:True width:128px}
+		Column {header:$account.creationdate column:creationdate sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.expiredate column:expiredate sortable:True filterable:True }
+		Column {header:$account.disabled column:disabled sortable:True filterable:True }
+		Column {header:$account.locked column:locked sortable:True filterable:True }
+		Column {header:$account.service column:service sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.badpasswordcount column:badpasswordcount sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.dontexpirepassword column:dontexpirepassword sortable:True filterable:True  initially-masked:False}
+		Column {header:$account.lastlogindate column:lastlogindate sortable:True filterable:True }
+		Column {header:$account.logincount column:logincount sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.managerdata column:managerdata sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.nextpwdchangedate column:nextpwdchangedate sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.notnormalaccount column:notnormalaccount sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.passwordcantchange column:passwordcantchange sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.passwordexpired column:passwordexpired sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.passwordlastsetdate column:passwordlastsetdate sortable:True filterable:True  initially-masked:False}
+		Column {header:$account.passwordnotrequired column:passwordnotrequired sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.importaction column:importaction sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.groupchanged column:groupchanged sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.permissionchanged column:permissionchanged sortable:True filterable:True  initially-masked:True}
+		Column {header:$account.profile column:profile sortable:True filterable:True  initially-masked:True}
+		Column {header:$prepository.code column:repositorycode sortable:True filterable:True  initially-masked:True}
+		Column {header:$prepository.displayname column:repositorydisplayname sortable:True filterable:True }
+		Column {header:$account.smartcardrequired column:smartcardrequired sortable:True filterable:True  initially-masked:True}
+	}
+}
+
+ad_accountsecuritygroup_NLS = NLS {
+	title [en "Accounts, Security Groups pivot" fr "Tableau croisé entre les groupes de sécurité et les comptes"]
+	dyntitle [en "{0} Accounts, Security Groups pivot" fr "Tableau croisé entre les groupes de sécurité et les comptes {0}"]
+	description [	en "This analytics presents an Active Directory account/security groups analysis in the form of a pivot table"
+					fr "Cette analyse présente les comptes/groupes de sécurité Active Directory sous la forme d'un tableau croisé"]
+	crosstabtitle [en "Accounts having access to security groups" fr "Comptes ayant accès à des groupes de sécurités" ]
+	domain [en "Domains" fr "Domaines"]
+	column [en "Groups" fr "Groupes"]
+	row [en "Accounts" fr "Comptes"]
+}
+
+criticalStyle = Style {
+  background: Color RGB ( 255 , 200, 200 )
+  foreground: RGB(128, 0, 0)
+}
+
+statusImgtpl = IntImageTemplate {
+	when = 2 then "16/indicators/newred.png"
+}
+
+ad_accountsecuritygroup_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+ad_accountsecuritygroup_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+ad_accountsecuritygroup = Page {
+	title:$ad_accountsecuritygroup_NLS.title
+	dynamic-title:$ad_accountsecuritygroup_NLS.dyntitle(repository.displayname)
+	description:$ad_accountsecuritygroup_NLS.description
+
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+	
+	uid = Parameter { hidden:True }
+	filterByDomains = Parameter {
+		hidden:True
+		mandatory:False
+		multivalued: True
+	}
+	
+	domainsCriteria = Variable { multivalued: True initial:uid }
+	selectedAccount = Variable
+	
+	repository = Record {
+		view:br_repositoryDetail with uid to uid	
+	}
+
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+	accountsandgroups = Dataset {
+		view: ct_ad_accountsandsecuritygroups with domainsCriteria to domains unless-empty
+		
+		trend:Trend {
+			join-column:key
+			value-column:val
+			status-column-name:status
+			timeslot:FromPage(-1)
+		}
+	}
+
+	showAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog (
+			selectedAccount to inuid,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowshares,
+			True to inshowusages
+		)
+	)
+	
+	/* Page content */
+	Group {
+	
+		Link {
+			icon: "32/details/printable_32_gray.png"
+			target: Report ad_accountsecuritygroup_report with domainsCriteria to ^domains unless-empty 
+			value: ""
+			compact: True 
+			layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Center}
+			align: Right
+		}
+	
+		CrossTable {
+			cluster-sortable:True
+					
+			layout: Layout{
+				cell-width: 32px 
+				cell-height: 30px 
+				col-headers-max-height: 150px  
+				row-headers-max-width: 40% 
+				grab:horizontal True vertical True
+			}
+			
+			data: accountsandgroups
+			
+			columns:
+				Dim { value: ctrl_recorduid header: $ad_accountsecuritygroup_NLS.column label: ctrl_controldisplayname }
+			rows:
+				Dim {value: org_uid header: $organisation.concept label: org_displayname width:160px } ,
+				Dim {value: identity_uid header: $identity.concept label: identity_fullname width:160px } ,
+				Dim {value: acc_uid header: $ad_accountsecuritygroup_NLS.row label: acc_login header-click:selectedAccount width:160px }
+			cell-content: CellContent {
+				text: 'X'
+				tooltip:Current status
+				cluster-value:'X'
+				align: Center
+				styling:StringStyling(Current status) { when 'New' then ad_accountsecuritygroup_highlightnew360 when 'Removed' then ad_accountsecuritygroup_highlightremoved360 }
+			}	
+			row-header-click:ExecuteNamedAction showAccountDetails
+			
+		}
+	}
+}
+
+ad_accountsecuritygroup_report = Report {
+	title:$ad_accountsecuritygroup_NLS.title
+	report:"/reports/bw_ad_schema/securitygroups/accountssecuritygroupspivot.rptdesign" with ^domains to ^domains unless-empty
+	
+	domains = Parameter {
+		hidden:True
+		mandatory:True
+	}
+}

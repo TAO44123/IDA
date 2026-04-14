@@ -1,0 +1,79 @@
+/* Import other pages here */
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+
+/* Nationalized labels here */
+fragmentExceptionDetailsNLS = NLS {
+	risklevel [en "Risk level" fr "Niveau de risque"]
+	riskinfo [en "Risk info" fr "Informations sur le risque"]
+	suggestedmitigation [en "Suggested mitigation" fr "Remédation suggérée"]
+	risklevel.header [en "Risk \nlevel" fr "Niveau \nde risque"]
+	riskinfo.header [en "Risk info" fr "Informations \nsur le risque"]
+	suggestedmitigation.header [en "Suggested \nmitigation" fr "Remédation \nsuggérée"]
+	
+	concept 	[ en "Control exception" fr "Exception de contrôle"]
+	concept.header 	[ en "Control \nexception" fr "Exception \nde contrôle"]
+	issuername 	[ en "Issuer" fr "Emetteur"]
+	element 	[ en "Element" fr "Elément"]
+	context 	[ en "Context" fr "Contexte"]
+	creation	[ en "Creation" fr "Création"]
+	expiration	[ en "Expiration" fr "Expiration"]
+	control		[ en "Control" fr "Contrôle"]
+	elementtype	[ en "Element type" fr "Type d'élément"]
+	fromdate 	[ en "Valid from" fr "Valide depuis"]
+	untildate	[ en "Valid until" fr "Valide jusqu'à"]
+	reason_		[ en "Reason" fr "Raison"]
+	comment		[ en "Comment" fr "Commentaire"]
+}
+
+fragmentExceptionDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inexception = Variable
+	inenabled = Variable { multivalued: False type: Boolean initial: True }
+	
+	currentException = Record {
+		view: bwa360_sodexceptiondetails with
+			inexception to exceptionuid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inexception ) {
+					when IsEmpty then True				
+				}
+			}
+	}
+	
+	Group {
+		Text {
+			value: currentException.issuername
+			label: $controlexception.issuername
+			compact: True
+		}
+		Text {
+			value: Transform  currentException.foreigntype using targetTypeMapping
+			label: $fragmentExceptionDetailsNLS.elementtype
+			compact: True
+		}
+		Text {
+			value: Date ( currentException.validfromdate ).value ( $controlexception.date.short )
+			label: $fragmentExceptionDetailsNLS.fromdate
+			compact: True 
+		}
+		Text {
+			value: NonEmpty(Date ( currentException.validuntildate ).value ( $controlexception.date.short ), "No expiration date") 
+			label: $fragmentExceptionDetailsNLS.untildate
+			compact: True
+		}
+		Text {
+			value: currentException.reason_
+			label: $fragmentExceptionDetailsNLS.reason_
+			compact: True 
+		}
+		Text {
+			value: currentException.comment
+			label: $fragmentExceptionDetailsNLS.comment
+			compact: True 
+		}
+	}
+}

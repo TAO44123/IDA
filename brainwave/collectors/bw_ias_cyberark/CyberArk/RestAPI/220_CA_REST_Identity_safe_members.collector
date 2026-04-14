@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA safe members" scriptfile="collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039405111_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_1_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617040499341">
+		<Component name="C1617040499341" type="discoverysource" x="52" y="49" w="300" h="64" title="CA_safe_members">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_safe_members.discovery" datafile="{config.siloIteratedFileFullname.replace(&quot;_export-mode.csv&quot;,&quot;_safemembers.csv&quot;)}"/>
+		</Component>
+		<Component name="C1617217653791_2" type="enumfilter" x="50" y="783" w="300" h="64" title="Enumerate roles">
+			<Multivalued>
+				<Value name="M1661523787999" attribute="roles"/>
+				<Value name="M1662111121244" attribute="rolePermissions"/>
+				<Value name="M1662111129942" attribute="roleContext"/>
+			</Multivalued>
+		</Component>
+		<Component name="C1617040578248_2" type="permission" x="50" y="912" w="300" h="64" title="Safe roles">
+			<Permission code="roles" application="safename" apperror="true" appevent="AppNotFound" error="true" event="PermissionNullOrEmpty">
+				<Attribute name="displayname" attribute="roles"/>
+				<Attribute name="permissiontype" attribute="permission_type"/>
+			</Permission>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1617217680683_2" source="C1617217653791_2" target="C1617040578248_2" priority="1"/>
+		<Component name="C1728307764030_1" type="discoverysource" x="515" y="171" w="300" h="64" title="CA_Identity_Users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.cyberark_folder}{config.identity_repo}_DSUsers.csv"/>
+		</Component>
+		<Component name="C1728310899485_1" type="discoverysource" x="514" y="290" w="300" h="64" title="CA_Identity_Roles">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_Roles.discovery" datafile="{config.cyberark_folder}{config.identity_repo}_Roles.csv"/>
+		</Component>
+		<Component name="C1728307758977_1" type="joinfilter" x="50" y="169" w="300" h="64" title="Join safe members with identity users">
+			<Join source="C1728307764030_1"/>
+			<Cache active="true" main="memberid" join="internalname"/>
+			<Attributes>
+				<Attribute name="A1728307962537" attribute="user_guid" source="internalname" type="String" multivalued="false" removeduplicates="false"/>
+				<Attribute name="A1729684643722" attribute="serviceinstance" source="serviceinstance" type="String" multivalued="false"/>
+				<Attribute name="A1729780596568" attribute="users_directoryservice" source="user_directoryserviceuuid" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1728310969821_1" type="joinfilter" x="49" y="292" w="300" h="64" title="Join safe members with identity roles">
+			<Join source="C1728310899485_1"/>
+			<Attributes>
+				<Attribute name="A1728311037373" attribute="role_guid" source="id" type="String" multivalued="false" removeduplicates="false"/>
+				<Attribute name="A1732282873645" attribute="role_directoryserviceuuid" source="role_directoryserviceuuid" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="memberid" join="id"/>
+		</Component>
+		<Link name="L1728307818919_1" source="C1728307764030_1" target="C1728307758977_1" priority="1"/>
+		<Link name="L1728310974974_1" source="C1728307758977_1" target="C1728310969821_1" priority="1"/>
+		<Link name="L1728310986757_1" source="C1728310899485_1" target="C1728310969821_1" priority="1"/>
+		<Component name="C1618241629328_1" type="changefilter" x="49" y="536" w="300" h="64" title="safe member id and repo">
+			<Actions>
+				<Action name="U1618241684453" action="add" attribute="object_id" type="String" multivalued="false" errorexist="false" newvalue="{(!dataset.isEmpty(&apos;role_guid&apos;)) ? dataset.role_guid.get() : (!dataset.isEmpty(&apos;user_guid&apos;))?dataset.user_guid.get():dataset.group_guid.get()}" description="if safe memeber is LDAP User or Group get the DN"/>
+				<Action name="U1625848933956" action="update" attribute="safename" newvalue="{&apos;SAFE_&apos;+dataset.safenumber.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+				<Action name="U1728376334492" action="add" attribute="permission_type" type="String" multivalued="false" newvalue="ca_safe" errorexist="false"/>
+				<Action name="U1732271808032" action="add" attribute="object_directoryuuid" type="String" multivalued="false" errorexist="false" newvalue="{!dataset.isEmpty(&apos;role_directoryserviceuuid&apos;)?dataset.role_directoryserviceuuid.get():(! dataset.isEmpty(&apos;users_directoryservice&apos;))?dataset.users_directoryservice.get():dataset.group_directoryserviceuuid.get()}"/>
+			</Actions>
+		</Component>
+		<Component name="C1617040697402" type="right" x="50" y="1039" w="300" h="64" title="safe members">
+			<Domain repository="object_reponame" repoerror="true" repoevent="repositoryNotFound" isuniqueidentifier="false"/>
+			<Right account="object_id" application="safename" permission="roles" error="true" event="accountOrGroupNotFound" permerror="true" permevent="permissionNotFound" apperror="true" appevent="applicationNotFound" grouphierarchy="grouprecursivesearch">
+				<Attribute name="action" attribute="rolePermissions"/>
+				<Attribute name="context" attribute="roleContext"/>
+			</Right>
+		</Component>
+		<Link name="L1729757705166" source="C1617040578248_2" target="C1617040697402" priority="1" labelcustom="true" label="Identity Users, Groups and External Groups" expression="{!dataset.isEmpty(&apos;role_guid&apos;) || dataset.serviceinstance.get().equals(&apos;CDS&apos;) || dataset.isEmpty(&apos;serviceinstance&apos;) || ! dataset.isEmpty(&apos;group_guid&apos;)}"/>
+		<Link name="L1730281104856" source="C1617040499341" target="C1728307758977_1" priority="1"/>
+		<Component name="C1730366230266" type="changefilter" x="524" y="1040" w="300" h="64" title="Other directory">
+			<Actions function="otherDirectory"/>
+		</Component>
+		<Link name="L1730366233893" source="C1617040578248_2" target="C1730366230266" priority="3"/>
+		<Component name="C1730382794917" type="callfilter" x="524" y="916" w="300" h="64" title="CA_REST_ENTRAID_enum">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk/RestAPI/030_CA_REST_ENTRAID_enum.collector">
+				<Configuration name="A1732203692666" variable="cyberark_path" content="{config.cyberark_folder}"/>
+				<Configuration name="A1732203703252" variable="identity_repo" content="{config.identity_repo}"/>
+			</Line>
+		</Component>
+		<Link name="L1729761069482" source="C1617040578248_2" target="C1730382794917" priority="2" expression="{dataset.serviceinstance.get().equals(&quot;AAD&quot;)}" labelcustom="true" label="EntraID Users"/>
+		<Component name="C1732271628429" type="joinfilter" x="51" y="657" w="300" h="64" title="repository name">
+			<Cache active="true" main="object_directoryuuid" join="user_directoryserviceuuid"/>
+			<Attributes>
+				<Attribute name="A1732271988552" attribute="object_reponame" source="external_reponame" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1732005773967_1" zeroerror="true" zeroevent="join fail"/>
+		</Component>
+		<Component name="C1732005773967_1" type="csvsource" x="515" y="655" w="300" h="64" title="external_repository.csv">
+			<Source file="{config.cyberark_folder}external_repository.csv" separator=";" encoding="ISO-8859-1" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A5914330959849426857" attribute="user_directoryserviceuuid" column="directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A6874397329704528088" attribute="external_reponame" column="external_reponame" type="String" multivalued="false"/>
+				<Attribute name="A6774203450522695855" attribute="servicetype" column="servicetype" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1732271667331" source="C1732005773967_1" target="C1732271628429" priority="1"/>
+		<Link name="L1732271932386" source="C1618241629328_1" target="C1732271628429" priority="1"/>
+		<Link name="L1732281727980" source="C1732271628429" target="C1617217653791_2" priority="1"/>
+		<Component name="C1732285807961" type="joinfilter" x="47" y="417" w="300" h="64" title="Join safe members with groups">
+			<Cache active="true" main="memberid" join="internalname"/>
+			<Join source="C1728310899485_2"/>
+			<Attributes>
+				<Attribute name="A1732286103824" attribute="group_guid" source="internalname" type="String" multivalued="false"/>
+				<Attribute name="A1732286264747" attribute="group_directoryserviceuuid" source="group_directoryserviceuuid" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1732285821704" source="C1728310969821_1" target="C1732285807961" priority="1"/>
+		<Link name="L1732285822400" source="C1732285807961" target="C1618241629328_1" priority="1"/>
+		<Component name="C1728310899485_2" type="discoverysource" x="512" y="417" w="300" h="64" title="CA_Identity_Groups">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSGroups.discovery" datafile="{config.cyberark_folder}{config.identity_repo}_DSGroups.csv"/>
+		</Component>
+		<Link name="L1732285871325" source="C1728310899485_2" target="C1732285807961" priority="1"/>
+		<Component name="N1733217916030" type="note" x="524" y="34" w="300" h="93" title="Add Identity users in safes&#xA;if there is EntraID, go to EntraID safemembers collect"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="hasEntra" description="hasEntra"/>
+			<Variable name="identity_repo"/>
+			<Variable name="cyberark_folder" description="cyberark_path"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

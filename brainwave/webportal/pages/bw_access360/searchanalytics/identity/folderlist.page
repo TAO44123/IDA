@@ -1,0 +1,507 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/share/resources.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+tartimeline_highlightmodified360 = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ''
+	otherwise current
+}
+
+access360analytics_identity_folderlistNLS = NLS {
+	title [en "Folders list" fr "Liste des répertoires"]
+	directrightsonly [en "only direct rights" fr "seulement les droits directs"]
+	description [
+		en "This report lists the identities folders. Only active accounts are taken into account. It is possible to identify only changes that have occurred since a given date. It is possible to modify the columns or to export the results."
+		fr "Ce rapport liste les répertoires des identités. Seuls les comptes actifs sont pris en compte. Il est possible d'identifier uniquement les changements survenus depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats"
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+	
+	maxdepth [en "Maximum depth" fr "Profondeur d'arborescence"]
+}
+
+access360analytics_identity_folderlist= Page {
+	title: $access360analytics_identity_folderlistNLS.title
+	description: $access360analytics_identity_folderlistNLS.description
+	tags: "identity", "searchresults"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:All(unstructureddata_license, bwsa_identityfolderlist)
+	mixins: simpleReport	
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_resourcesNLS.localfiltertitle
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	comparisontimeslot inline,		
+						exclRemoved inline,
+						exclSimilar inline,
+						selectedfamily inline,
+						maxdepth inline,
+						applications inline
+		}
+		
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_identity_FilterEdition(SerializeSearch search to identitySearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Identity Search with SerializeSearch search to identitySearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	comparisontimeslot = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:String
+		label:$session_comparisonTimeslotTeam360NLS.label
+		tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+		constraint:Lookup {
+			data:session_comparisontimeslots
+			text:Current commitdate
+			value:Current uid
+		}
+	}
+	exclRemoved = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:True
+		label:$session_exclRemovedNLS.label
+		tooltip:$session_exclRemovedNLS.tooltip
+	}
+	exclSimilar = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:False
+		label:$session_exclSimilarNLS.label
+		tooltip:$session_exclSimilarNLS.tooltip
+	}
+	selectedfamily = Parameter {
+		hidden:False
+		mandatory:False
+		label:$fragmentPShareNLS.family
+		multivalued:False
+		type:String
+		constraint:Lookup {
+			data:applicationfamily
+			text:Current applicationapplicationfamily
+			value:Current applicationapplicationfamily
+		}
+	}
+	maxdepth = Parameter {
+		hidden:False
+		mandatory:False
+		label:$access360analytics_identity_folderlistNLS.maxdepth
+		default:1
+		multivalued:False
+		type:Integer
+		constraint:Choice {
+			values:[	1:"<=1",
+						2:"<=2", 		
+						3:"<=3", 		
+						4:"<=4", 		
+						5:"<=5",
+						6:"<=6",
+						7:"<=7",
+						8:"<=8",
+						9:"<=9"
+					]
+		}
+	}
+	applications = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:True
+		label:$fragmentPShareNLS.concept
+		tooltip:$access360analytics_identity_folderlistNLS.multicombotooltip
+		type:String
+		constraint:Lookup {
+			data:applicationlist
+			text:Current applicationdisplayname
+			value:Current applicationuid
+		}		
+	}
+	search = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+		
+	/* Variables here */
+	inpermissiontypes = Variable { multivalued:True initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+
+	outshareuid = Variable
+	outidentityuid = Variable
+	outaccountuid = Variable
+	outfolderuid = Variable
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	/* Datasets and records here */
+	folders = Dataset {
+		search: Search {
+			view:access360r_identityfolders_bv with applications to applications unless-empty, selectedfamily to sharefamily unless-empty, maxdepth to maxdepth unless-empty, comparisontimeslot to comparisontimeslot unless-empty, exclRemoved to excluderemoved, exclSimilar to excludesimilar
+			definition:search
+		}
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	applicationlist = Dataset {
+		search: Search {
+			view:access360r_identitysharelist with selectedfamily to sharefamily unless-empty
+			definition:search
+		}
+	}
+	applicationfamily = Dataset {
+		search: Search {
+			view:access360r_identitysharefamily
+			definition:search
+		}
+	}
+
+	goShareDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outshareuid to inuid,
+													True to inshowperjob,
+													True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goFolderDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outfolderuid to inuid,
+													True to inshowacls,
+													True to inshowperjob,
+													True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid,
+												outfolderuid to insharedfolderuid,
+												True to inshowgroups,
+												True to inshowshares,
+												True to inshowACLs
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid, True to inshowaccounts, True to inshowshares)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				PaginatedTable {
+					data:folders
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					page-size:1000
+					//show-count:True
+					show-filter:True
+					persist-configuration:True
+					show-count-button: True
+					
+					Column {
+						column:identityuid
+						hidden:True
+						selection:outidentityuid
+					}
+			
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 when 'Invalid' then tartimeline_highlightremoved360 when 'Modified' then tartimeline_highlightmodified360 } text:Transform Current status using tarmapping360 }
+			
+					Column {
+						column:identityhrcode
+						header:$identity.hrcode
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identityfullname
+						header:$identity.fullname
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identitymail
+						header:$identity.mail
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						header:$identity.internal
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:identityarrivaldate
+						header:$identity.arrivaldate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:identitydeparturedate
+						header:$identity.departuredate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgshortname
+						header:$porganisation.shortname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgdisplayname
+						header:$organisation.concept
+						sortable:True
+						width:160px
+						initially-masked:True
+					}
+			
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:accountidentifier
+						header:$account.identifier
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						width:128px
+
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountusername
+						header:$paccount.username
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:rights
+						header:$fragmentFolderNLS.basic
+						sortable:True
+						filterable:True
+						width:64px
+					}
+
+					Column {
+						column:folderuid
+						hidden:True
+						selection: outfolderuid
+					}
+
+					Column {
+						column:foldercode
+						header:$fragmentFolderNLS.code
+						sortable:True
+						filterable:True
+						width:100%
+
+						actions: ExecuteNamedAction goFolderDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+
+					Column {
+						column:folderdisplayname
+						header:$fragmentPFolderNLS.displayname
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goFolderDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+			
+					Column {
+						column: applicationuid
+						hidden: True
+						selection: outshareuid
+					}
+					Column {
+						column:applicationcode
+						header:$fragmentPShareNLS.code
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goShareDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+						
+					}
+					Column {
+						column:applicationdisplayname
+						header:$fragmentShareNLS.concept
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goShareDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:applicationapplicationfamily
+						header:$fragmentPShareNLS.family
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goShareDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+				}
+			}
+		}	
+	}
+}

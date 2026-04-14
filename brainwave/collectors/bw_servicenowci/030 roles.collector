@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="030 roles" scriptfile="/collectors/bw_servicenowci/030 roles.javascript" name="P1537452140175_UQWqfoMEYlAhOTf03z8sug" startingpoint="C1537452144527">
+		<Component name="C1537452144527" type="discoverysource" x="80" y="57" w="300" h="64" title="sys_user_role">
+			<Discovery file="/discovery/bw_servicenowci/sys_user_role.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/roles.csv"/>
+		</Component>
+		<Component name="C1537452165339" type="changefilter" x="80" y="182" w="300" h="64" title="update"/>
+		<Component name="C1537452173263" type="application" x="80" y="321" w="300" h="64" title="servicenow application">
+			<Application key="_APPLICATION_CODE_" type="Profile">
+				<Attribute name="displayname" attribute="_APPLICATION_DISPLAYNAME_"/>
+			</Application>
+			<Media code="_REPOSITORY_CODE_"/>
+		</Component>
+		<Component name="C1537452178983" type="permission" x="80" y="471" w="300" h="64" title="servicenow role">
+			<Permission code="sys_id" application="_APPLICATION_CODE_" type="Role">
+				<Attribute name="displayname" attribute="name"/>
+				<Attribute name="description" attribute="description"/>
+			</Permission>
+		</Component>
+		<Link name="L1537452213689" source="C1537452144527" target="C1537452165339" priority="1"/>
+		<Link name="L1537452214268" source="C1537452165339" target="C1537452173263" priority="1"/>
+		<Link name="L1537452214832" source="C1537452173263" target="C1537452178983" priority="1"/>
+		<Component name="C1537452556241" type="enumfilter" x="80" y="603" w="300" h="64" title="sub roles">
+			<Multivalued>
+				<Value name="M1537452575815" attribute="includes_roles" synchronised="false"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1537452559104" source="C1537452178983" target="C1537452556241" priority="1"/>
+		<Component name="C1537452582456" type="discoverysource" x="515" y="732" w="300" h="64" title="sub role">
+			<Discovery file="/discovery/bw_servicenowci/sys_user_role.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/roles.csv"/>
+		</Component>
+		<Component name="C1537452614350" type="joinfilter" x="80" y="732" w="300" h="64" title="get sub role id">
+			<Join source="C1537452582456" severalaction="none"/>
+			<Cache active="true" main="includes_roles" join="name"/>
+			<Attributes>
+				<Attribute name="A1537452674417" attribute="subrole_sys_id" source="sys_id" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1537452628531" source="C1537452556241" target="C1537452614350" priority="1"/>
+		<Link name="L1537452629362" source="C1537452582456" target="C1537452614350" priority="1"/>
+		<Component name="C1537452682518" type="permissionchildren" x="80" y="880" w="300" h="64" title="attach subrole">
+			<Permission code="sys_id" application="_APPLICATION_CODE_"/>
+			<Roles roles="true" members="subrole_sys_id"/>
+		</Component>
+		<Link name="L1537452727043" source="C1537452614350" target="C1537452682518" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

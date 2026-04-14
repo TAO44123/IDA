@@ -1,0 +1,922 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_dialogs.page"
+import "/webportal/pages/bw_rm/reports/orgprofilesmining_exportperms.page"
+import "/webportal/pages/bw_rm/reports/orgprofilesmining_exportidentities.page"
+import "/webportal/pages/bw_rm/reports/orgprofilesmining_exportdirectperms.page"
+import "/webportal/pages/bw_rm/reports/orgprofilesmining_overallocatedrights.page"
+import "/webportal/pages/bw_rm/reports/orgprofilesmining_roleperrole.page"
+
+// cloud imports
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+//import "/webportal/pages/bw_cloud_base/widgets/protips/protipsfragments.page"
+
+/* Import fragments */
+import "/webportal/pages/bw_fragments/identity/details.page"
+import "/webportal/pages/bw_fragments/identity/accounts.page"
+import "/webportal/pages/bw_fragments/identity/rights.page"
+import "/webportal/pages/bw_fragments/permission/details.page"
+import "/webportal/pages/bw_fragments/permission/accounts.page"
+import "/webportal/pages/bw_fragments/permission/perorg.page"
+import "/webportal/pages/bw_rm/permission_review_frag.page"
+import "/webportal/pages/bw_rm/permissions_groups_frag.page"
+
+rm_detailType = StringMapping{
+  when "identity" then $bw_rm_reviewNLS.detail.identity
+  when "permission" then $bw_rm_reviewNLS.detail.permission
+  otherwise $bw_rm_reviewNLS.detail.info
+}
+
+rm_filteridentityLabel = StringMapping{
+   when "$ORG$" then $bw_rm_reviewNLS.filterIdentities.allRole
+   otherwise $bw_rm_reviewNLS.filterIdentities.onlyRole1(current)
+}
+
+bw_rm_confirmfinish = Dialog {
+	title: $bw_rm_reviewNLS.confirmfinish.title
+	buttons: [
+		CancelButton
+		OkButton
+	]
+	
+	Text {
+		value: $bw_rm_reviewNLS.confirmfinish.confirm1
+		compact: True
+	}
+	
+	Text {
+		value: $bw_rm_reviewNLS.confirmfinish.confirm2
+		compact: True
+	}
+}
+
+bw_rm_rolemining = Page {
+	title: $bw_rm_reviewNLS.title
+	dynamic-title: $bw_rm_reviewNLS.dynamictitle(task.manualtasktitle,Eval "readOnly.get()? 1: 0")
+	selected-menuitem: Campaign_manager
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	enter-event:
+		Set task.org_uid to orgUid, 
+		ExecuteNamedAction computeCellExtent, 
+		Set Count roleRights to task.mining_currentprogress, // ca marche pas en lecture seule
+		TransferData totalRights(nbrights) to (totalNbRights), 
+		TransferData identitiesInOrgList(uid) to (identitiesInOrg),
+		Set totalNbRights to task.mining_totalprogress,
+		Set Eval "!readOnly.get()" to canWrite
+
+	/* LEFT DOCK PANEL  */ 
+ 
+	dock-left: Dock {
+		collapsible:True
+		collapsed:True
+		width:300 
+		
+		Header {
+			value: $permminingNLS.filter
+			styling:bigTitleStyle
+		}
+		
+		ParametersEdition {
+			parameters:	lowthreshold inline,
+						highthreshold inline,
+						threshold inline,
+						minlocal inline,
+						expand inline,
+						bitmap inline,
+						hideGlobalPerms inline,
+						directOnly inline
+						
+		}
+		
+		Separator
+
+		Header {
+			value:$permminingNLS.reports
+			styling:bigTitleStyle
+		}
+
+		Button {
+			layout:Layout{grab:horizontal False vertical False align:vertical End horizontal Beginning hint:height 30  indent: horizontal 8 vertical 0}
+			presentation:Link
+			actions:GoTo Page bwpm_orgprofilesmining_exportperms with orgUid to uid
+			image:"32/more/blue/permission.png"
+			text: $bw_rm_reviewNLS.text.roleperm
+			tooltip:$bw_rm_reviewNLS.tooltip.roleperm
+		}
+		Button {
+			layout:Layout{grab:horizontal False vertical False align:vertical End horizontal Beginning hint:height 30  indent: horizontal 8 vertical 0}
+			presentation:Link
+			actions: GoTo Page bwpm_orgprofilesmining_exportidentities with orgUid to uid
+			image:"32/more/blue/identity.png"
+			text: $bw_rm_reviewNLS.text.roleid
+			tooltip:$bw_rm_reviewNLS.tooltip.roleid
+		}
+		Button {
+			layout:Layout{grab:horizontal False vertical False align:vertical End horizontal Beginning hint:height 30  indent: horizontal 8 vertical 0}
+			presentation:Link
+			actions:
+			  GoTo Page bwpm_orgprofilesmining_exportidirectperms with 
+			    orgUid to uid, 
+			    task.perm_rulenames to permRules, 
+			    task.processIdentifier to processIdentifier
+			image:"32/more/blue/permission.png"
+			text: $bw_rm_reviewNLS.text.permlist
+			tooltip:$bw_rm_reviewNLS.tooltip.permlist
+		}
+		Button {
+			layout:Layout{grab:horizontal False vertical False align:vertical End horizontal Beginning hint:height 30  indent: horizontal 8 vertical 0}
+			presentation:Link
+			actions:
+				GoTo Page bwpm_orgprofilesmining_overallocatedrights with 
+				  orgUid to uid
+			image:"32/more/blue/permission.png"
+			text: $bw_rm_reviewNLS.text.overalloc
+			tooltip:$bw_rm_reviewNLS.tooltip.overalloc
+		}
+		Button {
+			layout:Layout{grab:horizontal False vertical False align:vertical End horizontal Beginning hint:height 30  indent: horizontal 8 vertical 0}
+			presentation:Link
+			actions:GoTo Page bwpm_orgprofilesmining_roleperrole with orgUid to uid
+			image:"32/more/blue/permission.png"
+			text: $bw_rm_reviewNLS.text.roleperrole
+			tooltip:$bw_rm_reviewNLS.tooltip.roleperrole
+		}
+	}
+	
+	/* Parameters here */
+	
+	// organisation uid = orgUid
+	
+	taskId = Parameter {
+		mandatory: True
+		hidden: True	
+	}
+	
+	readOnly = Parameter {
+		type: Boolean
+		hidden: True
+		default: False
+	}
+	
+	// indicates that we got here from another page (and not from an email link) 
+	fromPage = Parameter {
+		type: Boolean
+		hidden: True
+		default: False
+	}
+	
+	lowthreshold = Parameter {
+		label: $bw_rm_reviewNLS.parameter.minid
+		default:1
+		type:Integer
+		hidden:False
+		tooltip:$bw_rm_reviewNLS.tooltip.minid
+	}
+
+	highthreshold = Parameter {
+		label:$bw_rm_reviewNLS.parameter.maxid
+		default:1000
+		type:Integer
+		hidden:False
+		tooltip:$bw_rm_reviewNLS.tooltip.maxid
+	}
+
+	threshold = Parameter {
+		label:$bw_rm_reviewNLS.parameter.accused
+		default:180
+		type:Integer
+		hidden:False
+		tooltip:$bw_rm_reviewNLS.tooltip.accused	
+	}
+	
+	minlocal = Parameter {
+		label: $bw_rm_reviewNLS.parameter.specificity
+		type: Integer
+		default: 0
+		hidden: False
+	}
+	
+	directOnly = Parameter { 
+		label: $permminingNLS.showDirectOnly
+		type: Boolean 
+		default: True
+	}
+	
+	expand = Parameter { 
+		label: $permminingNLS.showRoleNames
+		type: Boolean  default: False	
+	}
+	
+	bitmap = Parameter {
+		label: $permminingNLS.overview
+		type: Boolean default: False 
+	}
+
+	
+	hideGlobalPerms = Parameter {
+		label: $permminingNLS.hideGlobalPerms
+		type: Boolean default: False
+	}
+	
+	/* variables here */
+	orgUid = Variable 
+	//permRules = Variable { multivalued: True }
+		
+	/*crosstab vars */
+	selectedOrganisation = Variable
+	selectedInternal = Variable
+	selectedPermission = Variable
+	selectedIdentity = Variable
+	selectedRolePermissions = Variable { multivalued: True}
+	selectedRoleIdentities = Variable { multivalued: True}
+	
+	identitiesInOrg = Variable {multivalued:True}
+	
+	selectedApps = Variable { multivalued: True}
+	selectedPermissions = Variable {multivalued:True}
+	selectedIdentities = Variable {multivalued:True}
+	filteredIdentities = Variable { multivalued:True}
+	
+	/* filter by role */
+	filteredRole = Variable { type: String initial: ""}
+		
+	newPermission = Variable
+	newIdentity = Variable
+	canWrite = Variable { type: Boolean }
+	
+	totalNbRights = Variable { multivalued: True}
+	
+	cellWidth = Variable { type: Integer initial: 30 }
+	cellHeight = Variable { type: Integer initial: 25 }
+	
+	roleDirty = Variable { type: Boolean initial: False }
+		
+	/* selection details */
+	selectionType = Variable { type: String initial: "" }
+			
+	/* role details  */
+	selectedRole = Variable { initial: ""}
+	
+	/* liste des uids de permissions et identités du rôle courant , tels qu'affichés dans le panneau de détail  */
+	rolePermissions = Variable {multivalued:True}
+	roleIdentities = Variable {multivalued:True}
+	
+	_tmpCount = Variable { type: Integer }
+	tmpRole = Variable // tmp var to enable changing the seelction of the combo
+
+	/* Datasets and records here */
+	
+	//compaign review task
+	task = TaskRecord(taskId of "bw_rm_detail" ) read-if BooleanPredicate ( readOnly)
+	
+	// sub tasks 
+	updaterole = TaskRecord(create "bwpm_updaterolecontent")
+	deleterole = TaskRecord(create "bwpm_deleterole")
+	
+	/* datasets */
+		
+	data = Dataset {
+		view: bvprofilesminingperorg_md_full with
+			orgUid to organisation,
+			task.perm_rulenames to permRules,
+			threshold to nbdays ,
+			lowthreshold to lowthreshold,
+			highthreshold to highthreshold,
+			task.processIdentifier to processIdentifier,
+			Eval " hideGlobalPerms.get()? '0':'1'" to showGlobal,
+			minlocal to minLocal, 	   
+			Eval "directOnly.get() ? '1': '0' " to directOnly,
+			$bw_rm_base.language to lang
+		disable-cache: True
+	}
+
+	// rights given through roles , utilisé pour le comptage du progress
+	// le total est calculé via : bwpm_totalrightsperorg/totalrights
+	roleRights = Dataset {
+		view:bvprofilesminingperorg_md_full with
+			orgUid to organisation,
+			task.perm_rulenames to permRules,
+			'1' to roleOnly,
+			task.processIdentifier to processIdentifier,
+			Eval "directOnly.get() ? '1': '0' " to directOnly
+		disable-cache: True
+	}
+	
+	totalRights = Dataset {
+		view: bwpm_totalrightsperorg with
+			orgUid to uid,
+			Eval "directOnly.get() ? '1': '0' " to directOnly
+	}
+	
+	organisation = Record {
+		view: br_organisation_picker with
+			orgUid to paramUid
+	}
+	
+	roleDetails = Record {
+		view: bwpm_roledetails_md with
+			selectedRole to rolecode unless-empty		
+	}
+	
+	roles = Dataset {
+		view: bwpm_rolelist_perorg_md with
+			orgUid to organisationuid
+		disable-cache: True
+	}
+		
+	roleAll = Dataset {
+		values: [ ( rolecode -> "ALL" , rolename -> "$ORG$" ) ]
+	}
+	
+	/* utilisé pour la combo de filtrage */
+	rolesWithAll = Dataset {
+		union: Union {
+			datasets: roleAll, roles
+			discriminator-column: type
+		}
+	}
+
+	roleContentPermissions = Dataset {
+		view: bwpm_getrolepermissions_md with
+			selectedRole to rolecode
+	}
+
+	roleContentIdentities = Dataset {
+		view: bwpm_getroleidentities_md with
+			selectedRole to rolecode
+	}
+	
+	roleFilterIdentities = Dataset {
+		view: bwpm_getroleidentities_md with
+			filteredRole to rolecode unless-empty
+	}
+	
+	identities = Dataset {
+		view: bwpm_identitypickers with
+			roleIdentities to uids
+	}
+
+	permissions = Dataset {
+		view: bwpm_permpickers with
+			rolePermissions to uids
+	}
+	
+	identitiesselection = Dataset {
+		view: bwpm_identitiesinorgintercontractor with
+			selectedOrganisation to organisation
+	}
+	
+	identitiesInOrgList = Dataset {
+		view: bwpm_orgidentities with
+			orgUid to uid
+	}
+	
+	rolesOfPerm = Dataset {
+		view: bwpm_rolebyperm_md with
+			orgUid to organisation,
+			selectedPermissions to permissionuids
+	}
+
+	parentprocess = Record {
+		view: bwcrm_getparentprocessid with
+			task.processIdentifier to processid
+	}
+	
+	/* Named Actions */
+	
+	updateRoleDetails = NamedAction (
+		TransferData roleContentPermissions(uid) to (rolePermissions),
+		TransferData roleContentIdentities(uid) to (roleIdentities)
+	)
+	
+	updateRoleFilter = NamedAction (
+		StringCase( filteredRole) {
+			when "ALL" then [ Unset filteredIdentities]
+			otherwise [ TransferData roleFilterIdentities(uid) to (filteredIdentities)]
+		}
+	)
+	
+	// refresh ticket-based datasets 
+	reloadDataAndCounts = NamedAction (
+		ReloadData(data),
+		ReloadData( roleRights)
+	)
+	
+	reloadRoles = NamedAction (
+		ReloadData(roles),
+		ReloadData(rolesWithAll)
+	)
+	
+	computeCellExtent = NamedAction (
+		Set Eval "expand.get() ? 70 : (bitmap.get()? 12: 30) " to cellWidth,
+		Set Eval "bitmap.get()? 12: 25" to cellHeight
+	)
+
+	// creation of empty role 
+	onCreateRole = NamedAction (
+		Dialog bwpm_createRole( orgUid to in_organisation, organisation.code to in_orgcode, tmpRole from code),
+		ExecuteNamedAction reloadRoles,
+		ExecuteNamedAction reloadDataAndCounts,
+		ExecuteNamedAction updateRoleDetails,
+		Set Count roleRights to task.mining_currentprogress,
+		TaskSave task
+	)
+	
+	onCreateRoleFromSelection = NamedAction (
+		Unset roleIdentities, 
+		MultivaluedAdd  selectedIdentities to roleIdentities,
+		Unset rolePermissions,
+		MultivaluedAdd selectedPermissions to rolePermissions,
+		Dialog bwpm_createRole( orgUid to in_organisation, organisation.code to in_orgcode, tmpRole from code , selectedIdentities to in_identities, selectedPermissions to in_permissions, True to in_setcontent ), 
+		ExecuteNamedAction reloadRoles,
+		ExecuteNamedAction reloadDataAndCounts,
+		ExecuteNamedAction updateRoleDetails,
+		Set Count roleRights to task.mining_currentprogress,
+		TaskSave task
+	)
+	
+	onDeleteRole = NamedAction (
+		Confirm $permminingNLS.sure,
+		Set selectedRole to deleterole.in_rolecode,
+		TaskComplete deleterole wait-end,
+		Flash $permminingNLS.deleted,
+		ExecuteNamedAction reloadRoles,
+		ExecuteNamedAction reloadDataAndCounts,
+		ExecuteNamedAction updateRoleDetails,
+		Set Count roleRights to task.mining_currentprogress,
+		TaskSave task
+	)
+	
+	onSaveRoleContent = NamedAction (
+		Set selectedRole to updaterole.in_rolecode,
+		Set Principal.uid to updaterole.in_owner,
+		Set roleIdentities to updaterole.in_identities,
+		Set rolePermissions to updaterole.in_permissions,
+		TaskComplete updaterole wait-end,
+		Flash $permminingNLS.saveflash,
+		ExecuteNamedAction reloadDataAndCounts,
+		Set Count roleRights to task.mining_currentprogress,
+		Set False to roleDirty,
+		TaskSave task
+	)
+	
+	onCancelChanges = NamedAction (
+		ExecuteNamedAction updateRoleDetails,
+		Set False to roleDirty
+	)
+	
+	moveRoles = NamedAction(
+		Dialog bwrm_roleMover ( selectedRole to selectedRole1 , orgUid to orgUid),
+		ExecuteNamedAction updateRoleDetails,
+		ExecuteNamedAction refreshStatsAndMatrix
+	)
+	
+	refreshStatsAndMatrix = NamedAction (
+		Set Count roleRights to task.mining_currentprogress,// ca marche pas en lecture seule
+		ReloadData( data),
+		TransferData totalRights(nbrights) to ( totalNbRights),
+		Set totalNbRights to task.mining_totalprogress,
+		TaskSave task
+	)
+
+	doFinish = NamedAction (
+		StringCase (TaskValidation task) {
+			when IsNull then [
+				Dialog bw_rm_confirmfinish,
+				Set Count roleRights to task.mining_currentprogress,
+				TaskComplete task,
+				Flash Information $bw_rm_reviewNLS.complete.flashmessage,
+				GoTo ProcessInfoPage parentprocess.parent_processinstanceid
+			]
+			otherwise [
+				Message Error TaskValidation task
+			]
+		}
+	)
+
+	doSaveLater = NamedAction (
+		Confirm $bw_rm_reviewNLS.save.confirm,
+		Set Count roleRights to task.mining_currentprogress,
+		TaskSave task,
+		TaskCancel task,
+		BooleanCase ( fromPage) {
+			when True then [ GoTo BackInHistory ]
+			when False then [ GoTo HomePage ]
+		}
+	)
+	
+	/* PAGE CONTENT */
+	/* Top status bar  */
+	Group {
+		border: False
+		compact: True
+		layout: Layout {
+			align: horizontal Fill vertical End
+			grab: horizontal True vertical False
+		}		
+		Grid {
+			gap: 10
+			columns: GridColumn,  GridColumn { width: grow } , GridColumn
+			GridRow {
+				height:24
+				GridCell {
+					Text {
+						value: $bw_rm_reviewNLS.roleminingprogress.text
+						compact: True
+						decorator: Decorator {
+							width:100
+							after: Bar { 
+								width:500 
+								max-value: totalNbRights
+								value: task.mining_currentprogress 
+								tooltip: Eval "''+ task.mining_currentprogress.get() + ' / ' + totalNbRights.get() + ' (' + (task.mining_currentprogress.get()*100/totalNbRights.get()) + '%)' " 
+							}
+						}
+					}
+				}
+				GridCell {
+					Combo {
+						layout: Layout{  grab: horizontal False vertical False}
+						label: $bw_rm_reviewNLS.filterIdentities.inRole.check
+						options: Dynamic { data: rolesWithAll value: Current rolecode text: Transform Current rolename using rm_filteridentityLabel }
+						variable: filteredRole
+						modify-event: ExecuteNamedAction updateRoleFilter
+					}
+				}
+				GridCell {
+					ButtonGroup {
+					align: Right
+					Button {	
+						text: $permminingNLS.help
+						actions: Dialog bwpm_orgprofilesmining_help
+					}
+					Button { 
+						text: $bw_rm_reviewNLS.saveLater.buttontext
+						hidden: BooleanPredicate(readOnly)
+						actions: ExecuteNamedAction doSaveLater
+						}
+						Button {
+							text: $bw_rm_reviewNLS.complete.buttontext
+							hidden: BooleanPredicate(readOnly)
+							actions: ExecuteNamedAction doFinish
+						}
+					}
+				}
+			}
+		}
+	}
+	/* MAIN CONTENT (CROSSTAB + RIGHT PANEL)  */
+ 	Splitter {
+		disposition:Horizontal
+		size:70%
+ 		Group {
+ 			CrossTable { 
+				data: data
+				layout:Layout{grab:horizontal True vertical True cell-width:  cellWidth px cell-height: cellHeight px row-headers-max-width: 40%  }
+				multi-selection: True
+				cluster-sortable: True
+				cluster-keep-sort-on-change: True
+				swappable: True
+				user-configurable: True
+				persist-configuration: True
+				default-configurable: FeaturePredicate bwpm_configuredefault
+				rows:
+					Dim {value: applicationuid label: applicationdisplayname  header:$permminingNLS.app selection: selectedApps  }, 
+					Dim {value:permissionuid label:permissiondisplaynameext header: $permminingNLS.perm selection: selectedPermissions header-click:selectedPermission locked: True }
+				columns:
+					Dim {value:organisationuid label:organisationshortname tooltip: organisationdisplayname header:$permminingNLS.orga header-click:selectedOrganisation }, 
+					Dim {value:identityinterncontractor header:$permminingNLS.employeetype initially-masked: False },
+					Dim {value: identityjobtitledisplayname header: $permminingNLS.job initially-masked: False },
+					Dim{value:identityuid label:identityfullname header:$permminingNLS.name selection: selectedIdentities header-click:selectedIdentity filtered-items: filteredIdentities locked: True}
+				row-header-click:
+					Set 'permission' to selectionType
+				column-header-click: Set 'identity' to selectionType
+				cell-content:CellContent {
+					text: Eval"expand.get()? current.cellcontent : current.cellcompact "
+					tooltip:  Current role_name 
+					comment: Eval "current.right_hasComments == '1' ? ( current.role_name != null ? current.role_name: '*' ):null"
+					cluster-value: "x"
+					align:Center
+					styling:  StylingTemplateSelection( Current cellcolor) using bw_role_styling
+				}
+			}
+			ButtonGroup {
+				align: Right
+				hidden: BooleanPredicate(readOnly)
+				Button {
+					text: $permminingNLS.createRole
+					disabled:
+						Eval " selectedPermissions.isEmpty() || selectedIdentities.isEmpty() "
+					actions:
+						ExecuteNamedAction onCreateRoleFromSelection 
+				}
+				// add identities to role
+				Button { 
+					text: $permminingNLS.addIdentitiesToRole
+					disabled: Eval " selectedRole.isEmpty() || selectedIdentities.isEmpty() "
+					actions:
+						MultivaluedAdd  selectedIdentities to roleIdentities,
+						MultivaluedDistinct roleIdentities,
+						Set True to roleDirty
+				}
+				// add permissions to role
+				Button {
+					text: $permminingNLS.addPermissionsToRole 
+					disabled: Eval " selectedRole.isEmpty() || selectedPermissions.isEmpty() "
+					actions:
+						MultivaluedAdd selectedPermissions to rolePermissions,
+						MultivaluedDistinct rolePermissions,
+						Set True to roleDirty
+				}
+				Button {
+					text: $bw_rm_reviewNLS.refresh
+					actions: ExecuteNamedAction refreshStatsAndMatrix
+				}
+			}
+		}
+		/* role right panel */
+		TabFolder {  
+			/* Roles Tab */
+			TabItem {
+				text: $permminingNLS.roles.tab
+				Header {
+					value: $permminingNLS.rolescandid
+					layout: Layout{grab: horizontal True vertical False align:horizontal Center vertical Center }
+					styling:bigTitleStyle
+				}
+				// roles tables 
+				Table {
+					layout: Layout{grab: horizontal True vertical False hint: height 250 }
+					data: roles 
+					show-count: True
+					disabled: BooleanPredicate( roleDirty)
+					commands: Commands {
+						orientation:Vertical
+						position: After
+						presentation: Icon
+						Command {
+							actions: ExecuteNamedAction onCreateRole
+							icon:"16/famfamfam_silk_icons_v013/add.png"
+							tooltip: $permminingNLS.declare
+							text: $permminingNLS.createRole
+							disabled: Eval " readOnly.get() || roleDirty.get()"
+						}
+						Command {
+							actions:
+								Dialog bwpm_updateRole(selectedRole to in_code),
+								ExecuteNamedAction reloadRoles
+							icon:"16/famfamfam_silk_icons_v013/wrench.png"
+							tooltip: $permminingNLS.edit
+							disabled: Eval " readOnly.get() || selectedRole.isEmpty() || roleDirty.get()" 
+						}
+						Command {
+							actions: ExecuteNamedAction onDeleteRole
+							icon:"16/famfamfam_silk_icons_v013/delete.png"
+							tooltip: $permminingNLS.delete
+							disabled: Eval " readOnly.get() || selectedRole.isEmpty() || roleDirty.get()"
+						}
+						Command {
+							actions: ExecuteNamedAction moveRoles
+							icon:"16/famfamfam_silk_icons_v013/arrow_switch.png" 
+							disabled: Eval " readOnly.get() || selectedRole.isEmpty() || roleDirty.get()"
+						}
+					}
+					selection-changed-event:
+						ExecuteNamedAction updateRoleDetails,
+						ExecuteNamedAction updateRoleFilter
+					Column { column: rolecode hidden: True selection: selectedRole }
+					Column {
+						column: rolename 
+						sortable: True
+						styling: StylingTemplateSelection( Current color) using bw_role_styling
+					}
+					Column {
+						column: description
+						width: 100%
+					}
+				}
+			 	// role detail 
+			 	Group {
+			 		hidden: Eval "selectedRole.isEmpty()"
+				 	Text {
+						value: roleDetails.name
+						tooltip: $permminingNLS.rolename
+						styling: StylingTemplateSelection( roleDetails.color) using bw_role_styling 
+					}
+					Text {
+						value:roleDetails.description
+						tooltip: $permminingNLS.roledesc
+					}
+					Text {
+						value:roleDetails.category
+						tooltip: $permminingNLS.rolecategory
+					}
+					Grid {
+						columns: GridColumn,GridColumn
+						GridRow {
+							GridCell {
+								// identities
+								Table {
+									data:identities
+									show-count: True
+									layout:Layout {grab: horizontal True vertical True}
+									double-click:MultivaluedRemove Current uid from roleIdentities
+									configurable:True
+									checkboxes: uid to selectedRoleIdentities 
+									commands: Commands {
+										position:After
+										orientation:Vertical
+										Command {
+											actions:
+												Dialog identityPicker(newIdentity from outUid, identitiesInOrg to inUidList),
+												MultivaluedAdd newIdentity to roleIdentities,
+												MultivaluedDistinct roleIdentities,
+												Set True to roleDirty
+											icon:"16/famfamfam_silk_icons_v013/add.png"
+											tooltip:$permminingNLS.idaddtooltip
+											disabled:  BooleanPredicate(readOnly)
+											}
+										Command {
+											actions:
+												MultivaluedRemove selectedRoleIdentities from roleIdentities, 
+												Unset selectedRoleIdentities,
+												Set True to roleDirty
+											icon:"16/famfamfam_silk_icons_v013/delete.png"
+											tooltip:$permminingNLS.idremovedtooltip
+											disabled:Eval "readOnly.get() || selectedRoleIdentities.isEmpty()" 
+										}
+									}
+									label:Label {align:Left break:True value:$permminingNLS.peoplerole }
+									Column { column:fullname width:100% sortable:True header: $permminingNLS.fullname
+									}
+									Column { column:hrcode width:100% sortable:True initially-masked:True 
+									}
+									Column { column:mail width:100% sortable:True initially-masked:True 
+									}
+								}
+							}
+							GridCell {
+								// permissions 
+								Table {
+									data:permissions
+									show-count: True
+									layout:Layout {grab: horizontal True vertical True}
+									double-click:MultivaluedRemove Current uid from rolePermissions
+									configurable:True
+									persist-configuration:True
+									persist-configuration-key: taskId
+									checkboxes: uid to selectedRolePermissions
+									commands: Commands {
+										position:After
+										orientation:Vertical
+										Command {
+											actions:
+												Dialog permissionPicker(newPermission from outUid),
+												MultivaluedAdd newPermission to rolePermissions,
+												MultivaluedDistinct rolePermissions,
+												Set True to roleDirty
+											icon:"16/famfamfam_silk_icons_v013/add.png"
+											tooltip:$permminingNLS.permaddtooltip
+											disabled:  BooleanPredicate(readOnly)
+										}
+										Command {
+											actions:
+												MultivaluedRemove selectedRolePermissions from rolePermissions, 
+												Unset selectedRolePermissions,
+												Set True to roleDirty
+											icon:"16/famfamfam_silk_icons_v013/delete.png"
+											tooltip: $permminingNLS.permremovedtooltip
+											disabled:Eval "readOnly.get() ||  selectedRolePermissions.isEmpty()"
+										}
+									}
+									label:Label {align:Left break:True value: $permminingNLS.permrole }
+									Column { column:displayname header: $permminingNLS.perm width:100% sortable:True }
+									Column { column:applicationdisplayname header:  $permminingNLS.app width:100% sortable:True}
+									Column { column:code header:  $permminingNLS.permcode initially-masked:True width:100%sortable:True}
+									Column { column:description header:  $permminingNLS.permdesc initially-masked:True width:100% sortable:True}
+								}
+							}
+						}
+					}
+					ButtonGroup {
+						hidden: Eval "readOnly.get() || selectedRole.isEmpty()"
+						uniform: False
+						align: Center
+						spacing: 20
+						layout: Layout{ grab: horizontal True vertical False}
+						Button {
+							text:$permminingNLS.savetooltip
+							disabled: Not BooleanPredicate( roleDirty)
+							actions:  ExecuteNamedAction onSaveRoleContent
+						}
+						Button {
+							text:$permminingNLS.cancel
+							actions: ExecuteNamedAction onCancelChanges
+							presentation: Link
+						}
+					}
+				}
+			}
+			TabItem {
+				text: Transform selectionType using rm_detailType
+				ConditionalGroup {
+					StringCondition(selectionType) {
+						when IsEmpty then []
+						when "identity" then [
+							TabFolder {
+								position: Bottom
+								TabItem {
+									text: $bw_rm_reviewNLS.detail.identity.general
+									IncludeFragment ( fragmentIdentityDetails with value-of  selectedIdentity to inuid )
+								}
+								TabItem {
+									text: $bw_rm_reviewNLS.detail.identity.accounts
+									IncludeFragment ( fragmentIdentityAccounts with value-of  selectedIdentity to inuid )
+								}
+								TabItem {
+									text: $bw_rm_reviewNLS.detail.identity.rights
+									IncludeFragment ( fragmentIdentityRights with value-of  selectedIdentity to inuid )
+								}
+							}
+						]
+						when "permission" then [
+							TabFolder {
+								position: Bottom  
+								TabItem {
+									text: $bw_rm_reviewNLS.detail.permission.general
+									IncludeFragment ( fragmentPermissionDetails with value-of selectedPermission to inuid )
+								}
+								TabItem {
+									text: $bwrm_permcomments_NLS.permcomment.tab
+									IncludeFragment ( fragmentPermissionReview with value-of selectedPermission to inuid )
+								}
+								TabItem {
+									text: $permminingNLS.inRoles.tab
+									Table {
+										data: rolesOfPerm
+										label: Label {value: $permminingNLS.inRoles.usedInRoles break: True }
+										layout: Layout { grab: horizontal True vertical True }
+										Column {
+											column: rolename
+											header: $permminingNLS.inRoles.role.header
+										}
+										Column {
+											column: displayname
+											header: $bw_rm_reviewNLS.detail.permission
+										}
+										Column {
+											column: applicationdisplayname
+											header: $bw_rm_reviewNLS.detail.application
+										}
+									}
+								}
+								TabItem {
+									text: $bw_rm_reviewNLS.detail.permission.accounts
+									IncludeFragment ( fragmentPermissionAccounts with
+										value-of selectedPermission to inuid
+									)
+								}
+								TabItem {
+									text: $permminingNLS.groups.tab
+									IncludeFragment ( permissionGroups with
+										value-of selectedPermission to inuid
+									)
+								}
+								TabItem {
+									text: $bw_rm_reviewNLS.detail.permission.byorg
+									IncludeFragment ( fragmentPermissionPerOrg with
+										value-of selectedPermission to inuid
+									)
+								}
+							}
+						]
+					}
+				}
+			}
+		}
+	}
+}
+
+bw_rm_rolemining_ro = Page {
+	title: 'RM Readonly'
+	conditional-redirect:
+		ConditionalRedirect {
+			condition: True
+			target:
+				Page bw_rm_rolemining with
+					True to readOnly,
+					taskId to taskId
+		}
+
+	taskId = Parameter {
+		mandatory: True
+		hidden: True
+	}
+}

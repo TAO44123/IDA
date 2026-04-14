@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity ENTRAID" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1730199564336_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1730199575777">
+		<Component name="C1730199575777" type="library/components/bw_ad_schema/filesenumerator.component" x="323" y="86" w="300" h="64" title="Enum Entra Files">
+			<Line>
+				<Configuration name="A1730199603893" variable="filepath" content="{config.aad_sourcefolder}"/>
+				<Configuration name="A1730199624177" variable="pattern" content="*.ldif"/>
+				<Configuration name="A1730199632845" variable="recurse" content="true"/>
+			</Line>
+		</Component>
+		<Component name="C1730199643909" type="changefilter" x="323" y="197" w="300" h="64" title="Repository name">
+			<Actions>
+				<Action name="U1730199692257" action="add" attribute="repository" type="String" multivalued="false" new_value="{dataset.filename.get().indexOf(&quot;.&quot;)!=-1?dataset.filename.get().substring(0,dataset.filename.get().lastIndexOf(&quot;.&quot;)).toUpperCase():dataset.filename.get().toUpperCase()}" errorexist="false" newvalue="{dataset.filename.get().indexOf(&quot;.&quot;)!=-1?dataset.filename.get().substring(0,dataset.filename.get().lastIndexOf(&quot;.&quot;)).toUpperCase():dataset.filename.get().toUpperCase()}"/>
+			</Actions>
+		</Component>
+		<Component name="C1730199813915" type="joinfilter" x="323" y="306" w="300" h="64" title="Join files with mapping">
+			<Join source="C1730199838156"/>
+			<Cache active="true" main="repository" join="external_reponame"/>
+			<Attributes>
+				<Attribute name="A1730199884683" attribute="identity_reponame" source="identity_reponame" type="String" multivalued="false"/>
+				<Attribute name="A1730199879024" attribute="external_reponame" source="external_reponame" type="String" multivalued="false" removeduplicates="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1730199838156" type="discoverysource" x="724" y="309" w="300" h="64" title="CA_Identity_repository_mapping">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_repository_mapping.discovery" datafile="{config.siloIteratedFileFullname}"/>
+		</Component>
+		<Link name="L1730199846982" source="C1730199838156" target="C1730199813915" priority="1"/>
+		<Link name="L1730199847798" source="C1730199643909" target="C1730199813915" priority="1"/>
+		<Link name="L1730199848677" source="C1730199575777" target="C1730199643909" priority="1"/>
+		<Component name="C1730199943076" type="callfilter" x="323" y="520" w="300" h="64" title="CA_Identity_EntraID_GroupMembers">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk_Identity/EntraID/CA_Identity_EntraID_GroupMembers.collector">
+				<Configuration name="A1730205792154" variable="inputfilename" content="{dataset.canonicalfile}"/>
+			</Line>
+		</Component>
+		<Component name="C1730199955623" type="callfilter" x="323" y="628" w="300" h="64" title="CA_Identity_user_MD_account">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk_Identity/Metadata/CA_Identity_user_MD_account.collector">
+				<Configuration name="A1730205828473" variable="inputfilename" content="{dataset.canonicalfile}"/>
+				<Configuration name="A1733151197869" variable="cyberark_folder" content="{config.cyberark_folder}"/>
+			</Line>
+		</Component>
+		<Link name="L1730199966180" source="C1730199813915" target="C1756900945435" priority="1" expression="(! dataset.isEmpty(&apos;identity_reponame&apos;))"/>
+		<Link name="L1730199967452" source="C1730199943076" target="C1730199955623" priority="1"/>
+		<Component name="N1733215639597" type="note" x="786" y="97" w="300" h="50" title="Enumerate EntraID files and get the EntraID repository name"/>
+		<Component name="C1756900945435" type="callfilter" x="321" y="420" w="300" h="64" title="CA_Identity_EntraID_Users">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk_Identity/EntraID/CA_Identity_EntraID_Users.collector">
+				<Configuration name="A1756900991983" variable="inputfilename" content="{dataset.canonicalfile}"/>
+				<Configuration name="A1756901036879" variable="EntraID_reponame" content="{dataset.external_reponame}"/>
+				<Configuration name="A1756901050759" variable="PCloud_reponame" content="{config.cyberark_folder}"/>
+			</Line>
+		</Component>
+		<Link name="L1756900970006" source="C1756900945435" target="C1730199943076" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="cyberark_folder"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

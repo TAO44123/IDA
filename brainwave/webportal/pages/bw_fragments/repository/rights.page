@@ -1,0 +1,242 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+fragmentRepositoryRightsNLS = NLS {
+	noownercode [en "Technical account" fr "Compte technique"]
+	pdescription [en "Permission description" fr "Description de la permission"]
+	empty [en "Repository accounts don't have access to applications" fr "Les comptes de ce référentiel n'ont pas d'accès à des applications"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository rights at a "Role" level
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * <li><b>inPermissionType </b>the permission type ('Role' by defaut)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outpermissionuid </b>the permission uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryRights = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inPermissionType = Variable {multivalued:True}
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+	outpermissionuid = Variable
+
+	profiles = Dataset {
+		view: bwf_repositoryrights with
+			inuid to uid,
+			inPermissionType to permissiontype unless-empty
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+													True to inshowaccounts,
+													True to inshowperorg,
+													True to inshowperjob,
+													inuid to inrepositoryuid
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(Count profiles) {
+			when =0 then [
+				Header {
+					value:$fragmentRepositoryRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Table {
+					data:profiles
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+					
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+			
+					Column {
+						column:applicationdisplayname
+						header:$application.concept
+						sortable:True
+						filterable:True
+					}
+			
+					Column {
+						column:permissioncode
+						header:$ppermission.code
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissiondisplayname
+						header:$ppermission.displayname
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissiondescription
+						header:$fragmentRepositoryRightsNLS.pdescription
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						selection:outaccountlogin
+					}
+			
+					Column {
+						column:accountusername
+						header:$account.username
+						sortable:True
+						filterable:True
+						width:160px
+					}
+			
+					Column {
+						column:accountcreationdate
+						header:$account.creationdate
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:noownercode
+						sortable:True
+						filterable:True
+						header:$fragmentRepositoryRightsNLS.noownercode
+					}
+					Column {
+						column:identityhrcode
+						sortable:True
+						filterable:True
+						header:$pidentity.hrcode
+						initially-masked:True
+					}
+					Column {
+						column:identityfullname
+						sortable:True
+						filterable:True
+						header:$pidentity.fullname
+						width:100%
+					}
+					Column {
+						column:identitymail
+						sortable:True
+						filterable:True
+						header:$pidentity.mail
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						sortable:True
+						filterable:True
+						header:$pidentity.internal
+						initially-masked:True
+					}
+					Column {
+						column:identityactive
+						sortable:True
+						filterable:True
+						header:$pidentity.active
+						initially-masked:True
+					}
+					Column {
+						column:identitybwa_identityanalyticsdata_joborg
+						initially-masked:True
+						filterable:True
+						sortable:True
+						header:$pidentity.joborg
+						width:160px
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}

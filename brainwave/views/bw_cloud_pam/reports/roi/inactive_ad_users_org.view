@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpam_inactive_ad_users_org" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="inactive ad users org" notes="" begindate="" enddate="">
+	<ViewParam name="vault_code" displayname="vault_code"/>
+	<ViewParam name="vault_name_part" displayname="vault_name_part" defaultvalue="{param.isEmpty(&apos;vault_code&apos;) ? null : &apos;%\\_&apos; + param.vault_code.get()}"/>
+	<ViewComputedAttribute name="user_type" displayname="user_type" type="String" expression="&apos;Booking&apos;"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.identifier.get().toLowerCase()"/>
+	<ViewSort name="sort" attribute1="A1627419920832_733"/>
+	<ViewAttribute name="1627380650902_956" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1627324085441_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="0"/>
+		</ViewAttributeFilter>
+		<ViewAttributeFilter name="F1627324112839_1" operation="isNull" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="A1627383084947_1159" attribute="identifier" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1627380808529_1020" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+		<ViewAttribute name="A1627380840144_1025" attribute="repositorytype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1627380853884_0" operation="notIn" ignoreifempty="false">
+				<Value name="0" data="ca_safe"/>
+				<Value name="1" data="ca_vault"/>
+				<Value name="2" data="CDS"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1603717697056_491" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="applicationright">
+		<ViewAttribute name="1627380762461_1018" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1626988852635_0" operation="in" ignoreifempty="false">
+				<Value name="0" data="ca_safe"/>
+				<Value name="1" data="ca_vault"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewAttribute name="A1638380802375_9268" attribute="code" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1638380817128_0" reference="vault_code" operation="eq" ignoreifempty="true"/>
+			<ViewAttributeFilter name="F1638471791540_1" reference="vault_name_part" operation="ilike" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1627419906800_731" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="identityreconciliation">
+		<ViewJoin name="J1627419914617_732" prefix="organization" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="organisation">
+			<ViewAttribute name="A1627419920832_733" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1627460459325_946" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+</View>

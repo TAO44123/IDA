@@ -1,0 +1,53 @@
+import "/webportal/pages/bw_portaluar_base/repository/search.page"
+import "/webportal/pages/bw_portaluar_base/repository/details.page"
+
+Activity {
+	concept: Repository
+	kind: Search
+	to: Page repositorySearchPage
+}
+
+Activity {
+	concept: Repository
+	kind: Detail
+	priority:1000
+	to: Page repositoryDetailsPageDispatcher
+}
+
+/**
+ * Redirect to the right activity depending on the repository family
+ */
+repositoryDetailsPageDispatcher = Page {
+	title: ''
+	conditional-redirect:
+		// test to avoid infinite loops...
+		ConditionalRedirect {
+			condition: IntPredicate(paramCounter) {	when =0 then True otherwise False }
+														target:Activity Repository (value-of repository.repositoryfamily) Detail with 
+														paramRepositoryUid to paramRepositoryUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														1 to paramCounter
+		},
+		ConditionalRedirect {
+			condition: IntPredicate(paramCounter) {	when =1 then True otherwise False }
+														target:Activity Repository (value-of repository.repositorytype) Detail with 
+														paramRepositoryUid to paramRepositoryUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														2 to paramCounter
+		},
+		ConditionalRedirect {
+			// fall back to the default detail page 
+			condition: IntPredicate(paramCounter) {	when >1 then True otherwise False }
+														target:Page repositoryDetailsPage with-current-parameters
+		}
+	
+	
+	paramRepositoryUid = Parameter {type: String hidden: True mandatory: True}
+	paramSearchMode = Parameter {type: Boolean hidden: True	default: False}
+	paramInitialIndex = Parameter {type: Integer hidden: True}
+	paramCounter = Parameter {type: Integer hidden: True mandatory:False default:0}
+
+	repository = Record { view: br_repositoryDetail with paramRepositoryUid to uid }
+}

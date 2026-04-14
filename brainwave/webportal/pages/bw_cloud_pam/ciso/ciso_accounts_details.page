@@ -1,0 +1,687 @@
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_pam/resources/styles.page"
+import "/webportal/pages/bw_cloud_pam/resources/mapping.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/controls.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+import "/webportal/pages/bw_cloud_pam/ciso/fragments/toprisksfragment.page"
+import "/webportal/pages/bw_cloud_pam/ciso/fragments/accountriskfragment.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/mappings.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/account/details.page"
+import "/webportal/pages/bw_fragments/account/owner.page"
+import "/webportal/pages/bw_fragments/account/rights.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/account/groups.page"
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+import "/webportal/pages/bw_cloud_pam/resources/pamidentityDetails.page"
+import "/webportal/pages/bw_cloud_pam/resources/pamuserDetails.page"
+
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+import "/webportal/pages/bw_fragments/lib/mixins.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+//bwcpam_accounts_cyberarkpermissions_details = Dialog {
+//	title: $bwcpam_accounts_cyberarkpermissions_details_NLS.title
+//	height: 400
+//	width: 650
+//	
+//	selectedType = Variable
+//	selectedAccountUID = Variable
+//	selectedTarget = Variable
+//	selectedTargetDisplayname = Variable
+//	
+//	cyberarkpermissions = Dataset {
+//		view: pamciso_getaccountpermissions_details with selectedTarget to target, selectedAccountUID to account, selectedType to scope
+//	}
+//	
+//	ConditionalGroup {
+//		StringCondition ( selectedType ) {
+//			when "ca_safe" then [
+//				Text {
+//					value: $bwcpam_accounts_cyberarkpermissions_details_NLS.safe.permissions.title ( selectedTargetDisplayname )
+//					compact: True
+//					styling: labelStyle
+//				}
+//				Table {
+//					data: cyberarkpermissions
+//					layout: Layout { grab: horizontal True vertical True }
+//					Column { 
+//						width: 100% header: $bwcpam_accounts_cyberarkpermissions_details_NLS.table.header.vault column: vault_displayname
+//					}
+//					Column { 
+//						width: 100% header: $bwcpam_accounts_cyberarkpermissions_details_NLS.table.header.safe column: target_displayname
+//						actions: Dialog bwf_casafeDetailsDialog ( Current target_code to incode )
+//					}
+//					Column { 
+//						width: 100% header: $bwcpam_accounts_cyberarkpermissions_details_NLS.table.header.permission column: perm_code
+//					}
+//				}
+//			]
+//			when "ca_vault" then [
+//				Text {
+//					value: $bwcpam_accounts_cyberarkpermissions_details_NLS.vault.permissions.title(selectedTargetDisplayname)
+//					compact: True
+//					styling: labelStyle
+//				}
+//				Table {
+//					data: cyberarkpermissions
+//					layout: Layout { grab: horizontal True vertical True }
+//					Column { 
+//						width: 100% header: $bwcpam_accounts_cyberarkpermissions_details_NLS.table.header.vault column: target_displayname
+//					}
+//					Column { 
+//						width: 100% header: $bwcpam_accounts_cyberarkpermissions_details_NLS.table.header.permission column: perm_code
+//					}
+//				}
+//			]
+//		}
+//	}
+//}
+
+bwcpam_accounts_discrepancies_details_hiderecon = StringMapping {
+	when "CA_SAFE_ACCOUNT04" then True
+	when "CA_VAULT_ACCOUNT04" then True
+	when "PAM_ACCOUNT01" then True
+	when "PAM_ACCOUNT03" then True
+	
+	otherwise False
+}
+bwcpam_accounts_discrepancies_details_highlight_style = Style {
+	background: Color HEX (#ffe0b2) 
+}
+
+bwcpam_accounts_discrepancies_details = Page {
+	title: ""
+	dynamic-title: Transform controlid using controls_displayname_mapping
+	enter-event:
+		TransferData safesInVault ( safe_code , vault_code, vault_displayname ) to ( safes_code, vaults_code, vaults_displayname ), 
+		MultivaluedDistinct vaults_code and ( vaults_displayname )
+	
+	controlid = Parameter { hidden: True }
+	
+	paramVaultFilter = Parameter { multivalued: True }
+	
+	selectedAccountUID = Variable
+	selectedVault = Variable { initial: paramVaultFilter }
+	selectedType = Variable
+	
+	selectedTarget = Variable
+	selectedTargetDisplayname = Variable
+	
+	// Datasets for the filters
+	safes_code = Variable { multivalued: True } 
+	vaults_code = Variable { multivalued: True }
+	vaults_displayname = Variable { multivalued: True }
+
+	vaults = Dataset {
+		columns: vaults_code as code, vaults_displayname as displayname
+	}
+	safesInVault = Dataset {
+		view: safes_in_vault_bycontrol with /*selectedVault to vault_code,*/ controlid to controlid
+	}
+	
+	accountsindiscrepancy = Dataset {
+		view: accountsindiscrepancy_bycontrol with controlid to controlid, selectedVault to vaults unless-empty
+		trend: Trend { 
+			join-column: account_uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled: AndPredicate {
+			Not SameValuePredicate ( control.controltagscope, "safe" )
+			Not SameValuePredicate ( control.controltagscope, "vault" )
+		}
+	}
+	
+	cyberarkpermissions = Dataset {
+		view: pamciso_getaccountpermissions with selectedType to scope, selectedAccountUID to account, controlid to controlid
+		disabled: StringPredicate ( selectedAccountUID ) { when IsEmpty then True }
+	} 
+	
+	control = Record {
+		view: ciso_controldetails with controlid to controlid
+	}
+
+//	doPermissionDetails = NamedAction (
+//		Dialog bwcpam_accounts_cyberarkpermissions_details (
+//			selectedType to selectedType,
+//			selectedAccountUID to selectedAccountUID,
+//			selectedTarget to selectedTarget,
+//			selectedTargetDisplayname to selectedTargetDisplayname
+//		)
+//	)
+	
+	Splitter {
+		disposition: Horizontal 
+		size: 70%
+		Group {
+			
+//			Group {
+//				title: $bwcpam_accounts_discrepancies_details_NLS.labels.filters.tile
+//				layout: Layout { grab: horizontal True vertical False indent: horizontal 8 vertical 0 }
+//				hidden: AndPredicate {
+//					Not SameValuePredicate ( control.controltagscope, "safe" )
+//					Not SameValuePredicate ( control.controltagscope, "vault" )
+//				}
+//				Grid {
+//					columns: GridColumn {}, GridColumn{}, GridColumn { width: grow }
+//					layout: Layout { grab: horizontal True vertical False }
+//					gap: 20
+//					GridRow {
+//						GridCell {
+//							Combo {
+//								options: Dynamic {
+//									data: vaults
+//									text: Current displayname
+//									value: Current code
+//								}
+//								label: $bwcpam_accounts_discrepancies_details_NLS.labels.filters.vault
+//								variable: selectedVault
+//								allow-none: True
+//							}
+//						}
+//						GridCell {
+//							Combo {
+//								options: Dynamic {
+//									data: safesInVault
+//									text: $bwcpam_accounts_discrepancies_details_NLS.labels.filters.safe.pattern ( Current safe_displayname, Current vault_displayname )
+//									value: Current safe_code
+//								}
+//								label: $bwcpam_accounts_discrepancies_details_NLS.labels.filters.safe
+//								variable: selectedSafe
+//								allow-none: True
+//								hidden: StringPredicate ( control.controltagscope )  { when "vault" then True }
+//							}
+//						}
+//						GridCell {
+//							Button {
+//								image: %collection_16.delete
+//								actions: Unset selectedSafe, Unset selectedVault
+//								presentation: Link
+//								align: Left
+//								tooltip: $bwcpam_accounts_discrepancies_details_NLS.labels.filters.clear
+//								layout: Layout { hint: width 20 indent: horizontal 0 vertical 4 }
+//								disabled: AndPredicate {
+//									StringPredicate ( selectedSafe ) { when IsEmpty then True }
+//									StringPredicate ( selectedVault ) { when IsEmpty then True }
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+		
+			Table {
+				data: accountsindiscrepancy
+				layout: Layout { grab: horizontal True vertical True}
+				show-filter: True
+				show-count: True
+				
+				Column { column: account_uid selection: selectedAccountUID hidden: True }
+				Column { 
+					sortable: True filterable: True width: 50% header: $repository.concept	column: repo_code 
+					actions: Dialog bwf_repositoryDetailsDialog ( Current repo_uid to inuid  ), ReloadData ( cyberarkpermissions )
+					
+				}
+				Column { 
+					sortable: True filterable: True width: 100% header: $account.login 		column: account_login 
+					actions: Dialog bwpam_userDetailsDialog ( Current account_uid to inuid , True to inshowapplications, True to incanreconcile ), ReloadData ( cyberarkpermissions )
+				}
+				Column { 
+					sortable: True filterable: True width: 100% header: $pidentity.fullname	column: identity_fullname 
+					hidden: BooleanPredicate( Transform controlid using bwcpam_accounts_discrepancies_details_hiderecon )
+					actions: 
+						StringCase ( Current identity_uid ) {
+							when Not IsEmpty then [
+								Dialog bwpam_identityDetailsDialog ( Current identity_uid to inuid  ) , ReloadData ( cyberarkpermissions )
+							]
+ 						}
+					text: Transform Current identity_fullname using optionStringMapping
+				}
+				
+				Column { 
+					sortable: True filterable: True width: 100% header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.joborg 
+					column: identity_bwa_identityanalyticsdata_joborg hidden: BooleanPredicate( Transform controlid using bwcpam_accounts_discrepancies_details_hiderecon ) 
+					text: Transform Current identity_bwa_identityanalyticsdata_joborg using optionStringMapping
+				}
+			
+				Column {
+					column: trends
+					header: $bw_fragment.trends
+					text:Transform Current trends using bwf_trendStatusColumn 
+					styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+					image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+					tooltip:$bwf_trendStatusColumnNLS.tooltip
+		
+					sortable: True
+					filterable: True
+					width: 120px
+				}
+			}
+		}
+		Group {
+			Text {
+				value: $bwcpam_accounts_discrepancies_details_NLS.details.message.pleaseselect
+				compact: True
+				hidden: StringPredicate ( selectedAccountUID ) {
+					when Not IsEmpty then True 
+				}
+			}
+			TabFolder {
+				hidden: StringPredicate ( selectedAccountUID ) {
+					when IsEmpty then True 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.account
+					IncludeFragment (fragmentAccountDetails with selectedAccountUID binds-to inuid) 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.group
+					IncludeFragment (fragmentAccountGroupsSelection with selectedAccountUID binds-to inuid, value-of True to incanshowdetails ) 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.safeaccess
+					activation-event: Set "ca_safe" to selectedType
+					hidden: AndPredicate {
+						Not SameValuePredicate ( control.controltagscope, "safe" )
+//						Not SameValuePredicate ( control.controltagscope, "vault" )
+					}
+					
+//					Text {
+//						label: Label { value: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.safeaccess.title  break: True }
+//						value: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.safeaccess.clickdetails
+//						compact: True
+//						lines: 3
+//						layout: Layout { hint: height 50 }
+//					}
+					Table {
+						data: cyberarkpermissions
+						layout: Layout { grab: horizontal True vertical True }
+						
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.safe
+							column: target_displayname 
+//							actions: Set Current target_uid to selectedTarget, Set Current target_displayname to selectedTargetDisplayname, 
+//								ExecuteNamedAction doPermissionDetails
+//							styling:
+//								// Highlight if the safe is concerned by the control
+//								BooleanStyling using AndPredicate {
+//									StringPredicate ( control.controltagscope ) { when "safe" then True } //NONLS
+//									MultivaluedPredicate ( safes_code contains Current target_code )
+//								} 
+//								in {
+//									when True then bwcpam_accounts_discrepancies_details_highlight_style
+//									when False then default
+//								}
+						}
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.vault
+							column: vault_displayname 
+//							actions: Set Current target_uid to selectedTarget, Set Current target_displayname to selectedTargetDisplayname,  
+//								ExecuteNamedAction doPermissionDetails
+//							styling:
+//								// Highlight if the safe is concerned by the control
+//								BooleanStyling using AndPredicate {
+//									StringPredicate ( control.controltagscope ) { when "safe" then True } //NONLS
+//									MultivaluedPredicate ( safes_code contains Current target_code )
+//								} 
+//								in {
+//									when True then bwcpam_accounts_discrepancies_details_highlight_style
+//									when False then default
+//								}
+						}
+					}
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.vaultaccess
+					activation-event: Set "ca_vault" to selectedType
+					hidden: AndPredicate {
+//						Not SameValuePredicate ( control.controltagscope, "safe" )
+						Not SameValuePredicate ( control.controltagscope, "vault" )
+					}
+					
+//					Text {
+//						label: Label { value: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.vaultaccess.title break: True }
+//						value: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.vaultaccess.clickdetails
+//						compact: True
+//						lines: 3
+//						layout: Layout { hint: height 50 }
+//					}
+					Table {
+						data: cyberarkpermissions
+						layout: Layout { grab: horizontal True vertical True }
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.vault
+							column: target_displayname 
+//							actions: Set Current target_uid to selectedTarget, Set Current target_displayname to selectedTargetDisplayname,  
+//								ExecuteNamedAction doPermissionDetails
+//							styling:
+//								// Highlight if the vault is concerned by the control
+//								BooleanStyling using AndPredicate {
+//									StringPredicate ( control.controltagscope ) { when "vault" then True } //NONLS
+//									MultivaluedPredicate ( vaults_code contains Current target_code )
+//								} 
+//								in {
+//									when True then bwcpam_accounts_discrepancies_details_highlight_style
+//									when False then default
+//								}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
+bwcpam_accounts_leavers_details = Page {
+	title: ""
+	dynamic-title: Transform controlid using controls_displayname_mapping
+	enter-event:
+		TransferData safesInVault ( safe_code , vault_code, vault_displayname ) to ( safes_code, vaults_code, vaults_displayname ), 
+		MultivaluedDistinct vaults_code and ( vaults_displayname )
+	
+	controlid = Parameter { hidden: True }
+	
+	paramVaultFilter = Parameter { multivalued: True }
+	
+	selectedAccountUID = Variable
+	selectedVault = Variable { initial: paramVaultFilter }
+	selectedType = Variable
+	
+	selectedTarget = Variable
+	selectedTargetDisplayname = Variable
+	
+	// Datasets for the filters
+	safes_code = Variable { multivalued: True } 
+	vaults_code = Variable { multivalued: True }
+	vaults_displayname = Variable { multivalued: True }
+	
+	vaults = Dataset {
+		columns: vaults_code as code, vaults_displayname as displayname
+	}
+	safesInVault = Dataset {
+		view: safes_in_vault_bycontrol with /*selectedVault to vault_code,*/ controlid to controlid
+	}
+
+	control = Record {
+		view: ciso_controldetails with controlid to controlid
+	}
+	
+	accountsindiscrepancy = Dataset {
+		view: accountsleaver_bycontrol with controlid to controlid, selectedVault to vaults unless-empty
+		trend: Trend { 
+			join-column: account_uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+	
+	cyberarkpermissions = Dataset {
+		view: pamciso_getaccountsafevault with selectedType to scope, selectedAccountUID to account
+		disabled: StringPredicate ( selectedAccountUID ) { when IsEmpty then True }
+	} 
+	
+	Splitter {
+		disposition: Horizontal 
+		size: 70%
+		Group {
+		
+			Table {
+				data: accountsindiscrepancy
+				layout: Layout { grab: horizontal True vertical True}
+				show-filter: True
+				show-count: True
+				
+				Column { column: account_uid selection: selectedAccountUID hidden: True }
+				Column { 
+					sortable: True filterable: True width: 50% header: $repository.concept	column: repo_code 
+					actions: Dialog bwf_repositoryDetailsDialog ( Current repo_uid to inuid  ), ReloadData ( cyberarkpermissions )
+					
+				}
+				Column { 
+					sortable: True filterable: True width: 100% header: $account.login 		column: account_login 
+					actions: Dialog bwpam_userDetailsDialog ( Current account_uid to inuid , True to inshowapplications, True to incanreconcile ), ReloadData ( cyberarkpermissions )
+				}
+				Column { 
+					sortable: True filterable: True width: 100% header: $pidentity.fullname	column: identity_fullname 
+					hidden: BooleanPredicate( Transform controlid using bwcpam_accounts_discrepancies_details_hiderecon )
+					text: Transform Current identity_fullname using optionStringMapping
+				}
+			
+				Column {
+					column: trends
+					header: $bw_fragment.trends
+					text:Transform Current trends using bwf_trendStatusColumn 
+					styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+					image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+					tooltip:$bwf_trendStatusColumnNLS.tooltip
+		
+					sortable: True
+					filterable: True
+					width: 120px
+				}
+			}
+		}
+		Group {
+			Text {
+				value: $bwcpam_accounts_discrepancies_details_NLS.details.message.pleaseselect
+				compact: True
+				hidden: StringPredicate ( selectedAccountUID ) {
+					when Not IsEmpty then True 
+				}
+			}
+			TabFolder {
+				hidden: StringPredicate ( selectedAccountUID ) {
+					when IsEmpty then True 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.account
+					IncludeFragment (fragmentAccountDetails with selectedAccountUID binds-to inuid) 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.group
+					IncludeFragment (fragmentAccountGroupsSelection with selectedAccountUID binds-to inuid, value-of True to incanshowdetails ) 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.safeaccess
+					activation-event: Set "ca_safe" to selectedType
+					hidden: AndPredicate {
+						Not SameValuePredicate ( control.controltagscope, "safe" )
+//						Not SameValuePredicate ( control.controltagscope, "vault" )
+					}
+					Table {
+						data: cyberarkpermissions
+						layout: Layout { grab: horizontal True vertical True }
+						
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.safe
+							column: target_displayname 
+
+						}
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.vault
+							column: vault_displayname 
+
+						}
+					}
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.vaultaccess
+					activation-event: Set "ca_vault" to selectedType
+					hidden: AndPredicate {
+//						Not SameValuePredicate ( control.controltagscope, "safe" )
+						Not SameValuePredicate ( control.controltagscope, "vault" )
+					}
+	
+					Table {
+						data: cyberarkpermissions
+						layout: Layout { grab: horizontal True vertical True }
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.vault
+							column: target_displayname 
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+bwcpam_accounts_sodvaultandsafeaccess_details = Page {
+	title: ""
+	dynamic-title: Transform controlid using controls_displayname_mapping
+	enter-event:
+		TransferData safesInVault ( safe_code , vault_code, vault_displayname ) to ( safes_code, vaults_code, vaults_displayname ), 
+		MultivaluedDistinct vaults_code and ( vaults_displayname )
+	
+	controlid = Parameter { hidden: True }
+	
+	paramVaultFilter = Parameter { multivalued: True }
+	
+	selectedAccountUID = Variable
+	selectedVault = Variable { initial: paramVaultFilter }
+	
+	selectedTarget = Variable
+	selectedTargetDisplayname = Variable
+	
+	// Datasets for the filters
+	safes_code = Variable { multivalued: True } 
+	vaults_code = Variable { multivalued: True }
+	vaults_displayname = Variable { multivalued: True }
+	
+	vaults = Dataset {
+		columns: vaults_code as code, vaults_displayname as displayname
+	}
+	safesInVault = Dataset {
+		view: safes_in_vault_bycontrol with /*selectedVault to vault_code,*/ controlid to controlid
+	}
+	
+	accountsindiscrepancy = Dataset {
+		view: accountsindiscrepancy_bycontrol with controlid to controlid, selectedVault to vaults unless-empty
+		trend: Trend { 
+			join-column: account_uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+	
+	cyberarkpermissions = Dataset {
+		view: pamciso_getaccountsafeandvaultaccess with selectedAccountUID to account
+		disabled: StringPredicate ( selectedAccountUID ) { when IsEmpty then True }
+	} 
+
+	
+	Splitter {
+		disposition: Horizontal 
+		size: 70%
+		Group {
+
+		
+			Table {
+				data: accountsindiscrepancy
+				layout: Layout { grab: horizontal True vertical True}
+				show-filter: True
+				show-count: True
+				
+				Column { column: account_uid selection: selectedAccountUID hidden: True }
+				Column { 
+					sortable: True filterable: True width: 50% header: $repository.concept	column: repo_code 
+					actions: Dialog bwf_repositoryDetailsDialog ( Current repo_uid to inuid  ), ReloadData ( cyberarkpermissions )
+					
+				}
+				Column { 
+					sortable: True filterable: True width: 100% header: $account.login 		column: account_login 
+					actions: Dialog bwpam_userDetailsDialog ( Current account_uid to inuid , True to inshowapplications, True to incanreconcile ), ReloadData ( cyberarkpermissions )
+				}
+				Column { 
+					sortable: True filterable: True width: 100% header: $pidentity.fullname	column: identity_fullname 
+					hidden: BooleanPredicate( Transform controlid using bwcpam_accounts_discrepancies_details_hiderecon )
+					text: Transform Current identity_fullname using optionStringMapping
+				}
+			
+				Column {
+					column: trends
+					header: $bw_fragment.trends
+					text:Transform Current trends using bwf_trendStatusColumn 
+					styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+					image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+					tooltip:$bwf_trendStatusColumnNLS.tooltip
+		
+					sortable: True
+					filterable: True
+					width: 120px
+				}
+			}
+		}
+		Group {
+			Text {
+				value: $bwcpam_accounts_discrepancies_details_NLS.details.message.pleaseselect
+				compact: True
+				hidden: StringPredicate ( selectedAccountUID ) {
+					when Not IsEmpty then True 
+				}
+			}
+			TabFolder {
+				hidden: StringPredicate ( selectedAccountUID ) {
+					when IsEmpty then True 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.account
+					IncludeFragment (fragmentAccountDetails with selectedAccountUID binds-to inuid) 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.group
+					IncludeFragment (fragmentAccountGroupsSelection with selectedAccountUID binds-to inuid, value-of True to incanshowdetails ) 
+				}
+				TabItem {
+					text: $bwcpam_accounts_discrepancies_details_NLS.details.tabs.safeaccess
+
+					Table {
+						data: cyberarkpermissions
+						layout: Layout { grab: horizontal True vertical True }
+						
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.safe
+							column: safe_displayname 
+
+						}
+						Column { 
+							width: 100%
+							header: $bwcpam_accounts_discrepancies_details_NLS.table.headers.vault
+							column: repovault_code 
+
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,144 @@
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+import "/webportal/pages/bw_cloud_pam/resources/globals.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_secret_details_nls.page"
+
+
+bwpam_createCPMExceptionDialog = Dialog {
+	title:$ciso_secrets_detailsNLS.add_exception_dlg.title
+	width:600
+	height:180
+	buttons: [
+		OkButton {
+			actions:
+				StringCase ( editReason )  {
+					when IsEmpty then [ Set $controlexception.novalue to taskModify.^reason ]
+					otherwise [ Set editReason to taskModify.^reason ]
+				},
+				Set Principal.fullname to taskModify.issuerName,
+				Set Date.valueLDAP to taskModify.begindate,
+				Set Constant CTRL_CA_SAFE_ASSET01_nocpm_CODE to taskModify.controlcode,
+				Set Constant CTRL_CA_SAFE_ASSET01_nocpm_RESULTTYPE to taskModify.targettype,
+				Set accountUids to taskModify.targetuid,
+				TaskComplete taskModify wait-end,
+				Set 1 to resultaction				
+			disabled: Eval " editReason.isEmpty()"
+		}
+		CancelButton
+		]
+	
+	// Input variables
+	accountUids = Variable { multivalued: True}
+	
+	// Output variables
+	resultaction = Variable { type: Integer initial: 0 }
+	
+	// Edition variables
+	editReason = Variable { type: String }
+	
+	// Workflow task
+	taskModify = TaskRecord ( create "modifyexception" )
+	
+	Edit {
+		variable: editReason
+		multi-lines: True
+		layout:Layout{ hint:height 50 }
+		label:  $controlexception.add.label.^reason 
+	}
+		
+}
+
+
+bwpam_deleteCPMExceptionDialog = Dialog {
+	title:$ciso_secrets_detailsNLS.delete_exception_dlg.title
+	width:600
+	height:150
+	buttons: [
+		OkButton {
+			actions:
+				Set Constant CTRL_CA_SAFE_ASSET01_nocpm_CODE to taskDelete.controlcode, 
+				Set Constant CTRL_CA_SAFE_ASSET01_nocpm_RESULTTYPE to taskDelete.targettype, 
+				Set accountUids to taskDelete.targetuid,
+				TaskComplete taskDelete wait-end,
+				Set 1 to resultaction
+		}
+		CancelButton
+	]
+	
+	accountUids = Variable { type: String multivalued: True }
+	
+	// Output variables
+	resultaction = Variable { type: Integer initial: 0 }
+	
+	// Workflow task
+	taskDelete = TaskRecord ( create "deleteexception" )
+	
+	Text {
+		label: $ciso_secrets_detailsNLS.delete_exception_dlg.msg(SizeOf accountUids)
+		value: ""
+		compact: True
+	}
+}
+
+/*	Dialog modifyControlExceptionDialog
+ * 
+ *  Parameters:
+ * 	- exceptionuid (String)
+ *  - targetuid (String) uid of the element of the exception
+ *  Output:
+ * 	- resultaction (Integer) 0-> Modified 1-> Canceled. Indicate which button was clicked.
+ * 
+ *  NLS in $controlexception.modify.*
+ */
+bwpam_modifyCPMExceptionDialog = Dialog {
+	title:$ciso_secrets_detailsNLS.edit_exception_dlg.title
+	width:600
+	height:150
+	buttons: [
+		OkButton {
+			actions: ExecuteNamedAction doCommit			
+			disabled: Eval " editReason.isEmpty()"
+		}
+		CancelButton
+		]
+	enter-event: Set exception.^reason to editReason
+	
+	// Input variables
+	exceptionuid = Variable
+	accountUid = Variable
+	
+	// Output variables
+	resultaction = Variable { type: Integer initial: 0 }
+	
+	// Edition variables
+	editReason = Variable { type: String }
+
+	
+	// Exception record
+	exception = Record {
+		view: br_exception with exceptionuid to uid
+	}
+	
+	
+	// Workflow task
+	taskModify = TaskRecord ( create "modifyexception" )
+	
+	doCommit = NamedAction(
+		Set editReason to taskModify.^reason,
+		Set Principal.fullname to taskModify.issuerName,
+		Set Date(exception.validfromdate).valueLDAP to taskModify.begindate,
+		Set exception.control_controlcode to taskModify.controlcode,
+		Set exception.control_controlresulttype to taskModify.targettype,
+		Set accountUid to taskModify.targetuid,
+		TaskComplete taskModify wait-end,
+		Set 1 to resultaction
+	)
+	
+	Edit {
+		variable: editReason
+		multi-lines: True
+		layout:Layout{ hint:height 50 }
+		label: $controlexception.modify.label.^reason
+	}
+	
+}
+

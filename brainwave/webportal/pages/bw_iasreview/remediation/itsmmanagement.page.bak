@@ -1,0 +1,694 @@
+/* Import other pages here */
+import "/webportal/pages/resources/security.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+bwiasr_itsmmanagementNLS = NLS {
+	title [en "ITSM Connectors" fr "Connecteurs ITSM"]
+	refresh [en "Refresh status" fr "Rafraichir le status"]
+	refresh.tooltip [en "Refresh third party (ITSM) remediation status" fr "Rafraichir le statut des remédiations externes (ITSM)"]
+	addupdate [en "Add / Update a connector" fr "Ajouter / Mettre à jour un connecteur"]
+	
+	code [en "Code"fr "Code"]
+	name [en "Name" fr "Nom"]
+	type [en "Type" fr "Type"]
+	sn.title [en "ServiceNow Configuration" fr "Configuration ServiceNow"]
+	sn.subtitle1 [en "Connection" fr "Connexion"]
+	sn.URL [en "URL" fr "URL"]
+	sn.URL.tooltip [en "dev12345.service-now.com" fr "dev12345.service-now.com"]
+	sn.URL.error [en "Must be in the form of YOURINSTANCE.service-now.com" fr "Doit être sous la forme de YOURINSTANCE.service-now.com"]
+	sn.login [en "Login" fr "Login"]
+	sn.password [en "Password" fr "Password"]
+	sn.subtitle2 [en "Assignment" fr "Assignation"]
+	sn.tickettype [en "Ticket Type" fr "Type de ticket"]
+	sn.caller [en "Caller" fr "Caller"]
+	sn.caller.tooltip [en "Caller UserID" fr "Caller UserID"]
+	sn.assignmentgroup [en "Assignment Group" fr "Assignment Group"]
+	sn.assignmentgroup.tooltip [en "Assignment Group Name" fr "Assignment Group Name"]
+
+	jira.title [en "Jira Cloud Configuration" fr "Configuration Jira Cloud"]
+	jira.subtitle1 [en "Connection" fr "Connexion"]
+	jira.URL [en "URL" fr "URL"]
+	jira.testconnection [en "Test Connection" fr "Tester la connexion"]
+	jira.testsucceed [en "It works" fr "Cela fonctionne"]
+	jira.URL.tooltip [en "brainwavegrc-sandbox-999.atlassian.net" fr "brainwavegrc-sandbox-999.atlassian.net"]
+	jira.URL.error [en "Must be in the form of YOURINSTANCE.atlassian.net" fr "Doit être sous la forme de YOURINSTANCE.atlassian.net"]
+	jira.login [en "Login" fr "Login"]
+	jira.password [en "Token" fr "Token"]
+	jira.subtitle2 [en "Assignment" fr "Assignation"]
+	jira.projectkey [en "Project key" fr "Clé projet"]
+	jira.tickettype [en "Ticket Type" fr "Type de ticket"]
+	jira.assignee [en "Assignee" fr "Responsable"]
+	jira.assignee.tooltip [en "Assignee name or email address" fr "Nom ou mail du responsable qui sera en charge du traitement du ticket"]
+	jira.tags [en "Tags" fr "Labels"]
+	jira.tags.tooltip [en "Tags to add to the tickets (comma delimited string if several tags must be added)" fr "Labels à ajouter aux tickets (sous la forme d'une liste séparée par des virgules si plusieurs labels sont nécessaires)"]
+
+	jira.closedstatesid [en "Closed states ID" fr "ID d'états faits"]
+	jira.closedstatesid.tooltip [en "Closed states ID as a comma separated list" fr "ID d'états faits sous la forme d'une liste séparée par des virgules"]
+	jira.cancelledstatesid [en "Cancelled states ID" fr "ID d'états annulés"]
+	jira.cancelledstatesid.tooltip [en "Cancelled states ID as a comma separated list" fr "ID d'états annulés sous la forme d'une liste séparée par des virgules"]
+	
+	mail.sendtoname [en "Send to (name)" fr "Envoyer à (nom)"]
+	mail.sendtoname.tooltip [en "Send remediation to (name)" fr "Envoyer les remédiations à (nom)"]
+	mail.sendtomail [en "Send to (mail)" fr "Envoyer à (mai)"]
+	mail.sendtomail.tooltip [en "Send remediation to (mail address)" fr "Envoyer les remédiations à (adresse mai)"]
+	
+	action.new [en "New" fr "Nouveau"]
+	action.update [en "Update" fr "Mise à jour"]
+	action.delete [en "Delete" fr "Supprimer"]
+
+	action.delete.error [en "You cannot remove this ITSM definition\nIt is still assigned to repositories" fr "Vous ne pouvez pas supprimer cette définition ITSM\ntant qu'elle est utilisée par des référentiels"]
+	action.delete.confirm [en "Deleting an ITSM definition cannot be undone\nAre you sure?" fr "Supprimer une définition ITSM est définitif\nEtes-vous sûr?"]	
+
+	action.refresh.confirm [	en "This will refresh ITSM based remediation ticket status" 
+								fr "Le statut des tickets ITSM va être rafraichi"]
+	action.refresh.flash [	en "Tickets status are being refreshed, this can take some time. Please come back later" 
+							fr "Le statut des tickets va être rafraichi, ceci peut prendre un peu de temps. Veuillez revenir plus tard"]
+
+	remediation.nbrepo [en "Nb Associated \nRepository" fr "Nb de référentiels \nassociés"]
+	remediation.nbapp [en "Nb Associated \nApplication" fr "Nb d'applications \nassociés"]
+	remediation.nbpendingaccount [en "Remediation \nNb Pending Accounts" fr "Remédiation \nNb de comptes en attente"]
+	remediation.nbopenaccount [en "Remediation \nNb Open Accounts" fr "Remédiation \nNb de comptes ouverts"]
+	remediation.nbclosedaccount [en "Remediation \nNb Closed Accounts" fr "Remédiation \nNb de comptes traités"]
+	remediation.nbcancelledaccount [en "Remediation \nNb Cancelled Accounts" fr "Remédiation \nNb de comptes annulés"]
+}
+
+bwiasr_itsmmanagement_testJira = EventService {
+	javascript-file:"/webportal/pages/bw_iasreview/remediation/itsmmanagement.javascript"
+	javascript-method:pingJira
+
+	domain =Input { type:String }
+	login =Input { type:String }
+	token =Input { type:String }
+
+	isalive = Output { type:Boolean }
+	errormessage = Output { type:String }
+}
+
+bwiasr_itsmmanagement_add = Dialog {
+	title:$bwiasr_itsmmanagementNLS.addupdate
+	enter-event:StringCase(code) { when IsEmpty then [ Set False to updatemode ] otherwise [ Set True to updatemode ] },
+				TransferData itsms(bwr_remediation_itsmdef_code) to (existingcodes),
+				StringCase(type) { 
+							when "ServiceNow" then 
+									[ Set string5 to tmpsnstring5 ] 
+							when "Jira" then [ Set string5 to tmpjirastring5 ] }
+	width:800
+	height:500
+	buttons:
+			[
+				CancelButton
+				OkButton {
+					actions:StringCase(type) { when "ServiceNow" then [ Set tmpsnstring5 to string5 ] when "Jira" then [ Set tmpjirastring5 to string5 ] }					
+					disabled:
+						OrPredicate {
+							StringPredicate(code) { when IsEmpty then True }
+							StringPredicate(name) { when IsEmpty then True }
+							AndPredicate {
+								Not BooleanPredicate(updatemode)
+								IntPredicate(Count codealreadyexists) { when >0 then True }
+							}
+						}
+				}
+			]
+	
+	code = Variable
+	name = Variable
+	type = Variable
+	existingcodes = Variable { multivalued:True }
+
+	string4 = Variable
+	string5 = Variable
+	string6 = Variable
+	string7 = Variable
+	string8 = Variable
+	string9 = Variable
+	string10 = Variable
+	string11 = Variable
+	string12 = Variable
+	string13 = Variable
+	string14 = Variable
+	string15 = Variable
+	string16 = Variable
+	string17 = Variable
+	string18 = Variable
+	string19 = Variable
+	string20 = Variable
+	
+	tmpsnstring5 = Variable
+	tmpjirastring5 = Variable
+
+	updatemode = Variable { type:Boolean initial:False }
+
+	itsmalive = Variable
+	itsmerrormessage = Variable
+	
+	itsms = Dataset {
+		view:bwiasr_itsms
+	}
+	codealreadyexists = Dataset {
+		columns:existingcodes
+		includes: SameValuePredicate(code, Current existingcodes)
+	}
+
+	Edit {
+		variable:code
+		label:$bwiasr_itsmmanagementNLS.code
+		not-empty:True
+		disabled:BooleanPredicate(updatemode)
+	}
+	Edit {
+		variable:name
+		label:$bwiasr_itsmmanagementNLS.name
+		not-empty:True
+	}
+	Combo {
+		variable:type
+		label:$bwiasr_itsmmanagementNLS.type
+		modify-event: StringCase(type) { when "Jira" then [ StringCase(string11) { when IsEmpty then [Set "10001" to string11 ] } ] }
+		options:Static {
+			Option {
+				text:"ServiceNow"
+				value:"ServiceNow"
+			}
+			Option {
+				text:"Jira Cloud"
+				value:"Jira"
+			}
+			Option {
+				text:"Mail Notification"
+				value:"Mail"
+			}
+		}
+	}
+	ConditionalGroup {
+		StringCondition(type) {
+			when "ServiceNow" then [
+				Group {
+					title:$bwiasr_itsmmanagementNLS.sn.title
+					/*
+					 * SERVICE NOW
+					 * string4 url
+					 * string6 login
+					 * string7 password
+					 * string8 caller userID
+					 * string9 assignment group name
+					 * 
+					 */
+					 TabFolder {
+					 	border:False
+					 	TabItem {
+					 		text:$bwiasr_itsmmanagementNLS.sn.subtitle1
+					 	
+							Edit {
+								variable:string4
+								label:$bwiasr_itsmmanagementNLS.sn.URL
+								not-empty:True
+								tooltip:$bwiasr_itsmmanagementNLS.sn.URL.tooltip
+								match:"^[a-z,A-Z,0-9,_,-]+\\.service\\-now\\.com$"
+								error-tooltip:$bwiasr_itsmmanagementNLS.sn.URL.error
+							}
+							Edit {
+								variable:string6
+								label:$bwiasr_itsmmanagementNLS.sn.login
+								not-empty:True
+							}
+							Edit {
+								variable:string7
+								label:$bwiasr_itsmmanagementNLS.sn.password
+								password-mode:True
+								not-empty:True
+							}
+					 	}
+					 	TabItem {
+					 		text:$bwiasr_itsmmanagementNLS.sn.subtitle2
+					 	
+					 		Combo {
+					 			label:$bwiasr_itsmmanagementNLS.sn.tickettype
+					 			variable:tmpsnstring5
+					 			options:Static {
+					 				Option {
+					 					text:"Incident"
+					 					value:"incident"
+					 				}
+					 				Option {
+					 					text:"Change Request"
+					 					value:"changerequest"
+					 				}
+					 			}
+					 		}
+							Edit {
+								variable:string8
+								label:$bwiasr_itsmmanagementNLS.sn.caller
+								tooltip:$bwiasr_itsmmanagementNLS.sn.caller.tooltip
+							}
+							Edit {
+								variable:string9
+								label:$bwiasr_itsmmanagementNLS.sn.assignmentgroup
+								tooltip:$bwiasr_itsmmanagementNLS.sn.assignmentgroup.tooltip
+							}
+					 	}
+					}
+				}
+			]		
+			when "Jira" then [
+				Group {
+					title:$bwiasr_itsmmanagementNLS.jira.title
+					/*
+					 * Jira Cloud
+					 * string4 url
+					 * string5 issuetype
+					 * string6 login
+					 * string7 token
+					 * string8 projectkey
+					 * string9 assignee
+					 * string10 tags
+					 * string11 closedstatesid
+					 * string12 cancelledstatesid
+					 */
+					 TabFolder {
+					 	border:False
+					 	TabItem {
+					 		text:$bwiasr_itsmmanagementNLS.jira.subtitle1
+					 	
+							Edit {
+								variable:string4
+								label:$bwiasr_itsmmanagementNLS.jira.URL
+								not-empty:True
+								tooltip:$bwiasr_itsmmanagementNLS.jira.URL.tooltip
+								match:"^[a-z,A-Z,0-9,_,-]+\\.atlassian\\.net$"
+								error-tooltip:$bwiasr_itsmmanagementNLS.jira.URL.error
+								commands:Commands {
+									position:After
+									Command {
+										actions:Call bwiasr_itsmmanagement_testJira(	
+																			string4 to domain,
+																			string6 to login,
+																			string7 to token,
+																			itsmalive from isalive,
+																			itsmerrormessage from errormessage
+												),
+												BooleanCase(itsmalive) {
+													when True then [ Message $bwiasr_itsmmanagementNLS.jira.testsucceed ]
+													when False then [ Message itsmerrormessage ] 
+												}
+										icon:%collection_16.gear
+										tooltip:$bwiasr_itsmmanagementNLS.jira.testconnection
+										disabled:OrPredicate {
+											StringPredicate(string4) { when IsEmpty then True }
+											StringPredicate(string6) { when IsEmpty then True }
+											StringPredicate(string7) { when IsEmpty then True }
+										}
+									}
+								}
+							}
+							Edit {
+								variable:string6
+								label:$bwiasr_itsmmanagementNLS.jira.login
+								not-empty:True
+							}
+							Edit {
+								variable:string7
+								label:$bwiasr_itsmmanagementNLS.jira.password
+								password-mode:True
+								not-empty:True
+							}
+							Edit {
+								variable:string8
+								label:$bwiasr_itsmmanagementNLS.jira.projectkey
+								not-empty:True
+							}
+					 	}
+					 	TabItem {
+					 		text:$bwiasr_itsmmanagementNLS.jira.subtitle2
+					 	
+					 		Combo {
+					 			label:$bwiasr_itsmmanagementNLS.jira.tickettype
+					 			variable:tmpjirastring5
+					 			options:Static {
+					 				Option {
+					 					text:"Task"
+					 					value:"Task"
+					 				}
+					 				Option {
+					 					text:"Bug"
+					 					value:"Bug"
+					 				}
+					 			}
+					 		}
+							Edit {
+								variable:string11
+								label:$bwiasr_itsmmanagementNLS.jira.closedstatesid
+								tooltip:$bwiasr_itsmmanagementNLS.jira.closedstatesid.tooltip
+							}
+							Edit {
+								variable:string12
+								label:$bwiasr_itsmmanagementNLS.jira.cancelledstatesid
+								tooltip:$bwiasr_itsmmanagementNLS.jira.cancelledstatesid.tooltip
+							}
+							Edit {
+								variable:string9
+								label:$bwiasr_itsmmanagementNLS.jira.assignee
+								tooltip:$bwiasr_itsmmanagementNLS.jira.assignee.tooltip
+							}
+							Edit {
+								variable:string10
+								label:$bwiasr_itsmmanagementNLS.jira.tags
+								tooltip:$bwiasr_itsmmanagementNLS.jira.tags.tooltip
+							}
+					 	}
+					}
+				}
+			]		
+			when "Mail" then [
+				Group {
+					title:$bwiasr_itsmmanagementNLS.sn.title
+					/*
+					 * Mail
+					 * string4 send to name
+					 * string5 send to mail
+					 * 
+					 */
+					 TabFolder {
+					 	border:False
+					 	TabItem {
+					 		text:$bwiasr_itsmmanagementNLS.sn.subtitle1
+					 	
+							Edit {
+								variable:string4
+								label:$bwiasr_itsmmanagementNLS.mail.sendtoname
+								not-empty:True
+								tooltip:$bwiasr_itsmmanagementNLS.mail.sendtoname.tooltip
+							}
+							Edit {
+								variable:string5
+								label:$bwiasr_itsmmanagementNLS.mail.sendtomail
+								not-empty:True
+								tooltip:$bwiasr_itsmmanagementNLS.mail.sendtomail.tooltip
+							}
+					 	}
+					}
+				}
+			]		
+		}
+	}
+}
+
+zeroIfEmpty = IntMapping {
+	when >=0 then current
+	otherwise '0'
+}
+
+bwiasr_itsmmanagement = PageFragment {
+//	title: $bwiasr_itsmmanagementNLS.title
+//	tags:"admin"
+	
+	/* Parameters here */
+	inenabled = Variable { initial:True type:Boolean }
+	
+	/* Variables here */
+	recorduid= Variable
+	uid = Variable
+	
+	code = Variable
+	name = Variable
+	type = Variable
+	
+	string4 = Variable
+	string5 = Variable
+	string6 = Variable
+	string7 = Variable
+	string8 = Variable
+	string9 = Variable
+	string10 = Variable
+	string11 = Variable
+	string12 = Variable
+	string13 = Variable
+	string14 = Variable
+	string15 = Variable
+	string16 = Variable
+	string17 = Variable
+	string18 = Variable
+	string19 = Variable
+	string20 = Variable
+	
+	/* Datasets and records here */
+	itsm = Dataset {
+		view:bwiasr_itsms
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	getnbrepoperitsm = Record {
+		view:bwiasr_nbrepoperitsm with code to instancecode
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	getnbappperitsm = Record {
+		view:bwiasr_nbappperitsm with code to instancecode
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	repoperitsm = Dataset {
+		view:bwiasr_nbrepoperitsm
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	appperitsm = Dataset {
+		view:bwiasr_nbappperitsm
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	pendingstatusperitsm = Dataset {
+		view:bwiasr_nbremediationperrepo with '-1' to filterbyticketclosedstatus
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	openstatusperitsm = Dataset {
+		view:bwiasr_nbremediationperrepo with '0' to filterbyticketclosedstatus
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	closedstatusperitsm = Dataset {
+		view:bwiasr_nbremediationperrepo with '1' to filterbyticketclosedstatus
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	cancelledstatusperitsm = Dataset {
+		view:bwiasr_nbremediationperrepo with '2' to filterbyticketclosedstatus
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	alldata1 = Dataset {
+		join:Join {
+			primary-dataset:itsm
+			secondary-dataset:repoperitsm
+			primary-column:bwr_remediation_itsmdef_code
+			secondary-column:bwr_remediation_repository_instancecode
+			secondary-prefix:repository
+			primary-optional:False
+			secondary-cardinality:optional		
+		}
+	}
+
+	alldata11 = Dataset {
+		join:Join {
+			primary-dataset:alldata1
+			secondary-dataset:appperitsm
+			primary-column:bwr_remediation_itsmdef_code
+			secondary-column:bwr_remediation_application_instancecode
+			secondary-prefix:application
+			primary-optional:False
+			secondary-cardinality:optional		
+		}
+	}
+	
+	alldata2 = Dataset {
+		join:Join {
+			primary-dataset:alldata11
+			secondary-dataset:pendingstatusperitsm
+			primary-column:bwr_remediation_itsmdef_code
+			secondary-column:bwr_remediation_repository_instancecode
+			secondary-prefix:pending
+			primary-optional:False
+			secondary-cardinality:optional		
+		}
+	}
+
+	alldata3 = Dataset {
+		join:Join {
+			primary-dataset:alldata2
+			secondary-dataset:openstatusperitsm
+			primary-column:bwr_remediation_itsmdef_code
+			secondary-column:bwr_remediation_repository_instancecode
+			secondary-prefix:open
+			primary-optional:False
+			secondary-cardinality:optional		
+		}
+	}
+
+	alldata4 = Dataset {
+		join:Join {
+			primary-dataset:alldata3
+			secondary-dataset:closedstatusperitsm
+			primary-column:bwr_remediation_itsmdef_code
+			secondary-column:bwr_remediation_repository_instancecode
+			secondary-prefix:closed
+			primary-optional:False
+			secondary-cardinality:optional		
+		}
+	}
+
+	alldata = Dataset {
+		join:Join {
+			primary-dataset:alldata4
+			secondary-dataset:cancelledstatusperitsm
+			primary-column:bwr_remediation_itsmdef_code
+			secondary-column:bwr_remediation_repository_instancecode
+			secondary-prefix:cancelled
+			primary-optional:False
+			secondary-cardinality:optional		
+		}
+	}
+
+	createitsm = TaskRecord (create "bwr_createupdateremediationitsmdef")  	
+	deleteitsm = TaskRecord (create "bwr_deleteremediationitsmdef")
+	refreshpendingremediation = TaskRecord (create "bwr_refreshitmstickets")
+	
+	/* Page content */
+	Spacer {
+		height:8
+	}
+	ButtonGroup {
+		Button {
+			actions:	Dialog bwiasr_itsmmanagement_add(	createitsm.code from code, createitsm.name from name, createitsm.type from type, 
+															createitsm.string4 from string4, 
+															createitsm.string5 from string5, 
+															createitsm.string6 from string6, 
+															createitsm.string7 from string7, 
+															createitsm.string8 from string8, 
+															createitsm.string9 from string9, 
+															createitsm.string10 from string10, 
+															createitsm.string11 from string11, 
+															createitsm.string12 from string12, 
+															createitsm.string13 from string13, 
+															createitsm.string14 from string14, 
+															createitsm.string15 from string15, 
+															createitsm.string16 from string16, 
+															createitsm.string17 from string17, 
+															createitsm.string18 from string18, 
+															createitsm.string19 from string19, 
+															createitsm.string20 from string20)
+						,TaskComplete createitsm wait-end
+						,ReloadData (itsm)
+			text:$bwiasr_itsmmanagementNLS.action.new
+		}
+		Button {
+			actions:	Dialog bwiasr_itsmmanagement_add(	code to code, name to name, type to type,
+															string4 to string4, 
+															string5 to string5, 
+															string6 to string6, 
+															string7 to string7, 
+															string8 to string8, 
+															string9 to string9, 
+															string10 to string10, 
+															string11 to string11, 
+															string12 to string12, 
+															string13 to string13, 
+															string14 to string14, 
+															string15 to string15, 
+															string16 to string16, 
+															string17 to string17, 
+															string18 to string18, 
+															string19 to string19, 
+															string20 to string20,
+															createitsm.code from code, createitsm.name from name, createitsm.type from type, 
+															createitsm.string4 from string4, 
+															createitsm.string5 from string5, 
+															createitsm.string6 from string6, 
+															createitsm.string7 from string7, 
+															createitsm.string8 from string8, 
+															createitsm.string9 from string9, 
+															createitsm.string10 from string10, 
+															createitsm.string11 from string11, 
+															createitsm.string12 from string12, 
+															createitsm.string13 from string13, 
+															createitsm.string14 from string14, 
+															createitsm.string15 from string15, 
+															createitsm.string16 from string16, 
+															createitsm.string17 from string17, 
+															createitsm.string18 from string18, 
+															createitsm.string19 from string19, 
+															createitsm.string20 from string20)
+						,TaskComplete createitsm wait-end
+						,ReloadData (itsm)
+			text:$bwiasr_itsmmanagementNLS.action.update
+			disabled:StringPredicate(recorduid) { when IsEmpty then True otherwise False }
+		}
+		Button {
+			actions:	
+						BooleanCase(Eval "(getnbrepoperitsm.nb>0 || getnbappperitsm.nb>0)?true:false") {
+							when True then [
+								Message $bwiasr_itsmmanagementNLS.action.delete.error						
+							]
+							when False then [
+								Confirm $bwiasr_itsmmanagementNLS.action.delete.confirm, 
+								Set uid to deleteitsm.metadatauid, 
+								TaskComplete deleteitsm wait-end, 
+								ReloadData (itsm)
+							]
+						}
+			text:$bwiasr_itsmmanagementNLS.action.delete
+			disabled:StringPredicate(recorduid) { when IsEmpty then True otherwise False }
+		}
+		Button {
+			actions:Message "nop"
+			disabled:True
+			presentation:Link
+			text:""
+		}
+		Button {
+			actions:
+				Confirm $bwiasr_itsmmanagementNLS.action.refresh.confirm, 
+				Set code to refreshpendingremediation.filterbyremediationsintance,
+				TaskComplete refreshpendingremediation wait,
+				Flash $bwiasr_itsmmanagementNLS.action.refresh.flash 
+			disabled:StringPredicate(code) { when IsEmpty then True otherwise False }
+			text:$bwiasr_itsmmanagementNLS.refresh
+			tooltip:$bwiasr_itsmmanagementNLS.refresh.tooltip
+		}
+	}
+	Table {
+		data: alldata11
+		label:Label { break:True }
+		layout: Layout { grab: horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		persist-configuration:True
+	
+		Column { column: bwr_remediation_itsmdef_recorduid selection:recorduid hidden:True }
+		Column { column: bwr_remediation_itsmdef_uid selection:uid hidden:True }
+		Column { column: bwr_remediation_itsmdef_code selection:code header: $bwiasr_itsmmanagementNLS.code sortable:True filterable:True width:160px }
+		Column { column: bwr_remediation_itsmdef_name selection:name header: $bwiasr_itsmmanagementNLS.name sortable:True filterable:True width:350px }
+		Column { column: bwr_remediation_itsmdef_type selection:type header: $bwiasr_itsmmanagementNLS.type sortable:True filterable:True width:160px }
+
+		Column { column: repositorynb text: Transform Current repositorynb using zeroIfEmpty header: $bwiasr_itsmmanagementNLS.remediation.nbrepo sortable:True filterable:True width:160px align:Right }
+		Column { column: applicationnb text: Transform Current applicationnb using zeroIfEmpty header: $bwiasr_itsmmanagementNLS.remediation.nbapp sortable:True filterable:True width:160px align:Right }
+//		Column { column: pendingnb text: Transform Current pendingnb using zeroIfEmpty header: $bwiasr_itsmmanagementNLS.remediation.nbpendingaccount sortable:True filterable:True width:160px align:Right }
+//		Column { column: opennb text: Transform Current opennb using zeroIfEmpty header: $bwiasr_itsmmanagementNLS.remediation.nbopenaccount sortable:True filterable:True width:160px align:Right }
+//		Column { column: closednb text: Transform Current closednb using zeroIfEmpty header: $bwiasr_itsmmanagementNLS.remediation.nbclosedaccount sortable:True filterable:True width:160px align:Right }
+//		Column { column: cancellednb text: Transform Current cancellednb using zeroIfEmpty header: $bwiasr_itsmmanagementNLS.remediation.nbcancelledaccount sortable:True filterable:True width:160px align:Right }
+
+		Column { column: bwr_remediation_itsmdef_string4 selection:string4 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string5 selection:string5 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string6 selection:string6 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string7_password selection:string7 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string8 selection:string8 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string9 selection:string9 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string10 selection:string10 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string11 selection:string11 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string12 selection:string12 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string13 selection:string13 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string14 selection:string14 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string15 selection:string15 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string16 selection:string16 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string17 selection:string17 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string18 selection:string18 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string19 selection:string19 hidden:True }
+		Column { column: bwr_remediation_itsmdef_string20 selection:string20 hidden:True }
+	}
+}

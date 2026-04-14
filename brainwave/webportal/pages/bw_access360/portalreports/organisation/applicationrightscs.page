@@ -1,0 +1,145 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/teamaccessrights.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+/* Nationalized labels here */
+access360r_organisation_applicationrightscs360NLS = NLS {
+	title [en "Application Analysis" fr "Analyse des applications"]
+	dyntitle [en "{0} Application Analysis" fr "Analyse des applications pour {0}"]
+	directonly [en "Only this Organization" fr "seulement cette organisation"]
+	unknown [en 'Unknown' fr 'inconnue']
+	description [
+		en "This report lists the organization's members access rights at an application level in the form of a pivot table. Only active accounts are taken into account. It is possible to restrict the display to direct members or to display all members. It is possible to display only the differences from a given date. It is possible to modify the columns or to export the results by right-clicking on the table."
+		fr "Ce rapport liste les droits d'accès des membres de l'organisation au niveau applicatif sous la forme d'un tableau croisé dynamique. Seuls les comptes actifs sont pris en compte. Il est possible de restreindre l'affichage aux membres directs ou d'afficher tous les membres. Il est possible d'afficher uniquement les différences par rapport à une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant clic droit sur le tableau"
+	]
+}
+
+access360r_organisation_applicationrights360cs = Page {
+	title: $access360r_organisation_applicationrightscs360NLS.title
+	description: $access360r_organisation_applicationrightscs360NLS.description
+	dynamic-title: $access360r_organisation_applicationrightscs360NLS.dyntitle(organisation.displayname)
+	tags: "organisation" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa_organisationapplicationrightscs
+	enter-event:IntCase(organisation.bwa_organisationanalytics_nbtotalmembers) { when > NonEmpty(ConfigurationVariable "access360_crosstabteamlimit", Constant session_indirectTeam360NLS_threshold) then [ Set True to onlydirectselection, Set True to onlydirectselection_disabled  ] }
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+	inonlydirectselection = Parameter { multivalued:False default:True }
+	
+	/* Variables here */
+	onlydirectselection = Variable { multivalued:False initial:inonlydirectselection }
+	onlydirectselection_disabled = Variable { initial:False type:Boolean }
+	
+	selectedIdentity = Variable
+	selectedApplication = Variable
+	selectedOrganisation = Variable
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	organisation = Record {
+		view:bwf_organisationDetail with uid to uid 
+	}
+
+	teamrights = Dataset {
+		view:bwaccess360r_organisation_applications with uid to uid, onlydirectselection to directonly,UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:onlydirectselection
+					label:$access360r_organisation_applicationrightscs360NLS.directonly
+					disabled:BooleanPredicate(onlydirectselection_disabled)
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:teamrights
+					cluster-sortable:True
+					multi-selection:True
+					user-configurable:True
+					swappable:True
+					layout:Layout {cell-width:120px  grab: horizontal True vertical True}
+					columns:Dim {value:applicationuid label:applicationdisplayname header:$application.concept header-click:selectedApplication} 
+					rows:	Dim {value:orguid label:orgdisplayname header:$organisation.concept header-click:selectedOrganisation},
+							Dim {value:jobtitledisplayname label:jobtitledisplayname header:$identity.jobtitledisplayname width:160px tooltip:jobtitledisplayname initially-masked:True},
+							Dim {value:internal label:internal header:$identity.internal width:100px initially-masked:True},
+							Dim {value:uid label:fullname tooltip:fullname header:$identity.fullname header-click:selectedIdentity} 
+					cell-content:CellContent {text: Current accountlogin tooltip:Concat($repository.concept, ': ',Current repositorydisplayname, '\n', $account.lastlogindate,': ', NonEmpty(Current accountlastlogindate, $access360r_organisation_applicationrightscs360NLS.unknown)) cluster-value:'X' styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 }}
+					
+					column-header-click: Dialog bwf_applicationDetailsDialog(selectedApplication to inuid, True to inshowperorg, True to inshowperorg)
+					row-header-click: 	BooleanCase(Eval "!selectedOrganisation.isEmpty() && selectedIdentity.isEmpty()") { when True then [ Dialog bwf_organisationDetailsDialog(selectedOrganisation to inuid, True to inshowsuborganisationtree) ] when False then [ ] },
+										BooleanCase(Eval "!selectedIdentity.isEmpty()") { when True then [ Dialog bwf_identityDetailsDialog(selectedIdentity to inuid, True to inshowposition) ] when False then [ ] }
+				}
+			}
+		}
+	}
+}

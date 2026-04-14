@@ -1,0 +1,502 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/identity/resources.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+
+/* Nationalized labels here */
+picker = NLS {
+	safeowner.title [en "Safe Owner Selection" fr "Sélection d'un responsable de safe"]
+	safeowner.selecteMe1 [ en "Select {0}" fr "Sélectionner {0}"]
+	safe.title [en "Safe Selection" fr "Sélection d'un safe"]
+	safe.dislayname [en "Safe" fr "Safe"]
+	safe.code [en "Safe Code" fr "Code du safe"]
+	safe.result [en "List of Safes Found" fr "Liste des safes trouvés"]
+	vault.title [en "Vault Selection" fr "Sélection d'un vault"]
+	vault.dislayname [en "Vault" fr "Vault"]
+	searchaction [en "Apply" fr "Appliquer"]
+	emptyaction [en "Reset" fr "Vider"]
+	cred [en "Credential" fr "Secret"]
+	nbepv [en "EPV Users" fr "Utilisateurs EPV"]
+	nbaim [en "AIM Accounts" fr "Comptes AIM"]
+	nbcred [en "Credentials" fr "Secrets"]
+}
+
+safeimage_16 =ImageMap {
+safe 				["bw_cloud_pam/SVG/safe.svg" width:16px color: gray ]
+vault 				["bw_cloud_pam/SVG/vault.svg" width:16px color: gray ]
+credentials			["bw_cloud_pam/SVG/comptes_privileges.svg" width:16px color: gray ]
+}
+
+safeimage_48 =ImageMap {
+safe 				["bw_cloud_pam/SVG/safe.svg" width:48px color: gray ]
+vault 				["bw_cloud_pam/SVG/vault.svg" width:48px color: gray ]
+}
+
+safeownerPicker = Dialog {
+
+	title: $picker.safeowner.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outRecordUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	safeownerSearch = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	
+	inAllowMe = Variable {
+	  type: Boolean
+	  initial: False
+	}
+	
+	// output variables (recordUid, uid and displayname)
+	outRecordUid = Variable {
+		type: Integer
+	}
+	outUid = Variable {
+		type: String
+	}
+	outDisplayname = Variable {
+		type: String
+	}
+
+	outHRCode = Variable {
+	  type: String
+	}
+
+	initialIndex = Variable {
+		type: Integer
+	}
+	
+	identityData = Dataset {
+		search: Search {
+			definition: safeownerSearch
+			view: br_safeowner_searchpointsimple with inUidList to paramUid unless-empty, inExcludedUidList to paramNotUid unless-empty 
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+
+	Grid {
+		columns:GridColumn{width:grow}, GridColumn
+		GridRow {
+		GridCell {
+			// Search section
+			Group{
+				layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+				SearchEdition {
+					definition: safeownerSearch
+					layout: Layout { grab: horizontal True vertical False }
+					simple-mode-columns: 2
+					simple-mode-layout: SimpleModeLayout {
+						hrcode { label: $identity.hrcode break: True },
+						givenname { label: $identity.givenname },
+						surname { label: $identity.surname break: True },
+						mail { label: $identity.mail break: True },
+						orgshortname { label: $porganisation.shortname },
+						orgname { label: $porganisation.displayname }
+					}
+				}
+			}
+		
+			Group{
+				layout: Layout { grab: horizontal True vertical True }
+				Table {
+					data: identityData
+					show-count: True
+					layout: Layout { grab: horizontal True vertical True }
+					configurable: True
+					double-click:CloseDialog Ok
+					
+					Column {
+						column: recorduid
+						hidden: True
+						selection: outRecordUid
+						initially-masked: False
+					}
+					Column {
+						column: uid
+						hidden: True
+						selection: outUid
+						initially-masked: False
+					}
+					Column {
+						column: hrcode
+						header: $identity.hrcode
+						selection: outHRCode
+						width: 100%
+						
+						initially-masked: False
+					}
+					Column {
+						column: givenname
+						header: $identity.givenname
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: surname
+						header: $identity.surname
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: fullname
+						header: $identity.fullname
+						width: 100%
+						selection:outDisplayname
+						initially-masked: False
+					}
+					Column {
+						column: nickname
+						header: $identity.nickname
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: middlename
+						header: $identity.middlename
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: altname
+						header: $identity.altname
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: mail
+						header: $identity.mail
+						width: 100%
+						
+						initially-masked: False
+					}
+					Column {
+						column: phone
+						header: $identity.phone
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: mobile
+						header: $identity.mobile
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: arrivaldate
+						header: $identity.arrivaldate
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: departuredate
+						header: $identity.departuredate
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: active
+						header: $identity.active
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: internal
+						header: $identity.internal
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: allocationchanged
+						header: $identity.allocationchanged
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: organisationchanged
+						header: $identity.organisationchanged
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: accountchanged
+						header: $identity.accountchanged
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: permissionchanged
+						header: $identity.permissionchanged
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: repository_code
+						header: $prepository.code
+						width: 100%
+						
+						initially-masked: True
+					}
+					Column {
+						column: repository_displayname
+						header: $prepository.displayname
+						width: 100%
+						
+						initially-masked: True
+					}
+
+					Column {
+						column:bwa_identityanalytics_aggriskrank
+						sortable:True
+						header:$bwf_identityNLS.riskrank
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggmaxrisklevel
+						sortable:True
+						header:$bwf_identityNLS.maxrisk
+						image:TemplateImageSelection(Current bwa_identityanalytics_aggmaxrisklevel) using bwf_identityriskimage
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggnbrisks
+						sortable:True
+						header:$bwf_identityNLS.nbrisk
+						width:120px
+						initially-masked:True
+					}
+				}
+			}
+		}
+	}
+}
+}
+
+ownedsafeMultiPicker = Dialog {
+	title: $picker.safe.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+	enter-event: TransferData subscriptionsafelist(safeuid) to ( outUid )
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : safe owner uid to restrict scope (if null, no restriction is applied)
+	inIncludedOwnerUid = Variable {
+		type: String
+		multivalued: False
+	}
+	
+	inUid = Variable {
+		type: String
+		multivalued: True
+	}
+	
+	// output variable (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+
+	// search attributes
+	localCode = Variable {
+		type: String
+	}
+	localDisplayname = Variable {
+		type: String
+	}
+	localRepository = Variable {
+		type: String
+	}
+	localCodeEdit = Variable {
+		type: String
+	}
+	localDisplaynameEdit = Variable {
+		type: String
+	}
+	localRepositoryEdit = Variable {
+		type: String
+	}
+
+	// database view
+	safeList = Dataset {
+		view: br_ownedsafe_picker with
+			localCode to paramCode,
+			localDisplayname to paramDisplayname,
+			localRepository to paramRepository,
+			inUidList to paramUid,
+			inExcludedUidList to paramNotUid,
+			inIncludedOwnerUid to paramSafeOwner
+	}
+	
+	subscriptionsafelist = Dataset {
+		view: bwpam_subscribedsafes with inIncludedOwnerUid to uid
+		
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 15%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+
+		Group {
+			Image {
+				image: %safeimage_48.safe
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+
+			// search fields
+			Edit {
+				variable: localDisplaynameEdit
+				label: $picker.safe.title
+				proposal: CASafe.displayName
+			}
+			Edit {
+				variable: localCodeEdit
+				label: $picker.safe.code
+				proposal: CASafe.code
+			}
+			Edit {
+				variable: localRepositoryEdit
+				label: $repository.concept
+				proposal: CAVault.displayName
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions: Set localDisplaynameEdit to localDisplayname, Set localCodeEdit to localCode, Set localRepositoryEdit to localRepository 
+					text: $picker.searchaction
+				}
+				Button {
+					actions: Unset localDisplaynameEdit, Unset localCodeEdit, Unset localRepositoryEdit,Unset localDisplayname, Unset localCode, Unset localRepository  
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+
+	// results
+	Table {
+		data: safeList
+		checkboxes: uid to outUid
+		label: Label {
+			value: $picker.safe.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: displayname
+			header: $picker.safe.dislayname
+			image: %safeimage_16.safe
+			width: 35%
+			sortable: True
+		}
+		Column {
+			column: repositorydisplayname
+			header: $picker.vault.dislayname
+			width: 35%
+			sortable: True
+		}
+		Column {
+			column: bw_pam_safemetrics_nb_epv_users
+			header: $picker.nbepv
+			width: 10%
+			sortable: True
+		}		
+		Column {
+			column: bw_pam_safemetrics_nb_app_users
+			header: $picker.nbaim
+			width: 10%
+			sortable: True
+		}
+		Column {
+			column: bw_pam_safemetrics_nb_secrets
+			header: $picker.nbcred
+			width: 10%
+			sortable: True
+		}		
+	}
+}

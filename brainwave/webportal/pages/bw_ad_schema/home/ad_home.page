@@ -1,0 +1,287 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+import "/webportal/pages/bw_ad_schema/resources/dashboards_nls.page"
+
+import "/webportal/pages/bw_ad_schema/home/db_secuopit.page"
+import "/webportal/pages/bw_ad_schema/analytics/analytics_gpo_passwords.page"
+import "/webportal/pages/bw_ad_schema/dashboard/risk.page"
+import "/webportal/pages/bw_ad_schema/dashboard/quality.page"
+import "/webportal/pages/bw_ad_schema/dashboard/access.page"
+import "/webportal/pages/bw_ad_schema/dashboard/securitygroupsdashboard.page"
+import "/webportal/pages/bw_ad_schema/dashboard/reconciliation.page"
+import "/webportal/pages/bw_ad_schema/analytics/analytics_account_localadmin.page"
+import "/webportal/pages/bw_ad_schema/home/reports.page"
+
+ad_home_pageNLS = NLS {
+	qualityrisks [en "Check your Active Directory domains status and investigate on your access related security risks and data quality issues." fr "Vérifier le statut de vos domaines Active Directory et investiguer sur les risques de sécurité liés aux accès et les problèmes de qualité."]
+	adminrights [en "Identify Active Directory privileged accounts and accounts default security groups membership, track their evolution." fr "Identifier les comptes à privilèges Active Directory et les comptes membres des groupes de sécurité AD, vérifier leurs évolutions."]
+	gpo [en "List the Global Policy Objects, check password policies and the local administration rights they granted with the related machines." fr "Lister les stratégies de groupes GPO, vérifier les politiques de mot de passe, les droits d'administration locaux attribués via les GPO et les machines concernées."]
+	explore [en "Explore the different objects in your domains, identities, access rights ACL, use the multi-criteria search engine, access to advanced dashboards and tag sensitive objects." fr "Explorer les différents objets de vos domaines, les droits ACL, utilisez la recherche multi-critère, accédez aux tableaux de bord avancés, taguez les objets sensibles."]
+	eventlogs [en "Use the log events search page to check who has done what and when in your AD domains." fr "Utiliser la page de recherche des événements pour vérifier qui a fait quoi et quand au sein de vos domaines Active Directory."]
+	synthesis [en "Get an overview on your Active Directory domains KPIs thanks to the summary dashboard, and check the accounts reconciliation with HR data." fr "Vérifier le statut de l'ensemble de vos domaines Active Directory via la page de synthèse des KPIs, ainsi que la réconciliation des comptes avec les données RH."]
+	explorebutton [en "Explore data" fr "Explorer les données"]
+	logeventbutton [en "Search for AD events" fr "Rechercher des événements AD"]
+	synthesisbutton [en "Summary dashboard" fr "Page de synthèse"]
+	reconbutton [en "Reconciliation details" fr "Détails de la réconciliation"]
+	addreports [en "Add new reports" fr "Ajouter des rapports"]
+	addeventreports [en "Add new events" fr "Ajouter des événements"]
+	favorites [en "Your favorite pages and reports" fr "Vos rapports et pages favoris"]
+	favoritetitle [en "Reports" fr "Rapports"]
+	favoritepagetitle [en "Page title" fr "Titre de la page"]
+	favoritetype [en "Type" fr "Type"]
+	title [en "Welcome to Identity Analytics for Active Directory" fr "Bienvenue sur la page d'accueil de Identity Analytics for Active Directory"]
+//	intro [en "Start with one of the following analysis to identify, contextualize and analyze security risks and data quality issues over all your Active Directory domains and provide audit reports and out of the box dashboards." fr "Démarrez par l'un des analyses suivantes afin de visualiser, contextualiser, et analyser les risques de sécurité et problèmes de qualité au sein de l’ensemble de vos domaines Active Directory et éditer rapports et tableaux de bords."]
+	accountsnb [en "Accounts" fr "Comptes"]
+	domainsnb [en "Domains" fr "Domaines"]
+	groupsnb [en "Groups" fr "Groupes"]
+	acc_tech [en "Technical or service accounts" fr "Comptes techniques ou de service"]
+	acc_privileged [en "Privileged accounts" fr "Comptes à privilèges"]
+	acc_total [en "Accounts" fr "Comptes"]
+	gotoreport [en "Go to report" fr "Accéder au rapport"]
+	localadmin [en "Accounts with local admin rights" fr "Comptes avec droits admin locaux"]
+	}
+
+bluebuttonStyle = Style(uiBase) {
+	background: Color RGB(44, 94, 144)
+	bold: False
+}
+
+ad_home_page = Page {
+	title: $ad_home_pageNLS.title
+	mixins: dashboardTransparentMixin
+	enter-event: TransferData domainperimeterdataset(uid) to ( domainperimeter )
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	AccountsStatus 	= Variable { multivalued: True }
+	AccountsTotal 	= Variable { multivalued: True }
+	selectedReport	= Variable { }
+	domainperimeter = Variable { multivalued: True }
+	
+	/* Datasets and records here */
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	domains 		= Dataset { view: ad_alldomains with domainperimeter to domains }
+	domains_prev 	= Dataset { view: ad_alldomains with domainperimeter to domains timeslot: FromPage(-1)}
+	groups 			= Dataset { view: ad_groups with domainperimeter to domains }
+	groups_prev 	= Dataset { view: ad_groups with domainperimeter to domains timeslot: FromPage(-1)}
+	
+	/* datasets for the accounts chart */
+	activeAcc = Dataset { view: ad_allaccounts with domainperimeter to domains }
+	activeAcc_prev 	= Dataset { view: ad_recon_total with domainperimeter to domains timeslot: FromPage(-1) }
+	technicalAccount = Dataset { view: ad_recon_noowner with domainperimeter to domains }
+	technicalAccount_prev = Dataset { view: ad_recon_noowner with domainperimeter to domains timeslot: FromPage(-1) }
+	privilegedAcc 		= Dataset { view: ad_account_adminright with domainperimeter to domains }
+	privilegedAcc_prev 	= Dataset { view: ad_account_adminright with domainperimeter to domains timeslot: FromPage(-1)}
+	
+	favorites = Dataset {
+		favorites: Favorites {
+		 hide-pages: False
+		 hide-reports: False
+	 	tags: "ADreports"
+		}
+	}
+	
+	
+	/* Named Actions here */
+
+	
+	/* Page content */
+			Tiles {
+				columns: 5
+				tile-height: 80
+				
+				Tile {
+				Text {value: $ad_home_pageNLS.domainsnb 	styling: bigGrayHeader align: Center}
+				IncludeFragment ( bigKPI with 	value-of Count domains to currentValue , 
+															value-of Count domains_prev to previousValue, value-of True to disableclick )
+				}
+				
+				Tile {
+				Text {value: $ad_home_pageNLS.groupsnb 	styling: bigGrayHeader align: Center}
+				IncludeFragment ( bigKPI with 	value-of Count groups to currentValue , 
+															value-of Count groups_prev to previousValue, value-of True to disableclick )
+				}
+				
+				Tile {
+				Text {value: $ad_home_pageNLS.acc_total 	styling: bigGrayHeader align: Center}
+				IncludeFragment ( bigKPI with 	value-of Count activeAcc to currentValue , 
+															value-of Count privilegedAcc_prev to previousValue, value-of True to disableclick )
+		}
+				Tile {
+				Text {value: $ad_home_pageNLS.acc_privileged 	styling: bigGrayHeader align: Center}
+				IncludeFragment ( bigKPI with 	value-of Count privilegedAcc to currentValue , 
+															value-of Count privilegedAcc_prev to previousValue, value-of True to disableclick )
+		}
+				Tile {
+				Text {value: $ad_home_pageNLS.acc_tech 	styling: bigGrayHeader align: Center}
+				IncludeFragment ( bigKPI with 	value-of Count technicalAccount to currentValue , 
+															value-of Count technicalAccount_prev to previousValue, value-of True to disableclick )
+		}
+	}
+	
+//	Text { value: $ad_home_pageNLS.intro mixins: base_componentLabelMixin }
+	
+	Splitter {
+		disposition: Horizontal
+		size:65%
+		layout: Layout { grab: horizontal True vertical True}
+		
+		Group {
+			layout: Layout{ grab: horizontal False vertical False hint: width 1100}
+			Text { value: $ad_home_pageNLS.qualityrisks mixins: base_componentLabelMixin }
+			
+			Tiles {
+				columns: 2
+				tile-height: 60
+				Tile {
+					Button {
+						actions: GoTo Page ad_dashboard_risk
+						text: $ad_secuopit_dashboardNLS.risk.header
+						image: "bw_ad_schema/adhome/security risks_32.png"
+						layout: Layout { hint: width 300 align: horizontal End vertical Center}
+					}
+				}
+				
+				Tile {
+					Button {
+						actions: GoTo Page ad_dashboard_quality
+						text: $ad_secuopit_dashboardNLS.quality.header
+						image: "bw_ad_schema/adhome/data quality_32.png"
+						layout: Layout { hint: width 300 align: horizontal Beginning vertical Center}
+					}
+				}
+			}
+			
+			Text { value: $ad_home_pageNLS.adminrights mixins: base_componentLabelMixin } 
+						
+			Tiles {
+				columns: 2
+				tile-height: 60
+								
+				Tile{ 
+					Button {
+						actions: GoTo Page ad_dashboard_access
+						text: $ad_secuopit_dashboardNLS.access.header
+						image: "bw_ad_schema/adhome/admin right_32.png"
+						layout: Layout { hint: width 300 align: horizontal End vertical Center}
+					}
+				}
+				Tile {
+					Button {
+						actions: GoTo Page ad_accountsecuritygroup
+						text: $ad_secuopit_dashboardNLS.accountsingroups
+						image: "bw_ad_schema/adhome/security group_32.png"
+						layout: Layout { hint: width 300 align: horizontal Beginning vertical Center}
+					}
+				}
+			}
+			
+			Text { value: $ad_home_pageNLS.gpo mixins: base_componentLabelMixin } 
+			
+			Tiles {
+				columns: 2
+				tile-height: 60
+				
+				Tile {
+					Button {
+						actions: GoTo Page analytics_gpo_passwords
+						text: $gpoSummary_NLS.title
+						image: "bw_ad_schema/adhome/password policies_32.png"
+						layout: Layout { hint: width 300 align: horizontal End vertical Center}
+					}
+				}
+				Tile {
+					Button {
+						actions: GoTo Page analytics_account_localadmin
+						text: $ad_home_pageNLS.localadmin
+						image: "bw_ad_schema/adhome/local admin right_32.png"
+						layout: Layout { hint: width 300 align: horizontal Beginning vertical Center}
+					}
+				}
+			}
+			  
+			Text { value: $ad_home_pageNLS.explore mixins: base_componentLabelMixin }
+			
+			Tiles {
+				columns: 2
+				tile-height: 60
+									
+				Tile{ 
+					Button {
+						actions: Message 'Deprecated'
+						text: $ad_home_pageNLS.explorebutton
+						image: "bw_ad_schema/adhome/explore_32.png"
+						layout: Layout { hint: width 300 align: horizontal End vertical Center}	
+					}
+				}
+			}
+			
+			Text { value: $ad_home_pageNLS.synthesis mixins: base_componentLabelMixin }
+			
+			Tiles {
+				columns: 2
+				tile-height: 60
+				
+				Tile{ 
+					Button {
+						actions: GoTo Page ad_secuopit_dashboard
+						text: $ad_home_pageNLS.synthesisbutton
+						image: "bw_ad_schema/adhome/summary dashboard_32.png"
+						layout: Layout { hint: width 300 align: horizontal End vertical Center}	
+					}
+				}
+				
+				Tile{ 
+					Button {
+						actions: GoTo Page ad_dashboard_recon
+						text: $ad_home_pageNLS.reconbutton
+						image: "bw_ad_schema/adhome/reconciliation details_32.png"
+						layout: Layout { hint: width 300 align: horizontal Beginning vertical Center}
+					}
+				}
+			}
+		}
+			
+		
+		Group {
+			background: Color white
+			Text { value: $ad_home_pageNLS.favorites mixins: base_sectionTitleMixin } 
+			
+			Table {
+				layout: Layout { grab: horizontal True vertical True indent: horizontal 8 vertical 5}
+				double-click: GoTo Position Current position //(selectedtype, selectedname)
+				enable-markup: True
+				configurable: False
+				show-count: True
+				data: favorites
+				hide-header: True
+				Column { column: favoriteTitle  header: $ad_home_pageNLS.favoritetitle width: 400px}
+				Column { column: position selection: selectedReport hidden: True}				
+			}
+			
+			ButtonGroup {
+				align: Center
+				Button {
+					text: $ad_home_pageNLS.gotoreport
+					actions: GoTo Position selectedReport
+					styling: bluebuttonStyle
+					disabled: StringPredicate ( selectedReport ) { when IsEmpty then True otherwise False }
+					layout: Layout { hint: width 180 align: horizontal Center vertical Center}
+					image: "bw_ad_schema/adhome/view report_24.png"
+				}
+				Button {
+					text: $ad_home_pageNLS.addreports
+					actions: GoTo Page bw_adschema_reports
+					styling: bluebuttonStyle
+					layout: Layout { hint: width 180 align: horizontal Center vertical Center}
+					image: "bw_ad_schema/adhome/add report_24.png"
+				}
+			}
+		}
+	}
+}
+

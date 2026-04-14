@@ -1,0 +1,300 @@
+/* Import other pages here */
+import "/webportal/pages/bw_dsm/services/services.page"
+import "/webportal/pages/bw_dsm/cfg/ds_cfg_edit.page"
+
+/* Nationalized labels here */
+importexportNLS = NLS {
+	title [
+		en "DSM Configuration"
+		fr "Configuration DSM"
+	]
+	export.button [
+		en "Export" 
+		fr "Exporter"
+	]
+	importfile.button [
+		en "Import" 
+		fr "Importer"
+	]
+	label.selectFile [ 
+		en "Select file to import" 
+		fr "Selectionner le fichier d'import"
+	]
+	ds.header.ds.name [ 
+		en "Name" 
+		fr "Nom"
+	]
+	ds.header.ds.status [ 
+		en "Status" 
+		fr "Etat"
+	]
+	ds.status.new [
+		en "New" 
+		fr "Nouveau"
+	]
+	ds.status.overwrite [ 
+		en "Will overwrite existing" 
+		fr "Remplacera les données existantes"
+	]
+	importdialog.title  [ 
+		en "Import" 
+		fr "Importer"
+	]
+	importdialog.importfiles.title [ 
+		en "Data sources found in the import file" 
+		fr "Sources de données trouvées dans le fichier d'import"
+	]
+	groups.importexport.title [ 
+		en "Import and Export Data sources" 
+		fr "Importer et exporter des sources de données"
+	]
+	groups.secrets.title [
+		en "Secrets" 
+		fr "Secrets"
+	]
+	concept.datasource [
+		en "Data source" 
+		fr "Source de données"
+	]
+	concept.secret.name [
+		en "Secret Name" 
+		fr "Nom du secret"
+	]
+	concept.secret.status [
+		en "Status" 
+		fr "Etat"
+	]
+	concept.secret.status.missing [
+		en "Empty" 
+		fr "Vide"
+	]
+	concept.secret.status.found [
+		en "Found" 
+		fr "Trouvé" 
+	]
+	label.secret.message [
+		en "Credentials and other secrets are never exported. \n Imported data sources may require some credentials or secrets to be present. \n Here a list of required secrets and the status. Select the data source and click on Edit to review the data source configuration."
+		fr "Les informations d'identification et autres secrets ne sont jamais exportés. \n Les sources de données importées peuvent nécessiter la présence de certains secrets. \n Sélectionnez la source de données et cliquez sur Modifier pour revoir sa configuration."
+	]
+	label.secret.edit [
+		en "Edit" 
+		fr "Modifier"
+	]
+}
+
+dstatus_transform = IntMapping {
+	when InvalidInteger then $importexportNLS.ds.status.new
+	otherwise $importexportNLS.ds.status.overwrite
+}
+
+secretstatus_transfrorm = BooleanMapping {
+	when True then $importexportNLS.concept.secret.status.found
+	when False then $importexportNLS.concept.secret.status.missing
+}
+
+importDialog = Dialog {
+	title: $importexportNLS.importdialog.title
+	height: 400
+	enter-event: TransferData datasources(id,name) to ( ctrl_id,ctrl_name)
+	buttons: [
+		CancelButton
+		ActionButton {
+			text:  $importexportNLS.importfile.button
+			disabled: Eval "!importFile.get()"    
+			actions: ExecuteNamedAction doImport
+				
+		close: True
+		}
+	]
+
+	importFile = Variable
+	ctrl_id = Variable { multivalued: True }
+	ctrl_name = Variable { multivalued: True }
+	file_id = Variable { multivalued: True }
+	file_name = Variable { multivalued: True }
+	
+	cr_type = Variable { multivalued: True } // ctl_type
+	cr_category = Variable { multivalued: True } // ctl_category
+	cr_name = Variable { multivalued: True } // ctl_name
+	cr_description = Variable { multivalued: True } // ctl_description
+	cr_enabled = Variable { multivalued: True } // ctl_enabled
+	cr_config = Variable { multivalued: True } // details
+	cr_scheduling = Variable { multivalued: True } // ctl_scheduling
+	cr_existing_id = Variable { multivalued: True } // ctrl_id*
+	
+	outId = Variable
+	
+	importTask = TaskRecord ( create "bwdsm_data_import"  )
+	
+	datasources = Dataset {
+		service: bwdsm_listDsCfg			
+	}
+	datasources_in_file = Dataset {
+		view: bwdsm_importfromfile_ds with importFile to filepath
+		disabled: StringPredicate ( importFile ) { when IsEmpty then True otherwise False }
+	}
+	datasources_join = Dataset {
+		join: Join {
+			primary-dataset: datasources_in_file
+			primary-column: subkey
+			primary-optional: False
+			secondary-dataset: datasources
+			secondary-prefix: ctrl_
+			secondary-cardinality: optional
+			secondary-column: name
+		}
+	}
+	
+	doImport = NamedAction(
+		Unset cr_type, Unset cr_category, Unset cr_name, Unset cr_description, Unset cr_enabled, Unset cr_config, Unset cr_scheduling, Unset cr_existing_id,
+		TransferData datasources_join ( ctl_type, ctl_category, ctl_name, ctl_description, ctl_enabled, details, ctl_scheduling, ctrl_id ) 
+			to ( cr_type, cr_category, cr_name, cr_description, cr_enabled, cr_config, cr_scheduling, cr_existing_id ),
+		MultivaluedIterate cr_name as currentds index-as currentindex [
+			IntCase( ElementAt Current currentindex of cr_existing_id ) {
+				when InvalidInteger then [
+					Set @bwdsm_createDsCfg ( 
+						ElementAt Current currentindex of cr_type to type, 
+						ElementAt Current currentindex of cr_category to category, 
+						ElementAt Current currentindex of cr_name to name,
+						ElementAt Current currentindex of cr_description to description , 
+						ElementAt Current currentindex of cr_enabled to enabled, 
+						ElementAt Current currentindex of cr_config to config,
+						ElementAt Current currentindex of cr_scheduling to scheduling  ) to outId
+				]
+				otherwise [
+					Set @bwdsm_updateFullDsCfg ( 
+						ElementAt Current currentindex of cr_existing_id to pid,
+						ElementAt Current currentindex of cr_type to type, 
+						ElementAt Current currentindex of cr_category to category, 
+						ElementAt Current currentindex of cr_name to name,
+						ElementAt Current currentindex of cr_description to description , 
+						ElementAt Current currentindex of cr_enabled to enabled, 
+						ElementAt Current currentindex of cr_config to config,
+						ElementAt Current currentindex of cr_scheduling to scheduling  ) to outId
+				]
+			}
+		],
+		Set importFile to importTask.in_importFile,
+		TaskComplete importTask wait-end timeout-seconds 120
+	)
+	
+	FileUpload {
+		uploaded-filename: importFile  
+		text: $importexportNLS.label.selectFile
+	}
+	
+	Group {
+		title: $importexportNLS.importdialog.importfiles.title
+		hidden: StringPredicate ( importFile ) { when IsEmpty then True otherwise False }
+		
+		Table {
+			data: datasources_join
+			layout: Layout { grab: horizontal True vertical True }
+			Column { column: subkey width: 100% header: $importexportNLS.ds.header.ds.name }
+			Column { column: ctrl_id text: Transform Current ctrl_id using dstatus_transform width: 100% header: $importexportNLS.ds.header.ds.status }
+		}
+	}
+	
+}
+
+importexport = Page {
+	title: $importexportNLS.title
+	tags: 'admin'
+	enter-event: TransferData existing_ds ( subkey ) to ( selected_codes )
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedDS = Variable
+	selected_codes = Variable { multivalued: True }
+	
+	
+	/* Datasets and records here */
+	existing_ds = Dataset {
+		view: bwdsm_exportmetadata
+		includes: StringPredicate ( Current key ) {
+			when "bw_datasource_def" then True otherwise False
+		}
+	}
+	
+	existing_secrets = Dataset {
+		view: bwdsm_check_secrets
+	}
+
+	doEditDS = NamedAction (
+		Dialog dsm_cfg_add_edit_wizard ( selectedDS to inId),
+		ReloadData ( existing_secrets)
+	) 
+	
+	
+	/* Page content */
+	
+	Splitter {
+		disposition: Horizontal
+		layout: Layout { grab: horizontal True vertical True }
+		
+		Group {
+			title: $importexportNLS.groups.importexport.title
+			
+			Table {
+				data: existing_ds
+				checkboxes: subkey to selected_codes
+				layout: Layout { grab: horizontal True vertical True }
+				show-count: True
+				Column { column: subkey header: $importexportNLS.concept.datasource width: 100% }
+			}
+			
+			ButtonGroup {
+				align: Right	
+				Button {
+					text: $importexportNLS.export.button
+					layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+					actions:
+						ExportReport "/reports/bw_dsm/dsm_data_export_v1.rptdesign" with Join selected_codes using "¶" to ds_codes format "xlsx" export-name Concat( "dsm_data_exp_" , SubString(8) Date.valueLDAP )  no-cache 
+				}
+				
+				Button {
+					text: $importexportNLS.importfile.button
+					layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+					actions: Dialog importDialog, ReloadData ( existing_ds ) , ReloadData ( existing_secrets )
+				}
+				
+			}
+		}
+		
+		Group {
+			title: $importexportNLS.groups.secrets.title
+			
+			Text {
+				value: $importexportNLS.label.secret.message
+				compact: True
+			}
+			
+			Table {
+				data: existing_secrets
+				layout: Layout { grab: horizontal True vertical True }
+				show-count: True
+				commands: Commands {
+					position: After
+					presentation: Text
+					Command {
+						actions: ExecuteNamedAction doEditDS
+						text: $importexportNLS.label.secret.edit
+						disabled: IntPredicate ( selectedDS ) { when InvalidInteger then True otherwise False }
+					}
+				}
+				Column { column: value1integer selection: selectedDS hidden: True }
+				Column { column: subkey header: $importexportNLS.concept.datasource width: 100% }
+				Column { column: secret_key header: $importexportNLS.concept.secret.name width: 100% }
+				Column { column: secret_invault text: Transform Current secret_invault using secretstatus_transfrorm header: $importexportNLS.concept.secret.status width: 100% }
+			}
+			
+		}
+	}
+	
+	
+	
+	
+	
+	
+}

@@ -1,0 +1,118 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+import "/webportal/pages/bw_fragments/organisation/details/organisationTreeDetails.page"
+
+fragmentIdentityOrgHierarchyNLS = NLS {
+	employeetype [en "Employee Type" fr "Type de contrat"]
+	jobandorgs [en "{0} in {1}" fr "{0} au sein de {1}"]
+	jobandorganisation [en "Job and Organization" fr "métier et organisation"]
+	empty [en "Identity is not attached to an organisation" fr "Cette identité n'est pas rattachée à une organisation"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the identity organisation position in a tree
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inshowsuborganisationtree </b>optional, boolean value, true to enable displaying selected organisation sub-organisations as a tree in a dialog box (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outorganisationuid </b>the selected organisation uid</li>
+ * <li><b>outorganisationcode </b>the selected organisation code</li>
+ * <li><b>outorganisationshortname </b>the selected organisation shortname</li>
+ * <li><b>outorganisationdisplayname </b>the selected organisation displayname</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityOrgHierarchy = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inshowsuborganisationtree = Variable { type:Boolean initial:False }
+	
+	outorganisationuid = Variable
+	outorganisationcode = Variable
+	outorganisationshortname = Variable
+	outorganisationdisplayname = Variable
+	
+	/* Datasets here */
+	organisationDetail_parents = HierarchicalData {
+		view: getidentityorganisations with inuid to uid
+		initial: parentuid IsNull
+		max-level: 5
+		connect: parent uid to child parentuid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+
+	ConditionalGroup {
+		IntCondition(Count organisationDetail_parents) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityOrgHierarchyNLS.empty
+					styling:bigTitleStyle
+				}
+			]
+			otherwise [
+				Tree {
+					data: organisationDetail_parents
+					hide-header: False
+					expand-level: All
+					configurable:True
+					layout: Layout { grab: horizontal True vertical True }
+					persist-configuration:True
+
+					Column {
+						column: uid
+						hidden:True
+						selection:outorganisationuid
+					}
+					Column {
+						header: $organisation.displayname
+						column: displayname
+						image: %concept_32.organisation
+						selection:outorganisationdisplayname
+						width: 66%
+
+						actions:Dialog bwf_organisationTreeDetailsDialog(outorganisationuid to inuid)						
+						actions-disabled:Not BooleanPredicate(inshowsuborganisationtree)
+					}
+					Column {
+						header: $organisation.code
+						selection:outorganisationcode
+						column: code
+						width: 34%
+						initially-masked:True
+
+						actions:Dialog bwf_organisationTreeDetailsDialog(outorganisationuid to inuid)						
+						actions-disabled:Not BooleanPredicate(inshowsuborganisationtree)
+					}
+					Column {
+						header: $organisation.shortname
+						column: shortname
+						selection:outorganisationshortname
+						width: 34%
+						initially-masked:True
+
+						actions:Dialog bwf_organisationTreeDetailsDialog(outorganisationuid to inuid)						
+						actions-disabled:Not BooleanPredicate(inshowsuborganisationtree)
+					}
+				}
+			]		
+		}
+	}
+}

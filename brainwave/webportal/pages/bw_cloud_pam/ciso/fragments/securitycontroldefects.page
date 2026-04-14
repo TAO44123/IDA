@@ -1,0 +1,55 @@
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_risk.page"
+import "/webportal/pages/bw_cloud_pam/resources/styles.page"
+
+import "/webportal/pages/bw_cloud_pam/resources/globals.page"
+import "/webportal/pages/bw_cloud_pam/ciso/fragments/tile_ind_fragment.page"
+import "/webportal/pages/bw_cloud_pam/resources/mapping.page"
+
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+
+customRiskColors = Constant { type:String value:"#80cbc4,#81d4fa,#ffcc80,#ef5350" }
+
+
+ciso_risk_accountriskfragment_searchparam_mapping = StringMapping {
+	otherwise current prefix "maccount(*eqbwa_accountpamanalytics_maxrisklevel[valueIntegerParam=\"" suffix "\"])"
+}
+
+ciso_risk_securitycontroldefectsfragment = PageFragment {
+	mixins: dashboardMixin
+
+	nb_risk_discrepencies = Record {
+	  view: ca_risk_nbdiscrepancies
+	}	
+	
+	nb_risk_discrepencies_prev = Record {
+	  view: ca_risk_nbdiscrepancies
+	  timeslot: FromPage(-1)
+	}	
+	
+	Group {
+		mixins: homePanelMixin
+		styling: cssRound
+		
+		Header { 
+			value: $bwcd_pam_ciso_risk_NLS.group.defectnumber.title
+			icon: %status.error
+		}
+		Spacer {
+			height: 13
+		}	
+
+		IncludeHTMLWidget {
+			layout: Layout { hint: height 100 width 200 align: horizontal Center vertical Center }
+			template: mashupGaugeIndicator
+			bindings:
+				value-of $bwcd_pam_ciso_risk_NLS.group.defectnumber.label to title, 
+				value-of "numeric" to mode, // radial, numeric, row
+				value-of False to hasLink,
+				value-of False to hasThresholds,
+				value-of NonEmpty(nb_risk_discrepencies.nb_discrepencies, 0) to count,		
+				value-of "#9400D3" to gaugeColor
+		}	        			  
+	}	
+}

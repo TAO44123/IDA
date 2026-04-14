@@ -1,0 +1,297 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/control/details/controlDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+fragmentGroupControlDefectsListNLS = NLS {
+	risklevel [en "Risk \n level" fr "Niveau \n de risque"]
+	empty [en "Group doesn't have controls defects" fr "Ce groupe n'a pas d'écarts de contrôles"]
+	showdetails [en "Show selected control defect risks details" fr "Afficher les détails du défaut de contrôle sélectionné"]
+
+	controldescription [en "Control description" fr "Description du contrôle"]
+	riskdescription [en "Risk description" fr "Description du risque"]
+	mitigation [en "Suggested mitigation" fr "Remédiation suggérée"]
+
+	minimumrisklevel [en "Minimum risk level" fr "Niveau de risque minimum"]
+
+	tooltip [en "This tile presents the controls defects for a given perroupmission\ngroup controls and account controls are listed\nyou can right-clic on the table to show/hide additional information"
+			 fr "Cette tuile présente les écarts de contrôle pour un groupe donné\nles contrôles concernant les groupes et les comptes sont listés\nvous pouvez faire un clic droit sur la table pour afficher des colonnes supplémentaires"
+			]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display all control defects for a given group (group+accounts)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbdefects </b>the number of problems found</li>
+ * <li><b>outcontrolcode </b>the selected control code</li>
+ * <li><b>outcontrolname </b>the selected control code</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupAllControlDefectsList = PageFragment {
+	enter-event:Set 2 to minimumrisklevel // instead of "default" value in order to comply with the allow empty option of the combobox
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outcontrolcode = Variable
+	outcontrolresulttye = Variable
+	outcontrolname = Variable
+	outnbdefects = Variable
+	outaccountuid = Variable
+	outgroupuid = Variable
+	
+	selectedcontroldescription = Variable
+	selectedriskdescription = Variable
+	selectedmitigation = Variable
+
+	showriskdetails = Variable { type:Boolean initial:False }
+
+	minimumrisklevel = Variable { type:Integer }
+
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_groupallcontroldefects with
+			inuid to uid,
+			minimumrisklevel to minimumrisklevel
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		count-variable: outnbdefects
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_controlDetailsDialog ( outcontrolcode to incontrolcode, outcontrolresulttye to inresulttype, outaccountuid to inaccountuid, outgroupuid to ingroupuid  )
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Combo {
+		variable:minimumrisklevel
+		label:$fragmentGroupControlDefectsListNLS.minimumrisklevel
+		layout:Layout { grab:horizontal False vertical False hint: width 160 }
+		allow-none:True
+		options:Static {
+			Option { value:4 text:$bwf_ControlLevel_NLS._4 }
+			Option { value:3 text:$bwf_ControlLevel_NLS._3 }
+			Option { value:2 text:$bwf_ControlLevel_NLS._2 }
+			Option { value:1 text:$bwf_ControlLevel_NLS._1 }
+			Option { value:0 text:$bwf_ControlLevel_NLS._0 }
+		}	
+	}
+	
+	ConditionalGroup {
+		IntCondition(Count data) {
+			when =0 then [
+				Header {
+					value:$fragmentGroupControlDefectsListNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Checkbox {
+					variable:showriskdetails
+					text:$fragmentGroupControlDefectsListNLS.showdetails
+					hidden:Not BooleanPredicate(incanshowdetails)
+				}
+
+				Grid {
+					columns:GridColumn,GridColumn,GridColumn
+					GridRow {
+						height:grow
+						GridCell {
+							span:3									
+						
+							Table {
+								data:data
+								layout:Layout {grab: horizontal True vertical True}
+								configurable:True
+								show-count:True
+								show-filter:True
+								persist-configuration:True
+								double-click: StringCase ( outcontrolcode ) { when Not IsEmpty then [ ExecuteNamedAction goDetails ] }
+								
+								Column {
+									column: accountuid
+									hidden: True
+									selection: outaccountuid
+								}
+								Column {
+									column: groupuid
+									hidden: True
+									selection: outgroupuid
+								}
+								Column {
+									column:controlcode
+									selection:outcontrolcode
+									hidden:True
+									header:$controlresult.controlcode
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:controlresulttype
+									selection: outcontrolresulttye
+									hidden: True
+								}
+								Column {
+									column:controlrisklevel
+									header:$fragmentGroupControlDefectsListNLS.risklevel
+									width:96px
+									sortable:True
+									filterable:True
+									image:TemplateImageSelection(Current controlrisklevel) using bwf_controllevel
+								}
+								Column {
+									column:controldisplayname
+									selection:outcontrolname
+									header:$controlresult.controldisplayname
+									width:100%
+									sortable:True
+									filterable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+								}
+								Column {
+									column:controldescription
+									selection:selectedcontroldescription
+									initially-masked:True
+									header:$controlresult.controldescription
+									width:160px
+									sortable:True
+									filterable:True
+								}
+								Column {
+									column:controlriskinfo
+									selection:selectedriskdescription
+									initially-masked:True
+									header:$fragmentGroupControlDefectsListNLS.riskdescription
+									width:160px
+									sortable:True
+									filterable:True
+								}
+								Column {
+									column:controlsuggestedmitogation
+									selection:selectedmitigation
+									initially-masked:True
+									header:$fragmentGroupControlDefectsListNLS.mitigation
+									width:160px
+									sortable:True
+									filterable:True
+								}
+								Column {
+									column:controltype
+									initially-masked:True
+									header:$controlresult.controltype
+									width:96px
+									sortable:True
+									filterable:True
+								}
+								Column {
+									column:accountlogin
+									header:$account.login
+									width:128px
+									sortable:True
+									filterable:True
+								}
+								Column {
+									column:accountusername
+									header:$paccount.username
+									width:160px
+									sortable:True
+									filterable:True
+									initially-masked:True
+								}
+								Column {
+									column:accountlastlogindate
+									header:$account.lastlogindate
+									width:128px
+									sortable:True
+									filterable:True
+									initially-masked:True
+								}
+								Column {
+									column:repo_displayname
+									header:$repository.concept
+									width:128px
+									sortable:True
+									filterable:True
+								}
+								Column {
+									column:identityhrcode
+									header:$identity.hrcode
+									width:128px
+									sortable:True
+									filterable:True
+									initially-masked:True
+								}
+								Column {
+									column:identityfullname
+									header:$identity.concept
+									width:160px
+									sortable:True
+									filterable:True
+								}
+							}	
+						}								
+					}
+					GridRow {
+						height:120
+						hidden:Not BooleanPredicate(showriskdetails)
+						GridCell {
+							Text {
+								value:selectedcontroldescription
+								layout:Layout {grab:horizontal True vertical True}
+								label:Label {value:$fragmentGroupControlDefectsListNLS.controldescription break:True }
+								hidden:Not BooleanPredicate(showriskdetails)
+								lines:5
+							}									
+						}								
+						GridCell {
+							Text {
+								value:selectedriskdescription
+								layout:Layout {grab:horizontal True vertical True}
+								label:Label {value:$fragmentGroupControlDefectsListNLS.riskdescription break:True }
+								hidden:Not BooleanPredicate(showriskdetails)
+								lines:5
+							}									
+						}								
+						GridCell {
+							Text {
+								value:selectedmitigation
+								layout:Layout {grab:horizontal True vertical True}
+								label:Label {value:$fragmentGroupControlDefectsListNLS.mitigation break:True }
+								hidden:Not BooleanPredicate(showriskdetails)
+								lines:5
+							}									
+						}								
+					}
+				}
+			]
+		}
+	}
+}

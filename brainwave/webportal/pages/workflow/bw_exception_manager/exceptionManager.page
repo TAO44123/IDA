@@ -1,0 +1,806 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+exceptionManager = Page {
+	title: $controlexception.page.title
+	tags: "admin"
+	feature: em_openmanager
+		
+	/* Variables here */
+	selectedcontrolrecorduid = Variable { type: Integer }
+	selectedtargettype = Variable { type: String }
+	editUploadSession = Variable { type: String }
+	nbExceptions = Variable { type: Integer initial: 0 }
+	
+	// Variables needed for the dialogs
+	selectedcontrolcode = Variable { type: String }
+	selectedcontrolresulttype = Variable { type: Integer }
+	selectedtargetuid = Variable { type: String }
+	selectedtargetrecorduid = Variable { type: String }
+	selectedexceptionuid = Variable { type: String }
+	
+	/* Datasets and records here */
+	exceptionsaccount = Dataset {
+		view: br_exceptions_account
+	}
+	exceptionsapplication = Dataset {
+		view: br_exceptions_application
+	}
+	exceptionsasset = Dataset {
+		view: br_exceptions_asset
+	}
+	exceptionsgroup = Dataset {
+		view: br_exceptions_group
+	}
+	exceptionsidentity = Dataset {
+		view: br_exceptions_identity
+	}
+	exceptionsorganisation = Dataset {
+		view: br_exceptions_organisation
+	}
+	exceptionspermission = Dataset {
+		view: br_exceptions_permission
+	}
+	exceptionsrepository = Dataset {
+		view: br_exceptions_repository
+	}
+	
+	exceptions = Dataset {
+		union: Union {
+			datasets:
+				exceptionsaccount ,
+				exceptionsapplication ,
+				exceptionsasset  ,
+				exceptionsgroup  ,
+				exceptionsidentity  ,
+				exceptionsorganisation ,
+				exceptionspermission ,
+				exceptionsrepository 			
+			discriminator-column: source 
+		}
+		count-variable: nbExceptions
+	}
+	
+	exception = Record {
+		view: br_exception with
+			selectedexceptionuid to uid
+		disabled:
+			StringPredicate ( selectedexceptionuid ) {
+				when IsEmpty then True
+			}
+	}
+	
+	changelog = Dataset {
+		view: br_exceptionchangelog with
+			selectedcontrolcode to controlcode,
+			selectedtargetuid to targetuid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				StringPredicate ( selectedcontrolcode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	account = Record {
+		view: br_accountDetail with
+			selectedtargetuid to uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "C" )
+			}
+	}
+	application = Record {
+		view: br_applicationDetail with
+			selectedtargetuid to uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "A" )
+			}
+	}
+	asset = Record {
+		view: br_asset with
+			selectedtargetrecorduid to recorduid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetrecorduid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "S" )
+			}
+	}
+	group = Record {
+		view: br_groupDetail with
+			selectedtargetuid to uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "G" )
+			}
+	}
+	identity = Record {
+		view: br_identityDetail with
+			selectedtargetuid to uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "I" )
+			}
+	}
+	organisation = Record {
+		view: br_organisationDetail with
+			selectedtargetuid to uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "O" )
+			}
+	}
+	permission = Record {
+		view: br_permissionDetail with
+			selectedtargetuid to uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "P" )
+			}
+	}
+	repository = Record {
+		view: br_repositoryDetail with
+			selectedtargetuid to uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( selectedtargetuid ) {
+					when IsEmpty then True
+				}
+				Not SameValuePredicate ( selectedtargettype, "R" )
+			}
+	}
+	
+	/* Page content */
+	
+	Splitter {
+		disposition: Horizontal 
+		size: 55%
+		Group {
+			ConditionalGroup {
+				IntCondition ( nbExceptions ) {
+					when <1 then [
+						Text {
+							value: $controlexception.no.exception
+							compact: True
+						}
+					] otherwise [
+						Group {
+							layout: Layout { grab: horizontal True vertical True }	
+							Table {
+								data: exceptions
+								layout: Layout { grab: horizontal True vertical True }
+								show-count: True 
+								show-filter: True
+								double-click:
+									Dialog modifyControlExceptionDialog (
+										selectedexceptionuid to exceptionUid,
+										selectedtargetuid to targetUid
+									),
+									ReloadData ( exceptions )
+								selection-changed-event:
+									Set exception.custom1 to editUploadSession
+								configurable: True
+								feature: em_readexception
+								commands: 
+									Commands {
+										orientation: Vertical
+										Command {
+											actions:
+												Dialog modifyControlExceptionDialog (
+													selectedexceptionuid to exceptionuid,
+													selectedtargetuid to targetuid
+												),
+												ReloadData ( exceptions )
+											icon: "16/famfamfam_silk_icons_v013/page_white_edit.png"
+											disabled:
+												StringPredicate ( selectedexceptionuid ) {
+													when IsEmpty then True
+												} 
+											feature: em_modifyexception
+										} 
+										Command {
+											actions: 
+												Dialog deleteControlExceptionDialog (
+													selectedcontrolcode to controlcode,
+													selectedcontrolresulttype to controlresulttype,
+													selectedtargetuid to targetuid
+												),
+												ReloadData ( exceptions )
+											icon: "16/famfamfam_silk_icons_v013/cancel.png"
+											disabled:
+												StringPredicate ( selectedexceptionuid ) {
+													when IsEmpty then True
+												} 
+											feature: em_deleteexception
+										}
+									}
+								Column {
+									column: control_controldisplayname
+									header: $controlexception.editor.header.control
+									width: 20%
+									filterable: True
+								}
+								Column {
+									column: target_displayname
+									header: $controlexception.editor.header.element
+									width: 35%
+									filterable: True
+								}
+								Column {
+									column: target_context
+									header: $controlexception.editor.header.context
+									width: 20%
+									filterable: True
+								}
+								Column {
+									column: validuntildate
+									header: $controlexception.editor.header.expiration
+									width: 15%
+									text: Transform Date (Current validuntildate).value ( $controlexception.date.short ) using optionStringMapping
+								}
+								Column {
+									column: foreigntype
+									text: Transform Current foreigntype using targetTypeMapping
+									header: $controlexception.editor.header.type
+									width: 10%
+									filterable: True
+								}
+								// Masked columns
+								Column {
+									initially-masked: True
+									column: validfromdate
+									header: $controlexception.editor.header.creation
+									width: 15%
+									text: Transform Date (Current validfromdate).value ( $controlexception.date.short ) using optionStringMapping
+								}
+								// Hidden columns for selections
+								Column {
+									column: foreigntype
+									selection: selectedtargettype
+									hidden: True
+								}
+								Column {
+									column: uid
+									selection: selectedexceptionuid
+									hidden: True
+								}
+								Column {
+									column: control_recorduid
+									selection: selectedcontrolrecorduid
+									hidden: True
+								}
+								Column {
+									column: control_controlcode
+									selection: selectedcontrolcode
+									hidden: True
+								}
+								Column {
+									column: control_controlresulttype
+									selection: selectedcontrolresulttype
+									hidden: True
+								}
+								Column {
+									column: target_uid
+									selection: selectedtargetuid
+									hidden: True
+								}
+								Column {
+									column: target_recorduid
+									selection: selectedtargetrecorduid
+									hidden: True
+								}
+							}
+						}
+					]
+				}
+			}
+		}
+		Group {
+			// Details about the control
+			ConditionalGroup {
+				StringCondition ( selectedexceptionuid ) {
+					when IsEmpty then [
+						Text {
+							value: $controlexception.selectFirst
+							compact: True
+						}
+					] otherwise [
+						Group {
+							layout: Layout { grab: horizontal True vertical False }
+							title: $controlexception.control
+							Grid {
+								columns: GridColumn {}, GridColumn {}
+								layout: Layout { grab: horizontal True vertical False }
+								GridRow {
+									GridCell {
+										span: 2
+										Text {
+											value: Transform exception.control_controldescription using optionStringMapping
+											label: $controlresult.controldescription
+											compact: True
+											lines: 2
+										}
+									}
+								}
+							}
+						}
+						// Details about the exception
+						Group {
+							layout: Layout { grab: horizontal True vertical False }
+							title: $controlexception.concept
+							Grid {
+								columns: GridColumn {}, GridColumn {}
+								layout: Layout { grab: horizontal True vertical False }
+								GridRow {
+									GridCell { 
+										Text {
+											value: Transform exception.issuername using optionStringMapping
+											label: $controlexception.issuername
+											compact: True
+										}
+										Text {
+											value: Transform Transform selectedtargettype using optionStringMapping using targetTypeMapping
+											label: $controlexception.elementtype
+											compact: True
+										}
+									}
+									GridCell {
+										Text {
+											value: Transform Date ( exception.validfromdate ).value ( $controlexception.date.short ) using optionStringMapping
+											label: $controlexception.fromdate
+											compact: True 
+										}
+										Text {
+											value: Transform Date ( exception.validuntildate ).value ( $controlexception.date.short ) using optionStringMapping
+											label: $controlexception.untildate
+											compact: True
+											commands:
+												Command {
+													icon: "16/famfamfam_silk_icons_v013/page_white_edit.png"
+													actions:
+														Dialog modifyControlExceptionDialog (
+															selectedexceptionuid to exceptionuid,
+															selectedtargetuid to targetuid
+														),
+														ReloadData ( exceptions )
+													disabled:
+														StringPredicate ( selectedexceptionuid ) {
+															when IsEmpty then True
+														}
+													feature: em_modifyexception
+												}
+										}
+									}
+								}
+								GridRow {
+									GridCell {
+										span: 2
+										Text {
+											value: Transform exception.^reason using optionStringMapping
+											label: $controlexception.^reason
+											compact: True 
+											commands:
+												Command {
+													icon: "16/famfamfam_silk_icons_v013/page_white_edit.png"
+													actions:
+														Dialog modifyControlExceptionDialog (
+															selectedexceptionuid to exceptionuid,
+															selectedtargetuid to targetuid
+														),
+														ReloadData ( exceptions )
+													disabled:
+														StringPredicate ( selectedexceptionuid ) {
+															when IsEmpty then True
+														}
+													feature: em_modifyexception
+												}
+										}
+									}
+								}
+								GridRow {
+									feature: em_changelog
+									GridCell {
+										span: 2
+										Text {
+											label: $controlexception.event.title
+											value: ""
+											compact: True
+											feature: em_changelog
+										}
+									}
+								}
+								GridRow {
+									feature: em_changelog
+									GridCell {
+										span: 2
+										Spacer { height: 5}
+										Table {
+											layout: Layout { grab: horizontal True vertical True hint: height 100 }
+											data: changelog
+											feature: em_changelog
+											Column {
+												column: closedate
+												text: Current closedate
+												width: 20%
+												header: $controlexception.event.header.date
+											}
+											Column {
+												column: issuerfullname
+												width: 30%
+												header: $controlexception.event.header.issuer
+											}
+											Column {
+												column: custom3
+												text: Transform Current custom3 using changeEventMapping
+												width: 30%
+												header: $controlexception.event.header.action
+											}
+										}
+									}
+								}
+							}
+						}
+						// Attachments
+						Group {
+							title: $controlexception.attachments.title
+							layout: Layout { grab: horizontal True  vertical True }
+							Upload {
+								variable: editUploadSession
+								compact: True
+								download-mode: ButtonRight
+								readonly: True
+								layout: Layout {
+									grab: vertical False horizontal True
+								}
+								commands:
+									Command {
+										icon: "16/famfamfam_silk_icons_v013/page_white_edit.png"
+										actions:
+											Dialog modifyControlExceptionDialog (
+												selectedexceptionuid to exceptionuid,
+												selectedtargetuid to targetuid
+											),
+											ReloadData ( exceptions )
+										disabled:
+											StringPredicate ( selectedexceptionuid ) {
+												when IsEmpty then True
+											}
+										feature: em_modifyexception
+									}
+							}
+						}
+						// Group for the element 
+						ConditionalGroup {
+							StringCondition (  selectedtargettype ){
+								when "C" then Group {
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/account.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $account.login
+													value: Transform account.login using optionStringMapping
+													target: Activity Account Detail with selectedtargetuid to paramAccountUid
+													icon: "16/audit/account_16.png"
+												}
+												Link {
+													label: $account.identifier
+													value: Transform account.identifier using optionStringMapping
+													target: Activity Account Detail with selectedtargetuid to paramAccountUid
+												}
+												Text {
+													label: $reconciliation.concept
+													value: Transform account.reconciliation using optionStringMapping
+													compact: True
+												}
+												Link {
+													label: $identity.concept
+													value: Transform account.identity_fullname using optionStringMapping
+													compact: True
+													target: Activity Identity Detail with account.identity_uid to paramIdentityUid
+													disabled:
+														StringPredicate ( account.identity_uid ){
+															when IsEmpty then True
+														}
+												}
+											}
+										}
+									}
+								}
+								when "A" then Group { 
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/application.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $application.displayname
+													value: Transform application.displayname using optionStringMapping
+													target: Activity Application Detail with selectedtargetuid to paramApplicationUid
+													icon: "16/audit/application_16.png"
+												}
+												Link {
+													label: $repository.concept
+													value: Transform application.repositorydisplayname using optionStringMapping
+													target: Activity Repository Detail with application.repositoryuid to paramRepositoryUid
+													disabled:
+														StringPredicate ( application.repositoryuid ){
+															when IsEmpty then True
+														}
+												}
+												Text {
+													label: $application.code
+													value: Transform application.code using optionStringMapping
+													compact: True
+												}
+												Link {
+													label: $application.manager
+													value: Transform application.managerfullname using optionStringMapping
+													compact: True
+													target: Activity Identity Detail with application.manageruid to paramIdentityUid
+													disabled:
+														StringPredicate ( application.manageruid ){
+															when IsEmpty then True
+														}
+												}
+											}
+										}
+									}
+								}
+								when "S" then Group { 
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/repository.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $asset.displayname
+													value: Transform asset.displayname using optionStringMapping
+													target: Activity Asset Detail with selectedtargetrecorduid to recorduid
+												}
+												Link {
+													label: $asset.code
+													value: Transform asset.code using optionStringMapping
+													target: Activity Asset Detail with selectedtargetrecorduid to recorduid
+												}
+												Text {
+													label: $asset.categorydisplayname
+													value: Transform asset.categorydisplayname using optionStringMapping
+													compact: True
+												}
+											}
+										}
+									}
+								}
+								when "G" then Group { 
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/group.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $group.displayname
+													value: Transform group.displayname using optionStringMapping
+													target: Activity Group Detail with selectedtargetuid to paramGroupUid
+													icon: "16/audit/group_16.png"
+												}
+												Link {
+													label: $repository.concept
+													value: Transform group.repository_displayname using optionStringMapping
+													target: Activity Repository Detail with group.repository_uid to paramRepositoryUid
+													disabled:
+														StringPredicate ( group.repository_uid ){
+															when IsEmpty then True
+														}
+												}
+												Text {
+													label: $group.code
+													value: Transform group.code using optionStringMapping
+													compact: True
+												}
+											}
+										}
+									}
+								}
+								when "I" then Group { 
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/identity.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $identity.fullname
+													value: Transform identity.fullname using optionStringMapping
+													target: Activity Identity Detail with selectedtargetuid to paramIdentityUid
+													icon: "16/audit/identity_16.png"
+												}
+												Text {
+													label: $identity.hrcode
+													value: Transform identity.hrcode using optionStringMapping
+													compact: True
+												}
+												Text {
+													label: $identity.internal
+													value: Transform identity.internal using booleanDisplayMapping
+													compact: True
+												}
+												Text {
+													label: $identity.employeetypedisplayname
+													value: Transform identity.employeetypedisplayname using optionStringMapping
+													compact: True
+												}
+											}
+										}
+									}
+								}
+								when "O" then Group { 
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/organisation.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $organisation.displayname
+													value: Transform organisation.displayname using optionStringMapping
+													target: Activity Organisation Detail with selectedtargetuid to paramOrganisationUid
+													icon: "16/audit/organisation_16.png"
+												}
+												Text {
+													label: $organisation.code
+													value: Transform organisation.code using optionStringMapping
+													compact: True
+												}
+												Link {
+													label: $organisation.manager
+													value: Transform organisation.manager_fullname using optionStringMapping
+													target: Activity Identity Detail with organisation.manager_uid to paramIdentityUid
+													disabled:
+														StringPredicate ( organisation.manager_uid ){
+															when IsEmpty then True
+														}
+												}
+											}
+										}
+									}
+								}
+								when "P" then Group { 
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/permission.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $permission.displayname
+													value: Transform permission.displayname using optionStringMapping
+													target: Activity Permission Detail with selectedtargetuid to paramPermissionUid
+													icon: "16/audit/permission_16.png"
+												}
+												Text {
+													label: $permission.code
+													value: Transform permission.code using optionStringMapping
+													compact: True
+												}
+												Link {
+													label: $permission.applicationdisplayname
+													value: Transform permission.application_displayname using optionStringMapping
+													target: Activity Application Detail with permission.application_uid to paramApplicationUid
+													disabled:
+														StringPredicate ( permission.application_uid ){
+															when IsEmpty then True
+														}
+												}
+											}
+										}
+									}
+								}
+								when "R" then Group {
+									title: $controlexception.element
+									layout: Layout { grab: horizontal True vertical False hint: height 120 }
+									Grid {
+										columns: GridColumn {}, GridColumn{}
+										GridRow {
+											GridCell {
+												Image {
+													image: "48/red/repository.png"
+												}
+											}
+											GridCell {
+												Link {
+													label: $repository.displayname
+													value: Transform repository.displayname using optionStringMapping
+													target: Activity Repository Detail with selectedtargetuid to paramRepositoryUid
+													icon: "16/audit/repository_16.png"
+												}
+												Text {
+													label: $repository.code
+													value: Transform repository.code using optionStringMapping
+													compact: True
+												}
+												Text {
+													label: $repository.type
+													value: Transform repository.type using optionStringMapping
+													compact: True
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		}
+	}
+}

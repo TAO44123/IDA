@@ -1,0 +1,113 @@
+ds_okta_NLS = NLS {
+  title [ en "Okta" fr "Okta" ]
+  description [ 
+    en "Collects Okta account, group and application information through a query to the Okta tenant"
+    fr "Collecte les informations sur les comptes, les groupes et les applications Okta via une requête vers le tenant Okta"]
+  label_login [ 
+  	en "User login"
+  	fr "Identifiant utilisateur"]
+  label_login_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation." 
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_token [ 
+  	en "User token"
+  	fr "Token utilisateur"]
+  label_token_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_url [ 
+  	en "Tenant URL"
+  	fr "URL du tenant"]
+  label_url_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+}
+
+ds_okta = Page {
+	title: $ds_okta_NLS.title
+	tags: "bwds_connector" , "live" , "csv", "okta"
+	description: $ds_okta_NLS.description
+	icon: "bw_dsm/L/bw_okta.png"
+	large-icon: "bw_dsm/XL/bw_okta.png"	
+	metadata: ( 	    
+	    category -> "infrastructure", 
+	    family -> "API",
+	    collector -> "bw_okta",
+	    action ->"okta",
+	    destPathVar -> "bw_okta_sourcefolder",
+	    filePattern -> "*.csv",
+	    hasMapping -> False,
+	    multiFile -> True  
+	 )
+}
+
+/* config dynamic fragment */
+
+okta_params = Constant { value: "login,token,url" }
+
+deserializeOptions_adp = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant okta_params }
+  options = Input
+  login = Output { }
+  token = Output { }
+  url = Output { }
+}
+
+serializeOptions_adp = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant okta_params }
+  secretnames = Input { default: "token"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+
+  login = Input { }
+  token = Input { }
+  url = Input { }
+}
+
+
+ds_okta_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  // custom
+  login = Variable {}
+  token = Variable
+  url = Variable
+  
+   doInit = NamedAction(
+     Call deserializeOptions_adp ( options to options, login from login, token from token , url from url )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_adp ( dsname to secretdsname, 
+          login to login, token to token , url to url   ) to options
+   )
+   
+  Edit { 
+     label: $ds_okta_NLS.label_login
+     variable: login
+     not-empty:True
+     tooltip: $ds_okta_NLS.label_login_TT
+  }
+  Edit { 
+     label: $ds_okta_NLS.label_token
+     variable: token
+     not-empty:True
+     password-mode: True
+     tooltip: $ds_okta_NLS.label_token_TT
+  }
+  Edit { 
+     label: $ds_okta_NLS.label_url
+     variable: url
+     not-empty:True
+     tooltip: $ds_okta_NLS.label_url_TT
+  } 
+  
+}
+
+
+

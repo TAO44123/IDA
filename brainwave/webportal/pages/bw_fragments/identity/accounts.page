@@ -1,0 +1,342 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+
+fragmentIdentityAccountsNLS = NLS {
+	empty [en "Identity doesn't have active accounts" fr "Cette identité n'a pas de comptes actifs"]
+	filteredto [en "filtered to {0}" fr "filtré sur {0}"]
+	
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the accounts for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid  </li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityAccounts = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_identityaccounts with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	ConditionalGroup {
+		IntCondition(Count data) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityAccountsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Table {
+					data:data
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					
+					Column {
+						column:uid
+						hidden:True
+						selection:outaccountuid
+					}
+					
+					Column {
+						column:login
+						header:$account.login
+						sortable:True
+						filterable:True
+						selection:outaccountlogin
+					}
+			
+					Column {
+						column:givenname
+						header:$account.givenname
+						sortable:True
+						filterable:True
+					}
+			
+					Column {
+						column:surname
+						header:$account.surname
+						sortable:True
+						filterable:True
+					}
+			
+					Column {
+						column:username
+						header:$account.username
+						sortable:True
+						filterable:True
+					}
+			
+					Column {
+						column:disabled
+						header:$account.disabled
+						sortable:True
+						filterable:True
+					}
+			
+					Column {
+						column:creationdate
+						header:$account.creationdate
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:lastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:repositoryuid
+						hidden:True
+						selection:outrepositoryuid
+					}
+					Column {
+						column:repositorydisplayname
+						header:$repository.concept
+						sortable:True
+						filterable:True
+						selection:outrepositoryname
+					}
+				}
+			]
+		}
+	}
+}
+
+
+fragmentIdentityAccounts360NLS = NLS {
+	groupchanged [ en "Group changed" fr "Group. changés" ]
+	permchanged [ en "Perm. changed" fr "Perm. changées" ]
+	fschanged [ en "Fold. changed" fr "Réper. changés" ]
+	fsrightschanged [ en "Fold.rights changed" fr "Droits réper. changés" ]
+	yes [ en "Yes" fr "Oui" ] 
+	no [ en "No" fr "Non" ]
+}
+
+ noyesstatus = StringMapping {
+	when "false" then $fragmentIdentityAccounts360NLS.no prefix " "
+	when "true" then $fragmentIdentityAccounts360NLS.yes prefix " "
+}
+
+newItemTemplate = StringImageTemplate {
+	when "new" then %status_16_green.add
+	when "true" then %status_16_orange.update
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the accounts for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>inPermissionType </b>the permission type for permission counter ('Role' by defaut)</li>
+ * <li><b>inrepositoryuids </b>Optional, filter to some repositories only</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid  </li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityAccounts360 = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanreconcile = Variable { multivalued:False type:Boolean initial:False }
+	inPermissionType = Variable {multivalued:True}
+	inrepositoryuids = Variable { multivalued:True }
+
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	accbyidentity = Dataset {
+		view: bwf_accsbyidentity with inuid to uid, inrepositoryuids to inrepositoryuids unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	repository = Record {
+		view: bwf_repository with inrepositoryuids to uid
+		disabled:StringPredicate(inrepositoryuids) { when IsEmpty then True otherwise False }
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												incanreconcile to incanreconcile,
+												True to inshowowner,
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												inPermissionType to inpermissiontypes
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentIdentityAccountsNLS.filteredto(repository.displayname)
+		hidden:StringPredicate(inrepositoryuids) { when IsEmpty then True otherwise False }
+	}
+	ConditionalGroup {
+		IntCondition(Count accbyidentity) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityAccountsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Table {
+					data: accbyidentity
+					layout: Layout { grab: horizontal True vertical True }
+					label: Label { break: True }
+					configurable: True
+					show-filter: True
+					show-count: True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+			
+					Column {
+						column: acc_uid
+						selection: outaccountuid
+						hidden: True
+					}
+					Column {
+						column: repo_uid
+						selection: outrepositoryuid
+						hidden: True
+					}
+					Column {
+						column: repo_displayname
+						selection: outrepositoryname
+						header: $repository.concept
+						sortable: True
+						filterable: True
+					    width: 15%
+					}									
+														
+					Column {
+						column: acc_login
+						selection: outaccountlogin
+						header: $account.login
+						sortable: True
+						filterable: True
+					    width: 15%
+					    actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column: acc_username
+						header: $account.username
+						sortable: True
+						filterable: True
+						width: 15%
+						initially-masked: True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column: acc_lastlogindate
+						header: $account.lastlogindate
+						sortable: True
+						filterable: True
+						width: 15%
+					}
+					Column {
+						column: acc_groupchanged	
+						image: TemplateImageSelection(Current acc_groupchanged) using newItemTemplate
+						header: $fragmentIdentityAccounts360NLS.groupchanged
+						text: Transform Current acc_groupchanged using noyesstatus
+						sortable: True
+						filterable: True
+						width:15%
+					}
+					Column {
+						column: acc_permissionchanged	
+						image: TemplateImageSelection(Current acc_permissionchanged) using newItemTemplate
+						header: $fragmentIdentityAccounts360NLS.permchanged
+						text: Transform Current acc_permissionchanged using noyesstatus
+						sortable: True
+						filterable: True
+						width:10%
+					}
+					Column {
+						column: acc_fsrightchanged	
+						image: TemplateImageSelection(Current acc_fsrightchanged) using newItemTemplate
+						header: $fragmentIdentityAccounts360NLS.fsrightschanged
+						text: Transform Current acc_fsrightchanged using noyesstatus
+						sortable: True
+						filterable: True
+						width:15%
+					}				
+				}
+			]
+		}
+	}
+}

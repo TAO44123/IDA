@@ -1,0 +1,201 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+bwiasr_safeRightReviewStatusNLS = NLS {
+	title [en "Right Review Compliance Status" fr "Statut de conformité des revues de droits"]
+	description.tooltip [en "Display a description for this analytics" fr "Affiche une description de cette analyse"]
+	description [
+		en "This analytics presents the safes right review compliance status\nIt gathers the latest compliance driven access review campaign for each safe\nand highlight the ones that are compliant, not compliant and the one that should be reviewed asap to maintain the compliance status\nYou can configure the compliance delay and a typical campaign duration to fine tune the indicators\nyou can also filter the safes to highlight the ones associated with a given tag\nYou can save your configuration by bookmarking this page in your favorites"
+		fr "Cette analyse présente l'état de conformité de la revue des droits des safes.\nElle rassemble pour chaque safe la dernière campagne de revue de conformité\net met en évidence celles qui sont conformes, non conformes et celles qui doivent être revues au plus vite pour maintenir le statut de conformité.\nVous pouvez configurer le délai de conformité et une durée de campagne type pour affiner les indicateurs.\nVous pouvez également filtrer les safes pour mettre en évidence celles qui sont associées à un label.\nVous pouvez sauvegarder votre configuration en ajoutant cette page à vos favoris."
+	]
+	nextreviewin [	en "{0,choice,0#Next review should start now|1#Next review should start in 1 day|2#Next review should start in {0} days}" 
+					fr "{0,choice,0#La prochaine revue devrait démarrer maintenant|1#La prochaine revue devrait démarrer dans 1 jour|2#La prochaine revue devrait démarrer dans {0} jours}"]
+	parameters [en "Parameters" fr "Paramètres"]
+	
+	errorthreshold [en "Must have been reviewed in the last (days)" fr "Doit être revu dans les derniers (jours)"]
+	errorthreshold.tooltip [en "Error threshold, entry appears in red if it has not been reviewed or reviewed outside of this range" 
+							fr "Seuil d'erreur, les entrées apparaissent en rouge si elles n'ont pas été revues ou si elles ont été revues au dela de cette limite"]
+	warningthreshold [en "Typical review duration (in days)" fr "Durée d'une revue (en jours)"]
+	warningthreshold.tooltip [	en "Warning threshold, entry appears in orange if it has been reviewed below this threshold"
+								fr "Seuil d'alerte, les entrées apparaissent en orange si elles ont été revues dans cette limite"
+	]
+	
+	filtertag [en "Filter by safe Tag" fr "Filtrer par label de safe"]
+	filtertag.tooltip [en "Only consider safes with the following tag" fr "Considérer seulement les safes avec le label suivant"]
+	
+	reviewdetails.tooltip [	en "Review Campaign Details"
+							fr "Détails de la campagne de revue"
+	]
+	
+	neverreviewed [en "Never reviewed" fr "Jamais revu"]
+	latestcampaign [en "Latest campaign" fr "Dernière campagne"]
+	latestcampaigndate [en "Latest review Date" fr "Dernière date de revue"]
+}
+
+reviewImageMap = ImageMap {
+	link 			["bw_fragments/browsing/link.svg" width:16px color:blackNG]
+}
+
+
+darkerRed = Color RGB(130, 42, 42)
+darkerGreen = Color RGB(46, 112, 31)
+darkerOrange = Color RGB(165, 92, 23)
+
+darkerRedBg = Style {
+	background:Color darkerRed
+	foreground:whiteNG
+}
+
+redBg = Style {
+	background:Color redNG
+	foreground:whiteNG
+}
+orangeBg = Style {
+	background:Color orangeNG
+}
+greenBg = Style {
+	background:Color greenNG
+}
+
+orangeTitleText = Style {
+	foreground:whiteNG
+	background:Color darkerOrange
+	size:16px
+}
+redTitleText = Style {
+	foreground:whiteNG
+	background:Color darkerRed
+	size:16px
+}
+greenTitleText = Style {
+	foreground:whiteNG
+	background:Color darkerGreen
+	size:16px
+}
+
+whiteText = Style {
+	foreground:whiteNG
+}
+blackText = Style {
+	foreground:blackNG
+}
+
+
+
+bwiasr_safeRightReviewStatus = Page {
+	title: $bwiasr_safeRightReviewStatusNLS.title
+	selected-menuitem:saferightreviewdashboard
+	feature: All(pam_license, Any(governance_license, compliance_license))
+	header: PageHeader {
+		Button {
+			image:%collection_24.question
+			presentation:Link
+			actions:Message $bwiasr_safeRightReviewStatusNLS.description
+			tooltip:$bwiasr_safeRightReviewStatusNLS.description.tooltip
+		}
+	}
+	dock-left: Dock {
+		collapsible:True
+		width:260
+		Header {
+			value:$bwiasr_safeRightReviewStatusNLS.parameters
+			styling:bigTitleStyle
+		}
+		ParametersEdition {
+			parameters:errorThreshold, warningThreshold, selectedTag		
+		}
+	}
+	
+	/* Parameters here */
+	errorThreshold = Parameter { hidden:False default:365 label:$bwiasr_safeRightReviewStatusNLS.errorthreshold tooltip:$bwiasr_safeRightReviewStatusNLS.errorthreshold.tooltip  constraint:Int{ min:0 max: 99999 } mandatory: False }
+	warningThreshold = Parameter { hidden:False default:45 label:$bwiasr_safeRightReviewStatusNLS.warningthreshold tooltip:$bwiasr_safeRightReviewStatusNLS.warningthreshold.tooltip  constraint:Int{ min:0 max: 99999 } mandatory: False }
+	selectedTag = Parameter { type:String label:$bwiasr_safeRightReviewStatusNLS.filtertag tooltip:$bwiasr_safeRightReviewStatusNLS.filtertag.tooltip constraint:Lookup { data:tagList text:Current tag value:Current tag empty-text:"" empty-value: ""} hidden:False mandatory: False }
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	safes = Dataset {
+		view:bwiasr_safeRightReviewStatusBV with warningThreshold to warningThreshold, errorThreshold to errorThreshold, selectedTag to tagfilter
+	}
+	
+	tagList = Dataset {
+		view:bwd_safes_tags
+	}
+	
+	
+	/* Page content */
+	
+	Tiles {
+		columns:4
+		tile-height:125
+		
+		TileGroup {
+			iterate-on:safes
+			
+			Tile {
+				Group {
+					styling:StringStyling(Current compliancestatus) { when "ok" then greenBg  when "warning" then orangeBg  otherwise redBg }
+					
+					Grid {
+						columns:GridColumn
+						layout:Layout { grab:horizontal True vertical False }
+						GridRow {
+							GridCell {
+								Link {
+									value:Current displayname
+									styling:StringStyling(Current compliancestatus) { when "ko" then redTitleText when "warning" then orangeTitleText otherwise greenTitleText }
+									target:Activity CASafe Detail with Current uid to paramSafeUid
+									commands:Commands {
+										position:After
+										Command {
+											actions:GoTo Dynamic ( "page", Current campaign_statuspage) with Current bwr_applicationrightreviewstatus_campaignrecorduid to campaignid
+											disabled:StringPredicate(Current campaign_statuspage) { when IsEmpty then True otherwise False }
+											icon:%reviewImageMap.link
+											tooltip:$bwiasr_safeRightReviewStatusNLS.reviewdetails.tooltip
+										}
+									}
+								}
+							}
+						}
+						GridRow {
+							GridCell {
+								Text {
+									label:""
+									value:$bwiasr_safeRightReviewStatusNLS.neverreviewed
+									hidden:StringPredicate(Current campaign_recorduid) { when IsEmpty then False otherwise True }
+									compact:True
+									styling:whiteText
+								}
+								Text {
+									label:Label { styling:whiteText value:$bwiasr_safeRightReviewStatusNLS.latestcampaign }
+									value:Current campaign_title
+									compact:True
+									hidden:StringPredicate(Current campaign_recorduid) { when IsEmpty then True }
+									styling:whiteText
+								}
+								Text {
+									label:Label { styling:whiteText value:$bwiasr_safeRightReviewStatusNLS.latestcampaigndate}
+									value:SubString(10) Current campaign_closedate
+									compact:True
+									hidden:StringPredicate(Current campaign_recorduid) { when IsEmpty then True }
+									styling:whiteText
+								}
+								Text {
+									label:Label { break:True }
+									value:$bwiasr_safeRightReviewStatusNLS.nextreviewin(Current shouldstartin)
+									compact:True
+									hidden:StringPredicate(Current campaign_recorduid) { when IsEmpty then True }
+									styling:whiteText
+								}
+							}
+						}
+					}
+				}			
+			}
+		}
+	
+	}
+}

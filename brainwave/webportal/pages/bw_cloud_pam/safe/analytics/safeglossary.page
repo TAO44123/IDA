@@ -1,0 +1,983 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/reports/teamnls.page"
+import "/webportal/pages/bw_cloud_pam/safe/search.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+import "/webportal/pages/bw_fragments/application/details.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/bw_fragments/permission/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+safeglossary360NLS = NLS {
+	title [en "Managed Safe Glossary" fr "Gestion du glossaire des safes gérées"]
+	dyntitle [en "Managed Safe Glossary for {0}" fr "Gestion du glossaire des safes gérées par {0}"]
+	description [
+		en "This analysis helps you to manage your safe glossary, description, sensitivity level and sensitivity reason."
+		fr "Cette analyse vous aide à gérer le glossaire de vos safes, description, niveau de sensibilité et raison de la sensibilité."
+	]
+	safedetaildialog [en "Safe Details" fr "Détails du safe"]
+	safedetaildialog.tooltip [
+		en "Clic on this button to open the safe detail dialog window to get more details about the selected safe."
+		fr "Cliquez sur ce bouton pour ouvrir la fenêtre détaillant le safe sélectionné."
+	]
+}
+
+bwfSafeDetailsMetadata_Dialog_NLS = NLS {
+	title [en "Update description" fr "Mettre à jour la description"]
+	batchtitle [en "Batch update description" fr "Mettre à jour en masse la description"]
+	descriptionlabel [en "Description" fr "Description"]
+	description[en 'Please update the description associated with this safe.' 
+				fr 'Veuillez mettre à jour la description associée à ce safe.'
+				]
+	batchdescription[en 'Please update the description associated with these safes.' 
+				fr 'Veuillez mettre à jour la description associée à ces safes.'
+				]				
+	done [en "Your request to update description has been received successfully." fr "Votre demande de modification de la description a bien été enregistrée."]
+	edit [en "Edit" fr "Edition"]
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	sensitivityreasonvalid [en "Please enter a valid explanation" fr "Veuillez saisir une raison"]
+}
+
+aartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+aartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+aartimeline_highlightmodified360 = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+aarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+
+/**
+ * Update safe description
+ * 
+ * @param paramSafeUid safe uid
+ */
+bwfSafeDetailsMetadata_Dialog = Dialog {
+	title: $bwfSafeDetailsMetadata_Dialog_NLS.title
+	enter-event:	TransferData categories(category) to (categoryList), 
+					Set safe.description to description,
+					Set safe.sensitivityreason to sensitivityreason,
+					Set safe.category to category,
+					Set safe.sensitivitylevel to sensitivitylevel
+	buttons:[
+	
+		OkButton {
+			disabled:
+				OrPredicate {
+					StringPredicate(changed) {when '1' then False otherwise True}
+					AndPredicate {
+						IntPredicate(sensitivitylevel) { when >0 then True otherwise False }				
+						Not BooleanPredicate(reasonisvalid) 
+					}
+					StringPredicate(description) { when IsEmpty then True otherwise False }
+				}
+			actions:Set description to task.description,
+					Set sensitivityreason to task.sensitivityreason,
+					Set category to task.category,
+					Set sensitivitylevel to task.sensitivitylevel,
+					Set paramSafeUid to task.application,
+					TaskComplete task wait-end,
+					Flash $bwfSafeDetailsMetadata_Dialog_NLS.done
+		} 
+	
+		CancelButton
+	]
+	
+	width:800
+	height:300
+
+	/* Parameters here */
+	paramSafeUid = Variable {type:String multivalued:False}
+
+	description = Variable
+	sensitivitylevel = Variable
+	sensitivityreason = Variable
+	category = Variable
+	
+	selecteddescription = Variable { private:True }
+	newcategory = Variable { private:True }
+	changed = Variable{type:String initial:'0' private:True }
+	categoryList = Variable {type:String multivalued:True}
+	reasonisvalid = Variable
+
+	safe = Record {
+		view: br_applicationDetail with paramSafeUid to uid
+	}
+	categories = Dataset {
+		view:bwf_safecategory
+	}
+	categoryCombo = Dataset {
+		columns:categoryList
+	}
+
+	task = TaskRecord (create "bwf_updateapplicationmetadata")
+	
+
+	Header {
+		value:$bwfSafeDetailsMetadata_Dialog_NLS.description
+		styling:subtitleStyle
+	}
+	
+	Separator
+	Combo {
+		variable:category
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.category
+		allow-none:True
+		options:Dynamic {
+			data:categoryCombo
+			text:Current categoryList
+			value:Current categoryList
+		}
+		modify-event:Set '1' to changed
+		commands:Commands {
+			position:After
+			Command {
+				actions:Dialog bwfApplicationDetailsText_Dialog(newcategory from text), MultivaluedAdd newcategory to categoryList, Set newcategory to category, Set '1' to changed
+				
+				icon:'16/famfamfam_silk_icons_v013/add_black.png'
+				tooltip:$bwfApplicationDetailsMetadata_Dialog_NLS.addcategory
+			}
+		}
+	}
+	Combo {
+		variable:sensitivitylevel
+		label:$bwfSafeDetailsMetadata_Dialog_NLS.sensitivitylevel
+		modify-event:Set '1' to changed, IntCase(sensitivitylevel) { when =0 then [ Set '-' to sensitivityreason] }
+		options:Static {
+			Option {
+				text:Transform "0" using bwfApplicationSensitivityLevelMapping
+				value:0
+			}
+			Option {
+				text:Transform "1" using bwfApplicationSensitivityLevelMapping
+				value:1
+			}
+			Option {
+				text:Transform "2" using bwfApplicationSensitivityLevelMapping
+				value:2
+			}
+			Option {
+				text:Transform "3" using bwfApplicationSensitivityLevelMapping
+				value:3
+			}
+			Option {
+				text:Transform "4" using bwfApplicationSensitivityLevelMapping
+				value:4
+			}
+		}
+	}
+	Edit {
+		variable:sensitivityreason
+		label:$bwfSafeDetailsMetadata_Dialog_NLS.sensitivityreason
+		modify-event:Set '1' to changed
+		not-empty:True
+		match:'[0-9a-zA-z].+'
+		validity:reasonisvalid
+		error-tooltip:$bwfSafeDetailsMetadata_Dialog_NLS.sensitivityreasonvalid
+		hidden:IntPredicate(sensitivitylevel) { when =0 then True otherwise False }
+	}
+	Edit {
+		variable:description
+		label:$bwfSafeDetailsMetadata_Dialog_NLS.descriptionlabel
+		multi-lines:True
+		layout:Layout{grab: horizontal True vertical False hint:height 64}
+		modify-event:Set '1' to changed
+		not-empty:True
+	}	
+}
+
+/**
+ * Batch Update safe description
+ * 
+ * @param paramSafeUid safe uid
+ */
+bwfSafeDetailsBatchMetadata_Dialog = Dialog {
+	title: $bwfSafeDetailsMetadata_Dialog_NLS.batchtitle
+	enter-event:	TransferData categories(category) to (categoryList)
+	buttons:[
+	
+		OkButton {
+			disabled:
+				OrPredicate {
+					StringPredicate(changed) {when '1' then False otherwise True}
+					AndPredicate {
+						IntPredicate(sensitivitylevel) { when >0 then True otherwise False }
+						Not BooleanPredicate(reasonisvalid) 
+					}
+					StringPredicate(description) { when IsEmpty then True otherwise False }
+				}
+			actions:Set description to task.description,
+					Set sensitivityreason to task.sensitivityreason,
+					Set sensitivitylevel to task.sensitivitylevel,
+					Set category to task.category,
+					Set safes to task.safe,
+					TaskComplete task wait-end,
+					Flash $bwfSafeDetailsMetadata_Dialog_NLS.done
+		} 
+	
+		CancelButton
+	]
+	
+	width:800
+	height:280
+	
+	/* Parameters here */
+	safes = Variable {type:String multivalued:True}
+	description = Variable
+	sensitivitylevel = Variable
+	sensitivityreason = Variable
+	category = Variable
+	newcategory = Variable { private:True }
+			
+	selecteddescription = Variable { private:True }
+	categoryList = Variable {type:String multivalued:True}	
+	changed = Variable{type:String initial:'0' private:True }
+	reasonisvalid = Variable
+
+	task = TaskRecord (create "bwf_batchupdatesafemetadata")
+
+	categories = Dataset {
+		view:bwf_safecategory
+	}
+
+	categoryCombo = Dataset {
+		columns:categoryList
+	}
+		
+	Header {
+		value:$bwfSafeDetailsMetadata_Dialog_NLS.batchdescription
+		styling:subtitleStyle
+	}
+	Separator
+	Combo {
+		variable:category
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.category
+		allow-none:True
+		options:Dynamic {
+			data:categoryCombo
+			text:Current categoryList
+			value:Current categoryList
+		}
+		modify-event:Set '1' to changed
+		commands:Commands {
+			position:After
+			Command {
+				actions:Dialog bwfApplicationDetailsText_Dialog(newcategory from text), MultivaluedAdd newcategory to categoryList, Set newcategory to category, Set '1' to changed
+				
+				icon:'16/famfamfam_silk_icons_v013/add_black.png'
+				tooltip:$bwfApplicationDetailsMetadata_Dialog_NLS.addcategory
+			}
+		}
+	}	
+	Combo {
+		variable:sensitivitylevel
+		label:$bwfSafeDetailsMetadata_Dialog_NLS.sensitivitylevel
+		modify-event:Set '1' to changed, IntCase(sensitivitylevel) { when =0 then [ Set '-' to sensitivityreason] }
+		options:Static {
+			Option {
+				text:Transform "0" using bwfApplicationSensitivityLevelMapping
+				value:0
+			}
+			Option {
+				text:Transform "1" using bwfApplicationSensitivityLevelMapping
+				value:1
+			}
+			Option {
+				text:Transform "2" using bwfApplicationSensitivityLevelMapping
+				value:2
+			}
+			Option {
+				text:Transform "3" using bwfApplicationSensitivityLevelMapping
+				value:3
+			}
+			Option {
+				text:Transform "4" using bwfApplicationSensitivityLevelMapping
+				value:4
+			}
+		}
+	}
+	Edit {
+		variable:sensitivityreason
+		label:$bwfSafeDetailsMetadata_Dialog_NLS.sensitivityreason
+		modify-event:Set '1' to changed
+		not-empty:True
+		match:'[0-9a-zA-z].+'
+		validity:reasonisvalid
+		error-tooltip:$bwfSafeDetailsMetadata_Dialog_NLS.sensitivityreasonvalid
+		hidden:IntPredicate(sensitivitylevel) { when =0 then True otherwise False }
+		limit:1000
+	}
+	Edit {
+		variable:description
+		label:$bwfSafeDetailsMetadata_Dialog_NLS.descriptionlabel
+		multi-lines:True
+		limit:1000
+		layout:Layout{grab: horizontal True vertical False hint:height 64}
+		modify-event:Set '1' to changed
+		not-empty:True
+	}	
+}
+
+
+
+safeglossary360detail = Page {
+	title: $safeglossary360NLS.title
+	description:$safeglossary360NLS.description
+//	tags: "identityext" priority 200, "byuid" , "analytics", "applicationmanager"
+//	tags: "ca_safe", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwpam_safeglossary
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page safeglossary360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+//safeglossary360hp = Page {
+//	title: $safeglossary360NLS.title
+//	description:$safeglossary360NLS.description
+//	tags: "myapp_access360" priority 1
+//	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+//
+//	conditional-redirect: ConditionalRedirect {
+//		condition:BooleanPredicate(True)
+//		target:Page safeglossary360 with-current-parameters
+//	}
+//
+//    org = Parameter { type: String hidden: True }
+//    uid = Parameter { type: String hidden: True }
+//}
+
+safeglossary360 = Page {
+	title: $safeglossary360NLS.title
+	tags: "ca_safe", "searchresults"
+	feature:bwpam_safeglossary		
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	description:$safeglossary360NLS.description
+
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	search = SearchDefinition {
+		entity: CASafe
+		simple-mode-rule: brpam_casafe_simple_search
+	}	
+	
+	/* Variables here */
+	selectedsafes = Variable { multivalued:True }
+	selectedsafe = Variable
+	selectedsafesensitivitylevel = Variable
+	selectedsafesensitivityreason = Variable
+	selectedsafedescription = Variable
+	selectedsafecategory = Variable
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	onlyemptydescription = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+
+	managedsafes = Dataset {
+		view:enduser360_managedsafe with uid to uid
+	}
+	safemetadata = Dataset {
+		search: Search {
+			view:bwpam_safesmetadata with onlyemptydescription to withoutdescriptiononly /* UserVariable session_selectedApplicationsTeam360 to uid */
+			definition: search
+		}
+		excludes:BooleanPredicate(False) /* Contournement de bug produit */
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]		
+		
+	}
+	
+	goSafeDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_casafeDetailsDialog ( selectedsafe to inuid )
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	editsafe = NamedAction (
+		Dialog bwfSafeDetailsMetadata_Dialog (		selectedsafe to paramSafeUid,
+													selectedsafesensitivitylevel to sensitivitylevel,
+													selectedsafesensitivityreason to sensitivityreason,
+													selectedsafedescription to description,
+													selectedsafecategory to category), 
+												ReloadData (safemetadata)	
+	)
+	
+	batcheditsafe = NamedAction (
+		Dialog bwfSafeDetailsBatchMetadata_Dialog(selectedsafes to safes), 
+												ReloadData (safemetadata)	
+	)
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn { fill:True width: grow }, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint:height 38 }
+		GridRow {
+			GridCell {
+				ButtonGroup {
+					Button {
+						actions:ExecuteNamedAction batcheditsafe
+						text:$safeglossary360FragmentNLS.bulk
+			            image:%collection_16.pencil
+			            disabled:StringPredicate(selectedsafes) { when IsEmpty then True otherwise False }
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:onlyemptydescription
+					text:$safe_accessrights360NLS.onlyempty
+				}
+			}
+		}
+	}
+	Table {
+		data:safemetadata
+		layout: Layout { grab: horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		double-click:ExecuteNamedAction goSafeDetails
+		checkboxes:safeuid to selectedsafes
+
+		Column {
+			column:safedisplayname
+			tooltip:Current safedisplayname
+			header:$casafeSearchPageNLS.safe
+			width:260px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction editsafe
+			
+		}
+		Column {
+			column:safecategory
+			header:$analytics_safe_safeglossary360NLS.safecategory
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			initially-masked:False
+			selection:selectedsafecategory	
+		}		
+		Column {
+			column:safesensitivitylevel
+			text:Transform Current safesensitivitylevel using bwfApplicationSensitivityLevelMapping
+			header:$application.sensitivitylevel
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedsafesensitivitylevel
+		}
+		Column {
+			column:safesensitivityreason
+			tooltip:Current safesensitivityreason
+			header:$application.sensitivityreason
+			width:200px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedsafesensitivityreason
+			initially-masked:True
+		}
+		Column {
+			column:safedescription
+			tooltip:Current safedescription
+			header:$application.description
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:selectedsafedescription
+		}
+		Column {
+			column:safeuid
+			hidden:True
+			selection:selectedsafe
+		}
+		Column {
+			column:vaultdisplayname
+			tooltip:Current vaultdisplayname
+			header:$casafeSearchPageNLS.vault
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+		}		
+	}
+	Text {
+		value:$safeglossary360FragmentNLS.limit
+		compact:True
+		styling:warningFieldStyle
+		hidden:IntPredicate(Count safemetadata) { when =1000 then False otherwise True }
+	}
+	
+	ButtonGroup { align: Right 
+		Button {
+			disabled: StringPredicate(selectedsafe) { when IsEmpty then True otherwise False }
+			actions: ExecuteNamedAction goSafeDetails
+			text:$safeglossary360NLS.safedetaildialog
+			tooltip:$safeglossary360NLS.safedetaildialog.tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}	
+		Button {
+			actions:GoTo Activity CASafe Search with SerializeSearch search to casafeSearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}	
+	}
+}
+
+safe_accessrights360NLS = NLS {
+	title [en "Glossary management" fr "Gestion du glossaire"]
+	dyntitle [en "{0} glossary management" fr "Gestion du glossaire pour {0}"]
+	description [
+		en "This analysis helps you to manage the safe glossary such as safe description and sensitivity levels"
+		fr "Cette analyse vous permet de gérer le glossaire des safes tel que la description et le niveau de sensibilité des safes."
+	]
+	onlyempty [	en "Only safes without description"
+				fr "Seulement les safes sans description"
+	]
+}
+
+//safe_safeglossary360 = Page {
+//	title: $safe_accessrights360NLS.title
+//	dynamic-title: $safe_accessrights360NLS.dyntitle(safe.displayname)
+//	description:$safe_accessrights360NLS.description
+//	tags: "safe" priority 100, "byuid" , "analytics"
+//	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+//	
+//	mixins: simpleReport	
+//
+//	/* Parameters here */
+//    uid = Parameter { type: String hidden: True }
+//
+//	safe = Record {
+//		view:bwpam_casafeDetail with uid to uid
+//	}
+//
+//	IncludeFragment {
+//		fragment:safeglossary360Fragment with value-of uid to applicationuid
+//	}	
+//}
+
+analytics_safe_safeglossary360NLS = NLS {
+	title [en "Safe glossary management" fr "Gestion du glossaire des safes"]
+	description [
+		en "This analysis helps you to manage your safe glossary. Description and sensitivity level."
+		fr "Cette analyse vous aide à gérer le glossaire de vos safes. Description et niveau de sensibilité."
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+	safecategory [en "Category" fr "Catégorie"]
+}
+
+
+analytics_safe_safeglossary360= Page {
+	title: $analytics_safe_safeglossary360NLS.title
+	description: $analytics_safe_safeglossary360NLS.description
+//	tags: "safe", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+
+	/* Parameters here */
+	search = SearchDefinition {
+		entity: CASafe
+		simple-mode-rule: brpam_casafe_simple_search
+	}
+	
+
+	selectedsafes = Variable { multivalued:True }
+	selectedsafe = Variable
+	selectedsafesensitivitylevel = Variable
+	selectedsafesensitivityreason = Variable
+	selectedsafedescription = Variable
+	selectedsafecategory = Variable
+	
+	onlyemptydescription = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	safemetadata = Dataset {
+		search:Search {
+			view:bwpam_safesmetadata with onlyemptydescription to withoutdescriptiononly
+			definition:search
+		}
+	}
+	
+	editsafe = NamedAction (
+		Dialog bwfSafeDetailsMetadata_Dialog(	selectedsafe to paramApplicationUid,
+												selectedsafesensitivitylevel to sensitivitylevel,
+												selectedsafesensitivityreason to sensitivityreason,
+												selectedsafedescription to description,
+												selectedsafecategory to category), 
+													
+											ReloadData (safemetadata)	
+	)
+	
+	batcheditpermission = NamedAction (
+		Dialog bwfSafeDetailsBatchMetadata_Dialog(selectedsafes to safes), 
+												ReloadData (safemetadata)	
+	)
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn { fill:True width: grow }, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint:height 38 }
+		GridRow {
+			GridCell {
+				ButtonGroup {
+					Button {
+						actions:ExecuteNamedAction batcheditpermission
+						text:$safeglossary360FragmentNLS.bulk
+			            image:%collection_16.pencil
+			            disabled:StringPredicate(selectedsafes) { when IsEmpty then True otherwise False }
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:onlyemptydescription
+					text:$safe_accessrights360NLS.onlyempty
+				}
+			}
+		}
+	}
+	Table {
+		data:safemetadata
+		layout: Layout { grab: horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		label:Label { break:True value:$casafeSearchPageNLS.safe }
+		checkboxes:safeuid to selectedsafes
+		
+		Column {
+			column:safedisplayname
+			tooltip:Current safedisplayname
+			header:$casafeSearchPageNLS.safe
+			width:260px
+			filterable:True
+			sortable:True
+			align:Right
+			actions:ExecuteNamedAction editsafe
+		}
+		Column {
+			column:safecategory
+			header:$analytics_safe_safeglossary360NLS.safecategory
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			initially-masked:True	
+			selection:selectedsafecategory		
+		}
+		Column {
+			column:safesensitivitylevel
+			text:Transform Current safesensitivitylevel using bwfPermissionSensitivityLevelMapping
+			header:$application.sensitivitylevel
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedsafesensitivitylevel
+		}
+		Column {
+			column:safesensitivityreason
+			tooltip:Current safesensitivityreason
+			header:$application.sensitivityreason
+			width:200px
+			filterable:True
+			sortable:True
+			align:Right
+			selection:selectedsafesensitivityreason
+			initially-masked:True
+		}
+		Column {
+			column:safedescription
+			tooltip:Current safedescription
+			header:$application.description
+			width:100%
+			filterable:True
+			sortable:True
+			align:Left
+			selection:selectedsafedescription
+		}
+		Column {
+			column:safeuid
+			hidden:True
+			selection:selectedsafe
+		}
+		Column {
+			column:vaultdisplayname
+			tooltip:Current vaultdisplayname
+			header:$casafeSearchPageNLS.vault
+			width:160px
+			filterable:True
+			sortable:True
+			align:Right
+		}		
+	}
+	Text {
+		value:$safeglossary360FragmentNLS.limit
+		compact:True
+		styling:warningFieldStyle
+		hidden:IntPredicate(Count safemetadata) { when =1000 then False otherwise True }
+	}
+}
+
+
+
+safeglossary360FragmentNLS = NLS {
+	bulk [en "Bulk update" fr "Mise à jour en masse"]
+	limit [
+		en "Table limited to 1000 safes, please consider filtering the table to look for hidden safes"
+		fr "Affichage limité à 1000 safes, veuillez utiliser les capacités de filtrage du tableau pour rechercher des safes"
+	]
+}
+
+///////////////////////////////////////////////////////////////////A SUPPR
+
+safeglossary360Fragment = PageFragment {
+	/* Parameters here */
+    applicationuid = Variable
+
+	/* Variables here */
+	selectedsafes = Variable { multivalued:True }
+	selectedsafe = Variable
+	selectedsafesensitivitylevel = Variable
+	selectedsafesensitivityreason = Variable
+	selectedsafedescription = Variable
+	selectedsafecategory = Variable
+	
+	onlyemptydescription = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	application = Record {
+		view:bwf_applicationDetail with applicationuid to uid
+	}
+	
+	safemetadata = Dataset {
+		view:bwpam_safesmetadata_glossary with applicationuid to uid, onlyemptydescription to withoutdescriptiononly
+		limit:1000
+	}
+	
+	editsafe = NamedAction (
+		Dialog bwfSafeDetailsMetadata_Dialog (	selectedsafe to paramPermissionUid,
+												selectedsafesensitivitylevel to sensitivitylevel,
+												selectedsafesensitivityreason to sensitivityreason,
+												selectedsafedescription to description,
+												selectedsafecategory to category), 
+											ReloadData (safemetadata)	
+	)
+	
+	batcheditsafe = NamedAction (
+		Dialog bwfSafeDetailsBatchMetadata_Dialog(selectedsafes to safes), 
+												ReloadData (safemetadata)	
+	)
+	
+	/* Page content */
+
+	Flow {
+		disposition:Horizontal
+		layout: Layout { grab: horizontal True vertical False hint: height 110 }
+		Group {
+			Text {
+				label:$application.code
+				value:application.code
+				compact:True
+			}
+			Text {
+				label:$application.displayname
+				value:application.displayname
+				compact:True
+			}
+			Text {
+				label:$application.applicationfamily
+				value:application.applicationfamily
+				compact:True
+			}
+		}
+		Group {
+			Text {
+				label:$fragmentApplicationDetailsNLS.category
+				value:application.category
+				compact:True
+			}
+			Text {
+				label:$application.sensitivityreason
+				value:application.sensitivityreason
+				compact:True
+			}
+			Text {
+				label:$application.sensitivitylevel
+				value:Transform application.sensitivitylevel using bwfApplicationSensitivityLevelMapping
+				compact:True
+			}
+			Text {
+				label:$application.description
+				tooltip:application.description
+				value:application.description
+				compact:True
+					commands:Commands { position: After orientation: Horizontal 
+									Command{	actions:Dialog bwfApplicationDetailsMetadata_Dialog(applicationuid to paramApplicationUid, application.sensitivitylevel to sensitivitylevel, 
+																									application.sensitivityreason to sensitivityreason, 
+																									application.description to description, 
+																									application.category to category,
+																									application.applicationtype to applicationtype), 
+														ReloadData (application)
+					                        	icon:%collection_16.pencil
+					                        	tooltip:$fragmentApplicationDetailsNLS.updatemetadata
+					                       }
+					                  }
+			}
+		}
+	}
+//
+//
+//	Separator {
+//		width:1
+//	}
+
+//	Grid {
+//		columns:GridColumn { fill:True width: grow }, GridColumn
+//		layout: Layout { grab: horizontal True vertical False hint:height 38 }
+//		GridRow {
+//			GridCell {
+//				ButtonGroup {
+//					Button {
+//						actions:ExecuteNamedAction batcheditsafe
+//						text:$safeglossary360FragmentNLS.bulk
+//			            image:%collection_16.pencil
+//			            disabled:StringPredicate(selectedsafes) { when IsEmpty then True otherwise False }
+//					}
+//				}
+//			}
+//			GridCell {
+//				Checkbox {
+//					variable:onlyemptydescription
+//					text:$safe_accessrights360NLS.onlyempty
+//				}
+//			}
+//		}
+//	}
+//	Table {
+//		data:safemetadata
+//		layout: Layout { grab: horizontal True vertical True }
+//		show-count:True
+//		show-filter:True
+//		configurable:True
+//		label:Label { break:True value:$permission.concept }
+//		checkboxes:safeuid to selectedsafes
+//
+//		Column {
+//			column:safedisplayname
+//			tooltip:Current safedisplayname
+//			header:$application.displayname
+//			width:260px
+//			filterable:True
+//			sortable:True
+//			align:Right
+//			actions:ExecuteNamedAction editsafe
+//		}
+//		Column {
+//			column:safecategory
+//			header:$analytics_safe_safeglossary360NLS.safecategory
+//			width:160px
+//			filterable:True
+//			sortable:True
+//			align:Right
+//			initially-masked:True			
+//		}		
+//		Column {
+//			column:safesensitivitylevel
+//			text:Transform Current safesensitivitylevel using bwfApplicationSensitivityLevelMapping
+//			header:$application.sensitivitylevel
+//			width:160px
+//			filterable:True
+//			sortable:True
+//			align:Right
+//			selection:selectedsafesensitivitylevel
+//		}
+//		Column {
+//			column:safesensitivityreason
+//			tooltip:Current safesensitivityreason
+//			header:$application.sensitivityreason
+//			width:200px
+//			filterable:True
+//			sortable:True
+//			align:Right
+//			selection:selectedsafesensitivityreason
+//			initially-masked:True
+//		}
+//		Column {
+//			column:safedescription
+//			tooltip:Current safedescription
+//			header:$application.description
+//			width:100%
+//			filterable:True
+//			sortable:True
+//			align:Left
+//			selection:selectedsafedescription
+//		}
+//		Column {
+//			column:safeuid
+//			hidden:True
+//			selection:selectedsafe
+//		}
+//		Column {
+//			column:vaultdisplayname
+//			tooltip:Current vaultdisplayname
+//			header:$casafeSearchPageNLS.vault
+//			width:160px
+//			filterable:True
+//			sortable:True
+//			align:Right
+//		}		
+//	}
+//	Text {
+//		value:$safeglossary360FragmentNLS.limit
+//		compact:True
+//		styling:warningFieldStyle
+//		hidden:IntPredicate(Count safemetadata) { when =1000 then False otherwise True }
+//	}
+}

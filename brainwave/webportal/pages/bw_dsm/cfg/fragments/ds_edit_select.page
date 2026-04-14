@@ -1,0 +1,125 @@
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+// select ds from catalog Fragment
+dsm_cfg_select = PageFragment {
+   mixins: defaultPage
+
+   enter-event: ExecuteNamedAction doInit
+   //events
+   // changed :  selected connector has changed 
+
+   outSelectedConnector = Variable 
+   outCanNext = Variable { type: Boolean }
+   outMessage = Variable 
+   filter = Variable {initial: ""}
+   filter_tmp = Variable {initial: ""}
+   
+   _alreadyExist = Variable { type: Boolean initial: False }  
+   _selectedConnector = Variable { private: True}  
+   
+	connector_tpls = Dataset {
+	  pages: Pages {
+	    tags: "bwds_connector"		    
+	  }	
+	  includes: Eval "current.title.contains(filter.get(), true) || current.description.contains(filter.get(), true)"  //ignore case
+	}
+	
+	connector_desc = Record {
+	  page: _selectedConnector
+	}
+	
+	existing_connector = Record {
+	  view: bwdsm_getdatasource_def_mduid with connector_desc.fixedName to code unless-empty
+	}
+	
+	doInit = NamedAction ( 
+	   Set outSelectedConnector to _selectedConnector
+	)
+	
+	doUpdateCanNext = NamedAction (
+	   StringCase( existing_connector.uid) {
+	     when IsEmpty then [ 
+	       Set False to _alreadyExist,
+	       Unset outMessage
+	     ]
+	     otherwise [ 
+	       Set True to _alreadyExist,
+	       Set $dsm_cfg_select_NLS.error_only1ds_1(connector_desc.title) to outMessage 
+	     ]
+	   }	,   
+	   Set Eval " !_selectedConnector.isEmpty() && !_alreadyExist.get()" to outCanNext,
+
+	   FireFragmentEvent "changed"
+	)
+	
+	doCommitNext = NamedAction (
+	   Set _selectedConnector to outSelectedConnector
+	)
+	
+	Edit { 
+	  variable: filter_tmp
+	  label: $dsm_cfg_select_NLS.filter
+	  layout: Layout { hint: width 400  }
+	  commands: [ 
+	    Command {actions: Set filter_tmp to filter icon: %collection_16.magnify }
+	    Command {actions: Set "" to filter_tmp, Set "" to filter icon: %collection_16.delete }
+	  ]
+	}
+	
+    Tiles {
+     columns: 2
+     scrollable: True
+     tile-height: 160 
+     layout: Layout { grab: horizontal True vertical True hint: height 335 }        
+     TileGroup {
+       iterate-on: connector_tpls
+       initial-sort: title
+       
+       Tile {
+          Group {
+             border: True
+             styling: BooleanStyling using Eval "current.name == _selectedConnector.get() " in {             
+                when True then bwdsm_tile_sel
+                when False then bwdsm_tile
+             }             
+            Grid {
+	          	columns: GridColumn{ width: 100 },GridColumn{ width: grow}
+	          	GridRow {
+	          		GridCell {
+	       			  Button {
+	                      image: Current largeIcon  
+	                      presentation: Link 
+	                      align: Left 
+	                      actions: Set Current name to _selectedConnector , ReloadData ( connector_tpls) , ExecuteNamedAction doUpdateCanNext                 
+	                 }
+	          		}
+	          		GridCell {
+	          			Button {
+	          			  text: Current title
+	          			  styling: bwdsm_tile_title
+	          			  presentation: Link
+	          			  align: Left
+	          			  actions: Set Current name to _selectedConnector, ReloadData ( connector_tpls), ExecuteNamedAction doUpdateCanNext 
+	          			}
+	          			Text {
+	          			  value: Transform Current category using dsm_categoryMapping
+	          			  compact: True
+	          			  styling: bwdsm_tile_subtitle
+	          			}
+	          			
+	          			Text {
+	          			  value: Current description
+	          			  lines: 4
+	          			  compact: True
+	          			   layout: Layout { hint: height 60 }
+	          			}
+	          		}       		
+	          	}	
+	          }        
+          }       
+       }       
+     }
+   }
+}

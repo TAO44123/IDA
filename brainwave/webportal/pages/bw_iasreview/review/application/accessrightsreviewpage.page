@@ -1,0 +1,79 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/identity/applicationrightstobereviewed.page"
+import "/webportal/pages/bw_fragments/lib/fragments.page"
+import "/webportal/pages/bw_iasreview/resources.page"
+
+/* Nationalized labels here */
+bwaccess360_accessrightsreviewpageNLS = NLS {
+	title [en "Access Rights Review" fr "Revue des droits d'accès"]
+	
+	rexperience [en "Review experience" fr "Expérience de revue"]
+	rlist [en "List mode review" fr "Revue en mode liste"]
+	rgrouped [en "Grouped list mode review" fr "Revue en mode liste groupée"]
+	rpivot [en "Pivot table mode review" fr "Revue en mode tableau croisé"]
+}
+
+bwaccess360_accessrightsreviewpage_old = Page {
+	title: $bwaccess360_accessrightsreviewpageNLS.title
+
+	/* Parameters here */
+	uid = Parameter { type:String hidden:True mandatory:True } // reviewer uid
+	campaignrecorduid = Parameter { hidden:True }
+	hidereviewedentries = Parameter { hidden:True default:True }
+	filterdelegatedentries = Parameter { hidden:True default:False }
+	
+	/* Variables here */
+	reviewtype = Variable { type: String }
+	filterreviewed = Variable { type: Boolean initial: hidereviewedentries }
+	filterdelegated = Variable { type: Boolean initial: filterdelegatedentries }
+	
+	/* Datasets and records here */
+	
+	
+	/* Page content */
+	IncludeFragment {
+		layout: Layout { grab: horizontal True vertical False }
+		fragment: bw_ias_review_typeSelection with
+			reviewtype binds-to reviewtype
+	}
+	
+	ConditionalGroup {
+		StringCondition (reviewtype) {
+			when Constant review_typeMode_list then [
+				IncludeFragment {
+					fragment: fragmentIdentityApplicationRightsToBeReviewed with
+						value-of uid to inuid,
+						value-of campaignrecorduid to infilterbycampaign,
+						value-of Eval "'list'.equals( reviewtype.get() )" to inenabled,
+						filterreviewed binds-to infilterreviewed,
+						filterdelegated binds-to infilterdelegated
+				}
+			] when Constant review_typeMode_group then [
+				IncludeFragment {
+					fragment: fragmentIdentityApplicationRightsToBeReviewedGroupedColumn with
+						value-of uid to inuid,
+						value-of campaignrecorduid to infilterbycampaign,
+						value-of Eval "'grouped'.equals( reviewtype.get() )" to inenabled,
+						filterreviewed binds-to infilterreviewed,
+						filterdelegated binds-to infilterdelegated
+				}
+			] when Constant review_typeMode_pivot then [
+				IncludeFragment {
+					fragment: fragmentIdentityApplicationRightsToBeReviewedCrosstab with
+						value-of uid to inuid,
+						value-of campaignrecorduid to infilterbycampaign,
+						value-of Eval "'pivot'.equals( reviewtype.get() )" to inenabled,
+						filterreviewed binds-to infilterreviewed,
+						filterdelegated binds-to infilterdelegated
+				}
+			]		
+		}
+	}
+	
+	IncludeFragment {
+		layout: Layout { grab: horizontal True vertical False }
+		fragment: bw_ias_review_filters with
+			filterreviewed binds-to filterreviewed,
+			filterdelegated binds-to filterdelegated
+	}
+}

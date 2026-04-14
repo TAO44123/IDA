@@ -1,0 +1,731 @@
+/**
+ * A series of dynamic Charts to include in your Pages
+ * Relies on chart.js (see https://www.chartjs.org/)
+ * 
+ * see /webportal/pages/bw_htmlwidgets/demohome.page for an example
+ * 
+ * Brainwave 2018
+ */
+
+
+/*
+ * Some palettes to use in your charts.
+ * Declare the palette with a binding in your component:
+ *			bindings: 
+ *				value-of Constant indicatorsPalette to customColors
+ */
+defaultPalette = Constant { type:String value:"#61bd6d,#54acd2,#9365b8,#553982,#eb6b56,#75706b,#f37934,#475577,#d1d5d8,#2969b0" }
+warmPalette = Constant { type:String value:"#a8373b,#d66f1a,#ebb23f,#fc8d59,#fce5b1,#e0f3f8,#91bfdb,#4575b4,#525566,#81b39b" }
+contrastedPalette = Constant { type:String value:"#5899DA,#E8743B,#19A979,#ED4A7B,#945ECF,#13A4B4,#525DF4,#BF399E,#6C8893,#EE6868,#2F6497" }
+indicatorsPalette = Constant { type:String value:"#dc0d0e,#de890d,#3fa45b,#848f94" }
+neutralPalette = Constant { type:String value:"#5899DA,#E8743B,#19A979,#de890d,#848f94" }
+shadesofgrayPalette = Constant { type:String value:"#d5dadc,#bac1c4,#9ea8ad,#848f94,#69767c,#596468" }
+shadesofredPalette = Constant { type:String value:"#f99494,#f66364,#f33334,#dc0d0e,#b90c0d,#930a0a" }
+shadesofyellowPalette = Constant { type:String value:"#f8cc8c,#f5b04d,#f29b1d,#de890d,#c67a0c,#a4650a" }
+shadesorgreenPalette = Constant { type:String value:"#a1dbb1,#71c989,#4cba6b,#3fa45b,#358a4d,#2a6d3c" }
+shadesofbluePalette = Constant { type:String value:"#b2d4f5,#93bfeb,#74abe2,#5899DA,#367dc4,#1866b4" }
+shadesofbrownPalette = Constant { type:String value:"#fcc3a7,#f5aa85,#ef8d5d,#E8743B,#da5a1b,#cc4300" }
+higherTheWorstPalette = Constant { type:String value:"#3fa45b,#de890d,#f33334,#dc0d0e,#dc0d0e,#dc0d0e,#dc0d0e" }
+higherTheBestPalette = Constant { type:String value:"#dc0d0e,#de890d,#3fa45b,#3fa45b,#3fa45b,#3fa45b,#3fa45b" }
+
+
+/**
+ * <span style="white-space: pre-line">
+ * A doughnut chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>count (Integer)</b> the item value
+ * <b>color (String)</b> optional - the item background color such as #FF0045
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>showLegend (Boolean)</b>  Optional true to show the legend</li>
+ * <li><b>showLegend (Boolean)</b>  Optional true to show the legend</li>
+ * <li><b>showHalfOnly (Boolean)</b>  Optional show only the upper side of the graph</li>
+ * <li><b>cutoutPercentage (Integer)</b>  Optional inner radius (in percentage)</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>nbMaxElements (Integer)</b> max number of elements to display</li>
+ * <li><b>showOther (Boolean)</b> in case nbMaxElements reached, consolidate the other elements in a pie</li>
+ * <li><b>otherColor (String)</b> color of the 'other' pie such as '#999999'</li>
+ * <li><b>otherCode (String)</b> returned code of the 'other' pie (when clicked)</li>
+ * <li><b>otherLabel (String)</b> returned label of the 'other' pie (when clicked)</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * <li><b>onlegendclick</b> fired when the user click on an item in the legend panel.</li>
+ * </ul>
+ * </span>
+ */
+doughnutChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/doughnut.html"
+	datasets: chartdata ( label as String /* Mandatory */, code as String/* Mandatory */, count as Integer/* Mandatory */, color as String /* Optional */) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		showLegend as in Boolean, /* Optional */ 
+		showHalfOnly as in Boolean, /* Optional */ 
+		cutoutPercentage as in Integer, /* Optional */ 
+		legendPosition as in String, /* Optional top, bottom, left, right*/
+		nbMaxElements as in Integer, /* Optional integer*/
+		showOther as in Boolean, /* Optional Boolean */
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		otherColor as in String, /* Optional Color */
+		otherCode as in String, /* Optional String */
+		otherLabel as in String, /* Optional String */
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+	widget-events:
+		onclick ( code as String, label as String, count as Integer ),
+		onlegendclick ( code as String, label as String )
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * A pie chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>count (Integer)</b> the item value
+ * <b>color (String)</b> optional - the item background color such as #FF0045
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>showLegend (Boolean)</b>  Optional true to show the legend</li>
+ * <li><b>showHalfOnly (String)</b>  Optional show only the upper side of the graph</li>
+ * <li><b>legendPosition (String)</b>  Optional the legend position (top, bottom, left, right)</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>nbMaxElements (Integer)</b> max number of elements to display</li>
+ * <li><b>showOther (Boolean)</b> in case nbMaxElements reached, consolidate the other elements in a pie</li>
+ * <li><b>otherColor (String)</b> color of the 'other' pie such as '#999999'</li>
+ * <li><b>otherCode (String)</b> returned code of the 'other' pie (when clicked)</li>
+ * <li><b>otherLabel (String)</b> returned label of the 'other' pie (when clicked)</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * <li><b>onlegendclick</b> fired when the user click on an item in the legend panel.</li>
+ * </ul>
+ * </span>
+ */
+pieChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/pie.html"
+	datasets: chartdata ( label as String /* Mandatory */, code as String/* Mandatory */, count as Integer/* Mandatory */, color as String /* Optional */) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		showLegend as in Boolean, /* Optional */ 
+		showHalfOnly as in Boolean, /* Optional */ 
+		legendPosition as in String, /* Optional top, bottom, left, right*/
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		nbMaxElements as in Integer, /* Optional integer*/
+		showOther as in Boolean, /* Optional Boolean */
+		otherColor as in String, /* Optional Color */
+		otherCode as in String, /* Optional String */
+		otherLabel as in String, /* Optional String */
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+	widget-events:
+		onclick ( code as String, label as String, count as Integer ),
+		onlegendclick ( code as String, label as String )
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A polar area chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>count (Integer)</b> the item value
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>showLegend (Boolean)</b>  Optional true to show the legend</li>
+ * <li><b>legendPosition (String)</b>  Optional the legend position (top, bottom, left, right)</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>nbMaxElements (Integer)</b> Optional max number of elements to display</li>
+ * <li><b>showOther (Boolean)</b> Optional in case nbMaxElements reached, consolidate the other elements in a pie</li>
+ * <li><b>otherColor (String)</b> Optional color of the 'other' pie such as '#999999'</li>
+ * <li><b>otherCode (String)</b> Optional returned code of the 'other' pie (when clicked)</li>
+ * <li><b>otherLabel (String)</b> Optional returned label of the 'other' pie (when clicked)</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * <li><b>onlegendclick</b> fired when the user click on an item in the legend panel.</li>
+ * </ul>
+ * </span>
+ */
+polarAreaChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/polararea.html"
+	datasets: chartdata ( label as String , code as String, count as Integer ) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		showLegend as in Boolean, /* Optional */ 
+		legendPosition as in String, /* Optional top, bottom, left, right*/
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		nbMaxElements as in Integer, /* Optional integer*/
+		showOther as in Boolean, /* Optional Boolean */
+		otherColor as in String, /* Optional Color */
+		otherCode as in String, /* Optional String */
+		otherLabel as in String, /* Optional String */
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+	widget-events:
+		onclick ( code as String, label as String, count as Integer ),
+		onlegendclick ( code as String, label as String )
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A line chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>count (Integer)</b> the item value
+ * <b>description (String)</b> Optional item value description, this is used as the value tooltip if it is provided
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>showLegend (Boolean)</b>  Optional true to show the legend</li>
+ * <li><b>legendPosition (String)</b>  Optional the legend position (top, bottom, left, right)</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>tooltipPrefix (String)</b>  Optional a string to append at the beginning of the tooltip value</li>
+ * <li><b>tooltipSuffix (String)</b>  Optional a string to append at the end of the tooltip value</li>
+ * <li><b>xlabel (String)</b> xAxis label</li>
+ * <li><b>ylabel (String)</b> yAxis label</li>
+ * <li><b>fill (String)</b>  Optional fill the area (false, origin, start, end) </li>
+ * <li><b>maintainAspectRatio (Boolean)</b> Optional true to maintain chart aspect ratio</li>
+ * <li><b>beginAtZero (Boolean)</b>  Optional true to start the graph from the origin</li>
+ * <li><b>showLine (Boolean)</b>  Optional show the line</li>
+ * <li><b>xAxesdisplay (Boolean)</b> show x axes</li>
+ * <li><b>yAxesdisplay (Boolean)</b> show y axes</li>
+ * <li><b>showxAxesGrid (Boolean)</b> show x axes grid</li>
+ * <li><b>showyAxesGrid (Boolean)</b> show y axes grid</li>
+ * <li><b>reverseXorder (Boolean)</b> reverse X order</li>
+ * <li><b>reverseYorder (Boolean)</b> reverse Y order</li>
+ * <li><b>curvedLine (Boolean)</b>  Optional show the line as curve</li>
+ * <li><b>lineColor (String)</b>  Optional the color of the line (#224488)</li>
+ * <li><b>lineWidth (Integer)</b>  Optional the line width</li>
+ * <li><b>lineDashed (String)</b>  Optional draw a dashed line using some predefined styles (style1,style2,style3,style4)</li>
+ * <li><b>pointStyle (String)</b> amongst circle, cross, crossRot, dash, line, rect, rectRounded, rectRot, star, triangle</li>
+ * <li><b>pointRadius (Integer)</b>  Optional the size of the point radius</li>
+ * <li><b>pointColor (String)</b>  Optional the color of the point (#224488)</li>
+ * <li><b>pointHoverColor (String)</b>  Optional the color of the point when hover (#335599)</li>
+ * <li><b>fillColor (String)</b>  The color used to fill the area if "fill" is activated</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * <li><b>datasetMinSize (String)</b> Minimun number of columns to display, datasets are padded with empty values when smaller</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * </ul>
+ * </span>
+ */
+lineChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/line.html"
+	datasets: chartdata ( label as String , code as String, count as Integer , description as String/*optional*/) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		tooltipPrefix as in String, /* Optional String */ 
+		tooltipSuffix as in String, /* Optional String */ 
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		xlabel as in String, /* Optional String */ 
+		ylabel as in String, /* Optional String */ 
+		xAxesdisplay as in Boolean, /* Optional Boolean */ 
+		yAxesdisplay as in Boolean, /* Optional Boolean */ 
+		reverseXorder as in Boolean, /* Optional Boolean */ 
+		reverseYorder as in Boolean, /* Optional Boolean */ 
+		showxAxesGrid as in Boolean, /* Optional Boolean */ 
+		showyAxesGrid as in Boolean, /* Optional Boolean */ 
+		fill as in String, /* Optional String: false, origin, start, end */ 
+		beginAtZero as in Boolean, /* Optional (boolean) */
+		showLine as in Boolean, /* Optional Boolean */ 
+		curvedLine as in Boolean, /* Optional Boolean */ 
+		maintainAspectRatio as in Boolean, /* Optional (boolean) */
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		lineColor as in String, /* Optional String (color) */
+		lineWidth as in Integer, /* Optional Integer */
+		lineDashed as in String, /* Optional String: style1,style2,style3,style4*/
+		pointStyle as in String, /* Optional String: circle, cross, crossRot, dash, line, rect, rectRounded, rectRot, star, triangle */ 
+		pointRadius as in Integer, /* Optional Integer */ 
+		pointColor as in String, /* Optional String (color) */
+		pointHoverColor as in String, /* Optional String (color) */
+		fillColor as in String, /* Optional String (color) */ 
+		animation as in Boolean, /* Optional Boolean, default true */ 
+		datasetMinSize as in Integer /* Optional Integer */ 
+	widget-events:
+		onclick ( code as String, label as String, count as Integer )
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A radar chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>count (Integer)</b> the item value
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>tooltipPrefix (String)</b>  Optional a string to append at the beginning of the tooltip value</li>
+ * <li><b>tooltipSuffix (String)</b>  Optional a string to append at the end of the tooltip value</li>
+ * <li><b>fill (String)</b>  Optional fill the area (false, origin, start, end) </li>
+ * <li><b>pointStyle (String)</b> amongst circle, cross, crossRot, dash, line, rect, rectRounded, rectRot, star, triangle</li>
+ * <li><b>beginAtZero (Boolean)</b>  Optional true to start the graph from the origin</li>
+ * <li><b>showAxesGrid (Boolean)</b> show the axes grid</li>
+ * <li><b>showCircularGrid (Boolean)</b> show the grid as circles</li>
+ * <li><b>lineColor (String)</b>  Optional the color of the line (#224488)</li>
+ * <li><b>lineWidth (Integer)</b>  Optional the line width</li>
+ * <li><b>pointRadius (Integer)</b>  Optional the size of the point radius</li>
+ * <li><b>pointColor (String)</b>  Optional the color of the point (#224488)</li>
+ * <li><b>pointHoverColor (String)</b>  Optional the color of the point when hover (#335599)</li>
+ * <li><b>fillColor (String)</b>  The color used to fill the area if "fill" is activated</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * </ul>
+ * </span>
+ */
+radarChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/radar.html"
+	datasets: chartdata ( label as String , code as String, count as Integer ) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		tooltipPrefix as in String, /* Optional String */ 
+		tooltipSuffix as in String, /* Optional String */ 
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		fill as in String, /* Optional String: false, origin, start, end */ 
+		beginAtZero as in Boolean, /* Optional (boolean) */
+		showAxesGrid as in Boolean, /* Optional (boolean) */
+		showCircularGrid as in Boolean, /* Optional (boolean) */
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		lineColor as in String, /* Optional String (color) */
+		lineWidth as in Integer, /* Optional Integer */
+		pointStyle as in String, /* Optional String: circle, cross, crossRot, dash, line, rect, rectRounded, rectRot, star, triangle */ 
+		pointRadius as in Integer, /* Optional Integer */ 
+		pointColor as in String, /* Optional String (color) */
+		pointHoverColor as in String, /* Optional String (color) */
+		fillColor as in String /* Optional String (color) */ 
+	widget-events:
+		onclick ( code as String, label as String, count as Integer )
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A bar chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>count (Integer)</b> the item value
+ * <b>description (String)</b> Optional item value description, this is used as the value tooltip if it is provided
+ * <b>color (String)</b> optional - the item background color such as #FF0045
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>tooltipPrefix (String)</b>  Optional a string to append at the beginning of the tooltip value</li>
+ * <li><b>tooltipSuffix (String)</b>  Optional a string to append at the end of the tooltip value</li>
+ * <li><b>beginAtZero (Boolean)</b>  Optional true to start the graph from the origin</li>
+ * <li><b>isHorizontal (Boolean)</b>  Optional true display the bars horizontally</li>
+ * <li><b>isLabelInside (Boolean)</b>  Optional true display the labels inside the bars (only for horizontal bars)</li>
+ * <li><b>hideLabels (Boolean)</b>  Optional true to hide the labels (only for horizontal bars)</li>
+ * <li><b>insideLabelColor (String)</b>  Optional Set the color of the label when displayed inside the bars (only for horizontal bars)</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>maintainAspectRatio (Boolean)</b> Optional true to maintain chart aspect ratio</li>
+ * <li><b>xlabel (String)</b> xAxis label</li>
+ * <li><b>ylabel (String)</b> yAxis label</li>
+ * <li><b>xAxesdisplay (Boolean)</b> show x axes</li>
+ * <li><b>yAxesdisplay (Boolean)</b> show y axes</li>
+ * <li><b>showxAxesGrid (Boolean)</b> show x axes grid</li>
+ * <li><b>showyAxesGrid (Boolean)</b> show y axes grid</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * <li><b>datasetMinSize (String)</b> Minimun number of columns to display, datasets are padded with empty values when smaller</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * </ul>
+ * </span>
+ */
+barChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/bar.html"
+	datasets: chartdata ( label as String , code as String, count as Integer , description as String/*optional*/, color as String/*optional*/) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		tooltipPrefix as in String, /* Optional String */ 
+		tooltipSuffix as in String, /* Optional String */ 
+		xlabel as in String, /* Optional String */ 
+		ylabel as in String, /* Optional String */
+		xAxesdisplay as in Boolean, /* Optional Boolean */ 
+		yAxesdisplay as in Boolean, /* Optional Boolean */ 
+		showxAxesGrid as in Boolean, /* Optional Boolean */ 
+		showyAxesGrid as in Boolean, /* Optional Boolean */ 
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		beginAtZero as in Boolean, /* Optional (boolean) */
+		isHorizontal as in Boolean, /* Optional (boolean) */
+		isLabelInside as in Boolean, /* Optional (boolean) */
+		hideLabels as in Boolean, /* Optional (boolean) */
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		insideLabelColor as in String, /* Optional (String) */
+		maintainAspectRatio as in Boolean, /* Optional (boolean) */
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */,
+		datasetMinSize as in Integer /* Optional Integer */ 
+	widget-events:
+		onclick ( code as String, label as String, count as Integer )
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A multi bar chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>category (String)</b> the category label (displayed in the widget)
+ * <b>categorycode (String)</b> the category unique code
+ * <b>categorydescription (String)</b> Optional item value categorydescription, this is used as the value tooltip if it is provided
+ * <b>count (Integer)</b> the item value
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>showLegend (Boolean)</b>  Optional true to show the legend</li>
+ * <li><b>legendPosition (String)</b>  Optional the legend position (top, bottom, left, right)</li>
+ * <li><b>isHorizontal (Boolean)</b>  Optional true display the bars horizontally</li>
+ * <li><b>isStacked (Boolean)</b>  Optional true if the values are stacked</li>
+ * <li><b>stacked100 (Boolean)</b>  Optional true to fill 100% of the area, valid only if isStacked is set to true</li>
+ * <li><b>beginAtZero (Boolean)</b>  Optional true to start the graph from the origin</li>
+ * <li><b>tooltipSuffix (String)</b>  Optional a string to append at the end of the tooltip value</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>maintainAspectRatio (Boolean)</b> Optional true to maintain chart aspect ratio</li>
+ * <li><b>xlabel (String)</b> xAxis label</li>
+ * <li><b>ylabel (String)</b> yAxis label</li>
+ * <li><b>xAxesdisplay (Boolean)</b> show x axes</li>
+ * <li><b>yAxesdisplay (Boolean)</b> show y axes</li>
+ * <li><b>yAxesPosition (String)</b> Position of the y axes: left or right </li>
+ * <li><b>yAxesWidth (Integer)</b>Width in pixels of the y axes</li>
+ * <li><b>yAxesSuggestedMax (Integer)</b>Suggested max value to display on the y axes</li>
+ * <li><b>showxAxesGrid (Boolean)</b> show x axes grid</li>
+ * <li><b>showyAxesGrid (Boolean)</b> show y axes grid</li>
+ * <li><b>reverseXorder (Boolean)</b> reverse X order</li>
+ * <li><b>reverseYorder (Boolean)</b> reverse Y order</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * <li><b>datasetMinSize (String)</b> Minimun number of columns to display, datasets are padded with empty values when smaller</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * <li><b>oncategoryclick</b> fired when the user click on a category.</li>
+ * </ul>
+ * </span>
+ */
+multibarChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/multibar.html"
+	datasets: chartdata ( code as String, label as String , categorycode as String, category as String, count as Integer, categorydescription as String/*optional*/ ) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		showTooltip as in Boolean, /* Optional Boolean */
+		tooltipSuffix as in String, /* Optional String */ 
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		xlabel as in String, /* Optional String */ 
+		ylabel as in String, /* Optional String */ 
+		xAxesdisplay as in Boolean, /* Optional Boolean */ 
+		yAxesdisplay as in Boolean, /* Optional Boolean */ 
+		yAxesPosition as in String, /* Optional String left, right*/ 
+		yAxesWidth as in Integer, /* Optional Integer */
+		yAxesSuggestedMax as in Integer, /* Optional Integer */
+		showxAxesGrid as in Boolean, /* Optional Boolean */ 
+		showyAxesGrid as in Boolean, /* Optional Boolean */ 
+		reverseXorder as in Boolean, /* Optional Boolean */ 
+		reverseYorder as in Boolean, /* Optional Boolean */ 
+		showLegend as in Boolean, /* Optional */ 
+		legendPosition as in String, /* Optional top, bottom, left, right*/
+		isHorizontal as in Boolean, /* Optional (boolean) */
+		beginAtZero as in Boolean, /* Optional (boolean) */
+		isStacked as in Boolean, /* Optional (boolean) */
+		maintainAspectRatio as in Boolean, /* Optional (boolean) */
+		stacked100 as in Boolean, /* Optional (boolean) */
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		customColors as in String, /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+		datasetMinSize as in Integer /* Optional Integer */ 
+	widget-events:
+		onclick ( code as String, label as String, categorycode as String, category as String, count as Integer ),
+		oncategoryclick ( categorycode as String, category as String)
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A multi line chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>category (String)</b> the category label (displayed in the widget)
+ * <b>categorycode (String)</b> the category unique code
+ * <b>categorydescription (String)</b> Optional item value categorydescription, this is used as the value tooltip if it is provided
+ * <b>count (Integer)</b> the item value
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>title (String)</b>  Optional the title of the chart</li>
+ * <li><b>titlePosition (String)</b>  Optional the title position (top, bottom, left, right)</li>
+ * <li><b>titleFontSize (Integer)</b>  Optional the title font size</li>
+ * <li><b>showLegend (Boolean)</b>  Optional true to show the legend</li>
+ * <li><b>legendPosition (String)</b>  Optional the legend position (top, bottom, left, right)</li>
+ * <li><b>tooltipShowPercent (Boolean)</b>  Optional true to also show the value as a percent in the tooltip</li>
+ * <li><b>tooltipPrefix (String)</b>  Optional a string to append at the beginning of the tooltip value</li>
+ * <li><b>tooltipSuffix (String)</b>  Optional a string to append at the end of the tooltip value</li>
+ * <li><b>xlabel (String)</b> xAxis label</li>
+ * <li><b>ylabel (String)</b> yAxis label</li>
+ * <li><b>xAxesdisplay (Boolean)</b> show x axes</li>
+ * <li><b>xAxesOffset (Boolean)</b> Offset the x axes</li>
+ * <li><b>yAxesdisplay (Boolean)</b> show y axes</li>
+ * <li><b>yAxesPosition (String)</b> Position of the y axes: left or right </li>
+ * <li><b>yAxesWidth (Integer)</b>Width in pixels of the y axes</li>
+ * <li><b>yAxesSuggestedMax (Integer)</b>Suggested max value to display on the y axes</li>
+ * <li><b>showxAxesGrid (Boolean)</b> show x axes grid</li>
+ * <li><b>showyAxesGrid (Boolean)</b> show y axes grid</li>
+ * <li><b>isStacked (Boolean)</b>  Optional true if the values are stacked</li>
+ * <li><b>stacked100 (Boolean)</b>  Optional true to fill 100% of the area, valid only if isStacked is set to true</li>
+ * <li><b>fill (String)</b>  Optional fill the area (false, origin, start, end) </li>
+ * <li><b>beginAtZero (Boolean)</b>  Optional true to start the graph from the origin</li>
+ * <li><b>pointStyle (String)</b> amongst circle, cross, crossRot, dash, line, rect, rectRounded, rectRot, star, triangle</li>
+ * <li><b>showLine (Boolean)</b>  Optional show the line</li>
+ * <li><b>curvedLine (Boolean)</b>  Optional show the line as curve</li>
+ * <li><b>maintainAspectRatio (Boolean)</b> Optional true to maintain chart aspect ratio</li>
+ * <li><b>lineColor (String)</b>  Optional the color of the line (#224488)</li>
+ * <li><b>lineWidth (Integer)</b>  Optional the line width</li>
+ * <li><b>lineDashed (String)</b>  Optional draw a dashed line using some predefined styles (style1,style2,style3,style4)</li>
+ * <li><b>pointRadius (Integer)</b>  Optional the size of the point radius</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * <li><b>datasetMinSize (String)</b> Minimun number of columns to display, datasets are padded with empty values when smaller</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * <li><b>oncategoryclick</b> fired when the user click on a category.</li>
+ * </ul>
+ * </span>
+ */
+multilineChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/multiline.html"
+	datasets: chartdata ( code as String, label as String , categorycode as String, category as String, count as Integer, categorydescription as String/*optional*/ ) /* Mandatory */
+	bindings: 
+		title as in String, /* Optional */ 
+		titlePosition as in String, /* Optional top, bottom, left, right*/
+		titleFontSize as in Integer, /* Optional */
+		tooltipSuffix as in String, /* Optional String */ 
+		tooltipShowPercent as in Boolean, /* Optional Boolean */
+		xlabel as in String, /* Optional String */ 
+		ylabel as in String, /* Optional String */ 
+		showLegend as in Boolean, /* Optional */ 
+		xAxesdisplay as in Boolean, /* Optional Boolean */ 
+		xAxesOffset as in Boolean, /* Optional Boolean */ 
+		yAxesdisplay as in Boolean, /* Optional Boolean */ 
+		yAxesPosition as in String, /* Optional String left, right*/ 
+		yAxesWidth as in Integer, /* Optional Integer */
+		yAxesSuggestedMax as in Integer, /* Optional Integer */
+		showxAxesGrid as in Boolean, /* Optional Boolean */ 
+		showyAxesGrid as in Boolean, /* Optional Boolean */ 
+		legendPosition as in String, /* Optional top, bottom, left, right*/
+		isStacked as in Boolean, /* Optional (boolean) */
+		stacked100 as in Boolean, /* Optional (boolean) */
+		backgroundColor as in String, /* Background Color (defaults to #FFFFFF) */
+		customColors as in String, /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+		fill as in String, /* Optional String: false, origin, start, end */ 
+		beginAtZero as in Boolean, /* Optional (boolean) */
+		pointStyle as in String, /* Optional String: circle, cross, crossRot, dash, line, rect, rectRounded, rectRot, star, triangle */ 
+		showLine as in Boolean, /* Optional Boolean */ 
+		curvedLine as in Boolean, /* Optional Boolean */ 
+		maintainAspectRatio as in Boolean, /* Optional (boolean) */
+		lineWidth as in Integer, /* Optional Integer */
+		lineDashed as in String, /* Optional String: style1,style2,style3,style4*/
+		pointRadius as in Integer, /* Optional Integer */ 
+		datasetMinSize as in Integer /* Optional Integer */ 
+	widget-events:
+		onclick ( code as String, label as String, categorycode as String, category as String, count as Integer ),
+		oncategoryclick ( categorycode as String, category as String)
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A Treemap Chart
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>count (Integer)</b> the item value
+ * <b>description (String)</b> Optional item value description, this is used as the value tooltip if it is provided
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>sizeStrg (String)</b> Optional 'count', 'reversecount', 'same' choose the size strategy for the blocks. This parameter can be binded to a variable, the chart content will be refreshed accordingly</li>
+ * <li><b>showLabel (Boolean)</b> Optional display the label inside the block</li>
+ * <li><b>centerLabel (Boolean)</b> Optional align the label inside the block to the center</li>
+ * <li><b>showTooltipLabel (Boolean)</b> Optional display the 'label' inside the tooltip</li>
+ * <li><b>showTooltipValue (Boolean)</b> Optional display the 'count' inside the tooltip</li>
+ * <li><b>tooltipPrefix (String)</b>  Optional a string to append at the beginning of the tooltip value</li>
+ * <li><b>tooltipSuffix (String)</b>  Optional a string to append at the end of the tooltip value</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>backgroundColor (String)</b> Canvas background color (defaults to '#FFFFFF')</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * </ul>
+ * </span>
+ */
+treemapChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/treemap/treemap.html"
+	datasets: chartdata ( label as String , code as String, count as Integer, description as String/*optional*/ ) /* Mandatory */
+	bindings: 
+		sizeStrategy as in String, /* Optional String 'count', 'reversecount', 'same' */ 
+		showLabel as in Boolean, /* Optional */
+		centerLabel as in Boolean, /* Optional */  
+		showTooltipLabel as in Boolean, /* Optional */ 
+		showTooltipValue as in Boolean, /* Optional */ 
+		tooltipPrefix as in String, /* Optional */ 
+		tooltipSuffix as in String, /* Optional */ 
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+	widget-events:
+		onclick ( code as String, label as String, count as Integer )
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A venn Diagram Chart
+ * overlapping is computed based on the number of elements in common between codes (buckets from 2 to 6)
+ * WARNING: the venn diagram compute the results based on raw data on the client side. As a result the amount of data to send to the browser
+ * can be huge, ie: the diagram will take some time to compute. Be careful when designing your datasets
+ * Dataset size is limited to 50000 lines (see NBMAXLINES in the javascript file) which approximately corresponds to 5mb over the network
+ * Nb of displayed entities is limited to 10 (see NBMAXENTITY in the javascript file)
+ *  
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the object label as displayed in the widget
+ * <b>code (String)</b> the object unique id
+ * <b>element (Integer)</b> the object associated value as a string element
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>tooltipPrefix (String)</b>  Optional a string to append at the beginning of the tooltip value</li>
+ * <li><b>tooltipSuffix (String)</b>  Optional a string to append at the end of the tooltip value</li>
+ * <li><b>tooltipnPrefix (String)</b>  Optional a string to append at the beginning of the tooltip value when the area is an intersection</li>
+ * <li><b>tooltipnSuffix (String)</b>  Optional a string to append at the end of the tooltip value when the area is an intersection</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * </ul>
+ * </span>
+ */
+vennDiagramChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/venn/venn.html"
+	datasets: chartdata ( code as String, label as String, element as String ) /* Mandatory */
+	bindings: 
+		tooltipPrefix as in String, /* Optional String */ 
+		tooltipSuffix as in String,  /* Optional String */ 
+		tooltipnPrefix as in String, /* Optional String */ 
+		tooltipnSuffix as in String  /* Optional String */ 
+	widget-events:
+		// in case of several circle overlaping with each other the order is the most restrictive first
+		onclick (nbofitems as Integer, 
+				code1 as String, label1 as String, 
+				code2 as String, label2 as String, 
+				code3 as String, label3 as String, 
+				code4 as String, label4 as String, 
+				code5 as String, label5 as String, 
+				code6 as String, label6 as String, 
+				count as Integer )
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A heat map Chart
+ *  
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>category (String)</b> the category label (displayed in the widget)
+ * <b>categorycode (String)</b> the category unique code
+ * <b>count (Integer)</b> the item value
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>showLabels (Boolean)</b>  Optional true to show the labels inside the boxes</li>
+ * <li><b>rounded (Boolean)</b>  Optional true to draw rounded rectangles</li>
+ * <li><b>colorInterpolation (String)</b>  Optional "gradient" or "palette"</li>
+ * <li><b>labelFontColor (String)</b>  label font color</li>
+ * <li><b>labelFontSize (String)</b>  one of the following values: small, medium, large</li>
+ * <li><b>customColors (String)</b> Optional Provide a custom palette as a string ("#fcc3a7,#f5aa85,#ef8d5d")</li>
+ * <li><b>heatmapOrder (Boolean)</b>  Optional true to order the array by values with higher values on the top right corner, by default the array is ordered by xLabels and yLabels</li>
+ * <li><b>reverseXorder (Boolean)</b>  Optional true to reverse the X order</li>
+ * <li><b>reverseYorder (Boolean)</b>  Optional true to reverse the Y order</li>
+ * <li><b>maintainAspectRatio (Boolean)</b>  Optional aspect ratio strategy when resizing the component</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item.</li>
+ * <li><b>onlegendclick</b> fired when the user click on an item in the legend panel.</li>
+ * </ul>
+ * </span>
+ */
+heatmapChart = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/heatmap.html"
+	datasets: chartdata ( code as String, label as String , categorycode as String, category as String, count as Integer ) /* Mandatory */
+	bindings: 
+		showLabels as in Boolean, /* Optional */ 
+		rounded as in Boolean, /* Optional */ 
+		heatmapOrder as in Boolean, /* Optional */
+		reverseXorder as in Boolean, /* Optional */ 
+		reverseYorder as in Boolean, /* Optional */ 
+		colorInterpolation as in String, /* Optional */
+		maintainAspectRatio as in Boolean, /* Optional */
+		labelFontColor as in String, /* Optional */
+		labelFontSize as in String, /* Optional small, medium, large */ 
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+	widget-events:
+		onclick ( code as String, label as String, categorycode as String, category as String, count as Integer ),
+		onlegendclick ( code as String, label as String )
+}
+

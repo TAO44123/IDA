@@ -1,0 +1,160 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_rm/fragments.page"
+import "/webportal/pages/bw_rm/orgprofiles.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+reportDetails = NLS {
+	browsing_permission_detailroles.pagetitle [ en "Roles candidates containing permission" fr "Rôles candidats contenant la permission"]
+	browsing_permission_detailroles.title [ en "List of roles candidates that contains the permission" fr "Liste des rôles candidats contenant la permission"]
+	browsing_permission_detailroles.desc [
+	  en "This report lists the possible roles that would grant access to this permission, with regards to the Role Mining campaigns conducted within this portal.
+After a click on one of the roles listed, it is possible to see the list of permissions embedded in the role, and the list of identities to which this role could be assigned as a role candidate."
+	  fr "Ce rapport présente la liste des rôles susceptibles de donner accès à cette permission, suite aux campagnes de Role Mining effectuées au sein de ce portail. 
+En cliquant sur un des rôles, il est possible de visualiser les permissions qui en font partie ainsi que l'ensemble des personnes candidates à l'affectation de ces rôles."
+	]
+	browsing_permission_detailroles.subtitle [ en "Roles candidates giving access to Permission <<{0}>>" fr "Rôles candidats donnant accès à la permission <<{0}>>"]
+	browsing_permission_detailroles.columns.role_code [ en "Role code" fr "Code du rôle"]
+	browsing_permission_detailroles.columns.role_name [ en "Role name" fr "Nom du rôle"]
+	browsing_permission_detailroles.columns.org_shortname [ en "Organisation short name" fr "Nom court de l'organisation"]
+	browsing_permission_detailroles.columns.org_displayname [ en "Organisation name" fr "Nom de l'organisation"]
+}
+
+browsing_permission_detailroles = Page {
+
+	title: $reportDetails.browsing_permission_detailroles.pagetitle
+	description: $reportDetails.browsing_permission_detailroles.desc
+	tags: "permission" priority 200, "byuid" , "browsing"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature: All(bwpm_browsingreports, Any(governance_license, compliance_license))
+	enter-event: BooleanCase (paramSearchMode) { when False then [ Set uid to nonEmptyUid] when True then []}
+	
+	mixins: simpleReport
+	
+	uid = Parameter {
+		label:"Concept Uid"
+		type:String
+	}
+
+	// Related to Search Navigator
+	paramSearchMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: False
+	}
+	// Related to Search Navigator	
+	permissionSearch = SearchDefinition {
+		entity: Permission
+		simple-mode-rule: br_permission_simple_search
+	}
+	
+	// Related to Search Navigator
+	currentPermission = Variable {
+		type: String
+		initial: uid
+	}
+	
+	selectedRoleCode = Variable {
+		type: String
+	}
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	// Related to Search Navigator	
+	permissionList = Dataset {
+		search: Search {
+			definition: permissionSearch
+			view: br_permission_searchpoint with "Profile" to applicationtype , nonEmptyUid to uid
+		}
+	}
+	
+	conceptData = Record {
+		view: br_permissionDetail with currentPermission to uid
+	}
+	
+	dataToReport = Dataset {
+		view: bwrm_browse_rolesbypermission with currentPermission to permuid
+	}
+
+	Splitter {
+		disposition: Horizontal
+		size: 70%
+		Group {
+			layout: Layout { grab: horizontal True vertical True }
+			Group {
+				layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Beginning }
+				Spacer {
+					height: 11
+					hidden: Not BooleanPredicate(paramSearchMode)
+				}
+				SetNavigator {
+					data: permissionList
+					column: uid
+					selection: currentPermission
+					back-link: Activity Permission Detail with currentPermission to paramPermissionUid , SerializeSearch permissionSearch to permissionSearch, paramSearchMode to paramSearchMode
+					initial: uid
+					show-count: True
+					show-first: True
+					show-last: True
+					count-width: 150
+					hidden: Not BooleanPredicate(paramSearchMode)
+				}
+			}
+			Group {
+				layout: Layout { grab: horizontal True vertical True }
+				Text {
+					value: $reportDetails.browsing_permission_detailroles.title	
+				}		
+				Text {
+					value: $reportDetails.browsing_permission_detailroles.subtitle( conceptData.code )
+					styling: reportSubtitle
+					align: Left
+				}
+				Table {
+					layout: Layout { grab: horizontal True vertical True }
+					data: dataToReport
+					show-filter: True
+					show-count: True
+					Column {
+						column: rolecode
+						header: $reportDetails.browsing_permission_detailroles.columns.role_code
+						selection: selectedRoleCode
+						sortable: True
+						filterable: True
+						width:100%
+					}
+					Column {
+						column: rolename
+						header: $reportDetails.browsing_permission_detailroles.columns.role_name
+						sortable: True
+						filterable: True
+						width:100%
+					}
+					Column {
+						column: displayname
+						header: $reportDetails.browsing_permission_detailroles.columns.org_displayname
+						sortable: True
+						filterable: True
+						width:100%
+					}
+					Column {
+						column: shortname
+						header: $reportDetails.browsing_permission_detailroles.columns.org_shortname
+						sortable: True
+						filterable: True
+						width:100%
+					}
+				}
+			}
+		}
+		Group {
+			layout: Layout { grab: horizontal True vertical True }
+			title: $role.concept
+			hidden: Eval "selectedRoleCode.isEmpty()"
+			IncludeFragment (rm_role_detail with selectedRoleCode binds-to rolecode_in ) 				
+		}
+	}
+}

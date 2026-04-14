@@ -1,0 +1,160 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/identity/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentIdentityLifecycleNLS = NLS {
+	title [en "Lifecycle" fr "Cycle de vie"] 
+	employeetype [en "Employee Type" fr "Type de contrat"]
+	jobandorgs [en "{0} in {1}" fr "{0} au sein de {1}"]
+	jobandorganisation [en "Job and Organization" fr "métier et organisation"]
+	empty [en "Identity doesn't have colleagues" fr "Cette identité n'a pas de collègues"]
+	subtitle [
+		en "This analysis presents the various movements detected, whether in terms of status, job or organisation.\nThe dates presented correspond to the dates on which these changes were detected (Timeslot dates in Identity Analytics).\nThere may therefore be a slight gap between these dates and the actual dates on which these changes occurred."
+		fr "Cette analyse présente les différents mouvements détectés sur cette personne, que cela soit en termes de statut, de métier ou d''organisation.\nLes dates présentés correspondent aux dates de détection de ces changements (dates de raffraichissement des donénes dans Identity Analytics).\nIl peut donc y avoir un léger écart entre ces dates et les dates réelles auxquels ces changements sont survenus."
+	]
+}
+
+activeBalue = BooleanMapping {
+	when True then "Active"
+	when False then"Left the company"
+}
+
+internalBalue = BooleanMapping {
+	when True then "Employee"
+	when False then"Contractor"
+}
+
+
+changedIcon = BooleanImageTemplate {
+	when True then %collection_16.refresh_round
+	when False then ""
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the identity lifecycle
+ * One line per identity attribute change among this list: internal, active, job, organisation
+ * change dates are Timeslot dates (and not real dates)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnblifecycleevents </b>The total number of lifecycle events for this identity</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityLifecycle = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	outnblifecycleevents = Variable
+	
+	/* Datasets here */
+	lifecycle = Dataset {
+		view: bwias_identitylifecycle with inuid to uid
+	 	disabled:
+		StringPredicate ( inuid ) {
+			when IsEmpty then True
+		}
+		count-variable:outnblifecycleevents
+	}
+
+	Header {
+		value:$fragmentIdentityLifecycleNLS.subtitle
+	}
+	TemplateTable {
+		data:lifecycle
+		layout:Layout {	grab: horizontal True vertical  True }
+		show-lines:True
+		export-disabled:True
+		row-height:60
+		pagination:50
+		
+		TextCell {
+			column:timeslotcommitdate
+			text:SubString(10) Current timeslotcommitdate 
+			left:20
+			top:25
+			width:200
+			height:40
+		}	
+
+		ImageCell {
+			left:200
+			top:25
+			width:16
+			height:16
+			image:TemplateImageSelection(Current activechanged) using changedIcon
+		}
+		TextCell {
+			column:active
+			text:Transform Current active using activeBalue 
+			left:220
+			top:25
+			width:200
+			height:40
+		}	
+
+		ImageCell {
+			left:400
+			top:25
+			width:16
+			height:16
+			image:TemplateImageSelection(Current internalchanged) using changedIcon
+		}
+		TextCell {
+			column:internal
+			text:Transform Current internal using internalBalue 
+			left:420
+			top:25
+			width:200
+			height:40
+		}	
+
+		ImageCell {
+			left:600
+			top:25
+			width:16
+			height:16
+			image:TemplateImageSelection(Current jobchanged) using changedIcon
+		}
+		TextCell {
+			column:jobtitledisplayname
+			left:620
+			top:25
+			width:200
+			height:40
+		}	
+
+		ImageCell {
+			left:800
+			top:25
+			width:16
+			height:16
+			image:TemplateImageSelection(Current orgchanged) using changedIcon
+		}
+		TextCell {
+			column:organisationdisplayname
+			left:820
+			top:25
+			width:200
+			height:40
+		}	
+	
+	}
+}

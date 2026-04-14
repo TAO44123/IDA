@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwaccess360r_application_similarprofilemembers" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="application" displayname="similar group members" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="0" data="SAP_1591082799580_109693"/>
+	</ViewParam>
+	<ViewParam name="nbmembersThreshold" displayname="nbmembersThreshold" type="Integer"/>
+	<ViewParam name="permissiontype" displayname="permissiontype" type="String" defaultvalue="{(config.ias_permissionroletype!=null &amp;&amp; config.ias_permissionroletype.trim().length&gt;0)?config.ias_permissionroletype:&quot;Role&quot;}"/>
+	<ViewComputedAttribute name="similarity" displayname="similarity" type="Integer" expression="100*dataset.nbaccount.get()/(dataset.profile1nbaccount.get()&gt;dataset.profile2nbaccount.get()?dataset.profile1nbaccount.get():dataset.profile2nbaccount.get())"/>
+	<ViewComputedAttribute name="included" displayname="included" type="Integer" expression="((100*dataset.nbaccount.get())/dataset.profile1nbaccount.get())&gt;=100?100:((100*dataset.nbaccount.get())/dataset.profile1nbaccount.get())"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="A1594136252830_1268" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1594136255051_0" reference="uid" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1594136363945_1270" prefix="profile1" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+		<ViewAttribute name="A1594136411428_1271" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1594136412414_1272" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1594136416031_1273" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1594136427501_1274" attribute="permissiontype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1594136440434_0" reference="permissiontype" operation="in" ignoreifempty="false">
+				<Value name="0" data="Role"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewJoin name="J1594136486892_1276" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directaccountright">
+			<ViewJoin name="J1594136499571_1277" prefix="profile2" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermissionright">
+				<ViewAttribute name="1594136504655_1282" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1594136504657_1283" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1594136504658_1284" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1594136504660_1285" attribute="permissiontype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1594136440434_0" reference="permissiontype" operation="in" ignoreifempty="false">
+						<Value name="0" data="Role"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+				<ViewAttribute name="1594136629742_1295" attribute="bwa_permissionanalytics_nbaccount" alias="profile2nbaccount" operator="or" removedfromprojection="false" globalfilter="true">
+					<ViewAttributeFilter name="F1594136618149_0" reference="nbmembersThreshold" operation="ge" ignoreifempty="true"/>
+				</ViewAttribute>
+			</ViewJoin>
+			<ViewAttribute name="A1594136539623_1286" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1594136544577_0" operation="isNull" ignoreifempty="false"/>
+				<ViewAttributeFilter name="F1594136546596_1" operation="isFalse" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1594136542299_1287" attribute="recorduid" alias="nbaccount" displayname="nbaccount" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1594136592810_0" reference="nbmembersThreshold" operation="ge" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="A1594136612234_1292" attribute="bwa_permissionanalytics_nbaccount" alias="profile1nbaccount" operator="or" removedfromprojection="false" globalfilter="true">
+			<ViewAttributeFilter name="F1594136618149_0" reference="nbmembersThreshold" operation="ge" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+</View>

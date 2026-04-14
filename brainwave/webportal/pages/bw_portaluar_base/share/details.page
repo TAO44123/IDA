@@ -1,0 +1,372 @@
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/share/details.page"
+import "/webportal/pages/bw_fragments/share/accounts.page"
+import "/webportal/pages/bw_fragments/share/rights.page"
+import "/webportal/pages/bw_fragments/share/perorg.page"
+import "/webportal/pages/bw_fragments/share/perjob.page"
+import "/webportal/pages/bw_fragments/share/analytics.page"
+import "/webportal/pages/bw_fragments/share/usages.page"
+import "/webportal/pages/bw_fragments/application/controls.page"
+import "/webportal/pages/bw_fragments/share/decisionhistory.page"
+import "/webportal/pages/bw_fragments/custom/shareExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/sharedfolder/acls.page"
+import "/webportal/pages/bw_fragments/share/folders.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+
+shareDetailsPageNLS = NLS {
+	title [en "Share Details" fr "Détails du partage" ]
+	dynamictitle [en "Share Details {0}" fr "Détails du partage {0}" ]
+
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	share [en "Share" fr "Partage"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Account" fr "Compte"]
+	groups [en "Groups" fr "Groupes"]
+	access [en "Access" fr "Accès"]
+	shares [en "Shares" fr "Partages"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	
+	accounts [en "Accounts" fr "Comptes"]
+	permissions [en "Folders" fr "Répertoires"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Folders usage" fr "Usage des répertoires"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+
+	acls [en "ACLs" fr "ACLs"]
+	
+	notexists [
+		en "This share does not exist in the current timeslot, you should select a different timeslot"
+		fr "Ce partage n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+shareDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (application)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Application Detail with applicationUid.uid to paramApplicationUid }
+	feature: unstructureddata_license
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Application
+		mandatory: True
+	}
+	
+	applicationUid = Record {
+		view: br_applicationDetail_uid with recorduid to recorduid
+	}
+}
+
+shareDetailsParkingPage = Page {
+	title: $shareDetailsPageNLS.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( application.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page shareDetailsPage with-current-parameters
+		}
+	
+	paramApplicationUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	application = Record {
+		view: bwf_applicationDetail with paramApplicationUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$shareDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+shareDetailsPage = Page {
+	title: $shareDetailsPageNLS.title
+	dynamic-title: $shareDetailsPageNLS.dynamictitle(application.displayname)
+	icon: %concept.share
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( application.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page shareDetailsParkingPage with-current-parameters
+		}
+	mixins: detailsPage
+	enter-event:
+		IntCase(application.bwa_applicationanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+		Set nbControls._total to nbdefects
+	feature: unstructureddata_license
+	
+	// Parameters Here
+	paramApplicationUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedApplicationUid = Variable {
+		type: String
+		initial: paramApplicationUid
+	}
+
+	nbdefects = Variable 
+	nboverallocated = Variable
+	nbdecision = Variable
+	hasusages = Variable { initial:False }
+
+	showextended = Variable { initial:False }
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_share = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_permissions = Variable { initial:False multivalued:False type:Boolean }
+	active_acls = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_usage = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Record for concept details
+	application = Record {
+		view: bwf_applicationDetail with selectedApplicationUid to uid
+	}
+
+	rootpermission = Record {
+		view:bwf_sharegetrootpermission with selectedApplicationUid to uid
+	}
+	
+	// Number of control defects for current application (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_applicationallcontroldefects_nb with selectedApplicationUid to uid
+	}
+
+	// Start of the Layout based on a 1-column Grid
+	Grid {
+		columns: GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical True }
+		// Row for the Navigator
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$shareDetailsPageNLS.details
+						activation-event:Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text: $shareDetailsPageNLS.share
+								activation-event: Set True to active_share
+								IncludeFragment {
+									fragment: fragmentShareFullDetails with
+										value-of selectedApplicationUid to inuid,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdateowners,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_share.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$shareDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentShareExtendedDetails with value-of selectedApplicationUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text: $shareDetailsPageNLS.acls
+								activation-event:
+									Set True to active_acls,
+									ExecuteFragmentNamedAction fragmentSharedfolderAcls.reload
+								hidden:
+									StringPredicate ( rootpermission.uid ) {
+										when IsEmpty then True
+									}
+								fragmentSharedfolderAcls = IncludeFragment {
+									fragment: fragmentSharedfolderAcls with
+										value-of rootpermission.uid to inuid,
+										value-of True to incanshowdetails,
+										value-of Eval "active_detail.get() && active_acls.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$shareDetailsPageNLS.accounts
+								activation-event:Set True to active_accounts
+							
+								IncludeFragment {
+									fragment:fragmentShareAccounts
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of True to incanreconcile, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$shareDetailsPageNLS.permissions
+								activation-event:Set True to active_permissions
+							
+								IncludeFragment {
+									fragment:fragmentShareFoldersSelection
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to inaclonly, value-of True to incancompare, value-of Eval "active_detail.get() && active_permissions.get()" to inenabled
+								}
+							}
+						}
+					}
+/* TODO: verifier si ce concept est supporté pour les droits non structurés
+					TabItem {
+						text:$applicationDetailsPageFSNLS.model
+						feature:iam_license
+						activation-event:Set "model" to tab1
+					
+						TabFolder {
+							layout:Layout { indent: horizontal 0 vertical 6 }
+							TabItem {
+								text:$applicationDetailsPageFSNLS.theoretical
+								feature:iam_license
+								activation-event:Set "theoreticalrights" to tab4
+							
+								IncludeFragment {
+									fragment:fragmentApplicationTheoreticalRightsMasterDetails
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "tab1.get().equals('model')&&tab4.get().equals('theoreticalrights')" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageFSNLS.overallocated
+								feature:iam_license
+								activation-event:Set "overallocatedrights" to tab4
+								badge: Eval "nboverallocated.get()>0?nboverallocated.get():''"
+
+								IncludeFragment {
+									fragment:fragmentApplicationOverAllocationsList
+									with value-of selectedApplicationUid to inuid, nboverallocated binds-to outnbproblems, value-of True to incanshowdetails, value-of True to inenabled
+								}
+							}
+						}
+					}
+*/
+					TabItem {
+						text:$shareDetailsPageNLS.access
+						activation-event:Set True to active_access
+
+						TabFolder {
+							border:False
+							TabItem {
+								text:$shareDetailsPageNLS.rights
+								activation-event:Set True to active_rights
+							
+								IncludeFragment {
+									fragment:fragmentShareRights
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile,  value-of Eval "active_access.get() && active_rights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$shareDetailsPageNLS.oorigin
+								activation-event:Set True to active_perorg
+							
+								IncludeFragment {
+									fragment:fragmentSharePerOrg
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perorg.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$shareDetailsPageNLS.jorigin
+								activation-event:Set True to active_perjob
+							
+								IncludeFragment {
+									fragment:fragmentSharePerJob
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perjob.get()" to inenabled
+								}
+							}
+//							TabItem { // Removed for now
+//								text:$shareDetailsPageNLS.pusage
+//								activation-event:Set "permissionsusage" to tab2
+//							
+//								IncludeFragment {
+//									fragment:fragmentSharePerProfile
+//									with value-of selectedApplicationUid to inuid, value-of Eval "tab1.get().equals('access')&&tab2.get().equals('permissionsusage')" to inenabled
+//								}
+//							}
+							TabItem {
+								text:$shareDetailsPageNLS.usages
+								activation-event:Set True to active_usage
+								hidden:Not BooleanPredicate(hasusages)
+							
+								IncludeFragment {
+									fragment:fragmentShareUsages
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_usage.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$shareDetailsPageNLS.controls
+						activation-event:
+							Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment:fragmentApplicationAllControlDefectsList with
+								value-of selectedApplicationUid to inuid,
+								value-of True to incanshowdetails,
+								value-of active_control to inenabled
+						}
+					}
+					TabItem {
+						text:$shareDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+					
+						IncludeFragment {
+							fragment:fragmentShareAnalytics
+							with value-of selectedApplicationUid to inuid, value-of active_analytics to inenabled
+						}
+					}
+					TabItem {
+						text:$shareDetailsPageNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decision
+					
+						IncludeFragment {
+							fragment:fragmentShareDecisionHistory
+							with value-of selectedApplicationUid to inuid, nbdecision binds-to outnbdecision, value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

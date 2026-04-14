@@ -1,0 +1,881 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/reconciliation_dialogs.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+
+
+CAuserlicense = UserVariable {
+		initial:True
+		type:Boolean
+		persistent:True
+}
+
+CAuseraccountSearchPage_withtrends = UserVariable {
+		initial:True
+		type:Boolean
+		persistent:True
+}
+
+CAuseraccountSearchPage_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+
+CAuseraccountSearchPageNLS = NLS {
+	usertype [en "User Type" fr "Type d''utilisateur"]
+	nbsecretcpminactive [en "Credentials Inactive CPM " fr "Secrets CPM inactif"]
+	nbsecrets [en "# Credentials" fr "Nb secrets"]
+	nbsafecpminactive [en "Safes Inactive CPM" fr "Safes CPM inactif"]
+	nbsafemanage [en "Safes Managed" fr "Safes gérés"]
+	nbsafeuse [en "Safes with\nUse Credentials" fr "Safes avec\nutilisation des secrets"]
+	nbsafe [en "# Safes" fr "Nb safes"]
+}
+
+CAuseraccountSearchPage = Page {
+	title: $search.causer.title
+	tags: "causeraccount", "conceptsearch" priority 200
+	icon: %concept_32.account
+	large-icon: %concept_48.account
+	description: $searchlabel.useraccount
+
+	initialUid = Parameter {
+		type: String
+		hidden: True 
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	causerSearch = SearchDefinition {
+		entity: Account
+		simple-mode-rule: br_causer_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedAccountUid = Variable {
+		type: String
+	}
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	accountanalytics = Dataset {
+		pages: Pages{tags: "causeraccount" and "searchresults" }
+		count-variable:nbanalytics
+	}
+
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+
+	causerData = Dataset {
+		search: Search {
+			definition: causerSearch
+			view: br_causer_effective_searchpoint_trend_only with reftimeslot.timeslotuid to reftimeslotuid, UserVariable CAuseraccountSearchPage_withtrends to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	causerData_count = Dataset {
+		search: Search {
+			definition: causerSearch
+			view: br_causer_effective_searchpoint_trend_only with reftimeslot.timeslotuid to reftimeslotuid, False to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+
+
+	goDetails = NamedAction (
+		GoTo Activity Account (CAusers) Detail with selectedAccountUid to paramAccountUid
+	)
+
+	// Search section
+	Group {
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		SearchEdition {
+			definition: causerSearch
+			layout: Layout { grab: horizontal True vertical False }
+			simple-mode-columns: 2
+			simple-mode-layout: SimpleModeLayout {
+				repository { label: $repocyberark.concept break: True },
+				login { label: $account.login },
+				username { label: $account.username }
+			}
+		}
+	}
+
+	Group{
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: causerData
+			//show-count: True
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex
+			show-count-button: True			
+			selection-index: initialIndex
+			 page-size: 1000
+			
+			
+			
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedAccountUid
+			}
+			Column {
+				column: login
+				header: $account.login
+				width: 100%
+				
+				sortable: True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: custom6
+				header: $account.caidstatus
+				sortable: True
+				initially-masked: True				
+			}
+			Column {
+				column: username
+				header: $account.username
+				width: 100%
+				
+				sortable: True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: lastlogindate
+				header: $account.lastlogindate
+				width: 100%
+				
+				sortable: True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: repository_displayname
+				header: $prepository.displayname
+				width: 100%
+				
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: identity_hrcode
+				header: $pidentity.hrcode
+				width: 100%
+				
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: identity_fullname
+				header: $pidentity.fullname
+				width: 100%
+				
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: identifier
+				header: $account.identifier
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: profile
+				header: $account.profile
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: givenname
+				header: $account.givenname
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: surname
+				header: $account.surname
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: employeenumber
+				header: $account.employeenumber
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: mail
+				header: $account.mail
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: managerdata
+				header: $account.managerdata
+				width: 100%
+				
+				initially-masked: True
+			}
+			Column {
+				column: creationdate
+				header: $account.creationdate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: passwordlastsetdate
+				header: $account.passwordlastsetdate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: expiredate
+				header: $account.expiredate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: nextpwdchangedate
+				header: $account.nextpwdchangedate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: service
+				header: $account.service
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: disabled
+				header: $account.disabled
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: locked
+				header: $account.locked
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: logincount
+				header: $account.logincount
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: badpasswordcount
+				header: $account.badpasswordcount
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: passwordnotrequired
+				header: $account.passwordnotrequired
+				width: 100%
+				
+				initially-masked: True
+			}
+			Column {
+				column: passwordcantchange
+				header: $account.passwordcantchange
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: privilegedaccount
+				header: $account.privilegedaccount
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: dontexpirepassword
+				header: $account.dontexpirepassword
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: passwordexpired
+				header: $account.passwordexpired
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: smartcardrequired
+				header: $account.smartcardrequired
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: groupchanged
+				header: $account.groupchanged
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: permissionchanged
+				header: $account.permissionchanged
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: repository_code
+				header: $prepository.code
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: recon_noownercode
+				header: $preconciliation.noownercode
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: recon_reconciliationdate
+				header: $preconciliation.reconciliationdate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: recon_description
+				header: $preconciliation.description
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: recon_comment
+				header: $preconciliation.comment
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: recon_reliability
+				header: $preconciliation.reliability
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: recon_rulename
+				header: $preconciliation.rulename
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: recon_leavedate
+				header: $preconciliation.leavedate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_givenname
+				header: $pidentity.givenname
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_surname
+				header: $pidentity.surname
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_mail
+				header: $pidentity.mail
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_phone
+				header: $pidentity.phone
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_mobile
+				header: $pidentity.mobile
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_arrivaldate
+				header: $pidentity.arrivaldate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_departuredate
+				header: $pidentity.departuredate
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_active
+				header: $pidentity.active
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: identity_internal
+				header: $pidentity.internal
+				width: 100%
+				
+				sortable: True
+				initially-masked: True
+			}
+	
+	//					Column {
+	//						column: bwa_accountmetadata_sensitivitylevel
+	//						text: Transform Current bwa_accountmetadata_sensitivitylevel using bwfAccountSensitivityLevelMapping
+	//						header:$search.identity.sensitivitylevel
+	//						width: 100px
+	//						sortable:True
+	//						
+	//						initially-masked: True
+	//					}
+			Column {
+				column: UserType
+				header: $CAuseraccountSearchPageNLS.usertype
+				width: 100px
+				initially-masked: False
+			}	
+			Column {
+				column: isNew
+				text:Transform Current isNew using booleanDisplayMapping
+				header: $searchlabel.isnew
+				width: 100px
+				styling:BooleanStyling(Current isNew) { when True then CAuseraccountSearchPage_highlightnew when False then default }				
+				initially-masked: False
+			}
+			Column {
+				column:bwa_accountanalytics_nbdirectgroup
+				text:Transform Current bwa_accountanalytics_nbdirectgroup using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.account.nbdirectgroup
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_accountanalytics_nbdirectgroup).equals('null')?956487965:current.bwa_accountanalytics_nbdirectgroup-current.prevbwa_accountanalytics_nbdirectgroup") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bwa_accountanalytics_nbdirectgroup using mayBeNullMapping,Transform Current prevbwa_accountanalytics_nbdirectgroup using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:bwa_accountanalytics_riskrank
+				sortable:True
+				header:$bwf_accountNLS.riskrank
+				initially-masked:False
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_accountanalytics_riskrank).equals('null')?956487965:(current.bwa_accountanalytics_riskrank-current.prevbwa_accountanalytics_riskrank)") using bwf_trend_higherbest
+				tooltip:$search.repository.ratiotooltip(Transform Current bwa_accountanalytics_riskrank using mayBeNullMapping, Transform Current prevbwa_accountanalytics_riskrank using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:120px
+			}
+			Column {
+				column:bwa_accountanalytics_maxrisklevel
+				sortable:True
+				header:$bwf_accountNLS.maxrisk
+				image:TemplateImageSelection(Current bwa_accountanalytics_maxrisklevel) using bwf_controllevel
+				width:120px
+				initially-masked:False
+			}
+			Column {
+				column:bwa_accountanalytics_nbrisks
+				sortable:True
+				header:$bwf_accountNLS.nbrisk
+				initially-masked:False
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_accountanalytics_nbrisks).equals('null')?956487965:(current.bwa_accountanalytics_nbrisks-current.prevbwa_accountanalytics_nbrisks)") using bwf_trend_lowerbest
+				tooltip:$search.repository.ratiotooltip(Transform Current bwa_accountanalytics_nbrisks using mayBeNullMapping, Transform Current prevbwa_accountanalytics_nbrisks using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:120px
+			}
+//			Column {
+//				column:bw_pam_usermetrics_nb_safes
+//				sortable:True
+//				header:$CAuseraccountSearchPageNLS.nbsafe
+//				initially-masked:False
+//				image:TemplateImageSelection(Eval "(''+current.prevbw_pam_usermetrics_nb_safes).equals('null')?956487965:(current.bw_pam_usermetrics_nb_safes-current.bw_pam_usermetrics_nb_safes)") using bwf_trend_lowerbest
+//				tooltip:$search.repository.ratiotooltip(Transform Current bw_pam_usermetrics_nb_safes using mayBeNullMapping, Transform Current prevbw_pam_usermetrics_nb_safes using mayBeNullMapping)
+//				align:Left
+//				fixed-width:True
+//				width:120px
+//			}
+//			Column {
+//				column:bw_pam_usermetrics_nb_safes_use
+//				sortable:True
+//				header:$CAuseraccountSearchPageNLS.nbsafeuse
+//				initially-masked:True
+//				image:TemplateImageSelection(Eval "(''+current.prevbw_pam_usermetrics_nb_safes_use).equals('null')?956487965:(current.bw_pam_usermetrics_nb_safes_use-current.bw_pam_usermetrics_nb_safes_use)") using bwf_trend_lowerbest
+//				tooltip:$search.repository.ratiotooltip(Transform Current bw_pam_usermetrics_nb_safes_use using mayBeNullMapping, Transform Current prevbw_pam_usermetrics_nb_safes_use using mayBeNullMapping)
+//				align:Left
+//				fixed-width:True
+//				width:120px
+//			}	
+//			Column {
+//				column:bw_pam_usermetrics_nb_safes_manage
+//				sortable:True
+//				header:$CAuseraccountSearchPageNLS.nbsafemanage
+//				initially-masked:True
+//				image:TemplateImageSelection(Eval "(''+current.prevbw_pam_usermetrics_nb_safes_manage).equals('null')?956487965:(current.bw_pam_usermetrics_nb_safes_manage-current.bw_pam_usermetrics_nb_safes_manage)") using bwf_trend_lowerbest
+//				tooltip:$search.repository.ratiotooltip(Transform Current bw_pam_usermetrics_nb_safes_manage using mayBeNullMapping, Transform Current prevbw_pam_usermetrics_nb_safes_manage using mayBeNullMapping)
+//				align:Left
+//				fixed-width:True
+//				width:120px
+//			}	
+//			Column {
+//				column:bw_pam_usermetrics_nb_safes_cpm_inactive
+//				sortable:True
+//				header:$CAuseraccountSearchPageNLS.nbsafecpminactive
+//				initially-masked:True
+//				image:TemplateImageSelection(Eval "(''+current.prevbw_pam_usermetrics_nb_safes_cpm_inactive).equals('null')?956487965:(current.bw_pam_usermetrics_nb_safes_cpm_inactive-current.bw_pam_usermetrics_nb_safes_cpm_inactive)") using bwf_trend_lowerbest
+//				tooltip:$search.repository.ratiotooltip(Transform Current bw_pam_usermetrics_nb_safes_cpm_inactive using mayBeNullMapping, Transform Current prevbw_pam_usermetrics_nb_safes_cpm_inactive using mayBeNullMapping)
+//				align:Left
+//				fixed-width:True
+//				width:120px
+//			}								
+//			Column {
+//				column:bw_pam_usermetrics_nb_secrets
+//				sortable:True
+//				header:$CAuseraccountSearchPageNLS.nbsecrets
+//				initially-masked:False
+//				image:TemplateImageSelection(Eval "(''+current.prevbw_pam_usermetrics_nb_secrets).equals('null')?956487965:(current.bw_pam_usermetrics_nb_secrets-current.bw_pam_usermetrics_nb_secrets)") using bwf_trend_lowerbest
+//				tooltip:$search.repository.ratiotooltip(Transform Current bw_pam_usermetrics_nb_secrets using mayBeNullMapping, Transform Current prevbw_pam_usermetrics_nb_secrets using mayBeNullMapping)
+//				align:Left
+//				fixed-width:True
+//				width:120px
+//			}
+//			Column {
+//				column:bw_pam_usermetrics_nb_secrets_cpm_inactive
+//				sortable:True
+//				header:$CAuseraccountSearchPageNLS.nbsecretcpminactive
+//				initially-masked:True
+//				image:TemplateImageSelection(Eval "(''+current.prevbw_pam_usermetrics_nb_secrets_cpm_inactive).equals('null')?956487965:(current.bw_pam_usermetrics_nb_secrets_cpm_inactive-current.bw_pam_usermetrics_nb_secrets_cpm_inactive)") using bwf_trend_lowerbest
+//				tooltip:$search.repository.ratiotooltip(Transform Current bw_pam_usermetrics_nb_secrets_cpm_inactive using mayBeNullMapping, Transform Current prevbw_pam_usermetrics_nb_secrets_cpm_inactive using mayBeNullMapping)
+//				align:Left
+//				fixed-width:True
+//				width:120px
+//			}			
+		}
+
+		Grid {
+			columns:GridColumn,GridColumn { width: grow }
+			layout: Layout { grab:horizontal True vertical False hint: height 38 }
+			GridRow {
+//				GridCell {
+//					Checkbox {
+//						variable:UserVariable CAuserlicense
+//						text:$search.showusersusingaseat
+//						tooltip:$search.showusersusingaseat.tooltip
+//					}
+//				}			
+				GridCell {
+					Checkbox {
+						variable:UserVariable CAuseraccountSearchPage_withtrends
+						text:$search.showkpitrends
+						tooltip:$search.showkpitrends.tooltip
+					}
+				}							
+				GridCell {
+					ButtonGroup {
+						nb-inline:3
+						align:Right
+//						Button {
+//							actions:ExecuteNamedAction goDetails
+//							text:$search.showdetails
+//							tooltip:$search.showdetailstooltip
+//							disabled:StringPredicate(selectedAccountUid) { when IsEmpty then True }	
+//							image:%browsing_16.link
+//						}
+//						Button {
+//							actions: IntCase(Count causerData_count)	{
+//											when > NonEmpty(ConfigurationVariable "search_account_analyticserrorthreshold", Constant search_account_analyticserrorthreshold) then [
+//												Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_account_analyticserrorthreshold", Constant search_account_analyticserrorthreshold))
+//											]
+//											when > NonEmpty(ConfigurationVariable "search_account_analyticswarningthreshold", Constant search_account_analyticswarningthreshold) then [
+//												Confirm $search.analyticswarningthreshold(Count causerData_count),
+//												GoTo Page CAuseraccountSearchAnalyticsPage with  SerializeSearch causerSearch to search
+//													
+//											]
+//											otherwise [
+//												GoTo Page CAuseraccountSearchAnalyticsPage with  SerializeSearch causerSearch to search
+//											]
+//										}
+//							text:$search.applyanalytics
+//							tooltip:$search.applyanalyticstooltip
+//							image:%report_16.analytics
+//							feature:accountsearch_analytics
+//							disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+//						}
+						Button {
+							actions:	TransferData causerData(uid) to (uids), 
+										Dialog fragmentAccountBulkAddTag(uids to uids),
+										Flash $search.flashaddingatag
+							text:$search.addingatag
+							image:%collection_16.tag
+						}
+						Button {
+							actions:	TransferData causerData(uid) to (uids), 
+										Dialog fragmentAccountBulkRemoveTag(uids to uids, SerializeSearch causerSearch to accountSearch),
+										Flash $search.flashremovingatag
+							text:$search.removingatag
+							image:%collection_16.tag
+						}
+						Button {
+							actions:	TransferData causerData(uid) to (uids), 
+										Dialog fragmentAccountBulkRemoveAllTags(uids to uids),
+										Flash $search.flashremovingalltag
+							text:$search.removingalltag
+							image:%collection_16.tag
+						}												
+					}				
+//					ButtonGroup {
+//						nb-inline:2
+//						align:Right
+//						Button {
+//							actions:ExecuteNamedAction goDetails
+//							text:$search.showdetails
+//							tooltip:$search.showdetailstooltip
+//							disabled:StringPredicate(selectedAccountUid) { when IsEmpty then True }	
+//							image:%browsing_16.link
+//						}
+//						Button {
+//							actions: IntCase(Count causerData_count)	{
+//											when > NonEmpty(ConfigurationVariable "search_account_analyticserrorthreshold", Constant search_account_analyticserrorthreshold) then [
+//												Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_account_analyticserrorthreshold", Constant search_account_analyticserrorthreshold))
+//											]
+//											when > NonEmpty(ConfigurationVariable "search_account_analyticswarningthreshold", Constant search_account_analyticswarningthreshold) then [
+//												Confirm $search.analyticswarningthreshold(Count causerData_count),
+//												GoTo Page CAuseraccountSearchAnalyticsPage with  SerializeSearch causerSearch to search
+//													
+//											]
+//											otherwise [
+//												GoTo Page CAuseraccountSearchAnalyticsPage with  SerializeSearch causerSearch to search
+//											]
+//										}
+//							text:$search.applyanalytics
+//							tooltip:$search.applyanalyticstooltip
+//							image:%report_16.analytics
+//							feature:accountsearch_analytics
+//							disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+//						}
+//						Button {
+//							actions:Message $search.nbresults(Count causerData_count)
+//							text:$searchlabel.grandtotal
+//							image:%collection_16.statistics
+//						}
+//						Button {
+//							actions:	TransferData causerData(uid) to (uids), 
+//										Dialog fragmentAccountBulkAddTag(uids to uids),
+//										Flash $search.flashaddingatag
+//							text:$search.addingatag
+//							image:%collection_16.tag
+//						}
+//						Button {
+//							actions:	TransferData causerData(uid) to (uids), 
+//										Dialog fragmentAccountBulkRemoveTag(uids to uids, SerializeSearch causerSearch to accountSearch),
+//										Flash $search.flashremovingatag
+//							text:$search.removingatag
+//							image:%collection_16.tag
+//						}
+//						Button {
+//							actions:	TransferData causerData(uid) to (uids), 
+//										Dialog fragmentAccountBulkRemoveAllTags(uids to uids),
+//										Flash $search.flashremovingalltag
+//							text:$search.removingalltag
+//							image:%collection_16.tag
+//						}
+//					}
+				}
+			}
+		}
+	}
+}
+
+CAuseraccountSearchAnalyticsPage = Page {
+	title:$search.applyanalytics
+
+	search = SearchDefinition {
+		entity:Account
+		simple-mode-rule: br_account_simple_search
+	}
+
+	analytics = Dataset {
+		pages: Pages{tags: "account" and "searchresults" }
+	}
+
+	ConditionalGroup {
+		IntCondition(Count analytics) {
+			when =0 then [
+				Header {
+					value:$search.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:analytics
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:$search.back
+			image:%browsing_16.back
+		}
+	}
+}

@@ -1,0 +1,71 @@
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+bwg_demotreeNLS = NLS {
+	title [en "HTML Tree Widgets Demo" ]
+}
+
+bwg_demotree = Page {
+	title: $bwg_demotreeNLS.title
+	tags:"demo"
+	feature:htmlwidgets_showcase
+
+	orgHierarchy = Dataset {
+		view:htmlwidgets_orghierarchy
+	}
+
+	accountgroups = Dataset {
+		view:htmlwidgets_accountgroups
+	}
+	accountgroupsroot = Dataset {
+		view:htmlwidgets_accountgroupsroot
+	}
+	
+	allaccountgroups = Dataset {
+		union: Union {
+			datasets:accountgroupsroot, accountgroups
+			discriminator-column:discr
+		}
+	}
+
+		IncludeHTMLWidget {
+			layout: Layout { grab:horizontal True vertical False hint:height 500 }
+			template: network
+			datasets:allaccountgroups(uid, displayname, parentuid, repositorycode, code, attrs) to chartdata(code, label, parentcode, group, description, nodeattributes)
+			bindings:
+				value-of False to hierarchical,
+				value-of 'group' to shape,
+				value-of False to computegroupfontcolor,
+				value-of True to navigationButtons
+			widget-events: {
+				when onclick then [
+					Flash Concat ("Clicked on code/label/description/group/parentcode: ", Current code , " ", Current label, " ", Current description, " ", Current group, " ", Current parentcode) 
+				]
+				when ondoubleclick then [
+					Flash Concat ("Double clic on code/label/description/group/parentcode: ", Current code , " ", Current label, " ", Current description, " ", Current group, " ", Current parentcode) 
+				]
+				when onedgeclick then [
+					Flash Concat ("Clicked on edge from/to: ", Current _from , " ", Current _to) 
+				]
+				when onedgedoubleclick then [
+					Flash Concat ("Double clic on edge from/to: ", Current _from , " ", Current _to) 
+				]
+			}
+		}
+		IncludeHTMLWidget {
+			layout: Layout { grab:horizontal True vertical False hint:height 500 }
+			template: spaceTree
+			datasets:orgHierarchy(uid, displayname, descr, parentuid) to chartdata(code, label, description, parentcode)
+			bindings:
+				value-of "#bac1c4" to selectedNodeColor,
+				value-of 5 to selectedLinkSize
+			widget-events: {
+				when onclick then [
+					Flash Concat ("Clicked on code/label/value: ", Current code , " ", Current label) 
+				]
+				when onanimationclick then [
+					Flash Concat ("Animate on code/label/value: ", Current code , " ", Current label) 
+				]
+			}
+		}
+
+}

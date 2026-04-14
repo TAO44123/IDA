@@ -1,0 +1,366 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+/* Nationalized labels here */
+repoaccounts360NLS = NLS {
+	title [en "Managed repositories accounts list" fr "Liste des comptes des référentiels gérés"]
+	dyntitle [en "Managed repositories accounts list for {0}" fr "Liste des comptes des référentiels gérés par {0}"]
+	orphan [en 'orphan' fr 'orphelin']
+	privileged [en 'privileged' fr 'privilégié']
+	description [
+		en " This report presents the list of active accounts in the managed repositories. It is possible to filter the results to show only the changes since a given date. It is possible to modify the columns or to export the results by right-clicking on the table."
+		fr "Ce rapport présente la liste des comptes actifs des référentiels gérés. Il est possible de filtrer les résultats de manière à ne faire apparaitre que les changements depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant clic droit sur le tableau."
+	]
+}
+
+repotimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+repotimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+repomapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+repoaccounts360detail = Page {
+	title: $repoaccounts360NLS.title
+	description:$repoaccounts360NLS.description
+	tags: "identityext" priority 200, "byuid" , "browsing", "repositorymanager"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_repositoryaccounts
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page repoaccounts360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+repoaccounts360hp = Page {
+	title: $repoaccounts360NLS.title
+	description:$repoaccounts360NLS.description
+	tags: "myrepository_access360" priority 1
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_repositoryaccounts
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page repoaccounts360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+repoaccounts360 = Page {
+	title: $repoaccounts360NLS.title
+	dynamic-title: $repoaccounts360NLS.dyntitle(identity.fullname)
+	description:$repoaccounts360NLS.description
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_repositoryaccounts
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	accountslist = Dataset {
+		view:enduser360_repoaccounts with uid to uid, UserVariable session_selectedRepositoriesTeam360 to repositoryuids, UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	managedrepos = Dataset {
+		view:enduser360_managedrepositories with uid to uid
+	}
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					layout:Layout { hint: width 200 }
+					variable:UserVariable session_selectedRepositoriesTeam360
+					options:Dynamic {
+						data:managedrepos
+						text:Current resourcename
+						value:Current resourceuid
+					}
+					label:$session_selectedRepositoriesTeam360NLS.label
+					tooltip:$session_selectedRepositoriesTeam360NLS.tooltip
+					allow-none:True
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				Table {
+					data:accountslist
+					layout:Layout {grab: horizontal True vertical True }
+					show-count:True
+					show-filter:True
+					configurable:True
+					persist-configuration:True
+					persist-configuration-key:uid
+					
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then repotimeline_highlightnew360 when 'Removed' then repotimeline_highlightremoved360 when 'Invalid' then repotimeline_highlightremoved360 } text:Transform Current status using repomapping360 }
+					Column {
+						sortable:True
+						filterable:True
+						column:login
+						header:$account.login
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:identifier
+						header:$account.identifier
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:username
+						header:$paccount.username
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:locked
+						header:$account.locked
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:creationdate
+						header:$account.creationdate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:expiredate
+						header:$account.expiredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:passwordlastsetdate
+						header:$account.passwordlastsetdate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:lastlogindate
+						header:$account.lastlogindate
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:badpasswordcount
+						header:$account.badpasswordcount
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:logincount
+						header:$account.logincount
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:passwordnotrequired
+						header:$account.passwordnotrequired
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:passwordcantchange
+						header:$account.passwordcantchange
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:privilegedaccount
+						header:$repoaccounts360NLS.privileged
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:dontexpirepassword
+						header:$account.dontexpirepassword
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:orphan
+						header:$repoaccounts360NLS.orphan
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:noownercode
+						header:$preconciliation.noownercode
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:comment
+						header:$preconciliation.comment
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:repositorydisplayname
+						header:$repository.concept
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerhrcode
+						header:$identity.hrcode
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerfullname
+						header:$identity.fullname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownermail
+						header:$identity.mail
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerinternal
+						header:$identity.internal
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerarrivaldate
+						header:$identity.arrivaldate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerdeparturedate
+						header:$identity.departuredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:orgdisplayname
+						header:$organisation.concept
+						width:160px
+					}
+				}
+			}
+		}	
+	}
+}

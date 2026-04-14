@@ -1,0 +1,125 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+fragmentPermissionParentPathsNLS = NLS {
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	nbaccounts [en "Number of active accounts" fr "Nombre de comptes actifs"]
+	nbprofiles [en "Number of profiles" fr "Nombre de profils"]
+	expertise [en "Expertise" fr "Responsabilité"]
+	managers [en "Managers" fr "Responsables"]
+	content [en "content" fr "contenu"]
+	description [en "description" fr "description"]
+	empty [en "Permission is not included in any parent permission" fr "Cette permission n'a pas de permissions parentes"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected permission parents as a Tree
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionuid</b>, the selected permission</li>
+ * <li><b>outpermissioncode</b>, the selected permission code</li>
+ * <li><b>outpermissionname</b>, the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentPermissionParentPaths = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+	parentpermissions = HierarchicalData {
+		view: bwf_permissionparentpermissions with inuid to uid
+		connect:parent uid to child parentuid
+		initial:parentuid IsNull
+		max-level: 10
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid)
+			]
+			when False then [
+			]
+		}
+	)	
+
+	ConditionalGroup {
+		IntCondition(Count parentpermissions) {
+			when =0 then [
+				Header {
+					value:$fragmentPermissionParentPathsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Tree {
+					data:parentpermissions
+					layout:Layout {grab:horizontal True vertical True}
+					show-filter:True
+					configurable:True
+					expand-level:2
+					Column {
+						column:code
+						width:33%
+						header:$permission.code
+						filterable:True
+						selection:outpermissioncode
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:displayname
+						width:66%
+						header:$permission.displayname
+						filterable:True
+						selection:outpermissionname
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:permissiontype
+						width:33%
+						initially-masked:True
+						header:$permission.permissiontype
+						filterable:True
+					}
+					Column {
+						column:description
+						width:34%
+						initially-masked:True
+						header:$fragmentPermissionParentPathsNLS.description
+					}
+					Column {
+						column:uid
+						hidden:True
+						selection:outpermissionuid
+					}
+				}
+			]
+		}
+	}
+}

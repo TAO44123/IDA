@@ -1,0 +1,67 @@
+bwr_customreviewSelectionNLS = NLS {
+	title [en "New Custom review campaign" fr "Nouvelle campagne de revue personnalisée"]
+	subtitle [
+		en "Please select the campaign you want to launch"
+		fr "Veuillez choisir la campagne à démarrer"
+	]
+	notype [en "No custom review is available." fr "Aucune revue personnalisée n'est disponible."]
+}
+
+bwr_customreviewSelection = Dialog {
+	title: $bwr_customreviewSelectionNLS.title
+	buttons:[
+		OkButton {
+			disabled:
+				StringPredicate ( outname ) {
+					when IsEmpty then True
+				}
+		}
+		CancelButton
+	]
+	
+	outname = Variable { type: String } 
+	nbtypes = Variable { type: Integer }
+	
+	pages = Dataset {
+		pages:			
+			Pages {
+				tags: "custom_review"				
+			}
+			count-variable: nbtypes	
+	}
+	
+	Header {
+		value: $bwr_customreviewSelectionNLS.subtitle
+		hidden: Eval "nbtypes.get() == 0 "
+	}
+	Table {
+		data: pages
+		hide-header: True
+		layout: Layout { grab: horizontal True vertical True }
+		hidden: Eval "nbtypes.get() == 0 "
+		double-click:
+			GoTo Dynamic ( Current type, Current name ),
+			CloseDialog Cancel  
+		Column {
+			column: title
+			width: 100%
+		}
+		Column {
+			column: name
+			hidden: False
+			selection: outname
+		}
+	}
+	Text {
+	  value: $bwr_customreviewSelectionNLS.notype
+	  hidden: Eval "nbtypes.get() > 0 "
+	  compact: True
+	}
+}
+
+testCustomReviewA = Page {
+  title: "Custom Review ABC"
+ // tags: "custom_review"
+  /* This is the page to create or edit a custom review of type ABC */
+  code = Parameter { hidden: True} /* code of the campaign when editing, will be empty when creating a campaign */
+}

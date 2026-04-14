@@ -1,0 +1,305 @@
+import "/webportal/pages/bw_fragments/repository/details.page"
+import "/webportal/pages/bw_fragments/repository/accounts.page"
+import "/webportal/pages/bw_fragments/repository/groups.page"
+import "/webportal/pages/bw_fragments/repository/applications.page"
+import "/webportal/pages/bw_fragments/repository/rights.page"
+import "/webportal/pages/bw_fragments/repository/shares.page"
+import "/webportal/pages/bw_fragments/repository/fsrights.page"
+import "/webportal/pages/bw_fragments/repository/controls.page"
+import "/webportal/pages/bw_fragments/repository/usages.page"
+import "/webportal/pages/bw_fragments/repository/perjob.page"
+import "/webportal/pages/bw_fragments/repository/perorg.page"
+import "/webportal/pages/bw_fragments/repository/decisionhistory.page"
+import "/webportal/pages/bw_fragments/custom/repositoryExtendedDetails.page"
+
+
+bwf_repositoryDetailsDialogNLS = NLS {
+    title [en 'Detail' fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	applications [en "Applications" fr "Applications"]
+	rights [en "Rights" fr "Droits"]
+	shares [en "Shares" fr "Partages"]
+	sharesrights [en "Data rights" fr "Droits sur les données"]
+	repository [en "Repository" fr "Référentiel"]
+	businessactivities [en "Business activities" fr "Activités métier"]
+	accounts [en "Accounts" fr "Comptes"]
+	usages [en "Usages" fr "Usages"]
+	groups [en "Groups" fr "Groupes"]
+	permissions [en "Permissions" fr "Permissions"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Repository details Dialog
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>repository uid</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, false by default</li>
+ * <li><b>inshowgroups </b>optional boolean, true to show groups tab, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show applications tab, false by default</li>
+ * <li><b>inshowrights </b>optional boolean, true to show applications rights tab, false by default</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowsharesrights </b>optional boolean, true to show shares rights tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show application origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show application origin per job tab, false by default</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update repository owners (false by default)</li>
+ * <li><b>incanreconcile </b>optional, boolean value, can reconcile repository accounts (false by default)</li>
+ * </ul>
+ * </span>
+ */
+bwf_repositoryDetailsDialog = Dialog {
+	title:$bwf_repositoryDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+
+	inuid = Variable
+	inshowbusinessactivities = Variable { type:Boolean initial:False }
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowgroups = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowrights = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowsharesrights = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	incanreconcile = Variable { type:Boolean initial:False }
+	incanupdateowners = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+
+	repository = Record {
+		view: bwf_repositoryDetail with inuid to uid
+	}
+
+	IncludeDynamicFragment{
+		dynamic-name:[
+						Concat("bwf_repositoryDetailsFragment",NonEmpty(repository.repositoryfamily, "NOFAMILYTYPE")),
+ 		 			  	Concat("bwf_repositoryDetailsFragment",NonEmpty(repository.repositorytype, "NOTYPE"))
+ 		 			 ]
+		base-fragment:  bwf_repositoryDetailsFragment with  
+						inuid binds-to inuid,
+						inshowbusinessactivities binds-to inshowbusinessactivities,
+						inshowaccounts binds-to inshowaccounts,
+						inshowgroups binds-to inshowgroups,
+						inshowapplications binds-to inshowapplications,
+						inshowrights binds-to inshowrights,
+						inshowshares binds-to inshowshares,
+						inshowsharesrights binds-to inshowsharesrights,
+						inshowusages binds-to inshowusages,
+						inshowcontrols binds-to inshowcontrols,
+						inshowdecisionhistory binds-to inshowdecisionhistory,
+						incanreconcile binds-to incanreconcile,
+						incanupdateowners binds-to incanupdateowners,
+						inshowperorg binds-to inshowperorg,
+						inshowperjob binds-to inshowperjob
+		layout:Layout { grab:horizontal True vertical True}
+	}
+}
+/**
+ * <span style="white-space: pre-line">
+ * Repository details default fragment
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>repository uid</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, false by default</li>
+ * <li><b>inshowgroups </b>optional boolean, true to show groups tab, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show applications tab, false by default</li>
+ * <li><b>inshowrights </b>optional boolean, true to show applications rights tab, false by default</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowsharesrights </b>optional boolean, true to show shares rights tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update repository owners (false by default)</li>
+ * <li><b>incanreconcile </b>optional, boolean value, can reconcile repository accounts (false by default)</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show application origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show application origin per job tab, false by default</li>
+ * </ul>
+ * </span>
+ */
+bwf_repositoryDetailsFragment = PageFragment {
+	enter-event:IntCase(repository.bwa_repositoryanalytics_nbusage) { when >0 then [ Set True to hasusages ] } 
+	
+	inuid = Variable
+	inshowbusinessactivities = Variable { type:Boolean initial:False }
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowgroups = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowrights = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowsharesrights = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	incanreconcile = Variable { type:Boolean initial:False }
+	incanupdateowners = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	
+	nbdefects = Variable { private:True }
+	hasusages = Variable { private:True initial:False }
+
+	showextended = Variable { private:True initial:False }
+
+	active_details = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_sharesrights = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	
+	repository = Record {
+		view: bwf_repositoryDetail with inuid to uid
+	}	
+	
+	TabFolder {
+		border:False
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.repository
+			activation-event:Set True to active_details
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryFullDetails
+				with value-of inuid to inuid, incanupdateowners binds-to incanupdateowners, value-of active_details to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_repositoryDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentRepositoryExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.accounts
+			activation-event:Set True to active_accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryAccounts
+				with value-of inuid to inuid, value-of True to incanshowdetails, incanreconcile binds-to incanreconcile, value-of active_accounts to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.groups
+			activation-event:Set True to active_groups
+			hidden:Not BooleanPredicate(inshowgroups)
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryGroupsSelection
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_groups to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.applications
+			activation-event:Set True to active_applications
+			hidden:	Not BooleanPredicate(inshowapplications)
+
+			IncludeFragment {
+				fragment:fragmentRepositoryApplications
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_applications to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.rights
+			activation-event:Set True to active_rights
+			hidden:Not BooleanPredicate(inshowrights)
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryRights
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_rights to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.oorigin
+			hidden:
+			OrPredicate {
+				Not BooleanPredicate(inshowperorg)
+			}
+			activation-event:Set True to active_perorg
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryPerOrg
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perorg to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.jorigin
+			hidden:
+			OrPredicate {
+				Not BooleanPredicate(inshowperjob)
+			}
+			activation-event:Set True to active_perjob
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryPerJob
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perjob to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.shares
+			feature:unstructureddata_license
+			activation-event:Set True to active_shares
+			hidden:Not BooleanPredicate(inshowshares)
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryShares
+				with value-of inuid to inuid, value-of active_shares to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_repositoryDetailsDialogNLS.sharesrights
+			feature:unstructureddata_license
+			activation-event:Set True to active_sharesrights
+			hidden:Not BooleanPredicate(inshowsharesrights)
+		
+			IncludeFragment {
+				fragment:fragmentRepositoryFSRights
+				with value-of inuid to inuid, value-of active_sharesrights to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_repositoryDetailsDialogNLS.usages
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowusages)
+					Not BooleanPredicate(hasusages)
+				}
+			activation-event: Set True to active_usages
+			
+			IncludeFragment (fragmentRepositoryUsages with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_usages to inenabled )
+		}
+		TabItem  {
+			text:$bwf_repositoryDetailsDialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentRepositoryAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_repositoryDetailsDialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentRepositoryDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}
+}

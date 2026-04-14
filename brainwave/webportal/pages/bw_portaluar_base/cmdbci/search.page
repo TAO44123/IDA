@@ -1,0 +1,233 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+import "/webportal/pages/bw_fragments/repository/resources.page"
+
+import "/webportal/pages/resources/constants.page"
+import "/webportal/pages/bw_portaluar_base/repository/search.page"
+import "/webportal/pages/bw_portaluar_base/parking.page"
+
+import "/webportal/pages/bw_portaluar_base/cmdbci/details.page"
+
+cmdbciSearchPage = Page {
+	title: $search.cmdbci.title
+	tags: "cmdbci", "conceptsearch" priority 550
+	icon: %concept_32.server
+	large-icon: %concept_48.server
+	description: $searchlabel.server
+	conditional-redirect:ConditionalRedirect { condition:Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license)) target:Page bwias_parking with-current-parameters }  
+	enter-event:BooleanCase using FeaturePredicate unrestrictedsearch in { when True then [ ] when False then [ Set Principal.uid to filterbycurrentuser ] }
+
+	initialUid = Parameter {
+		type: String
+		hidden: True
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	serverSearch = SearchDefinition {
+		entity: Repository
+		simple-mode-rule: br_server_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedCmdbUid = Variable {
+		type: String
+	}
+
+	tf_name = Variable
+	tf_type = Variable
+
+	name_search = Variable
+	type_search = Variable
+	
+	filterbycurrentuser = Variable
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	repositoryanalytics = Dataset {
+		pages: Pages{tags: "server" and "searchresults" }
+		count-variable:nbanalytics
+	}
+
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+
+	cmdbData = Dataset {
+		view: bw_cmdbci_search with name_search to name unless-empty, type_search to type unless-empty, filterbycurrentuser to identityuid unless-empty 
+	}
+	
+	goDetails = NamedAction (
+		GoTo Page cmdbciDetailsPage with selectedCmdbUid to paramCmdbciUid
+	)
+	
+	// Search section
+	Spacer {
+		height:4
+	}
+	Group {
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		border:True
+		Grid {
+			columns:GridColumn{group:a width:grow},GridColumn{group:a  width:grow},GridColumn{width:32}
+			GridRow {
+				GridCell {
+					align:leading
+					Edit {
+						variable:tf_name
+						label:$cmdb.displayname
+					}				
+				}
+				GridCell {
+					align:leading
+					Edit {
+						variable:tf_type
+						label:$cmdb.type
+					}				
+				}
+				GridCell {
+					Button {
+						actions:
+							StringCase(tf_name) {
+								when IsEmpty then [ Unset name_search ]
+								otherwise [ Set Concat('*',tf_name,'*') to name_search ]
+							},
+							StringCase(tf_type) {
+								when IsEmpty then [ Unset type_search ]
+								otherwise [ Set Concat('*',tf_type,'*') to type_search ]
+							}
+						image:%collection_16.magnify
+						presentation:Link
+					}
+				}
+			} 
+			
+		
+		
+		}
+	}
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: cmdbData
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex
+			selection-index: initialIndex
+			page-size:1000	
+			show-count-button: True				
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedCmdbUid
+			}
+			Column {
+				column: code
+				header: $cmdb.code
+				width: 50%
+				sortable:True
+				initially-masked: True
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: displayname
+				header: $cmdb.displayname
+				width: 100%
+				sortable:True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: type
+				header: $cmdb.type
+				width: 160px
+				sortable:True
+			}
+			Column {
+				column: family
+				header: $cmdb.family
+				width: 160px
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: environment
+				header: $cmdb.environment
+				sortable:True
+				width: 160px
+			}
+			Column {
+				column:state
+				initially-masked: False
+				sortable:True
+				header:$cmdb.state
+				width:160px
+			}
+			Column {
+				column:creationdate
+				initially-masked: True
+				sortable:True
+				header:$cmdb.creationdate
+				width:160px
+			}
+			Column {
+				column:modifydate
+				initially-masked: True
+				sortable:True
+				header:$cmdb.modificationdate
+				width:160px
+			}
+		}
+	}
+	Grid {
+		columns:GridColumn,GridColumn { width: grow }
+		layout: Layout { grab:horizontal True vertical False hint: height 38 }
+		GridRow {
+			GridCell {
+			}			
+			GridCell {
+				ButtonGroup {
+					nb-inline:1
+					align:Right
+					Button {
+						actions:ExecuteNamedAction goDetails
+						text:$search.showdetails
+						tooltip:$search.showdetailstooltip
+						disabled:StringPredicate(selectedCmdbUid) { when IsEmpty then True }	
+						image:%browsing_16.link
+					}
+				}
+			}
+		}
+	}
+}
+

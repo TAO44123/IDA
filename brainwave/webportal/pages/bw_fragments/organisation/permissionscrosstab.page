@@ -1,0 +1,119 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+fragmentOrganisationPermissionsNLS = NLS {
+	directonly [en "only this organisation" fr "seulement cette organisation"]
+	employeetype [en "Employee type" fr "Type de contrat"]
+}
+
+hasRightTemplate = StringImageTemplate {
+	when Not IsEmpty then %status_16_green.tick
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation permissions
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inonlydirectselection</b> optional, boolean value, true to display only direct members (false by default)</li>
+ * <li><b>incanshowdetails</b> optional, boolean value, true to enable application, permission and identity details (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationPermissionsCrosstab= PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inonlydirectselection = Variable { multivalued:False initial:False type:Boolean}
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outapplicationuid = Variable
+	outpermissionuid = Variable
+	outidentityuid = Variable
+	
+	/* Datasets and records here */
+	permissions = Dataset {
+		view: bwf_org_permissions_identities_cs with
+			inuid to uid unless-empty,
+			inonlydirectselection to directonly
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			} 
+	}
+	
+	goApplicationDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outapplicationuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Group {
+		layout: Layout { grab: horizontal True vertical False }
+		Checkbox {
+			variable: inonlydirectselection
+			label: $fragmentOrganisationPermissionsNLS.directonly
+			tooltip:$bwfOrganisation.directonlytooltip
+		}
+	}
+	
+	CrossTable {
+		data: permissions
+		cluster-sortable:True
+		cluster-keep-sort-on-change:True
+		cell-content: CellContent { text:'X' cluster-value:'X' align:Center }
+		columns: Dim { value: applicationuid label: applicationdisplayname header: $application.concept header-click: outapplicationuid },
+				 Dim { value: uid label: displayname header: $permission.concept header-click: outpermissionuid }
+		rows: 	 Dim{ value: orgcode label:orgdisplayname header: $organisation.concept },
+				 Dim{ value: jobtitledisplayname header: $identity.jobtitledisplayname },
+				 Dim { value: identityuid label: identityfullname header: $identity.fullname header-click: outidentityuid }
+		
+		column-header-click: StringCase ( outpermissionuid) {
+			when IsEmpty then [ ExecuteNamedAction goApplicationDetails ]
+				otherwise     [ ExecuteNamedAction goPermissionDetails ]
+				}
+		row-header-click: ExecuteNamedAction goIdentityDetails
+	}
+	
+}

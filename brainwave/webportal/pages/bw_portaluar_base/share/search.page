@@ -1,0 +1,503 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+import "/webportal/pages/resources/constants.page"
+import "/webportal/pages/bw_portaluar_base/parking.page"
+
+repositoryextNLS = NLS {
+	code [en "Repository \nCode" fr "Code \nréférentiel"]
+	displayname [en "Repository \nName" fr "Nom \nréférentiel"]
+}
+
+applicationextNLS = NLS {
+	code [en "Share \nCode" fr "Code \nPartage"]
+	sensitivityreason [en "Sensitivity \nReason" fr "Raison \nde sensibilité"]
+	sensitivitylevel [en "Sensitivity \nLevel" fr "Niveau \nde sensibilité"]
+	description [en "Description" fr "Description"]
+	category [en "Category" fr "Catégorie"]
+	applicationtype [en "Type" fr "Type"]
+}
+
+papplicationextNLS = NLS {
+	sensitivityreason [en "Share \nSensitivity \nReason" fr "Raison \nde Sensibilité \ndu Partage"]
+	sensitivitylevel [en "Share \nSensitivity \nLevel" fr "Niveau \nde Sensibilité \ndu Partage"]
+	description [en "Share \nDescription" fr "Description \ndu Partage"]
+	category [en "Share \nCategory" fr "Categorie \ndu Partage"]
+	applicationtype [en "Share \nType" fr "Type \nde Partage"]
+}
+
+permissionextNLS = NLS {
+	sensitivityreason [en "Sensitivity \nReason" fr "Raison \nde Sensibilité"]
+	sensitivitylevel [en "Sensitivity \nLevel" fr "Niveau \nde Sensibilité"]
+	description [en "Description" fr "Description"]
+}
+
+ppermissionextNLS = NLS {
+	sensitivityreason [en "Permission \nsensitivity \nreason" fr "Raison \nde sensibilité \nde la permission"]
+	sensitivitylevel [en "Permission \nsensitivity \nlevel" fr "Niveau \nde sensibilité \nde la permission"]
+	description [en "Permission \ndescription" fr "Description \nde permission"]
+}
+
+shareSearchPageNLS = NLS {
+	title [en "Share" fr "Partage"]
+	family [en "Family" fr "Famille"]
+}
+
+shareSearchPage_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+
+shareSearchPage_withtrends = UserVariable {
+		initial:False
+		type:Boolean
+		persistent:True
+}
+
+shareSearchPage = Page {
+	title: $shareSearchPageNLS.title
+	tags: "application" , "conceptsearch" priority 250
+	icon: %concept_32.share
+	large-icon: %concept_48.share
+	description: $shareSearchPageNLS.title
+	conditional-redirect:ConditionalRedirect { condition:Not FeaturePredicate unstructureddata_license target:Page bwias_parking with-current-parameters }  
+	
+	initialUid = Parameter {
+		type: String
+		hidden: True
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	applicationSearch = SearchDefinition {
+		entity: Application
+		simple-mode-rule: br_application_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedApplicationUid = Variable {
+		type: String
+	}
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	shareanalytics = Dataset {
+		pages: Pages{tags: "share" and "searchresults" }
+		count-variable:nbanalytics
+	}
+	
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+	
+	shareData = Dataset {
+		search: Search {
+			definition: applicationSearch
+			view: br_share_searchpoint_trend with ["Filesystem","Sharepoint"] to applicationtype, reftimeslot.timeslotuid to reftimeslotuid, UserVariable shareSearchPage_withtrends to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	shareData_count = Dataset {
+		search: Search {
+			definition: applicationSearch
+			view: br_share_searchpoint_trend with ["Filesystem","Sharepoint"] to applicationtype, reftimeslot.timeslotuid to reftimeslotuid, False to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	
+	
+	goDetails = NamedAction (
+		GoTo Activity Application Detail with selectedApplicationUid to paramApplicationUid
+	)
+	
+	// Search section
+	Group {
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		SearchEdition {
+			definition: applicationSearch
+			layout: Layout { grab: horizontal True vertical False }
+			simple-mode-columns: 2
+			rule-mode-enabled:FeaturePredicate sharesearch_rulemode
+			completion-view:[
+				Application as br_share_applicationcompletion
+			
+			]
+			simple-mode-layout: SimpleModeLayout {
+				family { label: $shareSearchPageNLS.family },
+				code { label: $application.code },
+				name { label: $application.displayname }
+			}
+		}
+	}
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: shareData
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex
+			selection-index: initialIndex
+			page-size:1000
+			show-count-button: True
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedApplicationUid
+			}
+			Column {
+				column:applicationtype
+				header: $papplicationextNLS.applicationtype
+			}
+			Column {
+				column: code
+				header: $application.code
+				sortable:True
+				width: 100%
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: displayname
+				sortable:True
+				header: $application.displayname
+				width: 100%
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: applicationfamily
+				text:Current family
+				sortable:True
+				header: $shareSearchPageNLS.family
+				width: 160px
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: repository_code
+				sortable:True
+				header: $repositoryextNLS.code
+				width: 100%
+				initially-masked: True
+			}
+			Column {
+				column: repository_displayname
+				sortable:True
+				header: $repositoryextNLS.displayname
+				width: 100%
+				initially-masked: True
+			}
+			Column {
+				column: category
+				sortable:True
+				header: $applicationextNLS.category
+				width: 100%
+				initially-masked: True
+			}
+			Column {
+				column: sensitivitylevel
+				sortable:True
+				text:Transform Current sensitivitylevel using bwfApplicationSensitivityLevelMapping
+				header: $applicationextNLS.sensitivitylevel
+				width: 100%
+				initially-masked: True
+			}
+			Column {
+				column: sensitivityreason
+				sortable:True
+				header: $applicationextNLS.sensitivityreason
+				width: 100%
+				initially-masked: True
+			}
+			Column {
+				column: description
+				header: $applicationextNLS.description
+				width: 100%
+				initially-masked: True
+			}
+			Column {
+				column: isnew
+				text:Transform Current isnew using booleanDisplayMapping
+				header: $searchlabel.isnew
+				width: 100px
+				styling:BooleanStyling(Current isnew) { when True then shareSearchPage_highlightnew when False then default }				
+				initially-masked: True
+			}
+			Column {
+				column:nbaccount
+				text:Transform Current nbaccount using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbaccounts.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbaccount).equals('null')?956487965:current.nbaccount-current.prevnbaccount") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbaccount using mayBeNullMapping, Transform Current prevnbaccount using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbidentity
+				text:Transform Current nbidentity using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.application.nbidentities.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbidentity).equals('null')?956487965:current.nbidentity-current.prevnbidentity") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbidentity using mayBeNullMapping, Transform Current prevnbidentity using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbfolder
+				text:Transform Current nbfolder using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.share.nbfolder.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbfolder).equals('null')?956487965:current.nbfolder-current.prevnbfolder") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbfolder using mayBeNullMapping,Transform Current prevnbfolder using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbmanagedfolder
+				text:Transform Current nbmanagedfolder using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.share.nbmanagedfolder.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbmanagedfolder).equals('null')?956487965:current.nbmanagedfolder-current.prevnbmanagedfolder") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbmanagedfolder using mayBeNullMapping,Transform Current prevnbmanagedfolder using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbreadaccess
+				text:Transform Current nbreadaccess using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.share.nbreadaccess.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbreadaccess).equals('null')?956487965:current.nbreadaccess-current.prevnbreadaccess") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbreadaccess using mayBeNullMapping,Transform Current prevnbreadaccess using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbwriteaccess
+				text:Transform Current nbwriteaccess using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.share.nbwriteaccess.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbwriteaccess).equals('null')?956487965:current.nbwriteaccess-current.prevnbwriteaccess") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbwriteaccess using mayBeNullMapping,Transform Current prevnbwriteaccess using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbfullcontrolaccess
+				text:Transform Current nbfullcontrolaccess using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.share.nbfullcontrolaccess.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbfullcontrolaccess).equals('null')?956487965:current.nbfullcontrolaccess-current.prevnbfullcontrolaccess") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbfullcontrolaccess using mayBeNullMapping,Transform Current prevnbfullcontrolaccess using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:120px
+			}
+			Column {
+				column:nbusage
+				text:Transform Current nbusage using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.share.nbusage.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbusage).equals('null')?956487965:current.nbusage-current.prevnbusage") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current nbusage using mayBeNullMapping,Transform Current prevnbusage using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+		}
+	}
+	Grid {
+		columns:GridColumn,GridColumn { width: grow }
+		layout: Layout { grab:horizontal True vertical False hint: height 38 }
+		GridRow {
+			GridCell {
+				Checkbox {
+					variable:UserVariable shareSearchPage_withtrends
+					text:$search.showkpitrends
+					tooltip:$search.showkpitrends.tooltip
+				}
+			}			
+			GridCell {
+				ButtonGroup {
+					nb-inline:2
+					align:Right
+					Button {
+						actions:ExecuteNamedAction goDetails
+						text:$search.showdetails
+						tooltip:$search.showdetailstooltip
+						disabled:StringPredicate(selectedApplicationUid) { when IsEmpty then True }	
+						image:%browsing_16.link
+					}
+					Button {
+						actions: IntCase(Count shareData_count)	{
+										when > NonEmpty(ConfigurationVariable "search_share_analyticserrorthreshold", Constant search_share_analyticserrorthreshold) then [
+											Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_share_analyticserrorthreshold", Constant search_share_analyticserrorthreshold))
+										]
+										when > NonEmpty(ConfigurationVariable "search_share_analyticswarningthreshold", Constant search_share_analyticswarningthreshold) then [
+											Confirm $search.analyticswarningthreshold(Count shareData_count),
+											GoTo Page shareSearchAnalyticsPage with  SerializeSearch applicationSearch to search
+												
+										]
+										otherwise [
+											GoTo Page shareSearchAnalyticsPage with  SerializeSearch applicationSearch to search
+										]
+									}
+						text:$search.applyanalytics
+						tooltip:$search.applyanalyticstooltip
+						image:%report_16.analytics
+						feature:sharesearch_analytics
+						disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+					}
+					Button {
+						actions:	TransferData shareData(uid) to (uids), 
+									Dialog fragmentApplicationBulkAddTag(uids to uids),
+									Flash $search.flashaddingatag
+						text:$search.addingatag
+						image:%collection_16.tag
+						feature:sharesearch_updatetags
+					}
+					Button {
+						actions:	TransferData shareData(uid) to (uids), 
+									Dialog fragmentApplicationBulkRemoveTag(uids to uids, SerializeSearch applicationSearch to applicationSearch),
+									Flash $search.flashremovingatag
+						text:$search.removingatag
+						image:%collection_16.tag
+						feature:sharesearch_updatetags
+					}
+					Button {
+						actions:	TransferData shareData(uid) to (uids), 
+									Dialog fragmentApplicationBulkRemoveAllTags(uids to uids),
+									Flash $search.flashremovingalltag
+						text:$search.removingalltag
+						image:%collection_16.tag
+						feature:sharesearch_updatetags
+					}
+				}
+			}
+		}
+	}
+}
+
+
+shareSearchAnalyticsPage = Page {
+	title:$search.applyanalytics
+
+	search = SearchDefinition {
+		entity:Application
+		simple-mode-rule: br_application_simple_search
+	}
+
+	analytics = Dataset {
+		pages: Pages{tags: "share" and "searchresults" }
+	}
+
+	ConditionalGroup {
+		IntCondition(Count analytics) {
+			when =0 then [
+				Header {
+					value:$search.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:analytics
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:$search.back
+			image:%browsing_16.back
+		}
+	}
+}

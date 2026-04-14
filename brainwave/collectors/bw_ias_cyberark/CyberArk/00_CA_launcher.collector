@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="00 CA launcher" name="P1622130130143_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1622131053558">
+		<Component name="C1622130130143_2" type="callfilter" x="52" y="238" w="190" h="64" title="RestAPI-only">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk/RestAPI/000_CA_all.collector"/>
+		</Component>
+		<Link name="L1622130130143_1" source="C1622131053558" target="C1622130130143_2" priority="1" expression="(dataset.equals(&apos;export_mode&apos;, &apos;restapi-only&apos;, false, true))" labelcustom="true" label="RestAPI"/>
+		<Component name="C1622131053558" type="discoverysource" x="326" y="20" w="264" h="64" title="CA_export-mode">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/CA_export-mode.discovery" datafile="{config.siloIteratedFileFullname}"/>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1622131656046" source="C1622131053558" target="C1622244499770" priority="2" expression="(dataset.equals(&apos;export_mode&apos;, &apos;evd-only&apos;, false, true))" labelcustom="true" label="EVD"/>
+		<Link name="L1622131657204" source="C1622131053558" target="C1622407060051" priority="3" expression="(dataset.equals(&apos;export_mode&apos;, &apos;mixed-mode&apos;, false, true))" labelcustom="true" label="Mixed"/>
+		<Component name="C1622244499770" type="callfilter" x="353" y="238" w="211" h="64" title="EVD-only">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk/EVD/000_CA_EVD_all.collector">
+				<Configuration name="A1635871904321" variable="dateformat" content="{dataset.date_format}"/>
+			</Line>
+		</Component>
+		<Component name="C1622407060051" type="callfilter" x="667" y="238" w="215" h="64" title="MIXED mode">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk/Mixed/000_CA_MIXED_all.collector">
+				<Configuration name="A1635871951004" variable="dateformat" content="{dataset.date_format}"/>
+			</Line>
+		</Component>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

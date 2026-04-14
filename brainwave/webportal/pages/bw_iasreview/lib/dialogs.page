@@ -1,0 +1,286 @@
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+
+// Roles Content Review: child applications
+bwaccess360_rolesContentFilterApplications = Dialog {
+	title: $bwaccess360_accessreviewmanagementNLS.pickapplications
+	enter-event:
+		Unset outapplicationsstring
+	buttons:
+		[
+			OkButton {
+				disabled:
+					IntPredicate ( SizeOf inoutapplicationuid ) {
+						when =0 then True
+					}
+				actions:
+					MultivaluedIterate applicationnames as app_name[
+						Set Concat(outapplicationsstring, " ", Current app_name, " ") to outapplicationsstring
+					]
+				}
+			CancelButton
+		]
+
+	incampaignid = Variable { type: String }
+	inoutapplicationuid = Variable { type: String multivalued: True }
+	outapplicationsstring = Variable { type: String initial: "" }
+	applicationnames = Variable { type: String multivalued: True }
+	explicitstatus = Variable { type: String multivalued: True }
+
+	applications = Dataset {
+		view: bwaccess360r_roleContentApplicationlist with
+			incampaignid to campaignid,
+			explicitstatus to explicitstatus unless-empty
+	}
+
+	Table {
+		data: applications
+		layout: Layout { grab: horizontal True vertical True }
+		show-filter: True
+		show-count: True
+		checkboxes:
+			uid to inoutapplicationuid and (
+				displayname to applicationnames
+			)
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $application.code
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: displayname
+			header: $application.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+	}
+}
+
+// Roles Content Review: IAM parent applications
+bwaccess360_rolesContentFilterIAMApplications = Dialog {
+	title: $bwaccess360_accessreviewmanagementNLS.pickapplications
+	enter-event:
+		Unset outapplicationsstring
+	buttons:
+		[
+			OkButton {
+				disabled:
+					IntPredicate ( SizeOf inoutapplicationuid ) {
+						when =0 then True
+					}
+				actions:
+					MultivaluedIterate applicationnames as app_name[
+						Set Concat(outapplicationsstring, " ", Current app_name, " ") to outapplicationsstring
+					]
+				}
+			CancelButton
+		]
+
+	incampaignid = Variable { type: String }
+	inoutapplicationuid = Variable { type: String multivalued: True }
+	outapplicationsstring = Variable { type: String initial:"" }
+	applicationnames = Variable { type: String multivalued: True }
+	explicitstatus = Variable { type: String multivalued: True }
+
+	applications = Dataset {
+		view: bwaccess360r_roleContentIamApplicationlist with
+			incampaignid to campaignid,
+			explicitstatus to explicitstatus unless-empty
+	}
+
+	Table {
+		data: applications
+		layout: Layout { grab: horizontal True vertical True }
+		show-filter: True
+		show-count: True
+		checkboxes:
+			uid to inoutapplicationuid and (
+				displayname to applicationnames
+			)
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $application.code
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: displayname
+			header: $application.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+	}
+}
+
+// IAM Role Content review: child permissions
+bwaccess360_rolesContentFilterPermissions = Dialog {
+	title: $bwaccess360_accessreviewmanagementNLS.pickpermissions
+	enter-event:
+		Unset outpermissionsstring
+	buttons:
+		[
+			OkButton {
+				disabled:
+					IntPredicate ( SizeOf inoutpermissionuid ) {
+						when =0 then True
+					}
+				actions:
+					MultivaluedIterate permissionnames as app_name[
+						Set Concat(outpermissionsstring, " ", Current app_name, " ") to outpermissionsstring
+					]
+				}
+			CancelButton
+		]
+
+	incampaignid = Variable { type: String }
+	inappfilter = Variable { type: String multivalued: True }
+	inoutpermissionuid = Variable { type: String multivalued: True }
+	outpermissionsstring = Variable { type: String initial:"" }
+	permissionnames = Variable { type: String multivalued: True }
+	explicitstatus = Variable { type: String multivalued: True }
+
+	permissions = Dataset {
+		view: bwaccess360r_rolesContentChildPermissionlist with
+			incampaignid to campaignid,
+			inappfilter to filterbyapplications,
+			explicitstatus to explicitstatus unless-empty
+	}
+
+	Table {
+		data: permissions
+		layout: Layout { grab: horizontal True vertical True }
+		show-filter: True
+		show-count: True
+		configurable: True
+		checkboxes:
+			uid to inoutpermissionuid and (
+				displayname to permissionnames
+			)
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $ppermission.code
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: displayname
+			header: $ppermission.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: app_code
+			header: $papplication.code
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: app_displayname
+			header: $application.concept
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+	}
+}
+
+// IAM Role Content review: parent role permissions
+bwaccess360_rolesContentFilterRoles = Dialog {
+	title: $bwaccess360_accessreviewmanagementNLS.pickpermissions
+	enter-event:
+		Unset outpermissionsstring
+	buttons:
+		[
+			OkButton {
+				disabled:
+					IntPredicate ( SizeOf inoutpermissionuid ) {
+						when =0 then True
+					}
+				actions:
+					MultivaluedIterate permissionnames as app_name[
+						Set Concat(outpermissionsstring, " ", Current app_name, " ") to outpermissionsstring
+					]
+				}
+			CancelButton
+		]
+
+	incampaignid = Variable { type: String }
+	inappfilter = Variable { type: String multivalued: True }
+	inoutpermissionuid = Variable { type: String multivalued: True }
+	outpermissionsstring = Variable { type: String initial:"" }
+	permissionnames = Variable { type: String multivalued: True }
+	explicitstatus = Variable { type: String multivalued: True }
+
+	permissions = Dataset {
+		view: bwaccess360r_rolesContentRoleslist with
+			incampaignid to campaignid,
+			inappfilter to filterbyapplications,
+			explicitstatus to explicitstatus unless-empty
+	}
+
+	Table {
+		data: permissions
+		layout: Layout { grab: horizontal True vertical True }
+		show-filter: True
+		show-count: True
+		configurable: True
+		checkboxes:
+			uid to inoutpermissionuid and (
+				displayname to permissionnames
+			)
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $ppermission.code
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: displayname
+			header: $ppermission.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: app_code
+			header: $papplication.code
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: app_displayname
+			header: $application.concept
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+	}
+}

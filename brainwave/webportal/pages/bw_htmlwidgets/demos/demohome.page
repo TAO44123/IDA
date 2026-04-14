@@ -1,0 +1,514 @@
+/* Import other pages here */
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+/* Nationalized labels here */
+bwg_demohomeNLS = NLS {
+	title1 [en "HTML Charts Widgets Demo part 1" ]
+	title2 [en "HTML Charts Widgets Demo part 2" ]
+}
+
+/**
+ * A simple showcase of the charts
+ * see "charts.page" for the documentation of the parameters
+ * 
+ */
+bwg_demohome1 = Page {
+	title: $bwg_demohomeNLS.title1
+	feature:htmlwidgets_showcase
+	tags:"Demo"
+	
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedOrg = Variable
+	teamLeader = Variable
+	
+	rootOrg = Variable
+	
+	sizeStrg = Variable
+	
+	/* Datasets and records here */
+	allOrgs = Dataset {
+		view: htmlwidgets_toporgs with rootOrg to rootOrg
+	}
+
+	topOrgs = Dataset {
+		view: htmlwidgets_toporgs with rootOrg to rootOrg
+		limit: 6
+	}
+	
+	topOrgsIntern = Dataset {
+		view: htmlwidgets_toporgs_1 with rootOrg to rootOrg
+		limit: 12
+	}
+
+	topOrgsRisks = Dataset {
+		view: htmlwidgets_toporgs_2 with rootOrg to rootOrg
+		limit: 64
+	}
+
+	orgs = Dataset {
+		view:br_organisation
+	}
+	
+	testvenn = Dataset {
+		view:htmlwidgets_testvenn
+	}
+	
+	/* Page content */
+	
+	Combo {
+		variable:rootOrg
+		label:'Root Organisation'
+		allow-none:True
+		options:Dynamic {
+			data:orgs
+			text:Current displayname
+			value:Current uid
+		}
+	}
+
+	Splitter {
+		disposition: Horizontal 
+		Group {
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: doughnutChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Doughnut Chart" to title,
+					value-of True to tooltipShowPercent,
+					value-of "Right" to legendPosition,
+					value-of Constant contrastedPalette to customColors
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+					when onlegendclick then [
+						Flash Concat ("Clicked on Code/Label: ", Current code , " ", Current label ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: pieChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Pie Chart" to title
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+					when onlegendclick then [
+						Flash Concat ("Clicked on Code/Label: ", Current code , " ", Current label ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: doughnutChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Doughnut Chart" to title,
+					value-of True to tooltipShowPercent,
+					value-of True to showHalfOnly,
+					value-of 80 to cutoutPercentage,
+					value-of "Right" to legendPosition,
+					value-of Constant contrastedPalette to customColors
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+					when onlegendclick then [
+						Flash Concat ("Clicked on Code/Label: ", Current code , " ", Current label ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: pieChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Pie Chart" to title,
+					value-of True to showHalfOnly
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+					when onlegendclick then [
+						Flash Concat ("Clicked on Code/Label: ", Current code , " ", Current label ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: polarAreaChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Polar Area Chart" to title,
+					value-of Constant warmPalette to customColors
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+					when onlegendclick then [
+						Flash Concat ("Clicked on Code/Label: ", Current code , " ", Current label ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: barChart
+				datasets: topOrgs ( shortname, uid, count, displayname ) to chartdata ( label, code , count , description)
+				bindings: 
+					value-of "Bar Chart" to title,
+					value-of "Organisations" to xlabel,
+					value-of "Number of People" to ylabel,
+					value-of False to showxAxesGrid,
+					value-of Constant shadesofgrayPalette to customColors
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+				}
+			}
+		}
+		Group {
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: lineChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Line Chart" to title,
+					value-of "Start" to fill,
+					value-of True to curvedLine
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: lineChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Scatter Chart" to title,
+					value-of 10 to pointRadius,
+					value-of 'rectRounded' to pointStyle,
+					value-of False to showLine
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: radarChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Radar Chart" to title,
+					value-of "end" to fill
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: barChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Horizontal Bar Chart with Labels Inside" to title,
+					value-of "People" to tooltipSuffix,
+					value-of Constant contrastedPalette to customColors,
+					value-of True to isHorizontal,
+					value-of True to isLabelInside
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multibarChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Stacked Bar Chart" to title,
+					value-of 'Top' to legendPosition,
+					value-of True to isStacked
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Category: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multibarChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Horizontal Stacked Bar Chart" to title,
+					value-of 'Top' to legendPosition,
+					value-of True to isHorizontal,
+					value-of True to isStacked
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Category: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+		}
+	}
+}
+	
+bwg_demohome2 = Page {
+	title: $bwg_demohomeNLS.title2
+	feature:htmlwidgets_showcase
+	tags:"Demo"
+	
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedOrg = Variable
+	teamLeader = Variable
+	
+	rootOrg = Variable
+	
+	sizeStrg = Variable
+	
+	/* Datasets and records here */
+	allOrgs = Dataset {
+		view: htmlwidgets_toporgs with rootOrg to rootOrg
+	}
+
+	topOrgs = Dataset {
+		view: htmlwidgets_toporgs with rootOrg to rootOrg
+		limit: 6
+	}
+	
+	topOrgsIntern = Dataset {
+		view: htmlwidgets_toporgs_1 with rootOrg to rootOrg
+		limit: 12
+	}
+
+	topOrgsRisks = Dataset {
+		view: htmlwidgets_toporgs_2 with rootOrg to rootOrg
+		limit: 64
+	}
+
+	orgs = Dataset {
+		view:br_organisation
+	}
+	
+	testvenn = Dataset {
+		view:htmlwidgets_testvenn
+	}
+	
+	/* Page content */
+	
+	Combo {
+		variable:rootOrg
+		label:'Root Organisation'
+		allow-none:True
+		options:Dynamic {
+			data:orgs
+			text:Current displayname
+			value:Current uid
+		}
+	}
+
+	Splitter {
+		disposition: Horizontal 
+		Group {
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: barChart
+				datasets: topOrgs ( shortname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					value-of "Horizontal Bar Chart" to title,
+					value-of "Organisations" to ylabel,
+					value-of "Number of People" to xlabel,
+					value-of True to isHorizontal,
+					value-of Constant shadesofgrayPalette to customColors
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multibarChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Multi Bar Chart" to title,
+					value-of 'Top' to legendPosition,
+					value-of Constant indicatorsPalette to customColors
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Category: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multibarChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Horizontal Multi Bar Chart" to title,
+					value-of True to isHorizontal,
+					value-of 'Top' to legendPosition
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Category: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multilineChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Multi Line Chart" to title,
+					value-of 'Top' to legendPosition,
+					value-of False to fill,
+					value-of True to curvedLine,
+					value-of "Style4" to lineDashed
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Category: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+			Combo {
+				variable:sizeStrg
+				label:Label{break:True value:"TreeMap Size Strategy" layout:Layout {align:horizontal Center vertical End}}
+				layout:Layout {hint: width 300 align:horizontal Center vertical End}
+				options:Static {
+					Option {text:"Count" value:"Count"}
+					Option {text:"Reversecount" value:"Reversecount"}
+					Option {text:"Same" value:"Same"}
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: treemapChart
+				datasets: allOrgs ( displayname, uid, count ) to chartdata ( label, code , count )
+				bindings: 
+					sizeStrg binds-to sizeStrategy
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Value: ", Current code , " ", Current label , " ", Current count) 
+					]
+				}
+			}
+		}
+		Group {
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multibarChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Horizontal Stacked100 Bar Chart" to title,
+					value-of 'Top' to legendPosition,
+					value-of True to isHorizontal,
+					value-of True to isStacked,
+					value-of True to stacked100
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Ccategory: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multilineChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Stacked Multi Line Chart" to title,
+					value-of "Start" to fill,
+					value-of 1 to pointRadius,
+					value-of True to isStacked
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Category: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: multilineChart
+				datasets: topOrgsIntern ( uid, shortname, internal, status, count ) to chartdata ( code, label, categorycode , category, count )
+				bindings: 
+					value-of "Stacked100 Multi Line Chart" to title,
+					value-of "Start" to fill,
+					value-of 1 to pointRadius,
+					value-of True to isStacked,
+					value-of True to stacked100
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+					when oncategoryclick then [
+						Flash Concat ("Clicked on Category Code/Category: ", Current categorycode, " ", Current category ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: heatmapChart
+				datasets: topOrgsRisks ( uid, shortname, risklevel, risklevellabel, count ) to chartdata ( code , label, categorycode, category, count )
+				bindings: 
+					value-of False to rounded,
+					value-of "Palette" to colorInterpolation,
+					value-of Constant higherTheWorstPalette to customColors
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on Code/Label/Category Code/Category/Count: ", Current code," ", Current label," ", Current categorycode," ", Current category," ", Current count ) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: vennDiagramChart
+				datasets: testvenn (uid, fullname, recorduid) to chartdata (code,label,element)
+				bindings: 
+					value-of "Permissions" to tooltipSuffix,
+					value-of "Permissions in Common" to tooltipnSuffix
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked on nbofitems/code1/label1/code2/label2/value: ", Current nbofitems," ", Current code1 , " ", Current label1 , " ", Current code2, " ", Current label2, " ", Current count) 
+					]
+				}
+			}
+		}
+	}
+}
+	

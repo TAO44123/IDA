@@ -1,0 +1,225 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+fragmentOrganisationTheoreticalRightsNLS = NLS {
+	directonly [en "Only this organisation" fr "Seulement cette organisation"]
+	hierarchy [en "Organisation hierarchy" fr "Hiérarchie des organisations"]
+	nbidentity [en "Nb identities" fr "Nb identités"]
+	trends [en "Changes" fr "Changements"]
+	showdetails [en "Show selected right account list" fr "Afficher la liste des comptes pour la permission sélectionnée"]
+	subtitle [en '{1} ({0}) identities' fr 'Identités disposant de {1} ({0})']
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display theoretical rights for a given organisation: permissions with a counter (nb identities)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails</b> optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissioncode</b> the selected permission</li>
+ * <li><b>outpermissionname</b> the selected permission</li>
+ * <li><b>outrolename</b> the selected role</li>
+ * </ul>
+ * </span>
+ */ 
+fragmentOrganisationTheoreticalRightsMasterDetails = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inonlydirectselection = Variable { multivalued:False }
+
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+	
+	/* Dataset here */
+	master = Dataset {
+		view: bwf_organisationtheoreticalrightsperms with
+			inuid to uid,
+			inonlydirectselection to directonly
+		 trend: Trend {
+		 	join-column:perm_uid
+		 	status-column-name:trends
+		 	include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			value-column:nbidentity
+			timeslot:FromPage(-1)		 	
+		 }
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	hasoverallocation = Dataset {
+		view: bwf_organisationoverallocationsperms with
+			inuid to uid,
+			inonlydirectselection to directonly
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	data = Dataset {
+		join: Join {
+			primary-dataset:master
+			secondary-dataset:hasoverallocation
+			primary-column:perm_uid
+			secondary-column:perm_uid
+			primary-optional:False
+			secondary-prefix:over_
+			secondary-cardinality:optional
+		}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid, 
+												False to inshowaccounts,
+												True to inshowaccountsfororganisation,
+												False to inshowoverallocated,
+												True to inshowoverallocatedfororganisation,
+												False to inshowtheoretical,
+												True to inshowtheoreticalfororganisation,
+												True to inshowperorg,
+												True to inshowperjob,
+												inuid to inorganisationuid,
+												inonlydirectselection to inonlydirectselection
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Checkbox {
+		variable:inonlydirectselection
+		text:$fragmentOrganisationTheoreticalRightsNLS.directonly
+		tooltip:$bwfOrganisation.directonlytooltip
+	}
+	
+	ConditionalGroup {
+		IntCondition ( Count master ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noTR
+					compact: True
+				}
+			] otherwise [
+				Group {
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						double-click:ExecuteNamedAction goDetails
+						persist-configuration:True
+						
+						
+						Column {
+							column: perm_uid
+							hidden:True
+							selection:outpermissionuid
+						}
+						Column {
+							column: over_hasoverallocations
+							text:''
+							header: ''
+							width: 28px
+							sortable: True
+							image:TemplateImageSelection(Current over_hasoverallocations) using bwf_warning		
+						}
+						Column {
+							column: perm_code
+							selection:outpermissioncode
+							initially-masked: True
+							header: $permission.concept
+							width: 100%
+							sortable: True
+							filterable: True
+							
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column: perm_displayname
+							selection:outpermissionname
+							initially-masked: False
+							header: $ppermission.displayname
+							width: 100%
+							sortable: True
+							filterable: True
+							
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column: perm_permissiontype
+							initially-masked: True
+							header: $ppermission.permissiontype
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: app_displayname
+							initially-masked: False
+							header: $application.concept
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: nbidentity
+							text:Transform Current nbidentity using bwf_defaultsTo0
+							align:Right
+							header: $fragmentOrganisationTheoreticalRightsNLS.nbidentity
+							sortable: True
+							filterable: True
+							width: 10%
+						}												
+						Column {
+							column: trends
+							header: $bw_fragment.trends
+							text:Transform Current trends using bwf_trendStatusColumn 
+							styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+							image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+							tooltip:$bwf_trendStatusColumnNLS.tooltip
+	
+							sortable: True
+							filterable: True
+							width: 10%
+						}												
+					}
+				}
+			]
+		}
+	}
+}

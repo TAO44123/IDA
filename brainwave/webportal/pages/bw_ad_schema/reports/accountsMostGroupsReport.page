@@ -1,0 +1,290 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+
+import "/webportal/pages/bw_ad_schema/reports/accountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/groupsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/allreports.page"
+
+
+bw_adschema_accountsMostGroupsReportNLS = NLS {
+	nbgroups [en "nb groups" fr "nombre de groupes"]
+	master [en "Accounts" fr "Comptes"]	
+	detail [en "Corresponding groups" fr "Groupes associés"]	
+}
+
+/* Nationalized labels here */
+bw_adschema_accountsMostGroupsReport = Page {
+	title: $bw_adschema_accountsReportNLS.title
+	dynamic-title:$bw_adschema_accountsReportNLS.dyntitle(title)
+	
+	tags: "ADreports"
+	dock-right: Dock {
+		collapsed:True
+		collapsible:True
+		width:300
+		
+		Header {
+			value:$bw_adschema_accountsReportNLS.accountgroup
+		}
+		Tree {
+			data:selectedAccountGroupsTree
+			layout:Layout{grab:horizontal True vertical True}
+			hide-header:False
+			configurable:True
+			
+			Column {
+				header:$pgroup.displayname
+				column:displayname
+				width:100%
+				filterable:True
+				sortable:True
+			}
+			Column {
+				header:$pgroup.comment
+				column:comment
+				width:320px
+				filterable:True
+				sortable:True
+				initially-masked:True
+			}
+			Column {
+				header:$pgroup.code
+				column:code
+				width:320px
+				sortable:True
+				filterable:True
+				initially-masked:True
+			}
+		
+		}
+	}
+	
+	/* Parameters here */
+	title = Parameter {type:String hidden:True mandatory:False}
+	domainuid = Parameter {type:String hidden:True mandatory:False multivalued:True}
+	
+	disabled = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.disabled}
+	locked = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.locked}
+	dontexpirepassword = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.dontexpirepassword}
+	notnormalaccount = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.notnormalaccount}
+	passwordcantchange = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordcantchange}
+	passwordexpired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordexpired}
+	passwordnotrequired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordnotrequired}
+	smartcardrequired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.smartcardrequired}
+	groupchanged = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.groupchanged}
+	noexpirationdate = Parameter {type:Boolean hidden:True mandatory:False}
+	internal = Parameter {type:Boolean hidden:True mandatory:False}
+	logincount = Parameter {type:Integer hidden:True mandatory:False}
+	badpasswordcount = Parameter {type:Integer hidden:True mandatory:False}
+	importaction = Parameter {type:String hidden:True mandatory:False}
+	deletedaction = Parameter {type:String hidden:True mandatory:False}
+	groupsid = Parameter {type:String hidden:True mandatory:False}
+	terminated = Parameter {type:Boolean hidden:True mandatory:False}
+
+	recontype = Parameter {type:String hidden:True mandatory:False}
+	
+	lastlogin = Parameter {type:Integer hidden:True mandatory:False}
+	passwordlastchanged = Parameter {type:Integer hidden:True mandatory:False}
+	expirationdate = Parameter {type:Integer hidden:True mandatory:False}
+	
+	/* Variables here */
+	vtitle = Variable {type:String initial:$bw_adschema_accountsReportNLS.title}
+	selectedAccount = Variable
+	selectedAccountUid = Variable
+	
+	/* Datasets and records here */
+	accounts = Dataset {
+		view:bw_ad_accountsmostgroups with domainuid to domainuid
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:False
+			join-column:uid
+			value-column:^nbgroups
+			status-column-name:status
+			difference-column-name:diff	
+			timeslot:FromPage(-1)
+		}
+	}
+
+	groups = Dataset {
+		view:bw_ad_accountgroups with selectedAccountUid to accountuid
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:False
+			join-column:uid
+			value-column:^value
+			status-column-name:status	
+			timeslot:FromPage(-1)
+		}
+	}
+	
+	selectedAccountGroupsTree = HierarchicalData {
+		roots-view:ad_accountdirectgroups with selectedAccount to recorduid
+		children-view:ad_subgroups
+		attribute:recorduid
+		parameter:parentrecorduid
+	}
+	
+	/* Page content */
+	Splitter {
+		disposition:Horizontal
+		Group {
+			title:$bw_adschema_accountsMostGroupsReportNLS.master
+			
+
+				Grid {
+				columns: GridColumn { width: grow }, GridColumn { width: 50px }
+				GridRow {
+					GridCell {			
+
+			Table {
+				data:accounts
+				layout:Layout {grab:horizontal True vertical True}
+				show-filter:True
+				show-count:True
+				configurable:True
+				double-click:GoTo Activity Account Detail with Current uid to paramAccountUid
+				
+				Column {column:nbgroups header:$bw_adschema_accountsMostGroupsReportNLS.nbgroups sortable:True}
+
+				Column {column:diff header:"trend" sortable:True image:IntImageSelection(Current diff) {when >0 then "bw_ad_schema/indicators/high1gray.png"
+				when =0 then "bw_ad_schema/indicators/equals.png"
+				when <0 then "bw_ad_schema/indicators/low1gray.png"
+				when InvalidInteger then  "16/famfamfam_silk_icons_v013/add.png"
+				}}
+		
+		
+				Column {column:repositoryrecorduid hidden:True}
+				Column {column:repositoryuid hidden:True}
+				Column {column:repositorycode header:$pdomain.code sortable:True filterable:True}
+				Column {column:repositorydisplayname header:$pdomain.displayname sortable:True filterable:True initially-masked:True}
+				Column {column:repositoryextractDate header:$pdomain.extractdate sortable:True filterable:True initially-masked:True}
+		
+				Column {column:recorduid hidden:True selection:selectedAccount}
+				Column {column:uid hidden:True  selection:selectedAccountUid}
+				Column {column:identifier header:$bw_adschema_accountsReportNLS.dn sortable:True filterable:True initially-masked:True}
+				Column {column:login header:$account.login sortable:True filterable:True}
+		
+				Column {column:sid header:$account.sid sortable:True filterable:True initially-masked:True}
+				Column {column:guid header:$account.guid sortable:True filterable:True initially-masked:True}
+				Column {column:profile header:$account.profile sortable:True filterable:True initially-masked:True}
+				Column {column:givenname header:$account.givenname sortable:True filterable:True initially-masked:True}
+				Column {column:surname header:$account.surname sortable:True filterable:True initially-masked:True}
+				Column {column:username header:$account.username sortable:True filterable:True}
+				Column {column:employeenumber header:$account.employeenumber sortable:True filterable:True initially-masked:True}
+				Column {column:mail header:$account.mail sortable:True filterable:True}
+				Column {column:managerdata header:$account.managerdata sortable:True filterable:True initially-masked:True}
+				Column {column:creationdate header:$account.creationdate sortable:True filterable:True}
+				Column {column:lastlogindate header:$account.lastlogindate sortable:True filterable:True}
+				Column {column:passwordlastsetdate header:$account.passwordlastsetdate sortable:True filterable:True}
+				Column {column:expiredate header:$account.expiredate sortable:True filterable:True}
+				Column {column:nextpwdchangedate header:$account.nextpwdchangedate sortable:True filterable:True}
+				Column {column:service header:$account.service sortable:True filterable:True initially-masked:True}
+				Column {column:disabled header:$account.disabled sortable:True filterable:True}
+				Column {column:logincount header:$account.logincount sortable:True filterable:True initially-masked:True}
+				Column {column:badpasswordcount header:$account.badpasswordcount sortable:True filterable:True initially-masked:True}
+				Column {column:passwordnotrequired header:$account.passwordnotrequired sortable:True filterable:True}
+				Column {column:passwordcantchange header:$account.passwordcantchange sortable:True filterable:True}
+				Column {column:notnormalaccount header:$account.notnormalaccount sortable:True filterable:True initially-masked:True}
+				Column {column:dontexpirepassword header:$account.dontexpirepassword sortable:True filterable:True}
+				Column {column:passwordexpired header:$account.passwordexpired sortable:True filterable:True}
+				Column {column:smartcardrequired header:$account.smartcardrequired sortable:True filterable:True}
+				Column {column:groupchanged header:$account.groupchanged sortable:True filterable:True initially-masked:True}
+				Column {column:custom1 header:$account.custom1 sortable:True filterable:True initially-masked:True}
+				Column {column:custom2 header:$account.custom2 sortable:True filterable:True initially-masked:True}
+				Column {column:custom3 header:$account.custom3 sortable:True filterable:True initially-masked:True}
+				Column {column:custom4 header:$account.custom4 sortable:True filterable:True initially-masked:True}
+				Column {column:custom5 header:$account.custom5 sortable:True filterable:True initially-masked:True}
+				Column {column:custom6 header:$account.custom6 sortable:True filterable:True initially-masked:True}
+				Column {column:custom7 header:$account.custom7 sortable:True filterable:True initially-masked:True}
+				Column {column:custom8 header:$account.custom8 sortable:True filterable:True initially-masked:True}
+				Column {column:custom9 header:$account.custom9 sortable:True filterable:True initially-masked:True}
+				
+				Column {column:reconciliationdate header:$preconciliation.reconciliationdate sortable:True filterable:True initially-masked:True}
+				Column {column:reconciliationnoownercode header:$bw_adschema_accountsReportNLS.noownercode}
+				Column {column:reconciliationdescription header:$preconciliation.description sortable:True filterable:True initially-masked:True}
+				Column {column:reconciliationcomment header:$preconciliation.comment sortable:True filterable:True initially-masked:True}
+				Column {column:reconciliationtype header:$preconciliation.type sortable:True filterable:True initially-masked:True}
+				Column {column:reconciliationreliability header:$preconciliation.reliability sortable:True filterable:True initially-masked:True}
+				Column {column:reconciliationleavedate header:$preconciliation.leavedate sortable:True filterable:True initially-masked:True}
+				
+				Column {column:ownerhrcode header:$pidentity.hrcode}
+				Column {column:ownergivenname header:$pidentity.givenname sortable:True filterable:True initially-masked:True}
+				Column {column:ownersurname header:$pidentity.surname sortable:True filterable:True initially-masked:True}
+				Column {column:owneraltname header:$pidentity.altname sortable:True filterable:True initially-masked:True}
+				Column {column:ownerfullname header:$pidentity.fullname}
+				Column {column:owneractive header:$pidentity.active}
+				Column {column:ownerarrivaldate header:$pidentity.arrivaldate sortable:True filterable:True initially-masked:True}
+				Column {column:ownerdeparturedate header:$pidentity.departuredate sortable:True filterable:True initially-masked:True}
+				Column {column:ownermail header:$pidentity.mail sortable:True filterable:True initially-masked:True}
+				Column {column:ownerinternal header:$pidentity.internal}
+				Column {column:owneremployeetypecode header:$pidentity.employeetypecode sortable:True filterable:True initially-masked:True}
+				Column {column:owneremployeetypedisplayname header:$pidentity.employeetypedisplayname sortable:True filterable:True initially-masked:True}
+			}
+			
+				}
+					GridCell {
+						Button {
+							layout: Layout { indent: horizontal 0 vertical 30 }
+							actions: GoTo Report bw_adschema_accountsMostGroupsReport_print
+								with 	domainuid to domainuid,
+										
+										title to title
+							presentation: Link
+							image: "32/details/printable_32_gray.png"
+						}
+					}
+				}
+			}
+			
+			
+		}
+		Group {
+			title:$bw_adschema_accountsMostGroupsReportNLS.detail
+			Table {
+				data:groups
+				layout:Layout {grab:horizontal True vertical True}
+				show-filter:True
+				show-count:True
+				configurable:True
+				double-click:GoTo Activity Group Detail with Current uid to paramGroupUid
+				
+				Column {column:status header:"New" text:"" sortable:True width:32px image:StringImageSelection(Current status) {when "New" then "16/famfamfam_silk_icons_v013/add.png"}}
+		
+				Column {column:repositoryrecorduid hidden:True}
+				Column {column:repositoryuid hidden:True}
+				Column {column:repositorycode header:$pdomain.code sortable:True filterable:True}
+				Column {column:repositorydisplayname header:$pdomain.displayname sortable:True filterable:True initially-masked:True}
+				Column {column:repositoryextractDate header:$pdomain.extractdate sortable:True filterable:True initially-masked:True}
+		
+				Column {column:recorduid hidden:True}
+				Column {column:uid hidden:True}
+		
+				Column {column:code header:$group.code sortable:True filterable:True}
+				Column {column:sid header:$bw_adschema_groupsReportNLS.sid sortable:True filterable:True initially-masked:True}
+				Column {column:guid header:$bw_adschema_groupsReportNLS.guid sortable:True filterable:True initially-masked:True}
+				Column {column:displayname header:$group.displayname sortable:True filterable:True}
+				Column {column:comment header:$group.comment sortable:True filterable:True}
+				Column {column:grouptype header:$group.grouptype sortable:True filterable:True initially-masked:True}
+				Column {column:dynamic header:$group.dynamic sortable:True filterable:True initially-masked:True}
+				Column {column:filter header:$group.filter sortable:True filterable:True initially-masked:True}
+				Column {column:creationdate header:$group.creationdate sortable:True filterable:True}
+				Column {column:modificationdate header:$group.modificationdate sortable:True filterable:True}
+		
+				Column {column:custom1 header:$group.custom1 sortable:True filterable:True initially-masked:True}
+				Column {column:custom2 header:$group.custom2 sortable:True filterable:True initially-masked:True}
+				Column {column:custom3 header:$group.custom3 sortable:True filterable:True initially-masked:True}
+				Column {column:custom4 header:$group.custom4 sortable:True filterable:True initially-masked:True}
+				Column {column:custom5 header:$group.custom5 sortable:True filterable:True initially-masked:True}
+				Column {column:custom6 header:$group.custom6 sortable:True filterable:True initially-masked:True}
+				Column {column:custom7 header:$group.custom7 sortable:True filterable:True initially-masked:True}
+				Column {column:custom8 header:$group.custom8 sortable:True filterable:True initially-masked:True}
+				Column {column:custom9 header:$group.custom9 sortable:True filterable:True initially-masked:True}
+			}
+		}
+	}
+}

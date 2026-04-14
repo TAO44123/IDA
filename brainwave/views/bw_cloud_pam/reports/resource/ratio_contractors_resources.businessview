@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_ratio_contractors_resources" displayname="ratio contractors resources">
+	<Definition scriptfile="/views/bw_cloud_pam/reports/resource/ratio_contractors_resources.javascript" name="D1629018895336">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1629018895334" title="All resources">
+			<InnerView name="bwpam_nb_resources_history">
+				<Param name="F1629019275998" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1629019614868" type="joinview" x="760" y="329" w="300" h="50" title="Resources by Contractors">
+			<Join jointype="left" key1="{dataset.timeslotuid.get()}" key2="{dataset.timeslotuid.get()}"/>
+			<InnerView name="bwpam_nb_contractors_resources_history">
+				<Param name="F1629019657894" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+			<ViewComputedAttribute name="resources_percent" displayname="resources_percent" type="Integer" expression="dataset.isEmpty(&apos;nb_resources&apos;) || dataset.isEmpty(&apos;nb_resources_by_contractors&apos;) ? 0 : ((dataset.nb_resources_by_contractors.get() * 100) + (dataset.nb_resources.get() / 2)) / dataset.nb_resources.get()"/>
+		</Component>
+		<Link name="L1629020167623" source="C1629018895334" target="C1629019614868" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="vault_code" displayname="vault_code"/>
+</View>

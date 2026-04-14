@@ -1,0 +1,113 @@
+import "/webportal/pages/bw_cloud_base/widgets/stepper/stepper.page"
+stepper_demos = Page {
+	title: "Stepper demos"
+		
+	currentStepA = Variable { initial: "step2"}
+	
+	ds_id = Variable { multivalued: True initial: [ "step1", "step2", "step3", "step4" ] } 
+	ds_label = Variable { multivalued: True initial: [ "Preparation of data", "Design the roles",  "Make the stuff", "Export the result" ] } 
+	ds_description = Variable { multivalued: True initial: [ "This is a very long description for step A et encore plus long que ca ne finit jamais" , "description for step B" , "description for step C" ,"description for step D" ] } 
+	ds_icon = Variable { multivalued: True initial: [ "access", "applications", "checklist", "database" ] } 
+   ds_available = Variable { multivalued: True initial: [ False, False , False, False] } 
+	ds_done = Variable { multivalued: True initial: [ False, False , False, False] } 
+	 
+	Grid {	    
+		columns: GridColumn{ width: 300px },GridColumn{ width: 300px }, GridColumn{ width: 300px },GridColumn { width: grow}
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+		    height: 500
+			GridCell {		
+				  IncludeHTMLWidget {
+						layout: Layout { grab:horizontal True vertical True  }
+						
+						template: stepper
+						//datasets:stepsA( id, label, desc, icon ) to stepsdata (id, label, description, iconclass)
+						bindings:
+						   value-of "vertical" to orientation 
+						  , value-of currentStepA to currentStep
+						 // , value-of True to showNumbers
+						  , value-of True to showIcons
+						 //  value-of True to sort
+						 	,value-of ds_id to ds_id
+							,value-of ds_label to ds_label
+							,value-of ds_description to ds_description
+							,value-of ds_icon to ds_iconclass
+							
+						widget-events:
+						  { 
+						    when onlabelclick then [ 
+						      Flash Concat ( "Clicked: " , Current id)
+						    ]
+					}   	   				
+				}			
+				
+			}
+			GridCell {
+				  IncludeHTMLWidget {
+						layout: Layout { grab:horizontal True vertical True  }
+						
+						template: stepper
+						//datasets:stepsA( id, label, desc, icon ) to stepsdata (id, label, description, iconclass)
+						bindings:
+						   value-of "vertical" to orientation 
+						 // , value-of currentStepA to currentStep
+						  , value-of False to showIcons
+						 //  value-of True to sort
+						 	,value-of ds_id to ds_id
+							,value-of ds_label to ds_label
+							,value-of ds_description to ds_description
+							,value-of ds_icon to ds_iconclass
+							, ds_available binds-to ds_available
+							, ds_done binds-to ds_done							
+						widget-events:
+						  { 
+						    when onlabelclick then [ 
+						      Flash Concat ( "Clicked: " , Current id)
+						    ]
+					}   	   				
+				}			
+			
+				
+			} 
+			GridCell {				
+				
+			}       		
+		}	
+	}
+	
+	
+	 	
+		IncludeHTMLWidget {
+				layout: Layout { grab:horizontal True vertical False hint: height 200  }
+				
+				template: stepper
+				//datasets:stepsA( id, label,desc, icon ) to stepsdata (id, label, description, iconclass)
+				bindings:
+				   value-of "horizontal" to orientation 
+				  , value-of currentStepA to currentStep
+		  			,value-of ds_id to ds_id
+					,value-of ds_label to ds_label
+					,value-of ds_description to ds_description
+					,value-of ds_icon to ds_iconclass
+				widget-events:
+				  { 
+				    when onlabelclick then [ 
+				      Flash Concat ( "Clicked: " , Current id)
+				    ]
+				  }   	   				
+		}	
+		
+		ButtonGroup {
+		  Button { text: "Step1" actions: Set "step1" to currentStepA}
+		  Button { text: "Step2" actions: Set "step2" to currentStepA}
+		  Button { text: "Step3" actions: Set "step3" to currentStepA}
+		  Button { text: "Step4" actions: Set "step4" to currentStepA}
+		  Button { text: "available 3" actions: 
+		      MultivaluedSet True to ds_available where ds_id in [ "step3", "step4" ] ,
+		      MultivaluedSet True to ds_done where ds_id in [ "step3", "step4" ] 
+		  }
+		}
+		
+			
+
+}

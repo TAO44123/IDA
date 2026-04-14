@@ -1,0 +1,362 @@
+/* Import other pages here */
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dialogs.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+ad_explore_byorg = Page {
+	title: $adschema_org_explorer.title
+	dynamic-title: $adschema_org_explorer.dyntitle(repository.displayname)
+	description: $adschema_org_explorer.description
+	enter-event: Set uid to domainperimeter/*, TransferData domainperimeterdataset(uid) to ( domainperimeter )*/
+
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	selectedOrganisationUid = Variable {
+		type: String
+	}
+	
+	selectedGroupUid = Variable {
+		type: String
+	}
+	
+	selectedAccountUid = Variable {
+		type: String
+	}
+	
+	selectedIdentityUid = Variable {
+		type: String
+	}
+	
+	searchFilter = Variable {
+		type: String 
+	}
+	
+	applyCondition = Variable {
+		type: String 
+	}
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with uid to uid	
+	}
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	allorganisatios = HierarchicalData {
+		roots-view: br_organisations_root
+		children-view: br_allorganisations_withparent
+		parameter: parentrecorduid
+		attribute: recorduid
+		disabled: StringPredicate ( applyCondition) { when IsEmpty then False otherwise True }
+		
+	}
+	
+	organisationSearch = Dataset {
+		view: br_allorganisations_search with applyCondition to condition
+		disabled: StringPredicate ( applyCondition) { when IsEmpty then True otherwise False }
+	}
+	
+	groupsDetails = Dataset {
+		view: ad_groups_byorg_detail with selectedOrganisationUid to uid , domainperimeter to domains
+		disabled: StringPredicate (selectedOrganisationUid) { when IsEmpty then True }
+	}
+	
+	peopleDetail = Dataset {
+		view: ad_group_bypeople with selectedOrganisationUid to organisationUid , selectedGroupUid to groupUid
+		disabled: OrPredicate { StringPredicate (selectedOrganisationUid) { when IsEmpty then True } StringPredicate (selectedGroupUid) { when IsEmpty then True } }
+	}
+	
+	
+	showGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog (
+			selectedGroupUid to inuid,
+			True to inshowaccounts,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowperjob,
+			True to inshowperorg,
+			True to inshowshares
+		)
+	)
+
+	showAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog (
+			selectedAccountUid to inuid,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowshares,
+			True to inshowusages
+		)
+	)
+
+	showIdentityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog (
+			selectedIdentityUid to inuid,
+			True to inshowaccounts,
+			True to inshowapplications,
+			True to inshowbusinessactivities,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowoverallocated,
+			True to inshowposition,
+			True to inshowrisks,
+			True to inshowshares,
+			True to inshowtheoretical,
+			True to inshowusages
+		)
+	)
+
+	showOrganisationDetails = NamedAction (
+		Dialog bwf_organisationDetailsDialog (
+			selectedOrganisationUid to inuid,
+			True to inshowmanagers,
+			True to inshowteam
+		)
+	)
+	
+	/* Page content */
+	
+	Splitter  {
+		disposition: Horizontal 
+		size: 25%
+		
+		Group {
+			
+			Spacer {
+				height: 2
+			}
+			Text {
+				value: $adschema_org_explorer.labels.selectorg
+				compact: True
+				styling: redSmallLabel
+			}
+			
+			Spacer {
+				height: 2
+			}
+			
+			Edit {
+				variable: searchFilter
+				commands: Commands {
+					Command { actions: Set searchFilter to applyCondition icon: "16/famfamfam_silk_icons_v013/magnifier.png" tooltip: $adschema_org_explorer.labels.selectorg.tootltip.search}
+					Command { actions: Unset applyCondition , Unset searchFilter icon: "16/famfamfam_silk_icons_v013/bin.png" tooltip: $adschema_org_explorer.labels.selectorg.tootltip.clean}
+				} 
+			}
+			
+			Spacer {
+				height: 2
+			}
+			
+			Tree {
+				data: allorganisatios
+				expand-level: 2
+				layout: Layout { grab: horizontal True vertical True }
+				hide-header: True
+				hidden: StringPredicate ( applyCondition ) { when IsEmpty then False otherwise True }
+				configurable:True
+				
+				Column {
+					column: shortname
+					image: "bw_ad_schema/16/ou_16.png"
+					width: 100%
+					text: Concat ( "  ", Current shortname )
+					actions:ExecuteNamedAction showOrganisationDetails
+				}
+
+				Column {
+					column: displayname
+					width: 100%
+					actions:ExecuteNamedAction showOrganisationDetails
+					initially-masked:True
+				}
+				
+				Column {
+					column: uid
+					hidden: True
+					selection: selectedOrganisationUid
+				}
+			}
+			
+			Table {
+				data: organisationSearch
+				layout: Layout { grab: horizontal True vertical True }
+				hidden: StringPredicate ( applyCondition ) { when IsEmpty then True otherwise False }
+				
+				Column {
+					column: displayname
+					header: $organisation.displayname
+					actions:ExecuteNamedAction showOrganisationDetails
+					width: 100%
+				}
+				
+				Column {
+					column: shortname
+					header: $organisation.shortname
+					actions:ExecuteNamedAction showOrganisationDetails
+					width: 40%
+				}
+				
+				Column {
+					column: uid
+					hidden: True
+					selection: selectedOrganisationUid
+				}
+			}
+		}
+		
+		Group {
+			
+			Grid {
+				columns: GridColumn { width: 500px }, GridColumn { width: grow }
+				fill: Both
+				
+				GridRow {
+					height: 30
+					GridCell {
+						span: 3
+						Text{
+							value: $adschema_org_explorer.labels.groups
+							compact: True
+							styling: redSmallLabel
+						}
+					}
+				}
+				
+				GridRow {
+					height: 300
+					
+					GridCell {
+						Browser{
+							static: "static/bw_ad_schema/groupsByOrgCloud.html" with selectedOrganisationUid to uid, uid to repositoryUid
+							layout: Layout { grab: horizontal True vertical True}
+							background: None
+							border: True
+						}
+						Spacer {
+							height: 2
+						}	
+					}
+					GridCell {
+					
+						Table {
+							data: groupsDetails
+							layout: Layout { grab: horizontal True vertical True}
+							show-count: True
+							
+							Column {
+								header: $ad_domain.concept
+								column: domain_displayname		
+								width: 40%		
+							}
+							
+							Column {
+								header: $group.concept
+								column: displayname
+								actions:ExecuteNamedAction showGroupDetails
+								width: 100%
+							}
+							Column {
+								header: $adschema_org_explorer.labels.groups.headers.percentage
+								column: percentage
+								text: Concat ( Current percentage , " % ")
+							}
+							
+							Column {
+								column: uid
+								hidden: True
+								selection: selectedGroupUid
+							}
+						}
+					
+					
+					}
+					
+				}
+				
+				GridRow {
+					height: 30
+					GridCell {
+						span: 3
+						Text{
+							value: $adschema_org_explorer.labels.identities
+							styling: redSmallLabel
+							compact: True
+						}
+					}
+				}
+				
+				GridRow {
+					height: grow
+					GridCell {
+						span: 2
+						
+						Table {
+							data: peopleDetail
+							layout: Layout { grab: horizontal True vertical True}
+							show-count: True
+							
+							Column {
+								column: domain_displayname
+								header: $ad_domain.concept
+								width: 100%
+							}
+							
+							Column {
+								column: account_login
+								header: $paccount.login
+								actions:ExecuteNamedAction showAccountDetails
+								width: 100%
+								
+							}
+							
+							Column {
+								column: id_fullname
+								header: $identity.concept
+								actions:ExecuteNamedAction showIdentityDetails
+								width: 100%
+								text: Transform Current id_fullname using optionStringMapping
+							}
+							
+							Column {
+								column: job_jobtitledisplayname
+								header: $allocation.jobtitledisplayname
+								width: 100%
+								text: Transform Current job_jobtitledisplayname using optionStringMapping
+							}
+							
+							Column {
+								column: account_uid
+								hidden: True 
+								selection: selectedAccountUid
+							}
+							
+							Column {
+								column: id_uid
+								hidden: True 
+								selection: selectedIdentityUid
+							}
+						}	
+					}
+				}
+			}
+		}
+	}	
+}

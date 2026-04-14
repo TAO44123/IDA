@@ -1,0 +1,235 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+import "/webportal/pages/bw_ad_schema/resources/dashboards_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+
+
+ad_dashboard_recon = Page {
+	title: $ad_dashboard_reconNLS.title
+	dynamic-title: $ad_dashboard_reconNLS.dyntitle(repository.displayname)
+	description: $ad_dashboard_reconNLS.description
+
+	mixins: dashboardPageMixin
+	enter-event: Set uid to domainsCriteria, ExecuteNamedAction calcTotalPerso
+	
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	filterByDomains = Parameter {
+		type: String
+		multivalued: True
+	}
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True initial:uid}
+	
+	accountPerso = Variable
+	accountPersoActive = Variable
+	accountPersoUsed = Variable
+	accountPerso_prev = Variable
+	accountPersoActive_prev = Variable
+	accountPersoUsed_prev = Variable
+	
+	
+	/* selection and filtering variables */
+	domainsCriteria = Variable { type: String multivalued: True }
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with domainsCriteria to uid	
+	}
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+	accountReconAuto				= Dataset { view: ad_recon_auto with domainsCriteria to domains unless-empty  }
+	accountReconAutoActive			= Dataset { view: ad_recon_auto with domainsCriteria to domains unless-empty, "true" to active }
+	accountReconAutoUsed			= Dataset { view: ad_recon_auto with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused }
+	accountReconAuto_prev			= Dataset { view: ad_recon_auto with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	accountReconAutoActive_prev		= Dataset { view: ad_recon_auto with domainsCriteria to domains unless-empty, "true" to active timeslot: FromPage(-1) }
+	accountReconAutoUsed_prev		= Dataset { view: ad_recon_auto with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused timeslot: FromPage(-1) }
+	accountReconManual				= Dataset { view: ad_recon_manual with domainsCriteria to domains unless-empty }
+	accountReconManualActive		= Dataset { view: ad_recon_manual with domainsCriteria to domains unless-empty, "true" to active }
+	accountReconManualUsed			= Dataset { view: ad_recon_manual with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused }
+	accountReconManual_prev			= Dataset { view: ad_recon_manual with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	accountReconManualActive_prev	= Dataset { view: ad_recon_manual with domainsCriteria to domains unless-empty, "true" to active timeslot: FromPage(-1) }
+	accountReconManualUsed_prev		= Dataset { view: ad_recon_manual with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused timeslot: FromPage(-1) }
+	accountReconLeaver				= Dataset { view: ad_recon_leaver with domainsCriteria to domains unless-empty }
+	accountReconLeaverActive		= Dataset { view: ad_recon_leaver with domainsCriteria to domains unless-empty, "true" to active }
+	accountReconLeaverUsed			= Dataset { view: ad_recon_leaver with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused }
+	accountReconLeaver_prev			= Dataset { view: ad_recon_leaver with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	accountReconLeaverActive_prev	= Dataset { view: ad_recon_leaver with domainsCriteria to domains unless-empty, "true" to active timeslot: FromPage(-1) }
+	accountReconLeaverUsed_prev		= Dataset { view: ad_recon_leaver with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused timeslot: FromPage(-1) }
+	accountReconNoowner				= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty }
+	accountReconNoownerActive		= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty, "true" to active }
+	accountReconNoownerUsed			= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused }
+	accountReconNoowner_prev		= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	accountReconNoownerActive_prev	= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty, "true" to active timeslot: FromPage(-1) }
+	accountReconNoownerUsed_prev	= Dataset { view: ad_recon_noowner with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused timeslot: FromPage(-1) }
+	accountNotRecon					= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty }
+	accountNotReconActive			= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty, "true" to active }
+	accountNotReconUsed				= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused }
+	accountNotRecon_prev			= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	accountNotReconActive_prev		= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty, "true" to active timeslot: FromPage(-1) }
+	accountNotReconUsed_prev		= Dataset { view: ad_recon_orphan with domainsCriteria to domains unless-empty, "true" to active , "true" to recentlyused timeslot: FromPage(-1) }
+	
+	/* Totals datasets */
+	accounts 				= Dataset { view: ad_allaccounts with domainsCriteria to domains unless-empty  }
+	
+	/* Named Actions here */
+	
+	calcTotalPerso = NamedAction (
+		
+		Set 0 to accountPerso,
+		Set 0 to accountPersoActive,
+		Set 0 to accountPersoUsed,
+		Set 0 to accountPerso_prev,
+		Set 0 to accountPersoActive_prev,
+		Set 0 to accountPersoUsed_prev,
+			
+		Set Sum ( accountPerso , Count accountReconAuto ) to accountPerso,
+		Set Sum ( accountPerso , Count accountReconManual ) to accountPerso,
+		Set Sum ( accountPerso , Count accountReconLeaver ) to accountPerso,
+		Set Sum ( accountPerso_prev , Count accountReconAuto_prev ) to accountPerso_prev,
+		Set Sum ( accountPerso_prev , Count accountReconManual_prev ) to accountPerso_prev,
+		Set Sum ( accountPerso_prev , Count accountReconLeaver_prev ) to accountPerso_prev,
+		
+		Set Sum ( accountPersoActive , Count accountReconAutoActive ) to accountPersoActive,
+		Set Sum ( accountPersoActive , Count accountReconManualActive ) to accountPersoActive,
+		Set Sum ( accountPersoActive , Count accountReconLeaverActive ) to accountPersoActive,
+		Set Sum ( accountPersoActive_prev , Count accountReconAutoActive_prev ) to accountPersoActive_prev,
+		Set Sum ( accountPersoActive_prev , Count accountReconManualActive_prev ) to accountPersoActive_prev,
+		Set Sum ( accountPersoActive_prev , Count accountReconLeaverActive_prev ) to accountPersoActive_prev,
+		
+		Set Sum ( accountPersoUsed , Count accountReconAutoUsed ) to accountPersoUsed,
+		Set Sum ( accountPersoUsed , Count accountReconManualUsed ) to accountPersoUsed,
+		Set Sum ( accountPersoUsed , Count accountReconLeaverUsed ) to accountPersoUsed,
+		Set Sum ( accountPersoUsed_prev , Count accountReconAutoUsed_prev ) to accountPersoUsed_prev,
+		Set Sum ( accountPersoUsed_prev , Count accountReconManualUsed_prev ) to accountPersoUsed_prev,
+		Set Sum ( accountPersoUsed_prev , Count accountReconLeaverUsed_prev ) to accountPersoUsed_prev
+		
+	)
+	
+	/* Page content */
+	
+	Grid {
+		fill: Both 
+		gap:0
+		insets:0
+		columns: GridColumn { width: 0 }, GridColumn { width: grow }
+		layout: Layout {  grab: horizontal True vertical True }
+		
+		
+		GridRow{
+			GridCell {}
+			
+			GridCell {
+				// Page content
+				Grid { 
+					layout: Layout { indent: horizontal 0 vertical 20 }
+					columns: GridColumn { width: grow 1 }  ,GridColumn { width: grow 1}, GridColumn { width: grow 2}
+					GridRow { height: 8 GridCell { span: 3 } }
+					GridRow {
+						GridCell { }
+						GridCell {
+						
+							IncludeFragment {
+								fragment: deDetailsHeaders with
+									value-of $ad_dashboard_reconNLS.kpi.headers.total to firstHeader,
+									value-of $ad_dashboard_reconNLS.kpi.headers.active to secondHeader,
+									value-of $ad_dashboard_reconNLS.kpi.headers.recentlyused to thirdHeader
+												
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_reconNLS.kpi.label.recon_auto to label,
+									value-of Count accountReconAuto to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_reconNLS.messages.totalaccounts to valueOverString,
+									value-of Count accountReconAuto_prev to previousValue,
+									value-of Count accountReconAutoActive to secondCurrentValue,
+									value-of Count accountReconAutoActive_prev to secondPreviousValue,
+									value-of Count accountReconAutoUsed to thirdCurrentValue,
+									value-of Count accountReconAutoUsed_prev to thirdPreviousValue
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_reconNLS.kpi.label.recon_manual to label,
+									value-of Count accountReconManual to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_reconNLS.messages.totalaccounts to valueOverString,
+									value-of Count accountReconManual_prev to previousValue,
+									value-of Count accountReconManualActive to secondCurrentValue,
+									value-of Count accountReconManualActive_prev to secondPreviousValue,
+									value-of Count accountReconManualUsed to thirdCurrentValue,
+									value-of Count accountReconManualUsed_prev to thirdPreviousValue
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItemBig with
+									value-of $ad_dashboard_reconNLS.kpi.label.recon_leaver to label,
+									value-of Count accountReconLeaver to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_reconNLS.messages.totalaccounts to valueOverString,
+									value-of Count accountReconLeaver_prev to previousValue,
+									value-of Count accountReconLeaverActive to secondCurrentValue,
+									value-of Count accountReconLeaverActive_prev to secondPreviousValue,
+									value-of Count accountReconLeaverUsed to thirdCurrentValue,
+									value-of Count accountReconLeaverUsed_prev to thirdPreviousValue
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_reconNLS.kpi.label.recon_personal to label, 
+									accountPerso binds-to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_reconNLS.messages.totalaccounts to valueOverString,
+									accountPerso_prev binds-to previousValue,
+									accountPersoActive binds-to secondCurrentValue,
+									accountPersoActive_prev binds-to secondPreviousValue,
+									accountPersoUsed binds-to thirdCurrentValue,
+									accountPersoUsed_prev binds-to thirdPreviousValue
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_reconNLS.kpi.label.recon_noowner to label,
+									value-of Count accountReconNoowner to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_reconNLS.messages.totalaccounts to valueOverString,
+									value-of Count accountReconNoowner_prev to previousValue,
+									value-of Count accountReconNoownerActive to secondCurrentValue,
+									value-of Count accountReconNoownerActive_prev to secondPreviousValue,
+									value-of Count accountReconNoownerUsed to thirdCurrentValue,
+									value-of Count accountReconNoownerUsed_prev to thirdPreviousValue
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_reconNLS.kpi.label.recon_orphan to label,
+									value-of Count accountNotRecon to currentValue,
+									value-of Count accounts to currentValueOver,
+									value-of $ad_dashboard_reconNLS.messages.totalaccounts to valueOverString,
+									value-of Count accountNotRecon_prev to previousValue,
+									value-of Count accountNotReconActive to secondCurrentValue,
+									value-of Count accountNotReconActive_prev to secondPreviousValue,
+									value-of Count accountNotReconUsed to thirdCurrentValue,
+									value-of Count accountNotReconUsed_prev to thirdPreviousValue
+							}
+							
+						}
+					}
+					GridRow {
+						height: grow 
+						GridCell { span: 3}
+					}
+				}
+			}
+		}
+	}
+}

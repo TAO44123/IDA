@@ -1,0 +1,379 @@
+import "/webportal/pages/resources/details_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/group/details.page"
+import "/webportal/pages/bw_fragments/group/accounts.page"
+import "/webportal/pages/bw_fragments/group/perjob.page"
+import "/webportal/pages/bw_fragments/group/perorg.page"
+import "/webportal/pages/bw_fragments/group/analytics.page"
+import "/webportal/pages/bw_fragments/group/controls.page"
+import "/webportal/pages/bw_fragments/group/rights.page"
+import "/webportal/pages/bw_fragments/group/cyberarkrights.page"
+import "/webportal/pages/bw_fragments/group/fsrights.page"
+import "/webportal/pages/bw_fragments/group/decisionhistory.page"
+import "/webportal/pages/bw_fragments/group/parentgroups.page"
+import "/webportal/pages/bw_fragments/group/childgroups.page"
+import "/webportal/pages/bw_fragments/custom/groupExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+groupDetailsPageNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	group [en "Group" fr "Groupe"]
+	parentgroups [en "Parent groups" fr "Groupes parents"]
+	childgroups [en "Child groups" fr "Groupes fils"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Account" fr "Compte"]
+	access [en "Access" fr "Accès"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	
+	accounts [en "Accounts" fr "Comptes"]
+	permissions [en "Permissions" fr "Permissions"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Permission usage" fr "Usage de la permissions"]
+	porigin [en "Permission origin" fr "Origine de la permission"]
+
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	
+	cyberark.vault [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	cyberark.safe [en "CyberArk Safes" fr "Safes CyberArk"]
+	cyberark.graph [en "CyberArk Graph" fr "Graphe CyberArk"]
+
+	notexists [
+		en "This group does not exist in the current timeslot, you should select a different timeslot"
+		fr "Ce groupe n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+groupDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (group)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Group Detail with groupUid.uid to paramGroupUid }
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Group
+		mandatory: True
+	}
+	
+	groupUid = Record {
+		view: br_groupDetail_uid with recorduid to recorduid
+	}
+}
+
+groupDetailsParkingPage = Page {
+	title: $groupDetails.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( group.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page groupDetailsPage with-current-parameters
+		}
+	
+	paramGroupUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	group = Record {
+		view: bwf_groupDetail with paramGroupUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$groupDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+groupDetailsPage = Page {
+	title: $groupDetails.title
+	dynamic-title: $groupDetails.dynamictitle(group.displayname)
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( group.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page groupDetailsParkingPage with-current-parameters
+		}
+	mixins: detailsPage
+	icon: %concept.group
+	enter-event:
+		IntCase(group.bwa_groupanalytics_nbapplication) { when >0 then [ Set True to hasapplications ] },
+		IntCase(group.bwa_groupanalytics_nbshare) { when >0 then [ Set True to hasshares ] },
+		IntCase(group.bwa_groupanalytics_nbaccount) { when >0 then [ Set True to hasaccounts ] },
+		Set nbControls._total to nbdefects
+	feature: groupdetails_access
+	
+	// Parameters Here
+	paramGroupUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedGroupUid = Variable {
+		type: String
+		initial: paramGroupUid
+	}
+	
+	nbdefects = Variable
+	nbdecision = Variable
+	
+	hasapplications = Variable { type:Boolean initial:False multivalued:False }
+	hasshares = Variable { type:Boolean initial:False multivalued:False }
+	hascarights = Variable { type:Boolean initial:True } 
+	hasaccounts = Variable { type:Boolean initial:False multivalued:False }
+	nbparent = Variable { type:Integer }
+	nbchildren = Variable { type:Integer }
+	nbcavaults = Variable
+	nbcasafes = Variable
+
+	showextended = Variable { initial:False }
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_group = Variable { initial:False multivalued:False type:Boolean }
+	active_parentgroups = Variable { initial:False multivalued:False type:Boolean }
+	active_childgroups = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_cavaults = Variable { initial:False multivalued:False type:Boolean }
+	active_casafes = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	 
+	// Dataset for Reports
+	// Record for concept details
+	group = Record {
+		view: bwf_groupDetail with selectedGroupUid to uid
+	}
+	
+	// Number of control defects for current application (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_groupallcontroldefects_nb with selectedGroupUid to uid
+	}
+	
+	Grid {
+		columns: GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text: $groupDetailsPageNLS.details
+						activation-event:
+							Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text: $groupDetailsPageNLS.group
+								activation-event: Set True to active_group
+								IncludeFragment {
+									fragment: fragmentGroupFullDetails with
+										value-of selectedGroupUid to inuid,
+										value-of True to incanshowdetails,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdateowners,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_group.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$groupDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentGroupExtendedDetails with value-of selectedGroupUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$groupDetailsPageNLS.parentgroups
+								activation-event:Set True to active_parentgroups
+								hidden:IntPredicate(nbparent) { when >0 then False otherwise True }
+							
+								IncludeFragment {
+									fragment:fragmentGroupParentGroups
+									with value-of selectedGroupUid to inuid, value-of False to incanshowdetails, nbparent binds-to outnbparent, value-of Eval "active_detail.get() && active_parentgroups.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$groupDetailsPageNLS.childgroups
+								activation-event:Set True to active_childgroups
+								hidden:IntPredicate(nbchildren) { when >0 then False otherwise True }
+							
+								IncludeFragment {
+									fragment:fragmentGroupChildGroups
+									with value-of selectedGroupUid to inuid, value-of True to incanshowdetails, nbchildren binds-to outnbdirectchildren, value-of Eval "active_detail.get() && active_childgroups.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$groupDetailsPageNLS.accounts
+								hidden:
+									Not BooleanPredicate(hasaccounts)
+								activation-event:Set True to active_accounts
+							
+								IncludeFragment {
+									fragment:fragmentGroupAccountsSelection
+									with value-of selectedGroupUid to inuid, value-of True to incanshowdetails, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$groupDetailsPageNLS.oorigin
+								hidden:
+									Not BooleanPredicate(hasaccounts)
+								activation-event:Set True to active_perorg
+								
+								IncludeFragment { 
+									fragment:fragmentGroupPerOrg 
+									with value-of selectedGroupUid to inuid, value-of True to incanshowdetails, value-of Eval "active_detail.get() && active_perorg.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$groupDetailsPageNLS.jorigin
+								hidden:
+									Not BooleanPredicate(hasaccounts)
+								activation-event:Set True to active_perjob
+								
+								IncludeFragment {
+									fragment:fragmentGroupPerJob 
+									with value-of selectedGroupUid to inuid,value-of True to incanshowdetails,  value-of Eval "active_detail.get() && active_perjob.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$groupDetailsPageNLS.access
+						activation-event:Set True to active_access
+						hidden:
+							AndPredicate {
+								Not BooleanPredicate(hasapplications)
+								Not BooleanPredicate(hasshares)
+								Not BooleanPredicate(hascarights)
+							}
+
+						TabFolder {
+							border:False
+							TabItem {
+								text:$groupDetailsPageNLS.applications
+								hidden:Not BooleanPredicate(hasapplications)
+								activation-event:Set True to active_applications
+							
+								IncludeFragment {
+									fragment:fragmentGroupRightsSelection
+									with value-of selectedGroupUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_applications.get()" to inenabled
+								}
+							}
+							TabItem {
+								text: $groupDetailsPageNLS.cyberark.vault
+								activation-event:Set True to active_cavaults
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									OrPredicate {
+										IntPredicate(nbcavaults) { when >0 then False otherwise True }
+										StringPredicate (nbcavaults) { when IsEmpty then True }
+									}
+								IncludeFragment {
+									fragment:fragmentGroupCAVaultsRights
+									with value-of selectedGroupUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_cavaults.get()" to inenabled,
+									nbcavaults binds-to nbvaults
+								}
+							}
+							TabItem {
+								text: $groupDetailsPageNLS.cyberark.safe
+								activation-event:Set True to active_casafes
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									OrPredicate {
+										IntPredicate(nbcasafes) { when >0 then False otherwise True }
+										StringPredicate (nbcasafes) { when IsEmpty then True }
+									}
+								IncludeFragment {
+									fragment:fragmentGroupCASafesRights
+									with value-of selectedGroupUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_casafes.get()" to inenabled,
+									nbcasafes binds-to nbsafes
+								}
+							}
+							TabItem {
+								text:$groupDetailsPageNLS.shares
+								hidden:Not BooleanPredicate(hasshares)
+								feature:unstructureddata_license
+								activation-event:Set True to active_shares
+							
+								IncludeFragment {
+									fragment:fragmentGroupAllFSRightsList
+									with value-of selectedGroupUid to inuid, value-of True to incanshowdetails, value-of True to incanchangedepth, value-of Eval "active_access.get() && active_shares.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$groupDetailsPageNLS.controls
+						activation-event:
+							Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment: fragmentGroupAllControlDefectsList with
+								value-of selectedGroupUid to inuid,
+								value-of True to incanshowdetails,
+								value-of active_control to inenabled
+						}
+					}
+					TabItem {
+						text:$groupDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+
+						IncludeFragment {
+							fragment:fragmentGroupAnalytics
+							with value-of selectedGroupUid to inuid, value-of active_analytics to inenabled
+						}
+					}
+					TabItem {
+						text:$groupDetailsPageNLS.decisionhistory
+						hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decision
+
+						IncludeFragment {
+							fragment:fragmentGroupDecisionHistory
+							with value-of selectedGroupUid to inuid, nbdecision binds-to outnbdecision, value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

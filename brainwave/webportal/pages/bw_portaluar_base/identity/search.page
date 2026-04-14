@@ -1,0 +1,549 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/identity/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+import "/webportal/pages/resources/constants.page"
+
+identitySearchPage_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+
+identitySearchPage_withtrends = UserVariable {
+		initial:False
+		type:Boolean
+		persistent:True
+}
+
+identitySearchPage = Page {
+	title: $search.identity.title
+	tags: "identity" , "conceptsearch" priority 100
+	icon: %concept_32.identity
+	large-icon: %concept_48.identity
+	description: $searchlabel.identity
+
+	initialUid = Parameter {
+		type: String
+		hidden: True
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	identitySearch = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedIdentityUid = Variable {type: String }
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	identityanalytics = Dataset {
+		pages: Pages{tags: "identity" and "searchresults" }
+		count-variable:nbanalytics
+	}
+
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+
+	identityData = Dataset {
+		search: Search {
+			definition: identitySearch
+			view: br_identity_searchpoint_trend with reftimeslot.timeslotuid to reftimeslotuid, UserVariable identitySearchPage_withtrends to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	identityData_count = Dataset {
+		search: Search {
+			definition: identitySearch
+			view: br_identity_searchpoint_trend with reftimeslot.timeslotuid to reftimeslotuid, False to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+
+	goDetails = NamedAction (
+		GoTo Activity Identity Detail with selectedIdentityUid to paramIdentityUid
+	)
+
+	// Search section
+	Group{
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		SearchEdition {
+			definition: identitySearch
+			layout: Layout { grab: horizontal True vertical False }
+			simple-mode-columns: 2
+			rule-mode-enabled:FeaturePredicate identitysearch_rulemode
+			simple-mode-layout: SimpleModeLayout {
+				hrcode { label: $identity.hrcode break: True },
+				givenname { label: $identity.givenname },
+				surname { label: $identity.surname break: True },
+				mail { label: $identity.mail break: True },
+				orgshortname { label: $porganisation.shortname },
+				orgname { label: $porganisation.displayname }
+			}
+		}
+	}
+	Group{
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: identityData
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex 
+			selection-index: initialIndex
+			page-size:1000
+			show-count-button: True
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedIdentityUid
+				initially-masked: False
+			}
+			Column {
+				column: hrcode
+				header: $identity.hrcode
+				width: 100%
+				sortable:True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: givenname
+				header: $identity.givenname
+				width: 100%
+				sortable:True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: surname
+				header: $identity.surname
+				width: 100%
+				sortable:True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: mail
+				header: $identity.mail
+				width: 100%
+				sortable:True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: fullname
+				header: $identity.fullname
+				width: 100%
+				sortable:True
+				initially-masked: True
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: nickname
+				header: $identity.nickname
+				width: 100%
+				sortable:True
+				initially-masked: True
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: middlename
+				header: $identity.middlename
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: altname
+				header: $identity.altname
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: phone
+				header: $identity.phone
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: mobile
+				header: $identity.mobile
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: arrivaldate
+				header: $identity.arrivaldate
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: departuredate
+				header: $identity.departuredate
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: active
+				header: $identity.active
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: internal
+				header: $identity.internal
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: organisation
+				header: $organisation.concept
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: allocationchanged
+				header: $identity.allocationchanged
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: organisationchanged
+				header: $identity.organisationchanged
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: accountchanged
+				header: $identity.accountchanged
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: permissionchanged
+				header: $identity.permissionchanged
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: repository_code
+				header: $prepository.code
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: repository_displayname
+				header: $prepository.displayname
+				width: 100%
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: isnew
+				text:Transform Current isnew using booleanDisplayMapping
+				header: $searchlabel.isnew
+				width: 100px
+				styling:BooleanStyling(Current isnew) { when True then identitySearchPage_highlightnew when False then default }				
+				initially-masked: True
+			}
+			Column {
+				column:bwa_identityanalytics_nbaccount
+				text:Transform Current bwa_identityanalytics_nbaccount using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.identity.nbaccount.header
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_nbaccount).equals('null')?956487965:current.bwa_identityanalytics_nbaccount-current.prevbwa_identityanalytics_nbaccount") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bwa_identityanalytics_nbaccount using mayBeNullMapping,Transform Current prevbwa_identityanalytics_nbaccount using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:bwa_identityanalytics_nbapplication
+				text:Transform Current bwa_identityanalytics_nbapplication using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.identity.nbapplication.header
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_nbapplication).equals('null')?956487965:current.bwa_identityanalytics_nbapplication-current.prevbwa_identityanalytics_nbapplication") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bwa_identityanalytics_nbapplication using mayBeNullMapping,Transform Current prevbwa_identityanalytics_nbapplication using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:bwa_identityanalytics_nbshare
+				feature:unstructureddata_license
+				text:Transform Current bwa_identityanalytics_nbshare using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.identity.nbshare.header
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_nbshare).equals('null')?956487965:current.bwa_identityanalytics_nbshare-current.prevbwa_identityanalytics_nbshare") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bwa_identityanalytics_nbshare using mayBeNullMapping,Transform Current prevbwa_identityanalytics_nbshare using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:bwa_identityanalytics_nbbusinessactivity
+				feature:sod_license
+				text:Transform Current bwa_identityanalytics_nbbusinessactivity using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.identity.nbbusinessactivity.header
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_nbbusinessactivity).equals('null')?956487965:current.bwa_identityanalytics_nbbusinessactivity-current.prevbwa_identityanalytics_nbbusinessactivity") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bwa_identityanalytics_nbbusinessactivity using mayBeNullMapping,Transform Current prevbwa_identityanalytics_nbbusinessactivity using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:120px
+			}
+			Column {
+				column:bwa_identityanalytics_nbtheoretical
+				feature:iam_license
+				text:Transform Current bwa_identityanalytics_nbtheoretical using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.identity.nbtheoretical.header
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_nbtheoretical).equals('null')?956487965:current.bwa_identityanalytics_nbtheoretical-current.prevbwa_identityanalytics_nbtheoretical") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bwa_identityanalytics_nbtheoretical using mayBeNullMapping,Transform Current prevbwa_identityanalytics_nbtheoretical using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:120px
+			}
+			Column {
+				column:bwa_identityanalytics_nbusage
+				text:Transform Current bwa_identityanalytics_nbusage using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.identity.nbusage.header
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_nbusage).equals('null')?956487965:current.bwa_identityanalytics_nbusage-current.prevbwa_identityanalytics_nbusage") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bwa_identityanalytics_nbusage using mayBeNullMapping,Transform Current prevbwa_identityanalytics_nbusage using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+
+			Column {
+				column:bwa_identityanalytics_aggriskrank
+				sortable:True
+				header:$bwf_identityNLS.riskrank
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_aggriskrank).equals('null')?956487965:current.bwa_identityanalytics_aggriskrank-current.prevbwa_identityanalytics_aggriskrank") using bwf_trend_higherbest
+				tooltip:$search.repository.ratiotooltip(Transform Current bwa_identityanalytics_aggriskrank using mayBeNullMapping, Transform Current prevbwa_identityanalytics_aggriskrank using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:120px
+			}
+			Column {
+				column:bwa_identityanalytics_aggmaxrisklevel
+				sortable:True
+				header:$bwf_identityNLS.maxrisk
+				image:TemplateImageSelection(Current bwa_identityanalytics_aggmaxrisklevel) using bwf_controllevel
+				width:120px
+				initially-masked:False
+			}
+			Column {
+				column:bwa_identityanalytics_aggnbrisks
+				sortable:True
+				header:$bwf_identityNLS.nbrisk.header
+				image:TemplateImageSelection(Eval "(''+current.prevbwa_identityanalytics_aggnbrisks).equals('null')?956487965:current.bwa_identityanalytics_aggnbrisks-current.prevbwa_identityanalytics_aggnbrisks") using bwf_trend_lowerbest
+				tooltip:$search.repository.ratiotooltip(Transform Current bwa_identityanalytics_aggnbrisks using mayBeNullMapping, Transform Current prevbwa_identityanalytics_aggnbrisks using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:120px
+			}
+		}
+	}
+	Grid {
+		columns:GridColumn,GridColumn { width: grow }
+		layout: Layout { grab:horizontal True vertical False hint: height 38 }
+		GridRow {
+			GridCell {
+				Checkbox {
+					variable:UserVariable identitySearchPage_withtrends
+					text:$search.showkpitrends
+					tooltip:$search.showkpitrends.tooltip
+				}
+			}			
+			GridCell {
+				ButtonGroup {
+					nb-inline:2
+					align:Right
+					Button {
+						actions:ExecuteNamedAction goDetails
+						text:$search.showdetails
+						tooltip:$search.showdetailstooltip
+						disabled:StringPredicate(selectedIdentityUid) { when IsEmpty then True }	
+						image:%browsing_16.link
+					}
+					Button {
+						actions: IntCase(Count identityData_count)	{
+										when > NonEmpty(ConfigurationVariable "search_identity_analyticserrorthreshold", Constant search_identity_analyticserrorthreshold) then [
+											Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_identity_analyticserrorthreshold", Constant search_identity_analyticserrorthreshold))
+										]
+										when > NonEmpty(ConfigurationVariable "search_identity_analyticswarningthreshold", Constant search_identity_analyticswarningthreshold) then [
+											Confirm $search.analyticswarningthreshold(Count identityData_count),
+											GoTo Page identitySearchAnalyticsPage with  SerializeSearch identitySearch to search
+												
+										]
+										otherwise [
+											GoTo Page identitySearchAnalyticsPage with  SerializeSearch identitySearch to search
+										]
+									}
+						text:$search.applyanalytics
+						tooltip:$search.applyanalyticstooltip
+						image:%report_16.analytics
+						feature:identitysearch_analytics
+						disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+					}
+					Button {
+						actions:	TransferData identityData(uid) to (uids), 
+									Dialog fragmentIdentityBulkAddTag(uids to uids),
+									Flash $search.flashaddingatag
+						text:$search.addingatag
+						image:%collection_16.tag
+						feature:identitysearch_updatetags
+					}
+					Button {
+						actions:	TransferData identityData(uid) to (uids), 
+									Dialog fragmentIdentityBulkRemoveTag(uids to uids, SerializeSearch identitySearch to identitySearch),
+									Flash $search.flashremovingatag
+						text:$search.removingatag
+						image:%collection_16.tag
+						feature:identitysearch_updatetags
+					}
+					Button {
+						actions:	TransferData identityData(uid) to (uids), 
+									Dialog fragmentIdentityBulkRemoveAllTags(uids to uids),
+									Flash $search.flashremovingalltag
+						text:$search.removingalltag
+						image:%collection_16.tag
+						feature:identitysearch_updatetags
+					}
+				}
+			}
+		}
+	}
+}
+
+
+identitySearchAnalyticsPage = Page {
+	title:$search.applyanalytics
+
+	search = SearchDefinition {
+		entity:Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+
+	analytics = Dataset {
+		pages: Pages{tags: "identity" and "searchresults" }
+	}
+
+	ConditionalGroup {
+		IntCondition(Count analytics) {
+			when =0 then [
+				Header {
+					value:$search.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:analytics
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:$search.back
+			image:%browsing_16.back
+		}
+	}
+}

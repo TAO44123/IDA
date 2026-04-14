@@ -1,0 +1,366 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_commons/logs/resources.page"
+
+
+DATEDB_FMT = Constant{ type: String value: "yyyyMMddHHmmSS" } //Expected format for audit service 
+
+makePattern = StringService {
+ javascript-file: "/webportal/pages/bw_commons/logs/auditLog.javascript"
+ javascript-method: makePattern
+ str = Input { mandatory: True  }
+}
+
+
+// fragment display a dynamic link on the ledger details page or text for the given target, based on type and matching uid 
+targetLinkFrag = PageFragment {
+    mixins: detailPageMixin
+   
+   label = Variable{ }
+   type = Variable{}
+   fullName = Variable{}
+   uid = Variable{}
+
+   Text { label: label   value: fullName   compact: True
+          hidden: Not AndPredicate { 
+             StringPredicate (fullName) { when Not IsEmpty then True }
+             StringPredicate ( uid) {  when IsEmpty then True } 
+	  }
+   }
+			       
+   // account, identity, group, organization, asset,  application, permission, repository, perimeter  
+    ConditionalGroup {
+      compact: True
+      layout: Layout {grab: horizontal True vertical False }
+      hidden: Not AndPredicate { 
+             StringPredicate (fullName) { when Not IsEmpty then True }
+             StringPredicate ( uid) {  when Not IsEmpty then True } 
+             }
+          
+      StringCondition( type) {
+         when "account" then [
+//                Text { label: "Test" value: Concat( "DEBUG: label=", label, " type=",type, " fullname=", fullName, " uid=", uid)}
+             Link { label: label  value: fullName  target: Activity Account Detail with uid to paramAccountUid  }
+         ]
+         when "identity" then [
+             Link { label: label value: fullName  target:  Activity Identity Detail with uid to paramIdentityUid  }
+         ]	
+         when "group" then [
+             Link { label: label value: fullName  target:  Activity Group Detail with uid to paramGroupUid  }
+         ]
+         when "organization" then [
+             Link { label: label value: fullName  target:  Activity Organisation Detail with uid to paramOrganisationUid  }
+         ]			             
+         when "asset" then [
+             Text { label: label value: fullName    }
+         ]
+         when "application" then [
+             Link { label: label value: fullName  target: Activity Application Detail with uid to paramApplicationUid  }
+         ]
+         when "permission" then [
+             Link { label: label value: fullName  target: Activity Permission Detail  with uid to paramPermissionUid  }
+         ]
+         when "repository" then [
+             Link { label: label value: fullName  target: Activity Repository Detail  with uid to paramRepositoryUid  }
+         ]	
+         when "perimeter" then [
+	         Text { label: label value: fullName    }
+	     ]			             			             			             			             		             
+	  }
+   }
+}
+
+
+bw_auditLogsSearchPage = Page {
+    
+    mixins: longDetails
+	title: $logSearch_NLS.title	
+	
+	dock-left: Dock {
+       collapsible: True
+       collapsed: False
+       width: 260
+       
+       Group {
+         // mixins: dockInnerMinxin
+      //    Header { value: "Search Criteria"}
+          ParametersEdition {  
+            allow-reset: True          
+            parameters: 
+            paramSearchDateFrom inline,
+            paramSearchDateTo inline,
+            paramSearchFamilyName inline,
+            paramSearchAccountId inline,
+            paramSearchCodeId inline,
+            paramSearchLabel inline,
+            paramSearchTargetPermissionId outline,
+            paramSearchTargetGroupId outline,
+            paramSearchTargetName outline,
+            paramSearchTargetParent outline,
+            paramSearchSessionId outline
+            outline-position: Bottom
+          }
+       }
+    }
+	
+	
+	/* Parameters here */
+ 	paramSearchDateFrom = Parameter {
+ 	   type: Date	   
+	   label: $logSearch_NLS.dateFrom
+	   constraint: Date
+	   
+	}
+	paramSearchDateTo = Parameter {
+	   type: Date
+	   label: $logSearch_NLS.dateTo
+	   constraint: Date
+	   
+	}	
+	
+	paramSearchFamilyName = Parameter {
+	  label: $logFields_NLS.family 
+	  default:"" 
+	  constraint: Lookup {
+	    data: dimFamilies
+	    text: Current name 
+	    value: Current name
+	    presentation: Combo
+	    empty-text: $logSearch_NLS.any
+	    empty-value: ""
+	   }
+	}
+	
+	paramSearchAccountId = Parameter {
+	  label: $logFields_NLS.whologin
+	  type: Integer
+	  default:""
+      constraint: 
+      Lookup {
+	    data: dimActors
+	    text: Current displaylabel 
+	    value: Current id
+	    presentation: Combo
+	    empty-text: $logSearch_NLS.any
+	    empty-value: ""
+	   }
+	}
+	
+	paramSearchCodeId = Parameter {
+	  label: $logFields_NLS.codename
+	  type: Integer
+	  default:""
+      constraint: 
+      Lookup {
+	    data: dimCodes
+	    text: Current displaylabel 
+	    value: Current id
+	    presentation: Combo
+	    empty-text: $logSearch_NLS.any
+	    empty-value: ""
+	   }
+	}
+	
+	paramSearchSessionId = Parameter {
+	     label: $logFields_NLS.whosessionid
+	     constraint: Text {} 
+	}
+	
+	paramSearchTargetPermissionId = Parameter {
+	  label: $logSearch_NLS.targetFile
+	  type: Integer
+	  default:""
+      constraint: 
+      Lookup {
+	    data: dimPermissions
+	    text: Current displayLabel
+	    value: Current id
+	    presentation: Combo
+	    empty-text: $logSearch_NLS.any
+	    empty-value: ""
+	   }
+	}
+	
+	paramSearchTargetGroupId = Parameter {
+	  label: $logSearch_NLS.targetGroup
+	  type: Integer
+	  default:""
+      constraint: 
+      Lookup {
+	    data: dimGroups
+	    text: Current displayLabel
+	    value: Current id
+	    presentation: Combo
+	    empty-text: $logSearch_NLS.any
+	    empty-value: ""
+	   }
+	}
+	
+	paramSearchTargetName = Parameter {
+	    label: $logSearch_NLS.targetNameContains
+	     constraint: Text {} 
+	}
+	
+	paramSearchTargetParent = Parameter {
+	    label: $logSearch_NLS.targetParentContains
+	     constraint: Text {} 
+	}
+	
+	paramSearchLabel = Parameter {
+	     label: $logSearch_NLS.labelContains
+	     constraint: Text {} 
+	}
+	
+	
+
+   /* Variables */
+   logId = Variable { initial: '0' }
+ 
+   /* Datasets and records here */
+   	
+	logs = Dataset { 
+	    view: searchlogs with Date(paramSearchDateFrom).valueLDAP to beginDate unless-empty	 , Date(paramSearchDateTo).valueLDAP to endDate unless-empty	
+	              , paramSearchFamilyName to familyName unless-empty
+	              , paramSearchAccountId to actorId unless-empty
+	              , paramSearchCodeId to codeId unless-empty
+	              , paramSearchSessionId to whoSessionId unless-empty
+	              , paramSearchTargetPermissionId to targetId unless-empty
+	              , paramSearchTargetGroupId to targetId unless-empty
+	              , @makePattern(paramSearchLabel to str) to label unless-empty	
+	              , @makePattern(paramSearchTargetName to str) to targetName unless-empty
+	              , @makePattern(paramSearchTargetParent to str) to targetParent unless-empty 
+	     disabled: StringPredicate(paramSearchDateFrom){ when IsEmpty then True otherwise False}                     
+	}
+	
+	logDetail = Record {
+	  view: logDetail with logId to id 
+	  
+	}
+	
+	dimFamilies = Dataset { view: getDimFamilies}	
+	dimActors = Dataset { view: getDimActors}
+	dimCodes = Dataset { view: getDimCodes }
+	dimPermissions = Dataset { view: getDimPermissions  }	
+	dimGroups = Dataset { view: getDimGroups  }	
+	dimDatasources = Dataset { view: getDimDatasources}
+	
+			
+	/* Page content */
+		
+	
+	Header {
+		value:$logSearch_NLS.results
+		styling:bigTitleStyle
+	}
+	Splitter {
+	 disposition: Vertical
+	 Group {
+	    Table {
+		data:logs
+		show-count:True
+		configurable:True
+		layout:Layout{grab:horizontal True vertical True}
+		
+		 Column { header:$logFields_NLS.id column: id selection: logId hidden: True }
+		 Column { header:$logFields_NLS.timestamp column:timestamp 	filterable:False width:150px	}		
+         Column { header:$logFields_NLS.datasource column: datasource width: 120px}
+         Column { header:$logFields_NLS.externalref column: externalref width: 60px}
+         Column { header:$logFields_NLS.family column: family width: 100px}
+         Column { header:$logFields_NLS.whologin column: whoaccount width: 160px}
+         Column { header:$logFields_NLS.codename column: codename width: 70px}
+         Column { header:$logFields_NLS.action column: action width: 70px}
+         Column { header:$logFields_NLS.target column: targetfullname width: 100px}
+         Column { header: $logFields_NLS.status column: status width: 70px}
+         Column { header:$logFields_NLS.displaylabel column: displaylabel width: 100%}
+	   }
+	}
+		
+	// detail panel 
+	Group {
+	    hidden: StringPredicate(logId){ when IsEmpty then True otherwise False }
+	    mixins: detailPageMixin
+	    layout:Layout{grab:horizontal True vertical True} 
+	    //layout: Layout{ hint: height 280} 	    
+	    title: $logSearch_NLS.details
+	    		  
+	   Grid {
+	     columns: GridColumn{}, GridColumn {}
+	    GridRow {
+	      GridCell {
+		//	Text { label: $logFields_NLS.id value: logDetail.id  hidden: StringPredicate(logDetail.id) { when IsEmpty then True otherwise False} }
+			Text { label: $logFields_NLS.timestamp value: logDetail.timestamp  hidden: StringPredicate(logDetail.timestamp) { when IsEmpty then True otherwise False} }
+			Text { label: $logFields_NLS.mandant value: logDetail.mandant  hidden: StringPredicate(logDetail.mandant) { when IsEmpty then True otherwise False} }
+			Text { label: $logFields_NLS.datasource value: logDetail.datasource  hidden: StringPredicate(logDetail.datasource) { when IsEmpty then True otherwise False} }
+			Text { label: $logFields_NLS.externalref value: logDetail.externalref  hidden: StringPredicate(logDetail.externalref) { when IsEmpty then True otherwise False} }
+			Text { label: $logFields_NLS.family value: logDetail.family  hidden: StringPredicate(logDetail.family) { when IsEmpty then True otherwise False} }
+			Text { label: Label{ value:$logFields_NLS.displaylabel break: True} 
+			     value: logDetail.displaylabel  
+			     lines: 3
+			     hidden: StringPredicate(logDetail.displaylabel ) { when IsEmpty then True otherwise False}}
+          }
+	      GridCell {
+	         TabFolder {
+			     TabItem {
+			        text: $logSearch_NLS.general
+					Text { label: $logFields_NLS.wheresource value: logDetail.wheresource  hidden: StringPredicate(logDetail.wheresource) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.wheredestination value: logDetail.wheredestination  hidden: StringPredicate(logDetail.wheredestination) { when IsEmpty then True otherwise False} }
+					Link { label: $logSearch_NLS.whoaccount value: logDetail.whoaccount 			
+					    target: Activity Account Detail with logDetail.whouid to paramAccountUid  
+					    hidden: StringPredicate(logDetail.whologin) { when IsEmpty then True otherwise False} }					
+					Text { label: $logFields_NLS.codename value: logDetail.codename  hidden: StringPredicate(logDetail.codename) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.codelabel value: logDetail.codelabel  hidden: StringPredicate(logDetail.codelabel) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.codecategory value: logDetail.codecategory  hidden: StringPredicate(logDetail.codecategory) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.action value: logDetail.action  hidden: StringPredicate(logDetail.action) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.payload value: logDetail.payload  hidden: StringPredicate(logDetail.payload) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.status value: logDetail.status  hidden: StringPredicate(logDetail.status) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.count value: logDetail.count  hidden: StringPredicate(logDetail.count) { when IsEmpty then True otherwise False} }			     }
+			     TabItem {
+			        text: $logSearch_NLS.targets
+			        IncludeFragment (targetLinkFrag   with value-of $logFields_NLS.targetfullname to label , value-of logDetail.targetfullname to fullName
+			               , value-of logDetail.targettype to type, value-of logDetail.targetuid to uid   ) 
+			        IncludeFragment (targetLinkFrag   with value-of $logFields_NLS.target2fullname to label , value-of logDetail.target2fullname to fullName
+			               , value-of logDetail.target2type to type, value-of logDetail.target2uid to uid   )					
+					    
+					Text { label: $logFields_NLS.oldvalue value: logDetail.oldvalue  hidden: StringPredicate(logDetail.oldvalue) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.newvalue value: logDetail.newvalue  hidden: StringPredicate(logDetail.newvalue) { when IsEmpty then True otherwise False} }				        
+			     }
+			     TabItem {
+			        text: $logSearch_NLS.info
+                    Text { label: Label{ value: $logFields_NLS.data break: True} 
+                         value: logDetail.data  
+                         lines: 20
+                         hidden: StringPredicate(logDetail.data) { when IsEmpty then True otherwise False} 
+                         layout:Layout{grab:horizontal True vertical True}
+                         //layout: Layout{hint: height 180 }
+                    }
+			        
+			     }
+			     TabItem {
+			        text: $logSearch_NLS.custom
+					Text { label: $logFields_NLS.custom1 value: logDetail.custom1  hidden: StringPredicate(logDetail.custom1) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom2 value: logDetail.custom2  hidden: StringPredicate(logDetail.custom2) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom3 value: logDetail.custom3  hidden: StringPredicate(logDetail.custom3) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom4 value: logDetail.custom4  hidden: StringPredicate(logDetail.custom4) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom5 value: logDetail.custom5  hidden: StringPredicate(logDetail.custom5) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom6 value: logDetail.custom6  hidden: StringPredicate(logDetail.custom6) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom7 value: logDetail.custom7  hidden: StringPredicate(logDetail.custom7) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom8 value: logDetail.custom8  hidden: StringPredicate(logDetail.custom8) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom9 value: logDetail.custom9  hidden: StringPredicate(logDetail.custom9) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom10 value: logDetail.custom10  hidden: StringPredicate(logDetail.custom10) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom11 value: logDetail.custom11  hidden: StringPredicate(logDetail.custom11) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom12 value: logDetail.custom12  hidden: StringPredicate(logDetail.custom12) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom13 value: logDetail.custom13  hidden: StringPredicate(logDetail.custom13) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom14 value: logDetail.custom14  hidden: StringPredicate(logDetail.custom14) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom15 value: logDetail.custom15  hidden: StringPredicate(logDetail.custom15) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom16 value: logDetail.custom16  hidden: StringPredicate(logDetail.custom16) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom17 value: logDetail.custom17  hidden: StringPredicate(logDetail.custom17) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom18 value: logDetail.custom18  hidden: StringPredicate(logDetail.custom18) { when IsEmpty then True otherwise False} }
+					Text { label: $logFields_NLS.custom19 value: logDetail.custom19  hidden: StringPredicate(logDetail.custom19) { when IsEmpty then True otherwise False} }			        
+			     }	     
+			   }
+	      }
+	    } 
+	   }	 
+	}	  
+	}
+}

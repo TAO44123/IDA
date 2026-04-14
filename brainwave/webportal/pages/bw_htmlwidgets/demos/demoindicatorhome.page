@@ -1,0 +1,261 @@
+/* Import other pages here */
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+
+/* Nationalized labels here */
+bwg_demoindicatorhomeNLS = NLS {
+	title [en "HTML Indicator Widgets Demo" ]
+}
+
+
+/**
+ * A simple showcase of the charts
+ * see "charts.page" for the documentation of the parameters
+ * 
+ */
+bwg_demoindicatorhome = Page {
+	title: $bwg_demoindicatorhomeNLS.title
+	feature:htmlwidgets_showcase
+	tags:"demo"
+	
+	
+	/* Parameters here */
+	
+	/* Variables here */
+
+	count = Variable {initial:55}
+	maxValue = Variable {initial:100}
+	trendValue = Variable {initial:-3}
+
+	tvalue = Variable {initial:55}
+	tmax = Variable {initial:100}
+
+	selectedOrg = Variable
+	teamLeader = Variable
+
+	multigaugedata = Dataset {
+		values:[
+			(count -> 10,trendvalue -> 5,maxvalue -> 100, title -> "my title 1", identifier -> "id1", hasLink -> False, hasThresholds -> False, warningThreshold -> 0, criticalThreshold -> 0, thresholdType -> 'low', hasLink -> True),
+			(count -> 37,trendvalue -> -3,maxvalue -> 100, title -> "my title 2", identifier -> "id2", hasLink -> True, hasThresholds -> True, warningThreshold -> 10, criticalThreshold -> 30, thresholdType -> 'low', hasLink -> True),
+			(count -> 42,trendvalue -> 5,maxvalue -> 100, title -> "my title 3", identifier -> "id3", hasLink -> True, hasThresholds -> True, warningThreshold -> 50, criticalThreshold -> 70, thresholdType -> 'low', hasLink -> True)
+		]
+	}
+	
+	/* Page content */
+	
+	Edit {
+		variable:tvalue
+	}
+	Edit {
+		variable:tmax
+	}
+	Button {
+		actions:Set tvalue to count, Set tmax to maxValue
+		text:"apply"
+	}
+	Splitter {
+		disposition: Horizontal 
+		Group {
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 150 width 150 align: horizontal Center vertical Center }
+				template: liquidGaugeIndicator
+				bindings:
+					count binds-to count,
+					maxValue binds-to maxValue,
+					value-of "testvalue" to identifier
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked identifier/count/min/max: ", Current identifier, " ", Current count, " ", Current minValue, " ", Current maxValue) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 150 width 150 align: horizontal Center vertical Center }
+				template: liquidGaugeIndicator
+				bindings:
+					count binds-to count,
+					maxValue binds-to maxValue,
+					value-of "#FF7777" to circleColor,
+					value-of "#FF4444" to textColor,
+					value-of "#FFAAAA" to waveTextColor,
+					value-of "#FFDDDD" to waveColor,
+					value-of "0.2" to circleThickness,
+					value-of "0.2" to textVertPosition,
+					value-of 1000 to waveAnimateTime
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 150 width 150 align: horizontal Center vertical Center }
+				template: liquidGaugeIndicator
+				bindings:
+					count binds-to count,
+					maxValue binds-to maxValue,
+					value-of "#D4AB6A" to circleColor,
+					value-of "#553300" to textColor,
+					value-of "#805615" to waveTextColor,
+					value-of "#AA7D39" to waveColor,
+					value-of "0.1" to circleThickness,
+					value-of "0.2" to circleFillGap,
+					value-of "0.8" to textVertPosition,
+					value-of 2000 to waveAnimateTime,
+					value-of "0.3" to waveHeight,
+					value-of 1 to waveCount
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 150 width 150 align: horizontal Center vertical Center }
+				template: liquidGaugeIndicator
+				bindings:
+					count binds-to count,
+					maxValue binds-to maxValue,
+					value-of "0.8" to textVertPosition,
+					value-of 5000 to waveAnimateTime,
+					value-of "0.15" to waveHeight,
+					value-of False to waveAnimate,
+					value-of "0.25" to waveOffset,
+					//value-of False to valueCountUp,
+					value-of False to displayPercent
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 150 width 150 align: horizontal Center vertical Center }
+				template: liquidGaugeIndicator
+				bindings:
+					count binds-to count,
+					maxValue binds-to maxValue,
+					value-of "0.15" to circleThickness,
+					value-of "#808015" to circleColor,
+					value-of "#555500" to textColor,
+					value-of "#FFFFAA" to waveTextColor,
+					value-of "#AAAA39" to waveColor,
+					value-of "0.8" to textVertPosition,
+					value-of 1000 to waveAnimateTime,
+					value-of "0.05" to waveHeight,
+					value-of True to waveAnimate,
+					value-of False to waveRise,
+					value-of False to waveHeightScaling,
+					value-of "0.25" to waveOffset,
+					value-of "0.75" to textSize,
+					value-of 3 to waveCount
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 150 width 150 align: horizontal Center vertical Center }
+				template: liquidGaugeIndicator
+				bindings:
+					count binds-to count,
+					maxValue binds-to maxValue,
+					value-of "0.4" to circleThickness,
+					value-of "#6DA398" to circleColor,
+					value-of "#0E5144" to textColor,
+					value-of "#6DA398" to waveTextColor,
+					value-of "#246D5F" to waveColor,
+					value-of "0.52" to textVertPosition,
+					value-of 5000 to waveAnimateTime,
+					value-of 0 to waveHeight,
+					value-of False to waveAnimate,
+					value-of 2 to waveCount,
+					value-of "0.25" to waveOffset,
+					value-of "1.2" to textSize,
+					value-of False to displayPercent
+			}
+		}
+		Group {
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 200 width 200 align: horizontal Center vertical Center }
+				template: mashupGaugeIndicator
+				bindings:
+					value-of "My indicator" to title,
+					value-of "radial" to mode, // radial, numeric, row
+					value-of True to hasLink,
+					value-of True to hasThresholds,
+					value-of 30 to warningThreshold,
+					value-of 70 to criticalThreshold,
+					count binds-to count,
+					trendValue binds-to trendValue,
+					maxValue binds-to maxValue,
+					value-of "testvalue" to identifier,
+					value-of "#9400D3" to gaugeColor
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked identifier/count/trend/max: ", Current identifier, " ", Current count, " ", Current trendValue, " ", Current maxValue) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 200 width 200 align: horizontal Center vertical Center }
+				template: mashupGaugeIndicator
+				bindings:
+					value-of "My indicator" to title,
+					value-of "numeric" to mode, // radial, numeric, row
+					value-of True to hasLink,
+					value-of True to hasThresholds,
+					value-of 30 to warningThreshold,
+					value-of 70 to criticalThreshold,
+					count binds-to count,
+					trendValue binds-to trendValue,
+					maxValue binds-to maxValue,
+					value-of "testvalue" to identifier,
+					value-of "#9400D3" to gaugeColor
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked identifier/count/trend/max: ", Current identifier, " ", Current count, " ", Current trendValue, " ", Current maxValue) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 50 width 200 align: horizontal Center vertical Center }
+				template: mashupGaugeIndicator
+				bindings:
+					value-of "My indicator" to title,
+					value-of "row" to mode, // radial, numeric, row
+					value-of True to hasLink,
+					value-of True to hasThresholds,
+					value-of 30 to warningThreshold,
+					value-of 70 to criticalThreshold,
+					count binds-to count,
+					trendValue binds-to trendValue,
+					maxValue binds-to maxValue,
+					value-of "testvalue" to identifier,
+					value-of "#9400D3" to gaugeColor
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked identifier/count/trend/max: ", Current identifier, " ", Current count, " ", Current trendValue, " ", Current maxValue) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 200 width 500 align: horizontal Center vertical Center }
+				template: mashupMultiGaugeIndicator
+				datasets:	multigaugedata(count, trendvalue, maxvalue, identifier, title, hasThresholds, warningThreshold, criticalThreshold, thresholdType, hasLink) 
+						to 	gaugedata(count, trendvalue, maxvalue, identifier, title, hasThresholds, warningThreshold, criticalThreshold, thresholdType, hasLinks)
+				bindings:
+					value-of "radial" to mode, // radial, numeric, row
+					value-of "#9400D3" to gaugeColor
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked identifier/count/trend/max: ", Current identifier, " ", Current count, " ", Current trendValue, " ", Current maxValue) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 200 width 200 align: horizontal Center vertical Center }
+				template: mashupMultiGaugeIndicator
+				datasets:	multigaugedata(count, trendvalue, maxvalue, identifier, title, hasThresholds, warningThreshold, criticalThreshold, thresholdType, hasLink) 
+						to 	gaugedata(count, trendvalue, maxvalue, identifier, title, hasThresholds, warningThreshold, criticalThreshold, thresholdType, hasLinks)
+				bindings:
+					value-of "row" to mode, // radial, numeric, row
+					value-of "#9400D3" to gaugeColor
+				widget-events: {
+					when onclick then [
+						Flash Concat ("Clicked identifier/count/trend/max: ", Current identifier, " ", Current count, " ", Current trendValue, " ", Current maxValue) 
+					]
+				}
+			}
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 80 width 500 align: horizontal Center vertical Center }
+				template: countUpIndicator
+				bindings:
+					count binds-to count,
+					value-of 5 to duration,
+					value-of "left" to textAlign
+			}
+		}
+	}
+}
+	

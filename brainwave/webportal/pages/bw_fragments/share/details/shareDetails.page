@@ -1,0 +1,211 @@
+import "/webportal/pages/bw_fragments/share/details.page"
+import "/webportal/pages/bw_fragments/share/accounts.page"
+import "/webportal/pages/bw_fragments/share/folders.page"
+import "/webportal/pages/bw_fragments/application/controls.page"
+import "/webportal/pages/bw_fragments/share/decisionhistory.page"
+import "/webportal/pages/bw_fragments/share/perjob.page"
+import "/webportal/pages/bw_fragments/share/perorg.page"
+import "/webportal/pages/bw_fragments/share/usages.page"
+import "/webportal/pages/bw_fragments/custom/shareExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/sharedfolder/acls.page"
+
+bwf_applicationDetailsFragmentFilesystemNLS = NLS {
+    title [en 'Share detail' fr "Détails du partage"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	applications [en "Applications" fr "Applications"]
+	share [en "Share" fr "Partage"]
+	accounts [en "Accounts" fr "Comptes"]
+	folders [en "Folders" fr "Répertoires"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	acls [en "ACLs" fr "ACLs"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Share details dialog box fragment
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>share uid</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show share origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show share origin per job tab, false by default</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowacls </b>optional boolean, true to show ACLs at a share level (displayed only if ACLs are configured) , false by default</li>
+ * <li><b>inshowaccountsfororganisation </b>optional boolean, true to show accounts tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default</li>
+ * <li><b>inshowpermissions </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update share description (false by default)</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update share owners (false by default)</li>
+ * <li><b>incanupdatebuowners </b>optional, boolean value, can update share business activities owners (false by default)</li>
+ * <li><b>incanreconcile </b>optional, boolean value, can reconcile share accounts (false by default)</li>
+ * </ul>
+ * </span>
+ */
+bwf_applicationDetailsFragmentFilesystem = PageFragment {
+	enter-event:IntCase(share.bwa_applicationanalytics_nbusage) { when >0 then [ Set True to hasusages ] }
+	
+	inuid = Variable
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowaccountsfororganisation = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	incanreconcile = Variable { type:Boolean initial:False }
+	inshowfolders = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inshowacls = Variable { type:Boolean initial:False }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	
+	nbdefects = Variable { private:True }
+	hasusages = Variable { private:True initial:False }
+	
+	showextended = Variable { private:True initial:False }
+
+	active_details = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_acls = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_accountsfororganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_folders = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_usage = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+
+	share = Record {
+		view: bwf_applicationDetail with inuid to uid
+	}
+	
+	rootpermission = Record {
+		view: bwf_sharegetrootpermission with inuid to uid
+	}
+	
+	TabFolder {
+		border:False
+		TabItem {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.share
+			activation-event:Set True to active_details
+		
+			IncludeFragment {
+				fragment:fragmentShareFullDetails
+				with value-of inuid to inuid, incanupdatedescription binds-to incanupdatedescription, incanupdateowners binds-to incanupdateowners, value-of active_details to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentShareExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem {
+			text: $bwf_applicationDetailsFragmentFilesystemNLS.acls
+			activation-event:
+				Set True to active_acls,
+				ExecuteFragmentNamedAction fragmentSharedfolderAcls.reload
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate ( inshowacls )
+					StringPredicate ( rootpermission.uid ) {
+						when IsEmpty then True
+					}
+				}
+			fragmentSharedfolderAcls = IncludeFragment {
+				fragment: fragmentSharedfolderAcls with
+					value-of rootpermission.uid to inuid,
+					value-of True to incanshowdetails,
+					value-of active_acls to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.accounts
+			feature:unstructureddata_license
+			activation-event:Set True to active_accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+		
+			IncludeFragment {
+				fragment:fragmentShareAccounts
+				with value-of inuid to inuid, value-of True to incanshowdetails, incanreconcile binds-to incanreconcile, value-of active_accounts to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.accounts
+			hidden:Not BooleanPredicate(inshowaccountsfororganisation)
+			activation-event: Set True to active_accountsfororganisation
+			
+			IncludeFragment (fragmentShareAccountsForOrg with value-of inuid to inuid,  
+							inorganisationuid binds-to inorganisationuid,
+							inonlydirectselection binds-to inonlydirectselection,
+							value-of True to incanshowdetails,
+							value-of active_accountsfororganisation to inenabled )
+		}
+		TabItem { // SUPER SLOW?
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.folders
+			feature:unstructureddata_license
+			activation-event:Set True to active_folders
+			hidden:Not BooleanPredicate(inshowfolders)
+		
+			IncludeFragment {
+				fragment:fragmentShareFoldersSelection
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_folders to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.oorigin
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowperorg)
+			activation-event: Set True to active_perorg
+			
+			IncludeFragment (fragmentSharePerOrg with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perorg to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.jorigin
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowperjob)
+			activation-event: Set True to active_perjob
+			
+			IncludeFragment (fragmentSharePerJob with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perjob to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.usages
+			feature:unstructureddata_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(hasusages)		
+					Not BooleanPredicate(inshowusages)
+				}
+			activation-event: Set True to active_usage
+			
+			IncludeFragment (fragmentShareUsages with value-of inuid to inuid, value-of active_usage to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.controls
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentApplicationAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsFragmentFilesystemNLS.decisionhistory
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentShareDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}
+}

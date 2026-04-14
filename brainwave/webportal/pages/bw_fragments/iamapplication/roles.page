@@ -1,0 +1,331 @@
+/* Import other pages here */
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_comparison/permission_comparison.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_fragments/application/permissions.page"
+import "/webportal/pages/bw_fragments/iamapplication/resources.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected IAM application roles
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>incancompare </b>optional, boolean value, true to enable comparison button (false by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentIAMApplicationRoles = PageFragment {
+	enter-event:BooleanCase using FeaturePredicate sod_license in { when True then [ Set True to hasSoDLicense ] when False then [ Set False to hasSoDLicense ] },
+				IntCase(application.bwa_applicationanalytics_nbbusinessactivity) { when >0 then [ Set True to hasBusinessactivity ] },
+				Set Eval "hasSoDLicense.get() && hasBusinessactivity.get()" to highlightSoDproblems
+				
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inPermissionType = Variable {multivalued:True initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role")}
+	incancompare = Variable { type:Boolean initial:False }
+
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+	selectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+
+	hasSoDLicense = Variable { type:Boolean initial:False}
+	hasBusinessactivity = Variable { type:Boolean initial:False}
+	highlightSoDproblems = Variable { type:Boolean initial:False}
+
+	application = Record {
+		view: bwf_applicationDetail with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	permissions = Dataset {
+		view: bwf_applicationpermissionswprb with
+			inuid to uid,
+			inPermissionType to permissiontype unless-empty,
+			highlightSoDproblems to highlightSoDproblems
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		 excludes: 
+			 AndPredicate {
+			 	Not BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+				StringPredicate(Current trends) { when "Removed" then True }		 
+			 }
+	}
+
+	comparisonPermission = Record {
+		view: br_permissionDetail with compareFrom to uid
+		disabled:
+			StringPredicate(compareFrom) { when IsEmpty then True }
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid, 
+												True to inshowaccounts,
+												True to inshowaccountperimeters,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowcontrols,
+												True to inshowsodmodeldefects,
+												True to inshowdecisionhistory,
+												True to inshowusages
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				ButtonGroup {
+					Button {
+						layout:Layout { hint:width 300 }
+						
+						actions:
+							Set ElementAt 1 of selectedUids to compareFrom,
+							Set selectedUids to compareTo,
+							MultivaluedRemove compareFrom from compareTo,
+							GoTo Page bwc_permission_comparison with compareFrom to uid, compareTo to uids  save-state 
+						text:$fragmentApplicationPermissionsNLS.comparewith(NonEmpty(comparisonPermission.displayname,' '))
+						disabled:IntPredicate(SizeOf selectedUids) { when <2 then True otherwise False }
+						presentation:Button
+					}
+				}
+
+				Table {
+					data:permissions
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					checkboxes:permissionuid to selectedUids
+					checkboxes-changed-event:Set ElementAt 1 of selectedUids to compareFrom
+					double-click:ExecuteNamedAction goDetails
+					persist-configuration:True
+					
+					
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+			
+					Column {
+						column: sod_coremodelproblems
+						text:''
+						header: ''
+						width: 52px
+						sortable: True
+						image:TemplateImageSelection(Current sod_coremodelproblems) using bwf_warning
+					}
+
+					Column {
+						column:permissioncode
+						header:$prole.code
+						selection:outpermissioncode
+						width:160px
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissiondisplayname
+						header:$prole.displayname
+						selection:outpermissionname
+						width:100%
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissionpermissiontype
+						header:$prole.permissiontype
+						width:140px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissiondescription
+						header:$fragmentApplicationPermissionsNLS.pdescription
+						width:260px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissionsensitivitylevel
+						header:$fragmentApplicationPermissionsNLS.psensitivitylevel
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:nbaccounts
+						text:Transform Current nbaccounts using bwf_defaultsTo0
+						align:Right
+						header:$fragmentApplicationPermissionsNLS.nbaccount
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+			when False then [
+				Table {
+					data:permissions
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					double-click:ExecuteNamedAction goDetails
+					
+					commands: Commands {
+						position:After
+						presentation:Icon
+						orientation:Vertical
+						Command {
+							actions:Message "nop"
+							icon:""
+							disabled:True
+						}
+						Command {
+							actions:ExecuteNamedAction goDetails
+							icon:%browsing_16.zoom
+							tooltip:'Shows selected permission details'
+							disabled:
+								OrPredicate {
+									Not BooleanPredicate(incanshowdetails)
+									StringPredicate(outpermissionuid) { when IsEmpty then True otherwise False }
+								}
+						}
+					}
+					
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:outpermissionuid
+					}
+
+					Column {
+						column: sod_coremodelproblems
+						text:''
+						header: ''
+						width: 52px
+						sortable: True
+						image:TemplateImageSelection(Current sod_coremodelproblems) using bwf_warning
+					}
+			
+					Column {
+						column:permissioncode
+						header:$prole.code
+						selection:outpermissioncode
+						width:160px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissiondisplayname
+						header:$prole.displayname
+						selection:outpermissionname
+						width:100%
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissionpermissiontype
+						header:$prole.permissiontype
+						width:140px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissiondescription
+						header:$fragmentApplicationPermissionsNLS.pdescription
+						width:260px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissionsensitivitylevel
+						header:$fragmentApplicationPermissionsNLS.psensitivitylevel
+						width:96px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:nbaccounts
+						text:Transform Current nbaccounts using bwf_defaultsTo0
+						align:Right
+						header:$fragmentApplicationPermissionsNLS.nbaccount
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}

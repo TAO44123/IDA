@@ -1,0 +1,83 @@
+/* Import other pages here */
+import "/webportal/pages/bw_access360/resources/fragments.page"
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+	
+ noyesstatus = StringMapping {
+	when "false" then $yesnoNLS.no prefix " "
+	when "true" then $yesnoNLS.yes prefix " "
+}
+
+newItemTemplate = StringImageTemplate {
+	when "new" then "16/famfamfam_silk_icons_v013/add.png"
+	when "true" then "16/indicators/flipflop.png"
+}
+
+
+
+enduser = Page {
+    // Dynamic
+    enter-event:
+    			Set Sum(UserVariable session_firstAccessTeam360, 1) to UserVariable session_firstAccessTeam360,
+    			BooleanCase(UserVariable session_isinitializedTeam360) {
+    				when False then [
+    					Set True to UserVariable session_isinitializedTeam360,
+ 		    			IntCase(Count managedidentities) { when >0 then [ Set True to UserVariable session_isidentitymanagerTeam360 ] },
+		    			IntCase(Count managedapplications) { when >0 then [ Set True to UserVariable session_isapplicationmanagerTeam360 ] },
+		    			IntCase(Count managedfolders) { when >0 then [ Set True to UserVariable session_isfoldermanagerTeam360 ] },
+		    			IntCase(Count managedaccounts) { when >0 then [ Set True to UserVariable session_isaccountmanagerTeam360 ] },
+		    			IntCase(Count managedpermissions) { when >0 then [ Set True to UserVariable session_ispermissionmanagerTeam360 ] },
+		    			IntCase(Count managedrepositories) { when >0 then [ Set True to UserVariable session_isrepositorymanagerTeam360 ] },
+		    			IntCase(Count managedshares) { when >0 then [ Set True to UserVariable session_issharemanagerTeam360 ] },
+		    			IntCase(Count managedgroups) { when >0 then [ Set True to UserVariable session_isgroupmanagerTeam360 ] },
+		    			IntCase(Count managedorganisations) { when >0 then [ Set True to UserVariable session_isorganisationmanagerTeam360 ] },
+		    			BooleanCase(Eval "uservariable.session_isidentitymanagerTeam360.get() || uservariable.session_isapplicationmanagerTeam360.get() || uservariable.session_isfoldermanagerTeam360.get() || uservariable.session_isaccountmanagerTeam360.get() || uservariable.session_ispermissionmanagerTeam360.get() || uservariable.session_isrepositorymanagerTeam360.get() || uservariable.session_issharemanagerTeam360.get() || uservariable.session_isgroupmanagerTeam360.get() ") 
+		    				{ when True then [ Set True to UserVariable session_isresourcemanagerTeam360 ] when False then [] }
+    				]
+    				when True then [
+    				]
+    			}
+    
+	title: $enduser360NLS.title
+	feature: enduser360_home
+	homepage-for: All priority 4000
+
+	/* Variables here */
+	ininitialtab = Parameter { type: Integer hidden:True mandatory:False }
+
+	/* Datasets and records here */
+	managedidentities = Dataset {
+		view:enduser360_managedidentities with Principal.uid to uid
+	}
+	managedapplications = Dataset {
+		view:enduser360_managedapplications with Principal.uid to uid
+	}
+	managedorganisations = Dataset {
+		view:enduser360_managedorganisations with Principal.uid to uid
+	}
+	managedfolders = Dataset {
+		view:enduser360_managedfolders with Principal.uid to uid
+	}
+	managedshares = Dataset {
+		view:enduser360_managedshare with Principal.uid to uid
+	}
+	managedgroups = Dataset {
+		view:enduser360_managedgroups with Principal.uid to uid
+	}
+	managedaccounts = Dataset {
+		view:enduser360_managedaccounts with Principal.uid to uid
+	}
+	managedpermissions = Dataset {
+		view:enduser360_managedpermissions with Principal.uid to uid
+	}
+	managedrepositories = Dataset {
+		view:enduser360_managedrepositories with Principal.uid to uid
+	}
+	
+	
+	IncludeFragment {
+		fragment: fragenduser360 with
+		value-of Principal.uid to inuid, value-of ininitialtab to ininitialtab
+	}
+
+} // End of page

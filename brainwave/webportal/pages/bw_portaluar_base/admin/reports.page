@@ -1,0 +1,417 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+bw_puar_reportsNLS = NLS {
+	title [en "Available analytics" fr "Analyses disponibles"]
+
+	_discr [en "Type" fr "Type"]
+	_name [en "ID" fr "ID"]
+	_title [en"Name" fr "Nom"]
+	_description [en"Description" fr "Description"]
+	_type [en "Family" fr "Famille"]
+	
+	entitydetails [en "Entity details analytics" fr "Analytics sur les détails d'entité"]
+	access360details [en "Access 360 analytics" fr "Analytics sur access 360"]
+	searchresults [en "Search analytics" fr "Analytics sur recherche"]
+}
+
+bw_puar_reports = Page {
+	title: $bw_puar_reportsNLS.title
+	icon:%report_32.report
+	large-icon:%report_48.report
+	tags:"admin"
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	identity = Dataset {
+		pages: Pages {
+			tags:"identity" and "byuid","identityext" and "byuid" 
+		}
+	}
+	organisation = Dataset {
+		pages: Pages {
+			tags:"organisation" and "byuid","organisationext" and "byuid"
+		}
+	}
+	account = Dataset {
+		pages: Pages {
+			tags:"account" and "byuid","accountext" and "byuid"
+		}
+	}
+	group = Dataset {
+		pages: Pages {
+			tags:"group" and "byuid","groupext" and "byuid"
+		}
+	}
+	repository = Dataset {
+		pages: Pages {
+			tags:"repository" and "byuid","repositoryext" and "byuid"
+		}
+	}
+	application = Dataset {
+		pages: Pages {
+			tags:"application" and "byuid","applicationext" and "byuid"
+		}
+	}
+	permission = Dataset {
+		pages: Pages {
+			tags:"permission" and "byuid","permissionext" and "byuid"
+		}
+	}
+	share = Dataset {
+		pages: Pages {
+			tags:"share" and "byuid","shareext" and "byuid"
+		}
+	}
+	folder = Dataset {
+		pages: Pages {
+			tags:"folder" and "byuid"
+		}
+	}
+
+	reports = Dataset {
+		union:Union {
+			datasets:	account discriminator "account details", 
+						application discriminator "application details", 
+						folder discriminator "folder details", 
+						group discriminator "group details", 
+						identity discriminator "identity details", 
+						organisation discriminator "organisation details", 
+						permission discriminator "permission details", 
+						repository discriminator "repository details", 
+						share discriminator "share details"
+			discriminator-column:discr
+		}
+	}
+	
+
+	team_access360reports = Dataset {
+		pages: Pages {
+			tags: "myteam_access360"
+		}
+	}
+	app_access360reports = Dataset {
+		pages: Pages {
+			tags: "myapp_access360"
+		}
+	}
+	account_access360reports = Dataset {
+		pages: Pages {
+			tags: "myaccount_access360"
+		}
+	}
+	folder_access360reports = Dataset {
+		pages: Pages {
+			tags: "myfolder_access360"
+		}
+	}
+	permission_access360reports = Dataset {
+		pages: Pages {
+			tags: "mypermission_access360"
+		}
+	}
+	repository_access360reports = Dataset {
+		pages: Pages {
+			tags: "myrepository_access360"
+		}
+	}
+	share_access360reports = Dataset {
+		pages: Pages {
+			tags: "myshare_access360"
+		}
+	}
+	group_access360reports = Dataset {
+		pages: Pages {
+			tags: "mygroup_access360"
+		}
+	}
+	org_access360reports = Dataset {
+		pages: Pages {
+			tags: "myorg_access360"
+		}
+	}
+	access360reports = Dataset {
+		union:Union {
+			datasets:	team_access360reports discriminator "team leader",
+						app_access360reports discriminator "application owner", 
+						account_access360reports discriminator "account owner", 
+						folder_access360reports discriminator "folder owner",
+						permission_access360reports discriminator "permission owner", 
+						repository_access360reports discriminator "repository owner", 
+						share_access360reports discriminator "share owner",
+						group_access360reports discriminator "group owner",
+						org_access360reports discriminator "organisation owner"
+			discriminator-column:discr
+		}
+	}
+	
+	
+	search_identity = Dataset {
+		pages: Pages {
+			tags:"identity" and "searchresults" 
+		}
+	}
+	search_organisation = Dataset {
+		pages: Pages {
+			tags:"organisation" and "searchresults"
+		}
+	}
+	search_account = Dataset {
+		pages: Pages {
+			tags:"account" and "searchresults"
+		}
+	}
+	search_group = Dataset {
+		pages: Pages {
+			tags:"group" and "searchresults"
+		}
+	}
+	search_repository = Dataset {
+		pages: Pages {
+			tags:"repository" and "searchresults"
+		}
+	}
+	search_application = Dataset {
+		pages: Pages {
+			tags:"application" and "searchresults"
+		}
+	}
+	search_permission = Dataset {
+		pages: Pages {
+			tags:"permission" and "searchresults"
+		}
+	}
+	search_share = Dataset {
+		pages: Pages {
+			tags:"share" and "searchresults"
+		}
+	}
+	search_folder = Dataset {
+		pages: Pages {
+			tags:"folder" and "searchresults"
+		}
+	}
+
+	search_reports = Dataset {
+		union:Union {
+			datasets:	search_account discriminator "account search", 
+						search_application discriminator "application search", 
+						search_folder discriminator "folder search", 
+						search_group discriminator "group search", 
+						search_identity discriminator "identity search", 
+						search_organisation discriminator "organisation search", 
+						search_permission discriminator "permission search", 
+						search_repository discriminator "repository search", 
+						search_share discriminator "share search"
+			discriminator-column:discr
+		}
+	}
+	
+
+	
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text:$bw_puar_reportsNLS.entitydetails	
+		
+			Table {
+				data:reports
+				layout:Layout { grab:horizontal True vertical True }
+				configurable:True
+				show-count:True
+				show-filter:True
+			
+				Column {
+					column:discr
+					header:$bw_puar_reportsNLS._discr
+					width:200px
+					sortable:True
+					filterable:True
+				}
+				Column {
+					column:name
+					header:$bw_puar_reportsNLS._name
+					initially-masked:True
+					sortable:True
+					filterable:True
+		
+					actions:Dialog bw_puar_reportsDetail(Current discr to discr, Current name to name, Current title to title, Current description to description, Current type to type)
+				}
+				Column {
+					column:title
+					header:$bw_puar_reportsNLS._title
+					image:Current icon
+					width:100%
+					sortable:True
+					filterable:True
+					
+					actions:Dialog bw_puar_reportsDetail(Current discr to discr, Current name to name, Current title to title, Current description to description, Current type to type)
+				}
+				Column {
+					column:description
+					header:$bw_puar_reportsNLS._description
+					tooltip:Current description
+					initially-masked:True
+				}
+				Column {
+					column:type
+					header:$bw_puar_reportsNLS._type
+					initially-masked:True
+					sortable:True
+				}
+			}
+		}
+		TabItem {
+			text:$bw_puar_reportsNLS.access360details	
+
+			Table {
+				data:access360reports
+				layout:Layout { grab:horizontal True vertical True }
+				configurable:True
+				show-count:True
+				show-filter:True
+			
+				Column {
+					column:discr
+					header:$bw_puar_reportsNLS._discr
+					width:200px
+					sortable:True
+					filterable:True
+				}
+				Column {
+					column:name
+					header:$bw_puar_reportsNLS._name
+					initially-masked:True
+					sortable:True
+					filterable:True
+		
+					actions:Dialog bw_puar_reportsDetail(Current discr to discr, Current name to name, Current title to title, Current description to description, Current type to type)
+				}
+				Column {
+					column:title
+					header:$bw_puar_reportsNLS._title
+					image:Current icon
+					width:100%
+					sortable:True
+					filterable:True
+					
+					actions:Dialog bw_puar_reportsDetail(Current discr to discr, Current name to name, Current title to title, Current description to description, Current type to type)
+				}
+				Column {
+					column:description
+					header:$bw_puar_reportsNLS._description
+					tooltip:Current description
+					initially-masked:True
+				}
+				Column {
+					column:type
+					header:$bw_puar_reportsNLS._type
+					initially-masked:True
+					sortable:True
+				}
+			}
+		}
+		TabItem {
+			text:$bw_puar_reportsNLS.searchresults	
+
+			Table {
+				data:search_reports
+				layout:Layout { grab:horizontal True vertical True }
+				configurable:True
+				show-count:True
+				show-filter:True
+			
+				Column {
+					column:discr
+					header:$bw_puar_reportsNLS._discr
+					width:200px
+					sortable:True
+					filterable:True
+				}
+				Column {
+					column:name
+					header:$bw_puar_reportsNLS._name
+					initially-masked:True
+					sortable:True
+					filterable:True
+		
+					actions:Dialog bw_puar_reportsDetail(Current discr to discr, Current name to name, Current title to title, Current description to description, Current type to type)
+				}
+				Column {
+					column:title
+					header:$bw_puar_reportsNLS._title
+					image:Current icon
+					width:100%
+					sortable:True
+					filterable:True
+					
+					actions:Dialog bw_puar_reportsDetail(Current discr to discr, Current name to name, Current title to title, Current description to description, Current type to type)
+				}
+				Column {
+					column:description
+					header:$bw_puar_reportsNLS._description
+					tooltip:Current description
+					initially-masked:True
+				}
+				Column {
+					column:type
+					header:$bw_puar_reportsNLS._type
+					initially-masked:True
+					sortable:True
+				}
+			}
+		}
+	}
+}
+
+
+bw_puar_reportsDetail = Dialog {
+	title:"Details"
+	width:800
+	height:400
+	buttons:OkButton
+	
+	discr = Variable
+	name = Variable
+	title = Variable
+	description = Variable
+	type = Variable
+
+	Text {
+		label:$bw_puar_reportsNLS._title
+		value:title
+		compact:True
+		styling:bigTitleStyle
+	}
+
+	Text {
+		label:$bw_puar_reportsNLS._name
+		value:name
+		compact:True
+	}
+
+	Text {
+		label:$bw_puar_reportsNLS._discr
+		value:discr
+		compact:True
+	}
+
+	Text {
+		label:$bw_puar_reportsNLS._type
+		value:type
+		compact:True
+	}
+
+	Text {
+		label:$bw_puar_reportsNLS._description
+		value:description
+		lines:10
+		layout: Layout { grab:horizontal True vertical True }
+	}
+}

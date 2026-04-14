@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow version="1.0">
+	<Definition name="bwr_refreshitsmticketspergrouprepositoryjira" statictitle="refreshitsmticketspergrouprepository" scriptfile="workflow/bw_iasreview/refreshitsmticketsperrepositoryjira.javascript" displayname="refreshitsmticketspergrouprepository" type="builtin-technical-workflow" technical="true">
+		<Component name="CSTART" type="startactivity" x="225" y="-106" w="200" h="114" title="Start" compact="true">
+			<Ticket create="true"/>
+			<Actions function="init">
+				<Action name="U1655219668691" action="executeview" viewname="bwiasr_itsms" append="false" attribute="itsmurl">
+					<ViewParam name="P16552196686910" param="itsmcode" paramvalue="{dataset.remediationinstancecode.get()}"/>
+					<ViewAttribute name="P1655219668691_1" attribute="bwr_remediation_itsmdef_string4" variable="itsmurl"/>
+					<ViewAttribute name="P1655219668691_2" attribute="bwr_remediation_itsmdef_string6" variable="itsmlogin"/>
+					<ViewAttribute name="P1655219668691_3" attribute="bwr_remediation_itsmdef_string11" variable="itsmclosedstatesid"/>
+					<ViewAttribute name="P1655219668691_4" attribute="bwr_remediation_itsmdef_string7" variable="itsmpassword"/>
+					<ViewAttribute name="P1655219668691_5" attribute="bwr_remediation_itsmdef_string12" variable="itsmcancelledstatesid"/>
+				</Action>
+				<Action name="U1655368117141" action="executeview" viewname="bwiasr_pendinggroupsperrepo" append="false" attribute="remediationrecorduid">
+					<ViewParam name="P16553681171410" param="repository" paramvalue="{dataset.repository.get()}"/>
+					<ViewAttribute name="P1655368117141_1" attribute="remediationrecorduid" variable="remediationrecorduid"/>
+					<ViewAttribute name="P1655368117141_2" attribute="remediationticketid" variable="remediationticketid"/>
+					<ViewAttribute name="P1655368117141_3" attribute="remediationclosedstatus" variable="remediationclosedstatus"/>
+					<ViewAttribute name="P1655368117141_4" attribute="remediationactiondate" variable="remediationactiondate"/>
+					<ViewAttribute name="P1655368117141_5" attribute="remediationstatus" variable="remediationstatus"/>
+					<ViewAttribute name="P1655368117141_6" attribute="remediationticketnumber" variable="remediationticketnumber"/>
+				</Action>
+				<Action name="U1655368191050" action="update" attribute="uniquerremediationticketid" newvalue="{dataset.remediationticketid}"/>
+				<Action name="U1656083629606" action="update" attribute="uniqueremediationticketnumber" newvalue="{dataset.remediationticketnumber}"/>
+				<Action name="U1655370225766" action="multiclean" attribute="uniquerremediationticketid" emptyvalues="true" duplicates="true" attribute1="uniqueremediationticketnumber"/>
+			</Actions>
+		</Component>
+		<Component name="CEND" type="endactivity" x="225" y="721" w="200" h="98" title="End" compact="true" inexclusive="true"/>
+		<Component name="C1655368217153" type="callactivity" x="99" y="110" w="300" h="98" title="get latest tickets status">
+			<Process workflowfile="/workflow/bw_jira/getallstatus.workflow">
+				<Input name="A1655368255794" variable="domain" content="itsmurl"/>
+				<Input name="A1655368261382" variable="login" content="itsmlogin"/>
+				<Input name="A1655368315564" variable="ticketid" content="uniquerremediationticketid"/>
+				<Input name="A1663138414446" variable="token" content="itsmpassword"/>
+				<Output name="A1663138469515" variable="outticketupdatedatetime" content="res_ticketupdatedatetime"/>
+				<Output name="A1663138481363" variable="outticketstatus" content="res_ticketstatusstr"/>
+				<Output name="A1663138497610" variable="outticketclosedstatus" content="res_ticketclosed"/>
+				<Output name="A1663138521697" variable="outticketid" content="res_ticketid"/>
+				<Input name="A1663147063031" variable="closedstateslist" content="closedstateslist"/>
+				<Input name="A1663147069495" variable="cancelledstateslist" content="cancelledtaskslist"/>
+			</Process>
+		</Component>
+		<Link name="L1655368599006" source="CSTART" target="C1656084673431" priority="1"/>
+		<Component name="C1655368608770" type="scriptactivity" x="99" y="385" w="300" h="98" title="update dataset with latest status">
+			<Script onscriptexecute="updateTicketStatus"/>
+		</Component>
+		<Component name="C1655368639860" type="updateticketreviewactivity" x="99" y="517" w="300" h="98" title="update tickets">
+			<UpdateTicketReview ticketreviewnumbervariable="remediationrecorduid">
+				<Attribute name="status" attribute="remediationstatus"/>
+				<Attribute name="actiondate" attribute="remediationactiondate"/>
+				<Attribute name="custom2" attribute="remediationclosedstatus"/>
+			</UpdateTicketReview>
+		</Component>
+		<Link name="L1655368655883" source="C1655368608770" target="C1655368639860" priority="1"/>
+		<Link name="L1655368661552" source="C1655368639860" target="CEND" priority="1"/>
+		<Component name="C1655371463984" type="variablechangeactivity" x="100" y="235" w="300" h="98" outexclusive="true" title="dummy"/>
+		<Link name="L1655371469211" source="C1655368217153" target="C1655371463984" priority="1"/>
+		<Link name="L1655371469947" source="C1655371463984" target="C1655368608770" priority="2"/>
+		<Link name="L1655371855649" source="C1655371463984" target="CEND" priority="1" expression="(dataset.isEmpty(&apos;res_ticketid&apos;))" labelcustom="true" label="nothing to update"/>
+		<Component name="C1656084673431" type="variablechangeactivity" x="100" y="-19" w="300" h="98" title="for debug only"/>
+		<Link name="L1656084683233" source="C1656084673431" target="C1655368217153" priority="1"/>
+	</Definition>
+	<Variables>
+		<Variable name="A1655217226547" variable="repository" displayname="repository" editortype="Ledger Repository" type="String" multivalued="false" visibility="in" notstoredvariable="true"/>
+		<Variable name="A1655218389344" variable="remediationinstancecode" displayname="remediationinstancecode" editortype="Default" type="String" multivalued="false" visibility="in" notstoredvariable="true"/>
+		<Variable name="A16552196686910" variable="itsmurl" displayname="itsmurl" multivalued="false" visibility="local" type="String" editortype="Default" notstoredvariable="false"/>
+		<Variable name="A16552196686912" variable="itsmlogin" displayname="itsmlogin" multivalued="false" visibility="local" type="String" editortype="Default" notstoredvariable="false"/>
+		<Variable name="A16552196686913" variable="itsmclosedstatesid" displayname="itsmclosedstatesid" multivalued="false" visibility="local" type="String" editortype="Default" notstoredvariable="false"/>
+		<Variable name="A1655224264884" variable="debug" displayname="debug" editortype="Default" type="Boolean" multivalued="false" visibility="in" initialvalue="false" notstoredvariable="true"/>
+		<Variable name="A16553681171410" variable="remediationrecorduid" displayname="remediationrecorduid" multivalued="true" visibility="local" type="Number" editortype="Default"/>
+		<Variable name="A16553681171411" variable="remediationticketid" displayname="remediationticketid" multivalued="true" visibility="local" type="String" editortype="Default"/>
+		<Variable name="A1655368137137" variable="uniquerremediationticketid" displayname="uniquerremediationticketid" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1655368410129" variable="res_ticketid" displayname="res_ticketid" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1655368428715" variable="res_ticketstatusstr" displayname="res_ticketstatusstr" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1655368442286" variable="res_ticketclosed" displayname="res_ticketclosed" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1655368458041" variable="res_ticketupdatedatetime" displayname="res_ticketupdatedatetime" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+		<Variable name="A16553681171412" variable="remediationclosedstatus" displayname="remediationclosedstatus" multivalued="true" visibility="local" type="String" editortype="Default"/>
+		<Variable name="A16553681171413" variable="remediationactiondate" displayname="remediationactiondate" multivalued="true" visibility="local" type="Date" editortype="Default"/>
+		<Variable name="A16553681171414" variable="remediationstatus" displayname="remediationstatus" multivalued="true" visibility="local" type="String" editortype="Default"/>
+		<Variable name="A16553681171415" variable="remediationticketnumber" displayname="remediationticketnumber" multivalued="true" visibility="local" type="String" editortype="Default"/>
+		<Variable name="A1656078997965" variable="uniqueremediationticketnumber" displayname="uniqueremediationticketnumber" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1663142879368" variable="itsmpassword" displayname="itsmpassword" editortype="Default" type="String" multivalued="false" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1663142907624" variable="itsmcancelledstatesid" displayname="itsmcancelledstatesid" editortype="Default" type="String" multivalued="false" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1663143180144" variable="closedstateslist" displayname="closedstateslist" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+		<Variable name="A1663143195038" variable="cancelledtaskslist" displayname="cancelledtaskslist" editortype="Default" type="String" multivalued="true" visibility="local" notstoredvariable="true"/>
+	</Variables>
+</Workflow>

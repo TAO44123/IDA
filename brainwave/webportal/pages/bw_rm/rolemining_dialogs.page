@@ -1,0 +1,706 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+import "/webportal/pages/resources/pickers.page"
+
+bwpm_createRoleNLS = NLS {
+	title [en "Create role" fr "Création du rôle"]
+	flash [en "Role declared" fr "Rôle déclaré"]
+	header [en "Create a new role" fr "Créer un nouveau rôle"]
+	codelabel [en "Role code" fr "Code rôle"]
+	codetooltip [en "Enter a unique identifier for your role (must be unique for the whole project)" fr "Entrez un identifiant unique pour votre rôle (doit être unique au sein de l''ensemble du projet)"]
+	namelabel [en "Role name" fr "Nom du rôle"]
+	nametooltip [en "Enter a pretty name for your role" fr "Entrez un nom adéquat pour votre rôle"]
+	descriptionlabel [en "Role description" fr "Description du rôle"]
+	descriptiontooltip [en "Enter a description for your role, eg: its meaning and to whom it should be associated" fr "Entrez une description pour votre rôle: son sens et à qui il devrait être associé"]
+	statuslabel [en "Current role status" fr "Statut actuel du rôle"]
+	statustooltip [en "Select a status for your role, only production status and deprecated status are considered valid for production environment" fr "Sélectionnez un statut pour votre rôle, seuls les statuts production et déprécié sont considérés comme valides pour l''environnement de production"]
+	versionlabel [en "Role version" fr "Version du rôle"]
+	versiontooltip [en "Enter a version number for your role" fr "Entrez un numéro de version pour votre rôle"]
+	owner [ en "Owner" fr "Propriétaire"]
+	createOrReplaceMsg [ en "Create new role or Replace current role {0} with selected permissions and identities  ?" fr ""]
+}
+
+
+bwpm_createRole = Dialog {
+	title:$bwpm_createRoleNLS.title
+	width:640
+	height:500
+	enter-event: 
+	   Set Eval "nextColor.nextColor"  to color ,
+	   Set Eval "in_orgcode.isEmpty() ? '': in_orgcode.get()+'_' " to rolePrefix ,
+	   Set ownerDetail.fullname to owner_fullname
+	buttons:[CancelButton OkButton{
+		actions:
+			Set Concat( rolePrefix, code) to createrole.in_rolecode,
+			Set name to createrole.in_rolename,
+			Set description to createrole.in_roledescription,
+			Set in_organisation to createrole.in_attachedorg,
+			Set owner to createrole.in_owner,
+			Set color to createrole.in_color,
+			Set status to createrole.in_status ,
+			Set in_setcontent to createrole.in_setcontent ,
+			Set in_identities to createrole.in_identities,
+			Set in_permissions to createrole.in_permissions,
+			Set identityRule to createrole.in_identityrule,
+			Set category to createrole.in_category,
+			Set version to createrole.in_roleversion,
+			TaskComplete createrole wait-end,
+			Flash $bwpm_createRoleNLS.flash
+		disabled: Eval "code.isEmpty() || name.isEmpty() || existingRole.code != null || (in_global.get() && identityRule.isEmpty())"
+	}] 
+			
+		
+	code = Variable
+	name = Variable
+	description = Variable
+	status = Variable { initial: 1 }
+	version = Variable {initial:"1"}		
+	color = Variable {type:Integer initial: 0 }
+	identityRule = Variable
+	owner = Variable {initial:Principal.uid}
+	owner_fullname = Variable { }
+	category = Variable { }
+		
+	in_organisation = Variable
+	in_orgcode = Variable 
+	
+	in_setcontent = Variable { type: Boolean initial: False}
+	in_global = Variable { type: Boolean initial: False }
+	in_identities = Variable { multivalued: True}
+	in_permissions = Variable { multivalued: True}	
+
+			
+	rolePrefix = Variable 	
+	selectedPermissions = Variable { multivalued: True}
+	selectedIdentities = Variable { multivalued: True}
+
+	     
+	identities = Dataset {
+		view:bwpm_identitypickers with in_identities to uids
+	}
+	
+
+	permissions = Dataset {
+		view:bwpm_permpickers with in_permissions to uids
+	}
+	
+	createrole = TaskRecord ( create "bwpm_createrole" )
+	
+	ownerDetail = Record {
+	   view: br_identitynamebyuid with owner to uid
+	}
+	
+	nextColor = Record {
+	    view: bwpm_rolenextcolor with in_organisation to organisationuid
+	}
+	
+	existingRole = Record {
+		view:bwrm_role_exists_md with Concat( rolePrefix, code) to rolecode
+	}
+	
+	categories = Dataset {
+		view: bwrm_get_categories
+	}
+	
+	identityRules = Dataset {
+	  view: bwrm_rules_rolesidentities
+	  disabled: Eval "!in_global.get()" 
+	}
+	identitiesInRule = Dataset {
+	  view: rm_identitiesinrule with identityRule to rulename
+	}
+    /* dialog contents */
+    	
+	Edit {
+		variable:code
+		label:$bwpm_createRoleNLS.codelabel
+		not-empty:True
+		match:"^[a-z,A-Z,0-9,_]+"
+		tooltip:$bwpm_createRoleNLS.codetooltip
+		modify-event: ReloadData(existingRole)
+	}
+	
+	Edit {
+		variable:name
+		label:$bwpm_createRoleNLS.namelabel
+		not-empty:True
+		tooltip:$bwpm_createRoleNLS.nametooltip
+	}
+
+
+	Edit {
+		variable:description
+		label:$bwpm_createRoleNLS.descriptionlabel
+		tooltip:$bwpm_createRoleNLS.descriptiontooltip
+	}
+	
+	Text {
+		label: $bwpm_createRoleNLS.owner
+		value: owner_fullname
+		commands: Commands{
+					presentation: Icon
+					Command { 
+						actions: Dialog identityPicker(owner from outUid ,owner_fullname from outDisplayname)
+						icon: "16/audit/identity_16.png"
+					}
+		}
+	}	
+	
+	Edit {
+		variable: category
+		proposal: categories.category
+		label:$permminingNLS.rolecategory
+	}
+	
+	Spinner {
+	  variable: color
+	  label: $permminingNLS.rolecolor
+	  styling: StylingTemplateSelection ( color) using bw_role_styling
+	  minimum: 0
+	  maximum:19 
+	  hidden: Eval "in_global.get()"	   
+	}
+	
+	Edit {
+		variable:version
+		label:$bwpm_createRoleNLS.versionlabel
+		tooltip:$bwpm_createRoleNLS.versiontooltip
+	}
+	
+	Splitter {
+	  disposition: Horizontal 
+	  hidden: Not BooleanPredicate(in_setcontent)
+	  size: 40%
+	  Group {
+	  
+	        Combo {
+	          label: $bw_rm_managementNLS.global.identityRule
+	          options: Dynamic { data: identityRules text: Current ruledisplayname value: Current rulename }
+	          variable: identityRule
+	          //allow-none: True
+	          hidden: Eval "!in_global.get()"              
+	        }
+	        
+	        Table {
+	          data: identitiesInRule 
+	          layout:Layout {grab: horizontal True vertical True}
+	          hidden: Eval "!in_global.get()" 
+	          label:Label {
+					align:Left
+					break:True
+					value: $permminingNLS.peoplerole
+			  }
+			  show-count: True
+	          configurable: True
+	          Column { column: fullname width: 100% }
+	          Column { column: hrcode initially-masked: True}
+	        }	  
+	  
+		  Table {
+			data:identities
+			hidden: BooleanPredicate ( in_global)
+			checkboxes: uid to selectedIdentities 
+			layout:Layout {grab: horizontal True vertical True}				
+			label:Label { align:Left break:True value:$permminingNLS.peoplerole }
+			//hidden: Eval "in_identities.isEmpty()"
+			commands: Command {
+				actions:MultivaluedRemove selectedIdentities from in_identities, 
+				  Unset selectedIdentities
+				icon:"16/famfamfam_silk_icons_v013/delete.png"
+				tooltip:$permminingNLS.idremovedtooltip
+				disabled:Eval "selectedIdentities.isEmpty()" 
+			}
+			Column {
+				column:fullname				
+				width:100%
+				sortable:True
+				header:$permminingNLS.fullname
+			}		
+		}	  
+	  } 
+	  Group {
+    	Table {
+			data:permissions
+			checkboxes: uid to selectedPermissions	
+			commands:  Command {
+						actions: MultivaluedRemove selectedPermissions from in_permissions, 
+						         Unset selectedPermissions
+						icon:"16/famfamfam_silk_icons_v013/delete.png"
+						tooltip: $permminingNLS.permremovedtooltip
+						disabled:Eval "selectedPermissions.isEmpty()" 
+				}
+			layout:Layout {grab: horizontal True vertical True}
+			label:Label { align:Left break:True value: $permminingNLS.permrole}
+			Column {
+				column:displayname
+				header:  $permminingNLS.perm
+				width:100%
+				sortable:True
+			}
+			Column {
+				column:applicationdisplayname
+				header:  $permminingNLS.app
+				width:100%
+				sortable:True
+			}
+		}
+	} 
+  }
+		
+}
+
+bwpm_updateRoleNLS = NLS {
+	title [en "Update role" fr "Mise à jour du rôle"]
+	flash [en "Role updated" fr "Rôle mis à jour"]
+}
+
+bwpm_updateRole = Dialog {
+	title:$bwpm_updateRoleNLS.title
+	width:640
+	height: 400
+	enter-event:Set roleDetail.name to name, 
+	   Set roleDetail.description to description, 
+	   Set roleDetail.color to color ,
+	   Set roleDetail.identityrule to identityRule,
+	   Set roleDetail.status to status,
+	   Set roleDetail.owner_uid to owner,
+       Set roleDetail.owner_fullname to owner_fullname,
+       Set roleDetail.category to category
+	buttons:[CancelButton OkButton{
+		actions:
+			Set in_code to updaterole.in_rolecode,
+			Set name to updaterole.in_rolename,
+			Set description to updaterole.in_roledescription,
+			Set roleDetail.organisationUid to updaterole.in_attachedorg,
+			Set owner to updaterole.in_owner,
+			Set color to updaterole.in_color , 
+			Set status to updaterole.in_status ,
+			Set version to updaterole.in_roleversion,
+			Set identityRule to updaterole.in_identityrule,
+			Set category to updaterole.in_category,
+			TaskComplete updaterole wait-end
+	}] 
+				
+	in_code = Variable
+
+	in_global = Variable { type: Boolean initial: False }
+	
+	name = Variable
+	description = Variable
+	status = Variable
+	version = Variable
+	color = Variable { type: Integer }
+	identityRule = Variable 
+	owner = Variable {initial:Principal.uid}
+    owner_fullname = Variable { }
+    category = Variable { }
+	
+	identityRules = Dataset {
+	  view: bwrm_rules_rolesidentities
+	  disabled: Eval "!in_global.get()" 
+	}
+	identitiesInRule = Dataset {
+	  view: rm_identitiesinrule with identityRule to rulename
+	}
+	
+	categories = Dataset {
+		view: bwrm_get_categories
+	}
+
+	roleDetail = Record {
+		view:bwpm_roledetails_md with in_code to rolecode
+	}
+	
+	updaterole = TaskRecord ( create "bwpm_updaterole" )
+	
+	Edit {
+		variable:name
+		label:$bwpm_createRoleNLS.namelabel
+		not-empty:True
+		tooltip:$bwpm_createRoleNLS.nametooltip
+	}
+
+
+	Edit {
+		variable:description
+		label:$bwpm_createRoleNLS.descriptionlabel
+		tooltip:$bwpm_createRoleNLS.descriptiontooltip
+	}
+	
+	Text {
+		label: $bwpm_createRoleNLS.owner
+        value: owner_fullname
+        commands: Commands{
+                    presentation: Icon
+                    Command { 
+                        actions: Dialog identityPicker(owner from outUid ,owner_fullname from outDisplayname)
+                        icon: "16/audit/identity_16.png"
+                    }
+        }
+    }    
+	
+	
+	Spinner {
+	  variable: color
+	  label: $permminingNLS.rolecolor
+	  styling: StylingTemplateSelection ( color) using bw_role_styling
+	  minimum:0
+	  maximum: 19
+	  hidden: Eval "in_global.get()"
+	}
+	
+	Edit {
+		variable: category
+		proposal: categories.category
+		label:$permminingNLS.rolecategory
+	}
+	
+	Combo {
+		variable:status
+		allow-none:False
+		label:$bwpm_createRoleNLS.statuslabel
+		tooltip:$bwpm_createRoleNLS.statustooltip
+		options:Static {
+			Option { text:$permminingNLS.status.design value:1 }
+			Option { text:$permminingNLS.status.production value:2 }
+			Option { text:$permminingNLS.status.disabled value: 0 }
+		}
+	}
+	
+    Combo {
+      label: $bw_rm_managementNLS.global.identityRule
+      options: Dynamic { data: identityRules text: Current ruledisplayname value: Current rulename }
+      variable: identityRule
+      //allow-none: True
+      hidden: Eval "!in_global.get()"                   
+    }
+    
+    Table {
+      data: identitiesInRule 
+      layout:Layout {grab: horizontal True vertical True}
+      hidden: Eval "!in_global.get()" 
+      label:Label {
+			align:Left
+			break:True
+			value: $permminingNLS.peoplerole
+	  }
+	  show-count: True
+      configurable: True
+      Column { column: fullname width: 100% }
+      Column { column: hrcode initially-masked: True}
+    }
+
+
+	
+}
+
+/*  Role Mover dialog  */
+
+bwrm_roleMoverNLS = NLS {
+  title [en "Role Mixer" fr "Combiner des rôles"]
+  moveRight [ en "Move checked items to the right" fr "Déplacer les élements cochés à droite"]
+  copyRight [ en "Copy checked items to the right" fr "Copier les élements cochés à droite"]
+  moveLeft [ en "Move checked items to the left" fr "Déplacer les élements cochés à gauche"]
+  copyLeft [ en "Copy checked items to the left" fr "Copier les élements cochés à gauche"]  
+}
+
+bwrm_roleMover = Dialog {
+
+    enter-event:  
+       ExecuteNamedAction updateRoleDetails1,
+       ExecuteNamedAction updateRoleDetails2
+      
+    width: 800
+    height: 700
+
+    title: $bwrm_roleMoverNLS.title
+    buttons: [
+      CancelButton
+      OkButton {
+         disabled: Not BooleanPredicate ( dirty)    
+         actions: ExecuteNamedAction saveChanges
+      }
+    ]
+    orgUid = Variable { }   
+    
+    /* role1 */ 
+    selectedRole1 = Variable { }   
+    rolePermissions1 = Variable {multivalued:True}
+	roleIdentities1 = Variable {multivalued:True}
+	selectedRolePermissions1 =  Variable {multivalued:True}
+	selectedRoleIdentities1 =  Variable {multivalued:True}
+	
+	/* role2 */
+	selectedRole2 = Variable { }
+	rolePermissions2 = Variable {multivalued:True}
+	roleIdentities2 = Variable {multivalued:True}
+	selectedRolePermissions2 =  Variable {multivalued:True}
+	selectedRoleIdentities2 =  Variable {multivalued:True}
+	
+	dirty = Variable { type: Boolean initial: False}
+	
+	/* tasks */
+	updaterole = TaskRecord(create "bwpm_updaterolecontent")
+	
+	/* datasets */
+    
+    roles1 = Dataset {
+		view:bwpm_rolelist_perorg_md with orgUid to organisationuid  disable-cache: True
+	}
+	
+	roleContentPermissions1 = Dataset {
+		view:bwpm_getrolepermissions_md with selectedRole1 to rolecode
+	}
+
+	roleContentIdentities1 = Dataset {
+		view:bwpm_getroleidentities_md with selectedRole1 to rolecode
+	}
+	
+	identities1 = Dataset {
+		view:bwpm_identitypickers with roleIdentities1 to uids
+	}
+	
+	permissions1 = Dataset {
+		view:bwpm_permpickers with rolePermissions1 to uids
+	}
+	
+	
+	roles2 = Dataset {
+	  view:bwpm_rolelist_perorg_md with orgUid to organisationuid  disable-cache: True
+	  excludes: SameValuePredicate ( Current rolecode , selectedRole1)
+	}
+	
+	roleContentPermissions2 = Dataset {
+		view:bwpm_getrolepermissions_md with selectedRole2 to rolecode
+	}
+
+	roleContentIdentities2 = Dataset {
+		view:bwpm_getroleidentities_md with selectedRole2 to rolecode
+	}
+	
+	identities2 = Dataset {
+		view:bwpm_identitypickers with roleIdentities2 to uids
+	}
+	
+	permissions2 = Dataset {
+		view:bwpm_permpickers with rolePermissions2 to uids
+	}
+	
+	/* NamedActions */
+	
+	updateRoleDetails1 = NamedAction (
+	   TransferData roleContentPermissions1(uid) to (rolePermissions1),
+	   TransferData roleContentIdentities1(uid) to (roleIdentities1)
+	)
+	
+	updateRoleDetails2 = NamedAction (
+	   TransferData roleContentPermissions2(uid) to (rolePermissions2),
+	   TransferData roleContentIdentities2(uid) to (roleIdentities2)
+  	)
+	
+	moveIdentitiesRight = NamedAction(
+	  MultivaluedRemove selectedRoleIdentities1 from roleIdentities1,
+	  MultivaluedAdd selectedRoleIdentities1 to roleIdentities2, MultivaluedDistinct roleIdentities2,
+	  Unset selectedRoleIdentities2, MultivaluedAdd selectedRoleIdentities1 to selectedRoleIdentities2,
+	  Unset selectedRoleIdentities1,
+	  Set True to dirty
+	)
+	
+	copyIdentitiesRight = NamedAction(
+	  MultivaluedAdd selectedRoleIdentities1 to roleIdentities2, MultivaluedDistinct roleIdentities2,
+	  Unset selectedRoleIdentities2, MultivaluedAdd selectedRoleIdentities1 to selectedRoleIdentities2,
+	  Unset selectedRoleIdentities1,
+	  Set True to dirty
+	)
+	
+	moveIdentitiesLeft = NamedAction(
+	  MultivaluedRemove selectedRoleIdentities2 from roleIdentities2,
+	  MultivaluedAdd selectedRoleIdentities2 to roleIdentities1, MultivaluedDistinct roleIdentities1,
+	  Unset selectedRoleIdentities1, MultivaluedAdd selectedRoleIdentities2 to selectedRoleIdentities1,
+	  Unset selectedRoleIdentities2,
+	  Set True to dirty
+	)
+	
+	copyIdentitiesLeft = NamedAction(
+	  MultivaluedAdd selectedRoleIdentities2 to roleIdentities1, MultivaluedDistinct roleIdentities1,
+	  Unset selectedRoleIdentities1, MultivaluedAdd selectedRoleIdentities2 to selectedRoleIdentities1,
+	  Unset selectedRoleIdentities2,
+	  Set True to dirty
+	)
+	
+	
+	movePermissionsRight = NamedAction(
+	  MultivaluedRemove selectedRolePermissions1 from rolePermissions1,
+	  MultivaluedAdd selectedRolePermissions1 to rolePermissions2, MultivaluedDistinct rolePermissions2,
+	  Unset selectedRolePermissions2, MultivaluedAdd selectedRolePermissions1 to selectedRolePermissions2,
+	  Unset selectedRolePermissions1,
+	  Set True to dirty
+	)
+	
+	copyPermissionsRight = NamedAction(
+	  MultivaluedAdd selectedRolePermissions1 to rolePermissions2, MultivaluedDistinct rolePermissions2,
+	  Unset selectedRolePermissions2, MultivaluedAdd selectedRolePermissions1 to selectedRolePermissions2,
+	  Unset selectedRolePermissions1,
+	  Set True to dirty
+	)
+	
+	movePermissionsLeft = NamedAction(
+	  MultivaluedRemove selectedRolePermissions2 from rolePermissions2,
+	  MultivaluedAdd selectedRolePermissions2 to rolePermissions1, MultivaluedDistinct rolePermissions1,
+	  Unset selectedRolePermissions1, MultivaluedAdd selectedRolePermissions2 to selectedRolePermissions1,
+	  Unset selectedRolePermissions2,
+	  Set True to dirty
+	)
+	
+	copyPermissionsLeft = NamedAction(
+	  MultivaluedAdd selectedRolePermissions2 to rolePermissions1, MultivaluedDistinct rolePermissions1,
+	  Unset selectedRolePermissions1, MultivaluedAdd selectedRolePermissions2 to selectedRolePermissions1,
+	   Unset selectedRolePermissions2,
+	  Set True to dirty
+	)
+	
+	saveChanges = NamedAction (
+		Set selectedRole1 to updaterole.in_rolecode,
+		Set Principal.uid to updaterole.in_owner,
+		Set roleIdentities1 to updaterole.in_identities,
+		Set rolePermissions1 to updaterole.in_permissions,
+		TaskComplete updaterole wait-end ,
+		Set selectedRole2 to updaterole.in_rolecode,
+		Set Principal.uid to updaterole.in_owner,
+		Set roleIdentities2 to updaterole.in_identities,
+		Set rolePermissions2 to updaterole.in_permissions,
+		TaskComplete updaterole wait-end ,		
+	    Set False to dirty
+	)
+	
+	/* content */
+	
+    Grid {
+        
+        columns: GridColumn {}, GridColumn {}
+                
+        // Role selector
+        GridRow {
+          align: leading
+          GridCell {
+            Combo {
+              variable: selectedRole1 
+              options: Dynamic { data: roles1 value: Current rolecode text: Current rolename }
+              disabled: BooleanPredicate( dirty)
+              modify-event:  ExecuteNamedAction updateRoleDetails1
+              layout: Layout {grab: horizontal True vertical False } 
+            }
+            
+            Table {
+					data:identities1
+					show-count: True
+					layout:Layout {grab: horizontal True vertical True}
+					hidden:Eval "selectedRole1.isEmpty()"
+					checkboxes: uid to selectedRoleIdentities1	 
+					label:Label { align:Left break:True value:$permminingNLS.peoplerole}
+					commands: Commands {
+					  orientation: Vertical
+                      position:After
+                      Command {
+                        icon:"16/bw_rm/move_right.png"                       
+                        actions: ExecuteNamedAction moveIdentitiesRight
+                        tooltip: $bwrm_roleMoverNLS.moveRight
+                        disabled: Eval "selectedRoleIdentities1.isEmpty()"
+                      }
+                      Command {
+                        icon:"16/bw_rm/move_left.png"                       
+                        actions: ExecuteNamedAction moveIdentitiesLeft
+                        tooltip: $bwrm_roleMoverNLS.moveLeft
+                        disabled: Eval "selectedRoleIdentities2.isEmpty()"                      
+                      }
+                      Command {
+                        icon:"16/bw_rm/copy_right.png"                       
+                        actions: ExecuteNamedAction copyIdentitiesRight
+                        tooltip: $bwrm_roleMoverNLS.copyRight
+                        disabled: Eval "selectedRoleIdentities1.isEmpty()"
+                      }
+                      Command {
+                        icon:"16/bw_rm/copy_left.png"                       
+                        actions: ExecuteNamedAction copyIdentitiesLeft
+                        tooltip: $bwrm_roleMoverNLS.copyLeft
+                        disabled: Eval "selectedRoleIdentities2.isEmpty()"
+                      }
+                      
+					}
+					Column {column:  fullname width:100% sortable:True }					
+			}
+            Table {
+					data:permissions1
+					show-count: True
+					layout:Layout {grab: horizontal True vertical True}
+					hidden:  Eval "selectedRole1.isEmpty()" 
+					checkboxes: uid to selectedRolePermissions1			
+					label:Label { align:Left break:True value: $permminingNLS.permrole }
+					commands: Commands {
+					  orientation: Vertical
+                      position:After
+                      Command {
+                        icon:"16/bw_rm/move_right.png"                       
+                        actions: ExecuteNamedAction movePermissionsRight
+                        tooltip: $bwrm_roleMoverNLS.moveRight
+                        disabled: Eval "selectedRolePermissions1.isEmpty()"
+                      }
+                      Command {
+                        icon:"16/bw_rm/move_left.png"                       
+                        actions: ExecuteNamedAction movePermissionsLeft
+                        tooltip: $bwrm_roleMoverNLS.moveLeft
+                        disabled: Eval "selectedRolePermissions2.isEmpty()"                      
+                      }
+                      Command {
+                        icon:"16/bw_rm/copy_right.png"                       
+                        actions: ExecuteNamedAction copyPermissionsRight
+                        tooltip: $bwrm_roleMoverNLS.copyRight
+                        disabled: Eval "selectedRolePermissions1.isEmpty()"
+                      }
+                      Command {
+                        icon:"16/bw_rm/copy_left.png"                       
+                        actions: ExecuteNamedAction copyPermissionsLeft
+                        tooltip: $bwrm_roleMoverNLS.copyLeft
+                        disabled: Eval "selectedRolePermissions2.isEmpty()"
+                      }
+					}
+					Column { column:displayname header:  $permminingNLS.perm width:100% sortable:True}
+					Column { column:applicationdisplayname	header:  $permminingNLS.app width:100% sortable:True}
+			 }            
+          } 
+          GridCell{
+             Combo {
+              variable: selectedRole2 
+              options: Dynamic { data: roles2 value: Current rolecode text: Current rolename }
+              disabled: BooleanPredicate( dirty)
+              modify-event:  ExecuteNamedAction updateRoleDetails2
+              layout: Layout {grab: horizontal True vertical False } 
+            }
+            Table {
+					data:identities2
+					show-count: True
+					layout:Layout {grab: horizontal True vertical True}
+					hidden:Eval "selectedRole2.isEmpty()"
+					checkboxes: uid to selectedRoleIdentities2	 
+					label:Label { align:Left break:True value:$permminingNLS.peoplerole}
+					Column {column:  fullname width:100% sortable:True }
+			} 
+            Table {
+					data:permissions2
+					show-count: True
+					layout:Layout {grab: horizontal True vertical True}
+					hidden:  Eval "selectedRole2.isEmpty()" 
+					checkboxes: uid to selectedRolePermissions2			
+
+					label:Label { align:Left break:True value: $permminingNLS.permrole }
+					Column { column:displayname header:  $permminingNLS.perm width:100% sortable:True}
+					Column { column:applicationdisplayname	header:  $permminingNLS.app width:100% sortable:True}
+			}			          
+          }    
+        }        
+     }		
+}
+
+
+

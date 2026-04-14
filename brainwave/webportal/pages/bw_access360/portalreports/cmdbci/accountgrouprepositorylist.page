@@ -1,0 +1,296 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+/* Nationalized labels here */
+access360r_cmdbci_accountgrouprepositorylist360NLS = NLS {
+	title [en "Repositories and Servers Direct Group Membership List" fr "Liste des membres de groupes directs sur les référentiels et les serveurs"]
+	dyntitle [en "{0} Repositories and Servers Accounts Group Membership List" fr "Liste des membres de groupes directs sur les référentiels et les serveurs pour {0}"]
+	empty [en "{0} does not contain any group membership" fr "{0} ne contient pas de membres de groupes"]
+	description [
+		en "This report presents the direct accounts groups memberships of the CI element repositories and servers resources as a list. Only the active accounts are taken into account. It is possible to identify only the changes made since a given date."
+		fr "Ce rapport présente les membres de groupes directs sur les référentiels et les serveurs de l''élément CI sous la forme d'une liste où il est possible de sélectionner les dimensions d'analyse. Seuls les comptes actifs sont pris en compte. Il est possible d'identifier uniquement les changements réalisés depuis une date donnée."
+		]
+	access [en "Direct Group Membership" fr "Membre de groupe direct"]
+	directonly [en "Direct Group Membership Only" fr "Membres de groupes directs seulement"]
+}
+
+access360r_cmdbci_accountgrouprepositorylist = Page {
+	title: $access360r_cmdbci_accountgrouprepositorylist360NLS.title
+	dynamic-title: $access360r_cmdbci_accountgrouprepositorylist360NLS.dyntitle(cmdbci.displayname)
+	description:$access360r_cmdbci_accountgrouprepositorylist360NLS.description
+	tags: "cmdbci" priority 200, "byuid" , "analytics"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature: bwa_cmdbciaccountgrouprepositoryanalytics
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+	uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	nbResults = Variable { type: Integer initial: 0 }
+	inonlydirectselection = Variable { multivalued: False initial: True }
+	
+	selectedaccount = Variable
+	selectedidentity = Variable
+	selectedgroup = Variable
+	selectedrepository = Variable
+	selectedorganisation = Variable
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view: bw360_prevtimeslot with
+			PortalTimeslot.UID to currentuid
+	}
+	
+	cmdbci = Record {
+		view: bwa_cmdbci with
+			uid to uid
+	}
+
+	accounts = Dataset {
+		view: bwaccess360r_cmdbci_accountgrouprepositoryanalytics with
+			uid to uid,
+			inonlydirectselection to onlydirect,
+			UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend:Trend {
+			 	join-column:key
+			 	status-column-name:trends
+				value-column:val
+				timeslot: UserVariable session_comparisonTimeslotTeam360
+			}
+		count-variable: nbResults
+	}
+
+	managedapps = Dataset {
+		view: enduser360_managedapplications with
+			uid to uid
+	}
+
+	repositoryDetails = NamedAction (
+		Dialog bwf_repositoryDetailsDialog(selectedrepository to inuid,
+											True to inshowaccounts,
+											True to inshowperorg,
+											True to inshowapplications,
+											True to inshowcontrols,
+											True to inshowdecisionhistory,
+											True to inshowgroups,
+											True to inshowrights,
+											True to inshowshares,
+											True to inshowsharesrights,
+											True to inshowbusinessactivities,
+											True to inshowusages,
+											True to inshowperorg,
+											True to inshowperjob
+										)
+	)
+	accountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(selectedaccount to inuid,
+											True to inshowapplications,
+											True to inshowcontrols,
+											True to inshowgroups,
+											True to inshowowner,
+											True to inshowshares,
+											True to inshowACLs,
+											True to inshowusages
+										)
+	)
+	identityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(selectedidentity to inuid,
+											True to inshowaccounts,
+											True to inshowposition,
+											selectedrepository to inrepositoryuids
+										)
+	)
+	groupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedgroup to inuid,
+											True to inshowaccounts,
+											True to inshowapplications,
+											True to inshowcontrols,
+											True to inshowperorg,
+											True to inshowperjob
+										)
+	)
+	organisationDetails = NamedAction (
+		Dialog bwf_organisationDetailsDialog(selectedorganisation to inuid,
+											True to inshowmanagers,
+											True to inshowteamwithci,
+											True to inshowsuborganisationtree,
+											uid to incmdbciuid
+										)
+	)
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical False hint: height 64 } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					label:$access360r_cmdbci_accountgrouprepositorylist360NLS.directonly
+					variable:inonlydirectselection
+				}
+			}
+			GridCell {
+			}
+		}
+	}
+	ConditionalGroup {
+		IntCondition(nbResults) {
+			when >0 then [
+				Table {
+					data: accounts
+					configurable:True
+					show-filter:True
+					layout:
+						Layout {
+							grab: horizontal True vertical True
+						}
+					
+					Column {
+						hidden:True
+						column:accountuid
+						selection:selectedaccount
+					}
+					Column {
+						hidden:True
+						column:identityuid
+						selection:selectedidentity
+					}
+					Column {
+						hidden:True
+						column:orguid
+						selection:selectedorganisation
+					}
+					Column {
+						hidden:True
+						column:repositoryuid
+						selection:selectedrepository
+					}
+					Column {
+						hidden:True
+						column:groupuid
+						selection:selectedgroup
+					}
+					Column {
+						column: groupcode
+						header: $pgroup.code
+						initially-masked:True
+						sortable:True
+						actions:ExecuteNamedAction groupDetails
+					}
+					Column {
+						column: groupdisplayname
+						header: $pgroup.displayname
+						sortable:True
+						actions:ExecuteNamedAction groupDetails
+					}
+					Column {
+						column: accountlogin
+						header: $account.login
+						sortable:True
+						actions:ExecuteNamedAction accountDetails
+					}
+					Column {
+						column: repositorydisplayname
+						header: $repository.concept
+						sortable:True
+						actions:ExecuteNamedAction repositoryDetails
+					}
+					Column {
+						column: repositoryrepositorytype
+						header: $prepository.repositorytype
+						sortable:True
+					}
+					Column {
+						column: noownercode
+						header: $reconciliation.noownercode
+						sortable:True
+					}
+					Column {
+						column: identityhrcode
+						header: $pidentity.hrcode
+						initially-masked:True
+						sortable:True
+						actions:ExecuteNamedAction identityDetails
+					}
+					Column {
+						column: identityfullname
+						header: $pidentity.fullname
+						sortable:True
+						actions:ExecuteNamedAction identityDetails
+					}
+					Column {
+						column: identityinternal
+						header: $pidentity.internal
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column: jobtitledisplayname
+						header: $allocation.jobtitledisplayname
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column: orgshortname
+						header: $porganisation.shortname
+						initially-masked:True
+						sortable:True
+						actions:ExecuteNamedAction organisationDetails
+					}
+					Column {
+						column: orgdisplayname
+						header: $organisation.concept
+						sortable:True
+						width:100%
+						actions:ExecuteNamedAction organisationDetails
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			] otherwise [
+				Header {
+					value: $access360r_cmdbci_accountgrouprepositorylist360NLS.empty( cmdbci.displayname )
+				}
+			]
+		}
+	}
+}

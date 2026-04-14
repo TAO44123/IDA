@@ -1,0 +1,125 @@
+/* Import other pages here */
+
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/dashboard.page"
+
+
+eval_icon_mapping = StringImageTemplate {
+  when "error" then %rm_status_24.error
+  when "warn" then %rm_status_24.warning
+  when "ok" then %rm_status_24.ok
+  //otherwise no image 
+}
+
+
+bwcdrm_kpi_eval = PageFragment {
+
+   mixins: indMediumMixin
+    
+   label = Variable
+   subtitle = Variable  
+   val = Variable { type: Integer changed-event: ExecuteNamedAction updatePrc }  
+   total = Variable { type: Integer changed-event: ExecuteNamedAction updatePrc}
+   warningThr = Variable {type: Integer  }
+   criticalThr = Variable { type: Integer }
+   reversedThr = Variable { type: Boolean initial: False }
+   showLink = Variable { type: Boolean initial: False } 
+   
+   warningNLS = Variable { initial: $bwcdrm_kpisNLS.kpis.threshold.warning }
+   criticalNLS = Variable { initial: $bwcdrm_kpisNLS.kpis.threshold.critical }
+   isPrc = Variable { type: Boolean private: True}
+   prcVal = Variable { type: Integer private: True}
+   evalVal = Variable { type: Integer private: True}
+    
+   
+   updatePrc = NamedAction(
+     
+    Set Eval "!total.isEmpty()" to isPrc
+    , Set Eval " isPrc.get() ? (val.get()*100/total.get()) : 0 " to prcVal
+    , Set Eval " isPrc.get() ? prcVal : val" to evalVal
+ //   , Flash Eval " 'total='+ total.get() + ' val='+ val.get() + 'total not empty: ' + !total.isEmpty() + ' isPrc=' + isPrc.get() "
+   ) 
+   
+   Grid {
+      fill: None
+      layout: Layout { grab: horizontal False vertical False  }
+      gap: 0
+   	columns: GridColumn{ width: 350 },GridColumn{ width: 30}
+   	GridRow {
+   		GridCell {
+   		  gap: 0
+   			Text { 
+			     value: Eval "isPrc.get() ? prcVal.toString()+'%': val " 
+			     label: label  
+			     tooltip: Eval "isPrc.get() ? val.toString() + ' / ' + total : '' "       
+			   }
+			   Text {
+			     value: subtitle
+			     hidden: 
+			     	Not AndPredicate {
+			     		StringPredicate ( subtitle ) { when Not IsEmpty then True }
+			     		StringPredicate ( SubString ( 70,1 ) subtitle ) { when IsEmpty then True  }
+			     	}
+			     label: Label { break: True}
+			     styling: stdText
+			     align: Left
+			     lines: 2
+			     layout: Layout { indent: horizontal 15 vertical 0 hint: height 48}
+			   }
+			   
+			   Text {
+			     value: Eval "(subtitle.get().substring(0, subtitle.get().substring(0, 70).lastIndexOf(' ')) + '...')"
+			     hidden: 
+			     	Not AndPredicate {
+			     		StringPredicate ( subtitle ) { when Not IsEmpty then True }
+			     		StringPredicate ( SubString ( 70,1 ) subtitle ) { when Not IsEmpty then True  }
+			     	}
+			     tooltip: subtitle
+			     label: Label { break: True}
+			     styling: stdText
+			     align: Left
+			     lines: 2
+			     layout: Layout { indent: horizontal 15 vertical 0 hint: height 48}
+			   }
+			   
+   		}
+   		GridCell {
+   		  ConditionalGroup { BooleanCondition( Eval "showLink.get()") {
+   		    when True then [ 
+	   		    Button {
+				     image: TemplateImageSelection(  Eval "criticalThr.isEmpty()? 'none':  evalVal.get() >= criticalThr.get() ? 'error': evalVal.get() >= warningThr.get()? 'warn': 'ok' ") using eval_icon_mapping
+				     actions: FireFragmentEvent "link"
+				     hidden: BooleanPredicate ( reversedThr )
+				     tooltip:  Eval " ( warningThr.isEmpty() ? '': warningNLS.get()+' > '+warningThr +(isPrc.get()?'%':'')) + ( criticalThr.isEmpty() ? '': '\\n'+criticalNLS.get()+' > '+criticalThr +(isPrc.get()?'%':'')) "  
+				   }
+				Button {
+				     image: TemplateImageSelection(  Eval "criticalThr.isEmpty()? 'none':  evalVal.get() <= criticalThr.get() ? 'error': evalVal.get() <= warningThr.get()? 'warn': 'ok' ") using eval_icon_mapping
+				     actions: FireFragmentEvent "link"
+				     hidden: Not BooleanPredicate ( reversedThr )
+				     tooltip:  Eval " ( warningThr.isEmpty() ? '': warningNLS.get()+' < '+warningThr +(isPrc.get()?'%':'')) + ( criticalThr.isEmpty() ? '': '\\n'+criticalNLS.get()+' < '+criticalThr +(isPrc.get()?'%':'')) "  
+				   }
+   		    ]
+   		    when False then [
+ 	   		    Image {
+				     image: TemplateImageSelection(  Eval "criticalThr.isEmpty()? 'none':  evalVal.get() >= criticalThr.get() ? 'error': evalVal.get() >= warningThr.get()? 'warn': 'ok' ") using eval_icon_mapping
+				     hidden: BooleanPredicate ( reversedThr )
+				     tooltip:  Eval " ( warningThr.isEmpty() ? '': warningNLS.get()+' > '+warningThr +(isPrc.get()?'%':'')) + ( criticalThr.isEmpty() ? '': '\\n'+criticalNLS.get()+' > '+criticalThr +(isPrc.get()?'%':'')) "   				    
+				}
+				Image {
+				     image: TemplateImageSelection(  Eval "criticalThr.isEmpty()? 'none':  evalVal.get() <= criticalThr.get() ? 'error': evalVal.get() <= warningThr.get()? 'warn': 'ok' ") using eval_icon_mapping
+				     hidden: Not BooleanPredicate ( reversedThr )
+				     tooltip:  Eval " ( warningThr.isEmpty() ? '': warningNLS.get()+' < '+warningThr +(isPrc.get()?'%':'')) + ( criticalThr.isEmpty() ? '': '\\n'+criticalNLS.get()+' < '+criticalThr +(isPrc.get()?'%':'')) "   				    
+				}  		    
+   		     ]
+   		    }
+   		  } 
+   			
+   		}       		
+   	}	
+   } 
+}
+
+
+	

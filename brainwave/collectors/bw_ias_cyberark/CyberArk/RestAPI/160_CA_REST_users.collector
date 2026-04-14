@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA users" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039485303_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039877974">
+		<Component name="C1617039877974" type="discoverysource" x="50" y="51" w="300" h="64" title="CA_users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_users.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617039915793" type="account" x="48" y="279" w="300" h="64" title="CA vault users">
+			<Account key="vaultuser_id" error="true" event="AccountNullOrEmpty">
+				<Attribute name="login" attribute="username"/>
+				<Attribute name="disabled" attribute="disable"/>
+				<Attribute name="locked" attribute="suspended"/>
+				<Attribute name="custom1" attribute="source"/>
+				<Attribute name="custom2" attribute="componentuser"/>
+				<Attribute name="custom3" attribute="location"/>
+				<Attribute name="custom4" attribute="usertype"/>
+				<Attribute name="custom5" attribute="userdn"/>
+				<Attribute name="expiredate" attribute="expirydate"/>
+				<Attribute name="dontexpirepassword" attribute="passwordneverexpires"/>
+				<Attribute name="lastlogindate" attribute="lastsuccessfullogindate"/>
+				<Attribute name="service" attribute="service"/>
+				<Attribute name="custom6" attribute="usertypeid"/>
+			</Account>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepoNotFound"/>
+		</Component>
+		<Link name="L1617040086469" source="C1617039877974" target="C1637250510725_1" priority="1"/>
+		<Component name="C1617202559099" type="right" x="45" y="494" w="300" h="64" title="CA users vaultauthorization">
+			<Domain repository="account_repo" repoerror="true" repoevent="RepoNotFound"/>
+			<Right account="account_identifier" application="_APPLICATION_CODE_" permission="vaultauthorization" error="true" event="accountOrGroupNotFound" permerror="true" permevent="permissionNotFound" apperror="true" appevent="applicationNotFound">
+				<Attribute name="action" attribute="action"/>
+			</Right>
+		</Component>
+		<Link name="L1617202577098" source="C1617039915793" target="C1617202762591" priority="2" expression="(! dataset.isEmpty(&apos;vaultauthorization&apos;))  &amp;&amp; (! dataset.equals(&apos;source&apos;, &apos;ldap&apos;, false, true))"/>
+		<Component name="C1617202762591" type="changefilter" x="46" y="388" w="300" h="64" title="Add action attribute">
+			<Actions>
+				<Action name="U1617202781529" action="add" attribute="action" type="String" multivalued="false" newvalue="hasVaultAuthorization" errorexist="false"/>
+				<Action name="U1618242882011" action="add" attribute="account_identifier" type="String" multivalued="false" newvalue="{(! dataset.isEmpty(&apos;userdn&apos;)) ? dataset.userdn.get() : dataset.vaultuser_id.get()}" description="account identifier id DN if ca user has LDAP type" errorexist="false"/>
+				<Action name="U1618243182042" action="add" attribute="account_repo" type="String" multivalued="false" newvalue="{(! dataset.isEmpty(&apos;userdn&apos;)) ? dataset.repository_code.get() : dataset._REPOSITORY_CODE_}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1617202788074" source="C1617202762591" target="C1617202559099" priority="1"/>
+		<Component name="C1637250549891_1" type="csvsource" x="508" y="170" w="300" h="64" title="CyberArkUserTypeMatching.csv">
+			<Source file="{config.projectPath}/discovery/bw_ias_cyberark/CyberArk/CyberArkUserTypeMatching.csv" separator=";" encoding="ISO-8859-1" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A6090030565165278546" attribute="usertypeid" column="UserTypeID" type="Number" multivalued="false"/>
+				<Attribute name="A4204321254893137200" attribute="usertypename" column="UserTypeName" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1637250510725_1" type="joinfilter" x="52" y="170" w="300" h="64" title="Get type name">
+			<Join source="C1637250549891_1"/>
+			<Attributes>
+				<Attribute name="A1637251973775" attribute="usertypeid" source="usertypeid" type="Number" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="usertype" join="usertypename"/>
+		</Component>
+		<Link name="L1637250637362_1" source="C1637250549891_1" target="C1637250510725_1" priority="1"/>
+		<Link name="L1637251926857" source="C1637250510725_1" target="C1617039915793" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

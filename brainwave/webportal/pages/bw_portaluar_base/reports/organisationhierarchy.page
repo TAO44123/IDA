@@ -1,0 +1,46 @@
+hierarchyreport = NLS {
+	browsing_currentorganisationhierarchy.title [en "Organization hierarchy" fr "Hiérarchie des organisations"]
+}
+
+orgchart = HTMLWidgetTemplate {
+	source-file: "static/bw_portaluar_base/hierarchy/organisation_hierarchy.html"
+	datasets: orgdataset ( recorduid as Integer , code as String, shortname as String, displayname as String,
+		organisationtypedisplayname as String , parent_recorduid as Integer,
+		parent_code as String,  managerfullname as String, uid as String, nbtotalmembers as Integer, nbdirectmembers as Integer)
+	
+	widget-events: identity_details ( identityuid as String ), organisation_details ( organisationuid as String )
+}
+browsing_currentorganisationhierarchy = Page {
+	title: $hierarchyreport.browsing_currentorganisationhierarchy.title
+	feature: organisationhierarchy
+	tags: "generic", "browsing"
+	icon: "16/audit/organisation_16.png"
+	
+	myOrgDataset = Dataset {
+		view: br_organisationtreeviewconsolidated
+	}
+	IncludeHTMLWidget {
+		layout: Layout { grab: horizontal True vertical True }
+		template: orgchart
+		datasets: 	myOrgDataset  ( uid, recorduid, code , shortname, displayname, 
+									organisationtypedisplayname,
+									parent_code, parent_recorduid,
+									managerfullname,
+									nbdirectmembers, nbtotalmembers
+									) 
+					to orgdataset ( uid, recorduid, code , shortname, displayname, 
+									organisationtypedisplayname,
+									parent_code, parent_recorduid,
+									managerfullname,
+									nbdirectmembers, nbtotalmembers
+									)
+		widget-events: {
+			when identity_details then [
+				GoTo Activity Identity Detail with Current identityuid to paramIdentityUid
+			]
+			when organisation_details then [
+				GoTo Activity Organisation Detail with Current organisationuid to paramOrganisationUid
+			]
+		}
+	}
+}

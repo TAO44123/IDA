@@ -1,0 +1,253 @@
+import "/webportal/pages/bw_fragments/cmdbci/details.page"
+import "/webportal/pages/bw_fragments/cmdbci/topdown.page"
+import "/webportal/pages/bw_fragments/cmdbci/bottomup.page"
+import "/webportal/pages/bw_fragments/cmdbci/applications.page"
+import "/webportal/pages/bw_fragments/cmdbci/repositories.page"
+import "/webportal/pages/bw_fragments/cmdbci/servers.page"
+import "/webportal/pages/bw_fragments/cmdbci/shares.page"
+import "/webportal/pages/bw_fragments/cmdbci/accounts.page"
+import "/webportal/pages/bw_fragments/cmdbci/serversaccounts.page"
+import "/webportal/pages/bw_fragments/cmdbci/applicationaccounts.page"
+import "/webportal/pages/bw_fragments/cmdbci/rights.page"
+import "/webportal/pages/bw_fragments/cmdbci/fsrights.page"
+import "/webportal/pages/bw_fragments/cmdbci/controls.page"
+import "/webportal/pages/bw_fragments/cmdbci/analytics.page"
+import "/webportal/pages/bw_fragments/custom/cmdbciExtendedDetails.page"
+
+bwf_cmdbciDetailsDialogNLS = NLS {
+    title [en 'Detail' fr "Détails"]
+	cmdbcis [en "CMDB CIs" fr "Eléments CMDB"]
+	cmdbci [en "CMDB CI" fr "Elément CMDB"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	repository [en "Repository" fr "Référentiel"]
+	repositories [en "Repositories" fr "Référentiels"]
+	servers [en "Servers" fr "Serveurs"]
+	access [en "Access" fr "Accès"]
+	applications [en "Applications" fr "Applications"]
+	rights [en "Application Rights" fr "Droits Applicatifs"]
+	accounts [en "Repository Accounts" fr "Comptes des référentiels"]
+	serveraccounts [en "Server Accounts" fr "Comptes des serveurs"]
+	applicationaccounts [en "Application Accounts" fr "Comptes des applications"]
+	shares [en "Shares" fr "Partages"]
+	sharesrights [en "Data access rights" fr "Droits sur les données"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	topdown [en "Top-down dependencies" fr "Dépendances filles"]
+	bottomup [en "Bottom-up dependencies" fr "Dépendances pères"]
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * CMDB CI details default fragment
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>application uid</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update application owners (false by default). Warning, this function is also restricted through a Feature</li>
+ * <li><b>inshowtopdown </b>optional, boolean value, show top down CI dependencies (false by default).</li>
+ * <li><b>inshowbottomup </b>optional, boolean value, show bottom up CI dependencies (false by default).</li>
+ * <li><b>inshowservers </b>optional, boolean value, show direct/indirect associated server list (false by default).</li>
+ * <li><b>inshowrepositories </b>optional, boolean value, show direct/indirect associated repository list (false by default).</li>
+ * <li><b>inshowapplications </b>optional, boolean value, show direct/indirect associated application list (false by default).</li>
+ * <li><b>inshowshares </b>optional, boolean value, show direct/indirect associated share list (false by default).</li>
+ * <li><b>inshowserveraccounts </b>optional, boolean value, show direct/indirect associated server account list (false by default).</li>
+ * <li><b>inshowrepositoryaccounts </b>optional, boolean value, show direct/indirect associated repository account list (false by default).</li>
+ * <li><b>inshowapplicationaccounts </b>optional, boolean value, show direct/indirect associated application account list (false by default).</li>
+ * <li><b>inshowrights </b>optional, boolean value, show direct/indirect associated access rights list (false by default).</li>
+ * <li><b>inshowsharesrights </b>optional, boolean value, show direct/indirect associated share rights list (false by default).</li>
+ * <li><b>inshowcontrols </b>optional, boolean value, show direct/indirect associated controls list (false by default).</li>
+ * </ul>
+ * </span>
+ */
+bwf_cmdbciDetailsDialog = Dialog {
+	title:$bwf_cmdbciDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	
+	inuid = Variable
+	incanupdateowners = Variable { type:Boolean initial:False }
+	inshowtopdown = Variable { type:Boolean initial:False }
+	inshowbottomup = Variable { type:Boolean initial:False }
+	inshowservers = Variable { type:Boolean initial:False }
+	inshowrepositories = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowserveraccounts = Variable { type:Boolean initial:False }
+	inshowrepositoryaccounts = Variable { type:Boolean initial:False }
+	inshowapplicationaccounts = Variable { type:Boolean initial:False }
+	inshowrights = Variable { type:Boolean initial:False }
+	inshowsharesrights = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	
+	nbdefects = Variable { private:True }
+	hasbusinessactivity = Variable { private:True initial:False }
+	hasusages = Variable { private:True initial:False }
+
+	showextended = Variable { private:True initial:False }
+	
+	active_details = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_topdown = Variable { initial:False multivalued:False type:Boolean }
+	active_bottomup = Variable { initial:False multivalued:False type:Boolean }
+	active_servers = Variable { initial:False multivalued:False type:Boolean }
+	active_repositories = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_serveraccounts = Variable { initial:False multivalued:False type:Boolean }
+	active_repositoryaccounts = Variable { initial:False multivalued:False type:Boolean }
+	active_applicationaccounts = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_sharesrights = Variable { initial:False multivalued:False type:Boolean }
+	active_controls = Variable { initial:False multivalued:False type:Boolean }
+	
+	application = Record {
+		view: bwf_applicationDetail with inuid to uid
+	}
+	
+	TabFolder {
+		border:False
+		// details
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.cmdbci
+			activation-event:Set True to active_details
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciFullDetails
+				with value-of inuid to inuid, incanupdateowners binds-to incanupdateowners, value-of active_details to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_cmdbciDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentCmdbciExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		// dependencies
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.topdown
+			activation-event:Set True to active_topdown
+			hidden:Not BooleanPredicate(inshowtopdown)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciTopDown
+				with value-of inuid to inuid, value-of active_topdown to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.bottomup
+			activation-event:Set True to active_bottomup
+			hidden:Not BooleanPredicate(inshowbottomup)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciBottomUp
+				with value-of inuid to inuid, value-of active_bottomup to inenabled
+			}
+		}
+		// elements
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.servers
+			activation-event:Set True to active_servers
+			hidden:Not BooleanPredicate(inshowservers)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciServers
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_servers to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.repositories
+			activation-event:Set True to active_repositories
+			hidden:Not BooleanPredicate(inshowrepositories)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciRepositories
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_repositories to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.applications
+			activation-event:Set True to active_applications
+			hidden:Not BooleanPredicate(inshowapplications)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciRepositories
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_applications to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.shares
+			activation-event:Set True to active_shares
+			hidden:Not BooleanPredicate(inshowshares)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciRepositories
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_shares to inenabled
+			}
+		}
+		// access rights
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.serveraccounts
+			activation-event:Set True to active_serveraccounts
+			hidden:Not BooleanPredicate(inshowserveraccounts)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciServerAccounts
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_serveraccounts to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.accounts
+			activation-event:Set True to active_repositoryaccounts
+			hidden:Not BooleanPredicate(inshowrepositoryaccounts)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciAccounts
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_repositoryaccounts to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.applicationaccounts
+			activation-event:Set True to active_applicationaccounts
+			hidden:Not BooleanPredicate(inshowapplicationaccounts)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciApplicationAccounts
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_applicationaccounts to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.rights
+			activation-event:Set True to active_rights
+			hidden:Not BooleanPredicate(inshowrights)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciRights
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_rights to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.sharesrights
+			activation-event:Set True to active_sharesrights
+			hidden:Not BooleanPredicate(inshowsharesrights)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciFSRights
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_sharesrights to inenabled
+			}
+		}
+		// controls
+		TabItem {
+			text:$bwf_cmdbciDetailsDialogNLS.controls
+			activation-event:Set True to active_controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+		
+			IncludeFragment {
+				fragment:fragmentCmdbciControlDefectsList
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_controls to inenabled
+			}
+		}
+	}
+}

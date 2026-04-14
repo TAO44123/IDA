@@ -1,0 +1,62 @@
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+
+bwf_entityDetailsManagerAuditDialog_NLS = NLS {
+	title [en "Audit trail" fr "Audit des modifications"]
+	^when [en "When" fr "Quand"]
+	^what [en "What" fr "Quoi"]
+	^who [en "Who" fr "Qui"]
+	^status [en "Current status" fr "État d'avancement"]
+}
+
+bwf_entityDetailsManagerTicketTypeMapping = StringMapping {
+	when "Account" then "ACCOUNTMANAGER"
+	when "Application" then "APPLICATIONMANAGER"
+	when "Permission" then "PERMISSIONMANAGER"
+	when "Group" then "GROUPMANAGER"
+	when "Repository" then "REPOSITORYMANAGER"
+	when "Organisation" then "ORGANISATIONMANAGER"
+	when "Identity" then "IDENTITYMANAGER"
+}
+
+/**
+ * Used to show a management audit trail.
+ * 
+ * @param type is the type of ticket, can be Account, Application, Permission, Group, Repository, Organisation
+ * @param entity is the corresponding entity uid (Account, Application, Permission, Group, Repository, Organisation)
+ * @param rawtype can be used instead of type if the type has to be overriden by a facet (for instance for sharepoint elements, file share elements, ...)
+ */
+bwf_entityDetailsManagerAuditDialog = Dialog {
+	title:$bwf_entityDetailsManagerAuditDialog_NLS.title
+	width:1024
+	height:400
+	buttons:OkButton
+	enter-event:StringCase(rawtype) { when Not IsEmpty then [Set rawtype to internalType] otherwise [Set Transform type using bwf_entityDetailsManagerTicketTypeMapping to internalType] }
+	
+	entity = Variable
+	type = Variable // Account, Application, Permission, Group, Repository, Organisation
+	rawtype = Variable // ACCOUNTMANAGER, APPLICATIONMANAGER, PERMISSIONMANAGER, GROUPMANAGER, REPOSITORYMANAGER, ORGANISATIONMANAGER
+	
+	internalType = Variable
+	
+	audittrail = Dataset {
+		view:bwf_manager_audittrail with entity to entityuid, internalType to tickettype
+	}
+
+	Table {
+		data:audittrail
+		layout:Layout{grab:horizontal True vertical True}
+		configurable:True
+		show-filter:True
+		
+		Column {column:status width:96px header:$bwf_entityDetailsManagerAuditDialog_NLS.^status sortable:True filterable:True}
+		// when = close date when finalized, submission date when it is still in progress
+		Column {column: closedate width:128px header:$bwf_entityDetailsManagerAuditDialog_NLS.^when sortable:True text:$utilsNLS.showifnotnull(Transform Current closedate using notnullMapping, Current closedate, Current submissiondate)}
+		Column {column:actorhrcode initially-masked:True header:$pidentity.hrcode sortable:True filterable:True}
+		Column {column:actorfullname width:160px header:$bwf_entityDetailsManagerAuditDialog_NLS.^who sortable:True filterable:True}
+		Column {column:actormail width:160px initially-masked:True header:$pidentity.mail sortable:True filterable:True}
+		Column {column:comment width:1024px header:$bwf_entityDetailsManagerAuditDialog_NLS.^what sortable:True filterable:True}
+	}
+
+}
+

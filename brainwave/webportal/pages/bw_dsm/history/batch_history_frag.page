@@ -1,0 +1,28 @@
+import "/webportal/pages/bw_dsm/services/services.page"
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+
+bwdsm_batch_history = PageFragment {
+		/* Datasets and records here */
+	allBatches = Dataset {
+	  service: bwdsm_listBatches
+	}
+	
+	/* Page content */
+	
+		Table {
+		  data: allBatches
+		  initial-sort: id descending
+		  layout: Layout { grab: horizontal True vertical True }
+		  Column { column: id  hidden: True}
+		  Column { column: status    header: $dsm_history_NLS.header_status width: 150px
+		    text: Transform Current status using batch_status_label
+		  }	  
+		  Column { column: start_date header: $dsm_history_NLS.header_launched_on width: 150px }
+		  Column { column: principal_name header:$dsm_history_NLS.header_launched_by}
+		  Column { column: start_date header: $dsm_history_NLS.header_duration
+		    text: @durationStringShort(Date(Current start_date ).valueLDAP to ^from, Date(Current completed_date).valueLDAP to ^to )  
+		  }
+		  Column { column: error_message header: $dsm_history_NLS.header_result}
+		}
+}

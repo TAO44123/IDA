@@ -1,0 +1,230 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+/* Nationalized labels here */
+access360r_group_analytics360NLS = NLS {
+	title [en "Self-service analytics" fr "Analytics en self-service"]
+	dyntitle [en "{0} self-service analytics" fr "Analytics en self-service pour {0}"]
+	empty [en "{0} does not contain any account" fr "{0} ne contient pas de comptes"]
+	directonly [en "Direct accounts only" fr "Seulement les comptes directs"]
+	description [
+		en "This report presents the active accounts of the group in the form of a dynamic pivot table where it is possible to select the analysis dimensions. You can select either direct accounts or all accounts. It is possible to identify only the changes made since a given date. The columns displayed are configurable and the results can be exported, right-click on the table to do so."
+		fr "Ce rapport présente les comptes actifs du groupe sous la forme d'un tableau croisé dynamique où il est possible de sélectionner les dimensions d'analyse. Vous pouvez afficher soit les comptes directs soit tous les comptes. Il est possible d'identifier uniquement les changements réalisés depuis une date donnée. Les colonnes affichées sont configurables et les résultats exportables, faites un clic droit sur le tableau pour cela."
+		]
+}
+
+access360r_group_analytics = Page {
+	title: $access360r_group_analytics360NLS.title
+	dynamic-title: $access360r_group_analytics360NLS.dyntitle(group.displayname)
+	description:$access360r_group_analytics360NLS.description
+	tags: "group" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa_groupanalytics
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+	uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	directonly = Variable { type: Boolean initial: True }
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view: bw360_prevtimeslot with
+			PortalTimeslot.UID to currentuid
+	}
+	
+	group = Record {
+		view: bwf_groupDetail with
+			uid to uid
+	}
+
+	accounts = Dataset {
+		view: bwaccess360r_group_analytics with
+			uid to uid,
+			UserVariable session_comparisonTimeslotTeam360 to dummy,
+			directonly to directonly unless-empty
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+		excludes:
+			OrPredicate {
+				AndPredicate {
+					StringPredicate(Current status) { when 'Invalid' then True }
+					BooleanPredicate(UserVariable session_exclRemoved)
+				}
+				AndPredicate {
+					StringPredicate(Current status) { when 'Identical' then True }
+					BooleanPredicate(UserVariable session_exclSimilar)
+				}
+			}
+	}
+
+	managedapps = Dataset {
+		view: enduser360_managedapplications with
+			uid to uid
+	}
+	
+	/* Page content */
+	ConditionalGroup {
+		IntCondition(group.bwa_groupanalytics_nbaccount) {
+			when >0 then [
+				Grid {
+					columns:GridColumn, GridColumn, GridColumn
+					layout:Layout { grab:horizontal True vertical True } 
+					GridRow {
+						height:64
+						GridCell {
+							Combo {
+								variable:UserVariable session_comparisonTimeslotTeam360
+								layout:Layout { hint: width 200 }
+								label:$session_comparisonTimeslotTeam360NLS.label
+								tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+								options:Dynamic {
+									data:session_comparisontimeslots
+									text:Current commitdate
+									value:Current uid
+								}
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:UserVariable session_exclSimilar
+								text:$session_exclSimilarNLS.label
+								tooltip:$session_exclSimilarNLS.tooltip
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:directonly
+								text:$access360r_group_analytics360NLS.directonly
+							}
+						}
+					}
+					GridRow {
+						height:grow
+						GridCell {
+							span:3
+							DynamicCrossTable {
+								data:accounts
+								layout:Layout {cell-width:64px  grab: horizontal True vertical True}
+								dimensions:
+									Dim {
+										value: accountuid
+										label: accountlogin
+										header: $account.login
+									},
+									Dim {
+										value: accountusername
+										label: accountusername
+										header: $account.username
+									},
+									Dim {
+										value: noownercode
+										label: noownercode
+										header: $reconciliation.noownercode
+									},
+									Dim {
+										value: identityhrcode
+										label: identityhrcode
+										header: $identity.hrcode
+									},
+									Dim {
+										value: identityuid
+										label: identityfullname
+										header: $pidentity.fullname
+									},
+									Dim {
+										value: identitymail
+										label: identitymail
+										header: $identity.mail
+									},
+									Dim {
+										value: identityactive
+										label: identityactive
+										header: $pidentity.active
+									},
+									Dim {
+										value: identityinternal
+										label: identityinternal
+										header: $pidentity.internal
+									},
+									Dim {
+										value: jobtitledisplayname
+										label: jobtitledisplayname
+										header: $identity.jobtitledisplayname
+									},
+									Dim {
+										value: organisationcode
+										label: organisationcode
+										header:$porganisation.code
+									},
+									Dim {
+										value: organisationshortname
+										label: organisationshortname
+										header: $porganisation.shortname
+									},
+									Dim {
+										value: organisationuid
+										label: organisationdisplayname
+										header: $organisation.concept
+									},
+									Dim {
+										value: status
+										label: status
+										header: $global.status
+									}
+								measures: 
+									Measure {
+										value: key
+										header: $group.member
+									},
+									Measure {
+										value: organisationuid
+										header: $organisation.concept
+									},
+									Measure {
+										value: jobtitleuid
+										header: $identity.jobtitledisplayname
+									},
+									Measure {
+										value: identityuid
+										header: $identity.concept
+									},
+									Measure {
+										value: identityinternal
+										header: $pidentity.internal
+									},
+									Measure {
+										value: repositoryuid
+										header: $repository.concept
+									},
+									Measure {
+										value: accountuid
+										header: $account.concept
+									},
+									Measure {
+										value: noownercode
+										header: $reconciliation.noownercode
+									}
+							}
+						}
+					}
+				}
+			] otherwise [
+				Header {
+					value: $access360r_group_analytics360NLS.empty( group.displayname )
+				}
+			]
+		}
+	}
+}

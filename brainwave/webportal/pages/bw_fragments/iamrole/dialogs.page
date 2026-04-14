@@ -1,0 +1,233 @@
+import "/webportal/pages/bw_fragments/iamrole/nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/lib/constants.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+
+fragmentRolesReassignDlg = Dialog {
+	title: $fragmentRolesReassignDlg.title
+	width: 800
+	height: 600
+	buttons:
+		[
+			ActionButton {
+		     text: $fragmentRolesReassignDlg.checkReviewer
+		     close: False
+		     disabled: Eval " outUid.isEmpty()"
+				actions: 	
+		          Set outUid to reviewerToCheck, 
+					 IntCase ( nbCheckedSelfEntries ) {
+						when >0 then [
+							Message Error $fragmentRolesReassignDlg.error,
+							Unset reviewerToCheck,
+							Set False to reviewerOk
+						]
+						otherwise [
+						  Message Information $fragmentRolesReassignDlg.checkReviewerOk1( outDisplayname),
+						  Set True to reviewerOk
+						] 
+					}
+		   }
+		   OkButton {
+		      disabled: Not BooleanPredicate ( reviewerOk)
+		   }
+			CancelButton
+		]
+	enter-event:
+		// Among 'default', 'permissionowner', 'applicationowner'
+		Set origin.reviewerorigin to originstr,
+		Set Eval "nbreviewersorigin.get() == 1 && originstr.get().equals( 'linemanager' )? 'tolinemanager' : ''" to canreassignto,
+		StringCase ( canreassignto ) {
+			when IsEmpty then [
+				Set Eval "nbreviewersorigin.get() == 1 && originstr.get().equals('permissionowner') && nbselectedroles.get() == 1 ? 'topermissionowner' : ''" to canreassignto
+			]
+		},
+		StringCase ( canreassignto ) {
+			when IsEmpty then [
+				Set Eval "nbreviewersorigin.get() == 1 && originstr.get().equals('applicationowner') && nbselectedapplications.get() == 1 ? 'toapplicationowner' : ''" to canreassignto
+			]
+		}
+		
+	inprincipal = Variable { initial: Principal.uid }
+	inselectedentries = Variable { multivalued: True }
+
+	outUid = Variable { type: String }
+	outDisplayname = Variable { type: String }
+	outHrCode =  Variable { type: String }
+	outEmail = Variable { type: String }
+
+	nbreviewersorigin = Variable { type: Integer }
+	nbselectedapplications = Variable { type: Integer }
+	nbselectedroles = Variable { type: Integer }
+	originstr = Variable { type: String }
+
+	reassignmenttype = Variable { type: String }
+	canreassignto = Variable { type: String initial: False }
+		
+	nbCheckedSelfEntries = Variable { type: Integer}
+	reviewerToCheck = Variable { }
+	reviewerOk = Variable { type: Boolean initial: False}
+	
+	// used for delegation	
+	origin = Record {
+		view: bwf_identitygetreviewersorigin with
+			inselectedentries to recorduids
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			IntPredicate ( SizeOf inselectedentries ) {
+				when >999 then True
+			}
+	}
+	
+	reviewersorigin = Dataset {
+		view: bwf_identitygetreviewersorigin with
+			inselectedentries to recorduids
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			IntPredicate ( SizeOf inselectedentries ) {
+				when >999 then True
+			}
+		count-variable: nbreviewersorigin
+	}
+	
+	selectedapplication = Record {
+		view: bwf_roleContentGetreviewapplications with
+			inselectedentries to recorduids
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			IntPredicate ( SizeOf inselectedentries ) {
+				when >999 then True
+			}
+	}
+	
+	selectedapplications = Dataset {
+		view: bwf_roleContentGetreviewapplications with
+			inselectedentries to recorduids
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			IntPredicate ( SizeOf inselectedentries ) {
+				when >999 then True
+			}
+		count-variable: nbselectedapplications
+	}
+	
+	selectedrole = Record {
+		view: bwf_roleContentGetreviewroles with
+			inselectedentries to recorduids
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			IntPredicate ( SizeOf inselectedentries ) {
+				when >999 then True
+			}
+	}
+	
+	selectedroles = Dataset {
+		view: bwf_roleContentGetreviewroles with
+			inselectedentries to recorduids
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			IntPredicate ( SizeOf inselectedentries ) {
+				when >999 then True
+			}
+		count-variable: nbselectedroles
+	}
+
+	lmlist = Dataset {
+		view: bwf_identitycomputedmanagedteam with
+			inprincipal to principaluid
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			Not SameValuePredicate ( canreassignto, Constant bw_reassignTo_lineManager )
+	}
+	
+	applist = Dataset {
+		view: bwf_roleContentReviewApplicationowners with
+			inprincipal to principaluid,
+			selectedapplication.uid to uid
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			Not SameValuePredicate ( canreassignto, Constant bw_reassignTo_applicationOwner )
+	}
+	
+	roleslist = Dataset {
+		view: bwf_roleContentReviewRoleowners with
+			inprincipal to principaluid,
+			selectedrole.uid to uid
+		timeslot: ValidatedTimeslot.UID
+		disabled:
+			Not SameValuePredicate ( canreassignto, Constant bw_reassignTo_permissionOwner )
+	}
+	
+	list = Dataset {
+		union: Union {
+			datasets:
+				lmlist,
+				applist,
+				roleslist
+			discriminator-column: discr
+		}
+	}
+	
+	ConditionalGroup {
+		StringCondition ( canreassignto ) {
+			when IsEmpty then [
+				Header {
+					value: $fragmentRolesReassignDlg.header_notfound
+					layout: Layout { grab: horizontal True vertical True }
+				}
+			] otherwise [	
+				ConditionalGroup {
+					IntCondition ( Count list ) {
+						when >0 then [
+							Header {
+								value: $fragmentRolesReassignDlg.header_reassign
+							}
+							Separator {
+								width: 1
+								color: blueNG
+							}
+							Table {
+								data: list
+								layout: Layout { grab: horizontal True vertical True }
+								show-filter: True
+								Column {
+									column: uid
+									hidden: True
+									selection: outUid
+								}
+								Column {
+									column: hrcode
+									header: $identity.hrcode
+									selection: outHrCode
+									sortable: True
+									filterable: True
+									width: 50%
+								}
+								Column {
+									column: fullname
+									header: $identity.fullname
+									sortable: True
+									filterable: True
+									selection: outDisplayname
+									width: 100%
+								}
+								Column {
+									column: mail
+									header: $identity.mail
+									selection: outEmail
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+							}
+						] otherwise [
+							Header {
+								value: $fragmentRolesReassignDlg.header_notfound
+								layout: Layout { grab: horizontal True vertical True }
+							}
+						]			
+					}
+				}	
+			]
+		}
+	}	
+}

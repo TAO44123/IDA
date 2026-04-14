@@ -1,0 +1,192 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_access360/reports/folderaccessrights.page"
+
+import "/webportal/pages/bw_access360/reports/teamnls.page"
+
+/* Nationalized labels here */
+folderaccessrightscs360NLS = NLS {
+	title [en "Managed folders access rights analysis" fr "Analyse des droits d'accès des répertoires gérés"]
+	dyntitle [en "Managed folders access rights analysis for {0}" fr "Analyse des droits d''accès des répertoires gérés par {0}"]
+	folder [en "folder" fr "répertoire"]
+	foldername [en "folder name" fr "nom répertoire"]
+	description [en "description" fr "description"]
+	share [en "share" fr "partage"]
+	department [en "department" fr "département"]
+	_description [
+		en "This report lists permissions for managed directories in a form of a pivot table. It is possible to filter the results to highlight changes. It is possible to modify the displayed columns or export the results, right click on the table to do so."
+		fr "Ce rapport présente les droits pour les répertoires  gérés sous la forme d'un tableau croisé dynamique. Il est possible de filtrer les résultats pour mettre en évidence les changements. Il est possible de modifier les colonnes affichées ou d'exporter les résultats, faites un clic droit sur le tableau pour cela."
+	]
+}
+
+folderaccessrightscs360detail = Page {
+	title: $folderaccessrightscs360NLS.title
+	description:$folderaccessrightscs360NLS._description
+	tags: "identityext" priority 200, "byuid" , "analytics", "foldermanager"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(unstructureddata_license, bwa360_folderaccessrightscs)
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page folderaccessrightscs360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+
+folderaccessrightscs360hp = Page {
+	title: $folderaccessrightscs360NLS.title
+	description:$folderaccessrightscs360NLS._description
+	tags: "myfolder_access360" priority 1
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(unstructureddata_license, bwa360_folderaccessrightscs)
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page folderaccessrightscs360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+folderaccessrightscs360 = Page {
+	title: $folderaccessrightscs360NLS.title
+	dynamic-title:$folderaccessrightscs360NLS.dyntitle(identity.fullname)
+	description:$folderaccessrightscs360NLS._description
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(unstructureddata_license, bwa360_folderaccessrightscs)
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	folderrights = Dataset {
+		view:enduser360_folderrights with uid to uid, UserVariable session_selectedFoldersTeam360 to folderuids, UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	managedfolders = Dataset {
+		view:enduser360_managedfolders with uid to uid
+	}
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					layout:Layout { hint: width 400 }
+					variable:UserVariable session_selectedFoldersTeam360
+					options:Dynamic {
+						data:managedfolders
+						text:Concat(Current resourcename, ' (', Current resourcecategory, ')')
+						value:Current resourceuid
+					}
+					label:$session_selectedFoldersTeam360NLS.label
+					tooltip:$session_selectedFoldersTeam360NLS.tooltip
+					allow-none:True
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:folderrights
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:64px  grab: horizontal True vertical True}
+					columns:
+						Dim {value:share_uid label:share_displayname header:$folderaccessrightscs360NLS.share},
+						Dim {value:uid label:code header:$folderaccessrightscs360NLS.folder tooltip:code} 
+					rows:
+						Dim {value:orguid label:orgshortname header:$porganisation.shortname initially-masked:True},
+						Dim {value:orguid label:orgdisplayname header:$organisation.concept},
+						Dim {value:jobtitlecode label:jobtitledisplayname header:$identity.jobtitledisplayname initially-masked:True},
+						Dim {value:identityinternal label:identityinternal header:$identity.internal initially-masked:True},
+						Dim {value:identityuid label:identityfullname header:$identity.concept},
+						Dim {value:accountuid label:accountlogin header:$account.login}
+					cell-content:CellContent {text: Current rights cluster-value:'X' styling:StringStyling(Current status) { when 'New' then foldar_highlightnew360 when 'Removed' then foldar_highlightremoved360 when 'Modified' then foldar_highlightmodified360 }}
+				
+				}
+			}
+		}	
+	}
+}

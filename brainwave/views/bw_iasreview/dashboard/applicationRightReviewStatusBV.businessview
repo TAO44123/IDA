@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwiasr_applicationRightReviewStatusBV" displayname="applicationRightReviewStatusBV">
+	<Definition scriptfile="/views/bw_iasreview/dashboard/reviewStatusBV.javascript" name="D1666855025689">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1666855025689" title="application right review dashboard">
+			<InnerView name="bwiasr_applicationRightReviewStatus">
+				<Param name="F1666855189724" viewparam="errorThreshold" viewparamvalue="{param.errorThreshold.get()}"/>
+				<Param name="F1666855196787" viewparam="tagfilter" viewparamvalue="{param.tagfilter}"/>
+			</InnerView>
+			<ViewComputedAttribute name="compliancestatus" displayname="compliance status" type="String" expression="dataset.nbdaysleftfornextreview.get()&lt;=0?&quot;ko&quot;:dataset.nbdaysleftfornextreview.get()&lt;=param.warningThreshold.get()?&quot;warning&quot;:&quot;ok&quot;"/>
+			<ViewComputedAttribute name="shouldstartin" displayname="shouldstartin" type="Integer" expression="dataset.nbdaysleftfornextreview.get()-param.warningThreshold.get()&lt;0?0:dataset.nbdaysleftfornextreview.get()-param.warningThreshold.get()"/>
+		</Component>
+		<Component name="C1666855494955" type="joinview" x="547" y="262" w="300" h="50" title="get IAP campaign infos">
+			<InnerView name="bwaccess360_accessreviewcampaigns" prefix="campaign_"/>
+			<Join jointype="left" key2="{dataset.campaign_recorduid.get()}" key1="{dataset.bwr_applicationrightreviewstatus_campaignrecorduid.get()}"/>
+		</Component>
+		<Link name="L1666855495164" source="C1666855025689" target="C1666855494955" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="errorThreshold" displayname="errorThreshold" type="Integer" defaultvalue="365"/>
+	<ViewParam name="warningThreshold" displayname="warningThreshold" type="Integer" defaultvalue="30"/>
+	<ViewParam name="tagfilter" displayname="tag filter" type="String"/>
+</View>

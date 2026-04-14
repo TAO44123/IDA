@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0200 CI Links" scriptfile="/collectors/bw_servicenowci/110 CI Links.javascript" name="P1702472905587" startingpoint="C1702472945679">
+		<Component name="C1702472945679" type="discoverysource" x="65" y="66" w="300" h="64" title="CI Links">
+			<Discovery file="/discovery/bw_servicenowci/CI Links.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/ci_rel.csv"/>
+		</Component>
+		<Component name="C1702473238053" type="discoverysource" x="509" y="182" w="300" h="64" title="CI LinkType">
+			<Discovery file="/discovery/bw_servicenowci/CI LinkType.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/cmdb_rel_type.csv"/>
+		</Component>
+		<Component name="C1702473247140" type="joinfilter" x="65" y="182" w="300" h="64" title="get link labels">
+			<Join source="C1702473238053"/>
+			<Cache active="true" main="type" join="sys_id"/>
+			<Attributes>
+				<Attribute name="A1702473301861" attribute="child_descriptor" source="child_descriptor" multivalued="false"/>
+				<Attribute name="A1702473306264" attribute="parent_descriptor" source="parent_descriptor" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1702473249318" source="C1702472945679" target="C1702473247140" priority="1"/>
+		<Link name="L1702473250788" source="C1702473238053" target="C1702473247140" priority="1"/>
+		<Component name="C1702473121937_1" type="confitemlink" x="65" y="336" w="300" h="64" title="Create CI Link">
+			<SourceEntity>
+				<ConfItem code="child" error="true" event="CINOTFOUND"/>
+			</SourceEntity>
+			<TargetEntity>
+				<ConfItem code="parent" error="true" event="CINOTFOUND"/>
+			</TargetEntity>
+			<ConfItemLink semantic="parent_descriptor"/>
+		</Component>
+		<Link name="L1702478185949" source="C1702473247140" target="C1702473121937_1" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwaccess360r_application_unusedaccountroi" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="unused account roi" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="uid" type="String"/>
+	<ViewParam name="unitcost" displayname="unit cost" type="Integer" defaultvalue="10"/>
+	<ViewParam name="includenull" displayname="include null entries" type="Boolean" defaultvalue="false"/>
+	<ViewParam name="lastlogindate" displayname="last login date" type="String"/>
+	<ViewComputedAttribute name="annualcost" displayname="annualcost" type="Integer" expression="dataset.nb.get()*param.unitcost.get()*12"/>
+	<ViewComputedAttribute name="consolidatedcost" displayname="consolidated cost" type="Integer" expression="dataset.nb.get()*param.unitcost.get()"/>
+	<ViewComputedAttribute name="annualtotalcost" displayname="annualtotalcost" type="Integer" expression="dataset.bwa_applicationanalytics_nbaccount.get()*param.unitcost.get()*12"/>
+	<ViewComputedAttribute name="totalcost" displayname="totalcost" type="Integer" expression="dataset.bwa_applicationanalytics_nbaccount.get()*param.unitcost.get()"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1603717697056_491" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="applicationright">
+		<ViewAttribute name="A1603720563349_556" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1603720566049_0" reference="uid" operation="eq" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1603721659616_571" attribute="bwa_applicationanalytics_nbaccount" operator="or" removedfromprojection="false" globalfilter="true"/>
+	</ViewJoin>
+	<ViewAttribute name="A1603717833814_494" attribute="recorduid" alias="nb" displayname="nb" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1603719682538_528" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1603719685141_0" operation="isNull" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1603719689514_1" operation="isFalse" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="A1603719582269_523" attribute="lastlogindate" operator="or" removedfromprojection="true" globalfilter="false" enabled="!param.isEmpty(&apos;includenull&apos;) &amp;&amp; param.includenull.get()">
+		<ViewAttributeFilter name="F1603719586378_0" operation="isNull" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1603719590725_1" reference="lastlogindate" operation="le" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="1603719634858_526" attribute="lastlogindate" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.isEmpty(&apos;includenull&apos;) || !param.includenull.get()">
+		<ViewAttributeFilter name="F1603719590725_1" reference="lastlogindate" operation="le" ignoreifempty="false"/>
+	</ViewAttribute>
+</View>

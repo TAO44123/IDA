@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bw_access360_tasksInfos_bv" displayname="Tasks Infos for direct &amp; indirect child processes">
+	<Definition scriptfile="views/bw_access360/empty.javascript" name="D1649175212397" description="Get tasks (direct &amp; direct) info: campaign name, code, ...">
+		<Component name="C1649176042626" type="innerview" x="551" y="155" w="300" h="50" title="Direct">
+			<InnerView name="bw_access360_tasksInfos_direct">
+				<Param name="F1649176064528" viewparam="tasksIds" viewparamvalue="{param.tasksIds}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1649176074775" type="unionview" x="638" y="200" w="300" h="50" title="Indirect">
+			<Union primary_discriminator="direct" secondary_discriminator="indirect" discriminatorcolumn="_type"/>
+			<InnerView name="bw_access360_tasksInfos_indirect">
+				<Param name="F1649176108378" viewparam="tasksIds" viewparamvalue="{param.tasksIds}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1649176130145" expression="dataset.task_taskid.get()" comment="Keep one entry for each task only" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Link name="L1649176075059" source="C1649176042626" target="C1649176074775" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="tasksIds" displayname="Tasks Ids" type="String"/>
+</View>

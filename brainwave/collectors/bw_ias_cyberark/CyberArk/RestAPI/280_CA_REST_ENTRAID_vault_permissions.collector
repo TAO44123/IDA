@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="280 CA REST ENTRAID vaultpermissions" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1756821408789_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039877974_1">
+		<Component name="C1617039877974_1" type="discoverysource" x="63" y="64" w="300" h="64" title="CA_users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_users.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617202559099_1" type="right" x="63" y="815" w="300" h="64" title="CA users vaultauthorization">
+			<Domain repository="user_repo" repoerror="true" repoevent="RepoNotFound"/>
+			<Right application="_APPLICATION_CODE_" permission="vaultauthorization" error="true" event="accountOrGroupNotFound" permerror="true" permevent="permissionNotFound" apperror="true" appevent="applicationNotFound" account="entra_userid">
+				<Attribute name="action" attribute="action"/>
+			</Right>
+		</Component>
+		<Component name="C1617202762591_1" type="changefilter" x="63" y="560" w="300" h="64" title="Add action attribute">
+			<Actions>
+				<Action name="U1617202781529" action="add" attribute="action" type="String" multivalued="false" newvalue="hasVaultAuthorization" errorexist="false"/>
+				<Action name="U1618243182042" action="add" attribute="account_repo" type="String" multivalued="false" newvalue="{(! dataset.isEmpty(&apos;userdn&apos;)) ? dataset.repository_code.get() : dataset._REPOSITORY_CODE_}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1732005773967_1" type="csvsource" x="518" y="413" w="300" h="64" title="external_repository.csv">
+			<Source file="{config.cyberark_path}external_repository.csv" separator=";" encoding="ISO-8859-1" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A5914330959849426857" attribute="directoryserviceuuid" column="directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A6874397329704528088" attribute="external_reponame" column="external_reponame" type="String" multivalued="false"/>
+				<Attribute name="A6774203450522695855" attribute="servicetype" column="servicetype" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1756815953195_1" type="enumfilter" x="63" y="685" w="300" h="64" title="Enumerate Rights">
+			<Multivalued>
+				<Value name="M1756815978399" attribute="vaultauthorization"/>
+			</Multivalued>
+		</Component>
+		<Component name="C1756820840493_1" type="discoverysource" x="516" y="192" w="300" h="64" title="aad_users">
+			<Discovery file="/discovery/bw_ad_azure/aad_users.discovery" datafile="{config.inputfilename}"/>
+		</Component>
+		<Component name="C1731937832018_4" type="joinfilter" x="64" y="191" w="300" h="64" title="entraid users">
+			<Join source="C1756820840493_1" zeroerror="false"/>
+			<Cache active="true" main="username" join="userprincipalname"/>
+			<Attributes>
+				<Attribute name="A1756821045315" attribute="entra_userid" source="id" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1732287717739_1" source="C1617039877974_1" target="C1731937832018_4" priority="1"/>
+		<Link name="L1733149094803_1" source="C1617202762591_1" target="C1756815953195_1" priority="1"/>
+		<Link name="L1756810497918_1" source="C1756815953195_1" target="C1617202559099_1" priority="2"/>
+		<Link name="L1756820853936_1" source="C1756820840493_1" target="C1731937832018_4" priority="1"/>
+		<Component name="C1732005758848_1" type="joinfilter" x="63" y="414" w="300" h="64" title="repository name">
+			<Join source="C1732005773967_1" zeroerror="false"/>
+			<Cache active="true" main="user_directoryserviceuuid" join="directoryserviceuuid"/>
+			<Attributes>
+				<Attribute name="A1732005884399" attribute="user_repo" source="external_reponame" type="String" multivalued="false"/>
+				<Attribute name="A1733138382097" attribute="test_directoryserviceuuid" source="directoryserviceuuid" type="String" multivalued="false"/>
+			</Attributes>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1732005792624_1" source="C1732005773967_1" target="C1732005758848_1" priority="1"/>
+		<Component name="C1731937877449_2" type="discoverysource" x="518" y="307" w="300" h="64" title="CA_Identity_DSUsers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.cyberark_path}{config.identity_repo}_DSUsers.csv"/>
+		</Component>
+		<Component name="C1731937832018_3" type="joinfilter" x="63" y="303" w="300" h="64" title="identity users">
+			<Join source="C1731937877449_2" zeroerror="false"/>
+			<Cache active="true" main="username" join="systemname"/>
+			<Attributes>
+				<Attribute name="A1733137537087" attribute="test_systemname" source="systemname" type="String" multivalued="false"/>
+				<Attribute name="A1733137676063" attribute="user_uid" source="internalname" type="String" multivalued="false"/>
+				<Attribute name="A1733138557298" attribute="user_directoryserviceuuid" source="user_directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A1756819722502" attribute="serviceinstance" source="serviceinstance" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1732005828407_1" source="C1731937832018_3" target="C1732005758848_1" priority="1"/>
+		<Link name="L1731937906671_2" source="C1731937877449_2" target="C1731937832018_3" priority="1"/>
+		<Link name="L1756820826206_1" source="C1731937832018_4" target="C1731937832018_3" priority="1" expression="(! dataset.isEmpty(&apos;entra_userid&apos;))"/>
+		<Link name="L1756821510742" source="C1732005758848_1" target="C1617202762591_1" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="inputfilename"/>
+			<Variable name="identity_repo"/>
+			<Variable name="cyberark_path" description="cyberark_folder"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

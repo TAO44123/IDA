@@ -1,0 +1,995 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/resources/audittrail.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/permission/resources.page"
+import "/webportal/pages/bw_fragments/share/resources.page"
+import "/webportal/pages/bw_fragments/sharedfolder/resources.page"
+
+fragmentSharedfolderDetailsNLS = NLS {
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	nbaccounts [en "Number of active accounts" fr "Nombre de comptes actifs"]
+	nbprofiles [en "Number of profiles" fr "Nombre de profils"]
+	expertise [en "Expertise" fr "Responsabilité"]
+	managers [en "Managers" fr "Responsables"]
+	content [en "content" fr "contenu"]
+	description [en "description" fr "description"]
+	updatemetadata [en "Update permission description" fr "Mise à jour de la description de la permission"]
+	addowner [en "Add a new permission owner" fr "Ajout d'un nouveau responsable de permission"]
+//	deleteowner [en "Delete selected application owner" fr "Suppression du responsable d'application sélectionné"]
+	deleteowner [en "Delete selected permission owner" fr "Suppression du responsable de la permission"]
+	auditowner [en "Permission owner updates audit trail" fr "Piste d'audit des changements de reponsable de permission"]
+	kpis [en "KPIs" fr "KPIs"]
+	access [en "Access rights" fr "Droits d''accès"]
+	detailsclassification [en "Details && Classification" fr "Détails et classification"]
+	nomanagers [en "No manager set" fr "Pas de responsable configuré"]
+	applicationDetailsTooltip [en "Shows share details" fr "Afficher le détail du partage"]
+
+	managetags [en "Manage tags" fr "Gérer les labels"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected shared folder details in compact mode
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update shared folder description (false by default)</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update shared folder owners (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentSharedfolderDetails = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+
+	selectedManager = Variable { private:True }
+	selectedManagerLink = Variable { private: True }
+	selectedExpertiseDomain = Variable { private:True }
+
+	permission = Record {
+		view: bwf_sharedfolderdetails with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevpermission = Record {
+		view: bwf_sharedfolderdetails with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:FromPage(-1)
+	}
+	managers = Dataset {
+		view: bwf_permissionmanagers with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	// compact
+	Text {
+		value:permission.code
+		label:$permission.code
+		compact:True
+		hidden:SameValuePredicate(permission.code, permission.displayname)
+	}
+	Text {
+		value:permission.displayname
+		label:$permission.displayname
+		compact:True
+		commands:Commands { position: After orientation: Horizontal 
+						Command{	actions:Dialog bwfSharedFolderDetailsMetadata_Dialog(	inuid to paramPermissionUid,
+																						permission.sensitivitylevel to sensitivitylevel,
+																						permission.sensitivityreason to sensitivityreason,
+																						permission.description to description), 
+											ReloadData (permission)
+		                        	icon:%collection_16.pencil
+		                        	disabled:Not BooleanPredicate(incanupdatedescription)
+		                        	feature:folderdetails_updatemetadata 
+		                        	tooltip:$fragmentSharedfolderDetailsNLS.updatemetadata
+		                       }
+		                  }
+	}
+	Text {
+		value: @srv_truncatestring (permission.description to string, 200 to maxlength)
+		tooltip: permission.description
+		label:$permission.description
+		hidden:StringPredicate(permission.description) { when IsEmpty then True otherwise False }
+		lines:3
+		compact:True
+	}
+
+
+
+	Header {
+		value:$fragmentSharedfolderDetailsNLS.kpis
+	}
+	Separator {
+		width:1
+	}
+
+	Text {
+		value:Transform permission.bwa_permissionanalytics_nbaccount using bwf_defaultsTo0
+		label:$search.permission.nbaccount
+		compact:True
+		align:Right
+		tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbaccount using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbaccount using mayBeNullMapping)
+		decorator:Decorator {
+			width:100
+			after:Image {
+				image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbaccount, prevpermission.bwa_permissionanalytics_nbaccount)) using bwf_trend
+				width:16
+			}
+		}
+	}
+	Text {
+		value:Transform permission.bwa_permissionanalytics_nbidentity using bwf_defaultsTo0
+		label:$search.permission.nbidentity
+		compact:True
+		align:Right
+		tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbidentity using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbidentity using mayBeNullMapping)
+		decorator:Decorator {
+			width:100
+			after:Image {
+				image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbidentity, prevpermission.bwa_permissionanalytics_nbidentity)) using bwf_trend
+				width:16
+			}
+		}
+	}
+
+// IN COMMENTS - BECAUSE THE RESULTING UI IS OVER 7XXpx HEIGHT :-(
+//				Header {
+//					value:$fragmentSharedfolderDetailsNLS.access
+//				}
+//				Separator {
+//					width:1
+//				}
+//				Text {
+//					value:Transform permission.bwa_permissionanalytics_nbreadaccess using bwf_defaultsTo0
+//					label:$search.folder.nbreadaccess_compact
+//					compact:True
+//					align:Right
+//					tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbreadaccess using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbreadaccess using mayBeNullMapping)
+//					decorator:Decorator {
+//						width:100
+//						after:Image {
+//							image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbreadaccess, prevpermission.bwa_permissionanalytics_nbreadaccess)) using bwf_trend
+//							width:16
+//						}
+//					}
+//				}
+//				Text {
+//					value:Transform permission.bwa_permissionanalytics_nbwriteaccess using bwf_defaultsTo0
+//					label:$search.folder.nbwriteaccess_compact
+//					compact:True
+//					align:Right
+//					tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbwriteaccess using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbwriteaccess using mayBeNullMapping)
+//					decorator:Decorator {
+//						width:100
+//						after:Image {
+//							image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbwriteaccess, prevpermission.bwa_permissionanalytics_nbwriteaccess)) using bwf_trend
+//							width:16
+//						}
+//					}
+//				}
+//				Text {
+//					value:Transform permission.bwa_permissionanalytics_nbfullcontrolaccess using bwf_defaultsTo0
+//					label:$search.folder.nbfullcontrolaccess_compact
+//					compact:True
+//					align:Right
+//					tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbfullcontrolaccess using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbfullcontrolaccess using mayBeNullMapping)
+//					decorator:Decorator {
+//						width:100
+//						after:Image {
+//							image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbfullcontrolaccess, prevpermission.bwa_permissionanalytics_nbfullcontrolaccess)) using bwf_trend
+//							width:16
+//						}
+//					}
+//				}
+
+
+	Header {
+		value:$fragmentSharedfolderDetailsNLS.detailsclassification
+	}
+	Separator {
+		width:1
+	}
+	Text {
+		value:Transform permission.permissiontype using fragmentFolderTypeMapping
+		label:$fragmentFolderNLS.type
+		compact:True
+	}
+	Text {
+		value:Transform permission.managed using booleanDisplayMapping
+		label:$search.folder.managed
+		compact:True
+		hidden:StringPredicate(permission.managed) { when IsEmpty then True otherwise False }
+	}
+	Text {
+		value:Transform permission.inherited using booleanDisplayMapping
+		label:$search.folder.inherited
+		compact:True
+		hidden:StringPredicate(permission.inherited) { when IsEmpty then True otherwise False }
+	}
+	Text {
+		value:permission.application_displayname
+		label:$fragmentShareNLS.concept
+		compact:True
+		commands: 
+			Commands {
+			position:Before
+			presentation:Icon
+			orientation:Vertical
+			Command {   
+				actions:Dialog bwf_applicationDetailsDialog (permission.application_uid to inuid,
+																True to inshowperorg,
+																True to inshowperjob)
+				icon:%browsing_16.zoom
+				tooltip:$fragmentSharedfolderDetailsNLS.applicationDetailsTooltip
+			}
+		}
+	}
+	Text {
+		value:permission.application_applicationfamily
+		label:$fragmentFolderNLS.family
+		compact:True
+		hidden:StringPredicate(permission.application_applicationfamily) { when IsEmpty then True otherwise False }
+	}
+	Text {
+		value:permission.repo_displayname
+		label:$fragmentFolderNLS.fileserver
+		compact:True
+		hidden: // hide if not ShareFolder family, or it's in default repo (FileShare)
+			OrPredicate {
+				StringPredicate (permission.application_applicationfamily) { when "SharedFolders" then False otherwise True }
+				StringPredicate (permission.repo_code) { when "FileShare" then True otherwise False }
+			}
+	}
+	Text {
+		value:Transform permission.sensitivitylevel using bwfPermissionSensitivityLevelMapping
+		label:$fragmentFolderNLS.sensitivitylevel
+		compact:True
+	}
+	Text {
+		value:permission.sensitivityreason
+		label:$fragmentFolderNLS.sensitivityreason
+		compact:True
+	}
+
+
+	Header {
+		value:$fragmentSharedfolderDetailsNLS.managers
+	}
+	Separator {
+		width:1
+	}
+	ConditionalGroup {
+		IntCondition(Count managers) {
+			when =0 then [
+				Header {
+					value:$fragmentSharedfolderDetailsNLS.nomanagers			
+					commands: Commands {
+						position: After orientation: Vertical
+						Command{	
+								actions:Dialog bwfSharedFolderDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																							selectedExpertiseDomain to paramManagerType, 
+																							inuid to paramPermissionUid),
+										ReloadData (managers)
+	                        	icon:%concept_16.manager
+	                        	disabled:Not BooleanPredicate(incanupdateowners)
+	                        	feature:folderdetails_updatemanager
+	                        	tooltip:$fragmentSharedfolderDetailsNLS.addowner
+	                       }
+					}
+				}
+			]
+			otherwise [
+				Table {
+					data:managers
+					layout:Layout { grab:horizontal True vertical False hint:height 116 }
+					configurable:True
+					label:Label { break:True }
+					commands:Commands { position: After orientation: Vertical
+									Command{	
+											actions:Dialog bwfSharedFolderDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																										selectedExpertiseDomain to paramManagerType, 
+																										inuid to paramPermissionUid),
+													ReloadData (managers)
+				                        	icon:%concept_16.manager
+				                        	disabled:Not BooleanPredicate(incanupdateowners)
+				                        	feature:folderdetails_updatemanager 
+				                        	tooltip:$fragmentSharedfolderDetailsNLS.addowner
+				                       }
+									Command{	
+											actions:Dialog bwfPermissionDetailsRemoveManager_Dialog(	selectedManager to paramManagerUid, 
+																										selectedExpertiseDomain to paramManagerTypeCode, 
+																										selectedManagerLink to paramManagerLinkRecorduid,
+																										inuid to paramPermissionUid),
+													ReloadData (managers)
+				                        	icon:%status_16.delete
+				                        	disabled:
+				                        		OrPredicate {
+					                        		Not BooleanPredicate(incanupdateowners)
+				                        			StringPredicate(selectedManager) { when IsEmpty then True otherwise False }
+				                        		}
+				                        	feature:folderdetails_updatemanager 
+				                        	tooltip:$fragmentSharedfolderDetailsNLS.deleteowner
+				                       }
+									Command{	
+											actions:Dialog bwf_entityDetailsManagerAuditDialog("Permission" to type, inuid to entity)
+				                        	icon:%browsing_16.information 
+				                        	disabled:
+					                        		Not BooleanPredicate(incanupdateowners)
+				                        	feature:folderdetails_updatemanager 
+				                        	tooltip:$fragmentSharedfolderDetailsNLS.auditowner
+				                       }
+				                  }
+					
+					Column {
+						column:uid
+						hidden:True
+						selection:selectedManager
+					}
+					Column {
+						column: managerLinkRecorduid
+						hidden: True
+						selection: selectedManagerLink
+					}
+					Column {
+						column:expertisedomaincode
+						hidden:True
+						selection:selectedExpertiseDomain
+					}
+					
+					Column {
+						column:expertisedomaindisplayname
+						text:Transform Current expertisedomaincode using bwfManagerTypeMapping
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						header:$bwfManagement.type
+						sortable:True
+						width:140px
+					}
+					Column {
+						column:hrcode
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						header:$identity.hrcode
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:fullname
+						header:$identity.fullname
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						sortable:True
+						width:100%
+					}
+					Column {
+						column:internal
+						header:$pidentity.internal
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:active
+						header:$pidentity.active
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+			
+			
+					Column {
+						column:comment
+						header:$bwfManagement.comment
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:delegation
+						header:$bwfManagement.delegated
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:delegationreason
+						header:$bwfManagement.^reason
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:_priority
+						header:$bwfManagement.^priority
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:startdate
+						header:$bwfManagement.startdate
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:enddate
+						header:$bwfManagement.enddate
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+				}
+			]
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected shared folder details in 1366px wide
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update shared folder description (false by default)</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update shared folder owners (false by default)</li>
+ * <li><b>incanupdatetags </b>optional, boolean value, true to enable tags update (false by default). Warning, this function is also restricted through a Feature</li>
+ * </ul>
+ * </span>
+ */
+fragmentSharedfolderFullDetails = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+	incanupdatetags = Variable { multivalued: False type: Boolean initial: False }
+
+	selectedManager = Variable { private:True }
+	selectedManagerLink = Variable { private: True }
+	selectedExpertiseDomain = Variable { private:True }
+
+	permission = Record {
+		view: bwf_sharedfolderdetails with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevpermission = Record {
+		view: bwf_sharedfolderdetails with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:FromPage(-1)
+	}
+	managers = Dataset {
+		view: bwf_permissionmanagers with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	tags = Dataset {
+		view: bwf_permissiontags with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	tagsasString = Record {
+  		 view: bwa_permissiontagsasastring with inuid to uid
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	// standard
+	Flow {
+		disposition: Horizontal
+		layout: Layout { grab: horizontal True vertical False }
+		// SharedFolder card
+		Group {
+			Text {
+				value: permission.displayname
+				styling: bigTitleStyle
+				label: Label { break: False value: $permission.displayname }
+				compact: True
+			}
+			Text {
+				value: permission.code
+				label: Label { break: False value: $permission.code }
+				compact: True
+				hidden:
+					SameValuePredicate ( permission.code, permission.displayname )
+			}
+			Text {
+				value: @srv_truncatestring (permission.description to string, 200 to maxlength)
+				tooltip: permission.description
+				compact: True
+				label: Label { break: False value: $permission.description }
+				commands:
+					Commands {
+						position: Before
+						orientation: Horizontal 
+						Command {
+							actions:
+								Dialog bwfSharedFolderDetailsMetadata_Dialog (
+									inuid to paramPermissionUid,
+									permission.sensitivitylevel to sensitivitylevel,
+									permission.sensitivityreason to sensitivityreason,
+									permission.description to description
+								), 
+								ReloadData (permission)
+							icon: %collection_16.pencil
+							disabled:
+								Not BooleanPredicate ( incanupdatedescription )
+							feature: folderdetails_updatemetadata 
+							tooltip: $fragmentSharedfolderDetailsNLS.updatemetadata
+						}
+					}
+			}
+			Text {
+				value: @srv_truncatestring (tagsasString.tag to string, 26 to maxlength)
+				tooltip: tagsasString.tag
+				label: Label { break: False value: $permission.tags }
+				compact: True
+				layout: Layout { grab:horizontal True vertical False }
+				commands:
+					Commands {
+						position: Before
+						orientation: Horizontal 
+						Command {
+							actions:
+								Dialog fragmentPermissionTagsEditor (
+									inuid to uid,
+									incanupdatetags to canupdatetags
+								), 
+								ReloadData (permission),
+								ReloadData (tags),
+								ReloadData (tagsasString)
+							icon: %collection_16.tag
+							feature: folderdetails_updatetags
+							disabled:
+								Not BooleanPredicate ( incanupdatetags )
+							tooltip: $fragmentSharedfolderDetailsNLS.managetags
+						}
+					}
+			}
+		}
+	}
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical False hint:height 240 }
+		GridRow {
+			GridCell {
+				Group {
+					title:$fragmentSharedfolderDetailsNLS.kpis
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbaccount using bwf_defaultsTo0
+						label:$search.permission.nbaccount
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbaccount using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbaccount using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbaccount, prevpermission.bwa_permissionanalytics_nbaccount)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbidentity using bwf_defaultsTo0
+						label:$search.permission.nbidentity
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbidentity using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbidentity using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbidentity, prevpermission.bwa_permissionanalytics_nbidentity)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform permission.numberoffiles using bwf_defaultsTo0
+						label:$fragmentFolderNLS.numberoffiles
+						compact:True
+						align:Right
+						hidden:AndPredicate {
+							IntPredicate(permission.numberoffiles) { when >0 then False otherwise True }
+							IntPredicate(prevpermission.numberoffiles) { when >0 then False otherwise True }
+						}
+						tooltip:$search.repository.ratiotooltip(Transform permission.numberoffiles using mayBeNullMapping, Transform prevpermission.numberoffiles using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.numberoffiles, prevpermission.numberoffiles)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform permission.totalsize using bwf_defaultsTo0
+						label:$fragmentFolderNLS.totalsize
+						compact:True
+						align:Right
+						hidden:AndPredicate {
+							IntPredicate(permission.totalsize) { when >0 then False otherwise True }
+							IntPredicate(prevpermission.totalsize) { when >0 then False otherwise True }
+						}
+						tooltip:$search.repository.ratiotooltip(Transform permission.totalsize using mayBeNullMapping, Transform prevpermission.totalsize using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.totalsize, prevpermission.totalsize)) using bwf_trend
+								width:16
+							}
+						}
+					}
+				}
+			}
+			GridCell {
+				Group {
+					title:$fragmentSharedfolderDetailsNLS.access
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbreadaccess using bwf_defaultsTo0
+						label:$search.folder.nbreadaccess_compact
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbreadaccess using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbreadaccess using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbreadaccess, prevpermission.bwa_permissionanalytics_nbreadaccess)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbwriteaccess using bwf_defaultsTo0
+						label:$search.folder.nbwriteaccess_compact
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbwriteaccess using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbwriteaccess using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbwriteaccess, prevpermission.bwa_permissionanalytics_nbwriteaccess)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbfullcontrolaccess using bwf_defaultsTo0
+						label:$search.folder.nbfullcontrolaccess_compact
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbfullcontrolaccess using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbfullcontrolaccess using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbfullcontrolaccess, prevpermission.bwa_permissionanalytics_nbfullcontrolaccess)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:permission.lastaccessdate
+						label:$fragmentFolderNLS.lastaccessdate
+						compact:True
+						hidden:StringPredicate(permission.lastaccessdate) { when IsEmpty then True otherwise False }
+					}
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbusage using bwf_defaultsTo0
+						label:$search.permission.nbusage
+						compact:True
+						align:Right
+						hidden:AndPredicate {
+							IntPredicate(permission.bwa_permissionanalytics_nbusage) { when >0 then False otherwise True }
+							IntPredicate(prevpermission.bwa_permissionanalytics_nbusage) { when >0 then False otherwise True }
+						}
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbusage using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbusage using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbusage, prevpermission.bwa_permissionanalytics_nbusage)) using bwf_trend
+								width:16
+							}
+						}
+					}
+				}
+			}
+			GridCell {
+				Group {
+					title:$fragmentSharedfolderDetailsNLS.detailsclassification
+					Text {
+						value:Transform permission.permissiontype using fragmentFolderTypeMapping
+						label:$fragmentFolderNLS.type
+						compact:True
+					}
+					Text {
+						value:Transform permission.managed using booleanDisplayMapping
+						label:$search.folder.managed
+						compact:True
+						hidden:StringPredicate(permission.managed) { when IsEmpty then True otherwise False }
+					}
+					Text {
+						value:Transform permission.inherited using booleanDisplayMapping
+						label:$search.folder.inherited
+						compact:True
+						hidden:StringPredicate(permission.inherited) { when IsEmpty then True otherwise False }
+					}
+					Text {
+						value:permission.application_displayname
+						label:$fragmentShareNLS.concept
+						compact:True
+						commands: 
+							Commands {
+							position:Before
+							presentation:Icon
+							orientation:Vertical
+							Command {   
+								actions:Dialog bwf_applicationDetailsDialog (permission.application_uid to inuid,
+																				True to inshowperorg,
+																				True to inshowperjob)
+								icon:%browsing_16.zoom
+								tooltip:$fragmentSharedfolderDetailsNLS.applicationDetailsTooltip
+							}
+						}
+					}
+					Text {
+						value:permission.application_applicationfamily
+						label:$fragmentFolderNLS.family
+						compact:True
+						hidden:StringPredicate(permission.application_applicationfamily) { when IsEmpty then True otherwise False }
+					}
+					Text {
+						value:permission.repo_displayname
+						label:$fragmentFolderNLS.fileserver
+						compact:True
+						hidden: // hide if not ShareFolder family, or it's in default repo (FileShare)
+							OrPredicate {
+								StringPredicate (permission.application_applicationfamily) { when "SharedFolders" then False otherwise True }
+								StringPredicate (permission.repo_code) { when "FileShare" then True otherwise False }
+							}
+					}
+					Text {
+						value:Transform permission.sensitivitylevel using bwfPermissionSensitivityLevelMapping
+						label:$fragmentFolderNLS.sensitivitylevel
+						compact:True
+					}
+					Text {
+						value:permission.sensitivityreason
+						label:$fragmentFolderNLS.sensitivityreason
+						compact:True
+					}
+				}
+			}
+		}
+	}
+	Group {
+		title:$fragmentSharedfolderDetailsNLS.managers
+		layout:Layout { grab:horizontal True vertical False }
+		ConditionalGroup {
+			IntCondition(Count managers) {
+				when =0 then [
+					Header {
+						value:$fragmentSharedfolderDetailsNLS.nomanagers
+						commands: Commands {
+							position: After orientation: Vertical
+							Command{	
+									actions:Dialog bwfSharedFolderDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																								selectedExpertiseDomain to paramManagerType, 
+																								inuid to paramPermissionUid),
+											ReloadData (managers)
+		                        	icon:%concept_16.manager
+		                        	disabled:Not BooleanPredicate(incanupdateowners)
+		                        	feature:folderdetails_updatemanager 
+		                        	tooltip:$fragmentSharedfolderDetailsNLS.addowner
+		                       }
+						}
+					}
+				]
+				otherwise [
+					Table {
+						data:managers
+						layout:Layout { grab:horizontal True vertical False hint:height 116 }
+						configurable:True
+						label:Label { break:True }
+						commands:Commands { position: After orientation: Vertical
+										Command{	
+												actions:Dialog bwfSharedFolderDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																											selectedExpertiseDomain to paramManagerType, 
+																											inuid to paramPermissionUid),
+														ReloadData (managers)
+					                        	icon:%concept_16.manager
+					                        	disabled:Not BooleanPredicate(incanupdateowners)
+					                        	feature:folderdetails_updatemanager 
+					                        	tooltip:$fragmentSharedfolderDetailsNLS.addowner
+					                       }
+										Command{	
+												actions:Dialog bwfPermissionDetailsRemoveManager_Dialog(	selectedManager to paramManagerUid, 
+																											selectedExpertiseDomain to paramManagerTypeCode, 
+																											selectedManagerLink to paramManagerLinkRecorduid,
+																											inuid to paramPermissionUid),
+														ReloadData (managers)
+					                        	icon:%status_16.delete
+					                        	disabled:
+					                        		OrPredicate {
+						                        		Not BooleanPredicate(incanupdateowners)
+					                        			StringPredicate(selectedManager) { when IsEmpty then True otherwise False }
+					                        		}
+					                        	feature:folderdetails_updatemanager 
+					                        	tooltip:$fragmentSharedfolderDetailsNLS.deleteowner
+					                       }
+										Command{	
+												actions:Dialog bwf_entityDetailsManagerAuditDialog("Permission" to type, inuid to entity)
+					                        	icon:%browsing_16.information 
+					                        	disabled:
+						                        		Not BooleanPredicate(incanupdateowners)
+					                        	feature:folderdetails_updatemanager 
+					                        	tooltip:$fragmentSharedfolderDetailsNLS.auditowner
+					                       }
+					                  }
+						
+						Column {
+							column:uid
+							hidden:True
+							selection:selectedManager
+						}
+						Column {
+							column: managerLinkRecorduid
+							hidden: True
+							selection: selectedManagerLink
+						}
+						Column {
+							column:expertisedomaincode
+							hidden:True
+							selection:selectedExpertiseDomain
+						}
+						
+						Column {
+							column:expertisedomaindisplayname
+							text:Transform Current expertisedomaincode using bwfManagerTypeMapping
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							header:$bwfManagement.type
+							sortable:True
+							width:140px
+						}
+						Column {
+							column:hrcode
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							header:$identity.hrcode
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:fullname
+							header:$identity.fullname
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							sortable:True
+							width:100%
+						}
+						Column {
+							column:internal
+							header:$pidentity.internal
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:active
+							header:$pidentity.active
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+				
+				
+						Column {
+							column:comment
+							header:$bwfManagement.comment
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:delegation
+							header:$bwfManagement.delegated
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:delegationreason
+							header:$bwfManagement.^reason
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:_priority
+							header:$bwfManagement.^priority
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:startdate
+							header:$bwfManagement.startdate
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:enddate
+							header:$bwfManagement.enddate
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+					}
+				]
+			}
+		}
+	}
+}

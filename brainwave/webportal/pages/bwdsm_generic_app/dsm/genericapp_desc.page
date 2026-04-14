@@ -1,0 +1,159 @@
+/* Connector descriptor */
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+ds_genericapp_csv_NLS = NLS {
+  title [ en "Generic App - File" fr "Application Générique - fichier"]
+  description [
+   en "retrieves permissions for users for a given application from CSV file"
+   fr "Extrait d'un fichier CSV les permissions des utilisateurs pour une application donnée"]
+   cfg.label_app_code [ en "Application code" fr "Clé de l'application"]
+   cfg.label_app_label  [ en "Application label" fr "Nom de l'application"]
+}
+
+ds_genericapp_csv = Page {
+	title: $ds_genericapp_csv_NLS.title
+	tags: "bwds_connector" 
+	description: $ds_genericapp_csv_NLS.description
+	icon: "bw_dsm/L/bw_genericapp.png"
+	large-icon: "bw_dsm/XL/bw_genericapp.png"
+	metadata: (  
+	 category -> "application", 
+	 collector -> "bwdsm_generic_app",
+	 destPathVar -> "bwdsm_genericapp_sourceFolder",
+	 filePattern -> "*.csv",
+	 multiFile -> False  ,
+	 hasMapping -> True,
+    imodelcolumns -> "identifier;login;givenname;surname;username;employeenumber;mail;manager;creationdate;lastlogindate;passwordlastsetdate;nextpasswordchangedate;expiredate;service;disabled;locked;logincount;badpasswordcount;passwordnotrequired;passwordcantchange;notnormalaccount;dontexpirepassword;passwordexpired;smartcardrequired;profile;lastmodificationdate;lastmodificationby;creationby;permissionid;permissionname;permissiondescription;actiongranted;limit;perimetercode;perimeterlabel;externalaccount;externalrepositoryid",
+    imodelcolumnsmandatory ->"True;True;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;True;True;False;False;False;False;False;False;False",
+	 imodelcolumnsdescription -> "Account identifier;Account login;First name;Last name;Full name;Employee number;Email address;Manager identifier;Account creation date;Last connection date;Last password modification date;Next password modification date;Password expiration date;Service/technical account? (0/1);Deactivated account? (0/1);Locked account? (0/1);Number of connections with this account;Number of incorrect passwords;Optional password? (0/1);Password can ’t change? (0/1);Privileged account? (0/1);Password never expires? (0/1);Password is expired? (0/1);Smart card required? (0/1);Main profile;Date of last modification;Last modification done by;Account created by;Permission identifier;Permission name;Permission description;Action allowed with this permission;Permission limit;Permission Perimeter code;Permission Perimeter description;Account is from another repository;External repository which contains the account",
+	 imodelcolumnsexample -> "acme01;acme01;john;doe;DOE John;134654;john.doe@acme.com;acme02;20201015000000;20201020000000;20201020000000;20201220000000;20201015000000;0;1;0;11;0;0;0;0;0;0;0;User account;20201015000000;Admin;Amdni;PERM1;PERM1;Admin rights;All;NA;Z1;Zone1;1;ACME",
+	 imodelcolumnstype -> "String;String;String;String;String;String;String;String;Date;Date;Date;Date;Date;Boolean;Boolean;Boolean;Number;Boolean;Boolean;Boolean;Boolean;Boolean;Boolean;Boolean;String;Date;String;String;String;String;String;String;String;String;String;Boolean;String"
+   )	
+}
+
+
+/* config dynamic fragment */
+
+deserializeOptions_genericapp = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: "code,label,category,sensitivitylevel,sensitivityreason,description" }
+  options = Input
+  code = Output 
+  label = Output
+  category = Output { }
+  sensitivitylevel = Output { }
+  sensitivityreason = Output { } 
+  description = Output  
+}
+
+serializeOptions_genericapp = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: "code,label,category,sensitivitylevel,sensitivityreason,description" }
+  code = Input
+  label = Input
+  category = Input { }
+  sensitivitylevel = Input { }
+  sensitivityreason = Input { }
+  description = Input     
+}
+
+//TODO validation des options
+
+ds_genericapp_csv_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+ 
+  code = Variable
+  label = Variable
+  category = Variable
+  sensitivitylevel = Variable
+  sensitivityreason = Variable
+  description = Variable
+  
+  // state vars 
+	codeisvalid = Variable
+	nameisvalid = Variable
+	reasonisvalid = Variable
+	descriptionisvalid = Variable
+
+   doInit = NamedAction(
+     Call deserializeOptions_genericapp ( options to options, category from category, code from code, label from label,
+      sensitivitylevel from sensitivitylevel, sensitivityreason from sensitivityreason, description from description )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_genericapp ( code to code, label to label, category to category, 
+      sensitivitylevel to sensitivitylevel, sensitivityreason to sensitivityreason, description to description ) to options
+   )
+   
+   Edit {
+	   variable: code 
+	   label: $ds_genericapp_csv_NLS.cfg.label_app_code
+	   match:"[0-9a-zA-Z_]+"
+	 }
+  	 Edit {
+	   variable: label 
+	   label: $ds_genericapp_csv_NLS.cfg.label_app_label
+	 }
+  
+	Edit {
+		variable:category
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.category //TONLS
+	}
+	Combo {
+		variable:sensitivitylevel
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivitylevel
+		modify-event:IntCase(sensitivitylevel) { when =0 then [ Set '-' to sensitivityreason] }
+		options:Static {
+			Option {
+				text:Transform "0" using bwfApplicationSensitivityLevelMapping
+				value:0
+			}
+			Option {
+				text:Transform "1" using bwfApplicationSensitivityLevelMapping
+				value:1
+			}
+			Option {
+				text:Transform "2" using bwfApplicationSensitivityLevelMapping
+				value:2
+			}
+			Option {
+				text:Transform "3" using bwfApplicationSensitivityLevelMapping
+				value:3
+			}
+			Option {
+				text:Transform "4" using bwfApplicationSensitivityLevelMapping
+				value:4
+			}
+		}
+	}
+	Edit {
+		variable:sensitivityreason
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivityreason
+		not-empty:True
+		match:'[0-9a-zA-z].+'
+		error-tooltip:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivityreasonvalid
+		hidden:IntPredicate(sensitivitylevel) { when =0 then True otherwise False }
+		limit:255
+		validity:reasonisvalid
+		
+	}
+	Edit {
+		variable: description
+		label:$bwfApplicationDetailsMetadata_Dialog_NLS.descriptionlabel
+		multi-lines:True
+		layout:Layout{grab: horizontal True vertical False hint:height 64}
+		not-empty:True
+		limit:1000
+		validity:descriptionisvalid
+	}
+	
+	  
+}
+
+

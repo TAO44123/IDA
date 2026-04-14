@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity ALL" name="P1727957739175_1_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1730194679609" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript">
+		<Component name="C1730191357204_1" type="callfilter" x="379" y="263" w="250" h="64" title="CA_Identity_ENTRAID">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk_Identity/CA_Identity_ENTRAID.collector">
+				<Configuration name="A1732200555049" variable="cyberark_folder" content="{config.cyberark_folder}"/>
+			</Line>
+		</Component>
+		<Component name="C1730191357204_2" type="callfilter" x="78" y="264" w="250" h="64" title="CA_Identity_CDS">
+			<Line provisioningfile="/collectors/bw_ias_cyberark/CyberArk_Identity/CA_Identity_CDS.collector">
+			</Line>
+		</Component>
+		<Component name="C1730194679609" type="csvsource" x="356" y="126" w="300" h="64" title="external repository">
+			<Source encoding="ISO-8859-1" file="{config.cyberark_folder}external_repository.csv" separator=";" multiseparator="|" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A3343077060078528175" attribute="directoryserviceuuid" column="directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A3658000242058475733" attribute="external_reponame" column="external_reponame" type="String" multivalued="false"/>
+				<Attribute name="A4535948469256635471" attribute="servicetype" column="servicetype" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1730194720176" source="C1730194679609" target="C1730191357204_2" priority="1" expression="dataset.servicetype.get().equals(&apos;CDS&apos;)" labelcustom="true" label="CDS"/>
+		<Link name="L1730194721049" source="C1730194679609" target="C1730191357204_1" priority="2" expression="dataset.servicetype.get().equals(&apos;AAD&apos;)" labelcustom="true" label="AAD"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="cyberark_folder"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

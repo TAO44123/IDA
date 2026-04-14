@@ -1,0 +1,155 @@
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+
+bw_rm_campaigninfo_NLS = NLS {
+
+	low [en "low" fr "faible"]
+	medium [en "medium" fr "moyenne"]
+	high [en "high" fr "élevée"]
+	prioritylevel [en "Priority level" fr "Niveau de priorité"]
+	indays [en "in days" fr "en jours"]
+
+	campaignduration [en "Campaign duration" fr "Durée de la campagne"]
+	campaignstartingdate [en "Campaign starting date" fr "Date de démarrage de la campagne"]
+	campaignfrequency [en "Campaign frequency" fr "Fréquence de la campagne"]
+	campaignowner [en "Campaign owner" fr "Propriétaire de la campagne"]
+	
+	campaignuniquecode [en "Campaign unique code" fr "Identifiant de campagne"]
+	Campaigntitle [en "Campaign title" fr "Titre de la campagne"]
+	campaigndescription [en "Campaign description" fr "Description de la campagne"]
+	campaigntype [en "Campaign type" fr "Type de campagne"]
+
+	adhoc [en "ad-hoc" fr "ad-hoc"]
+	daily [en "daily" fr "daily"]
+	weekly [en "weekly" fr "weekly"]
+	monthly [en "monthly" fr "monthly"]
+	quarterly [en "quarterly" fr "quarterly"]
+	semesterly [en "semesterly" fr "semesterly"]
+	yearly [en "yearly" fr "yearly"]
+	
+}
+
+bw_rm_campaigninfo = PageFragment {
+
+	campaignId = Parameter {
+		type: String
+		mandatory: False
+		hidden: True
+	}
+	
+	io_currentStep = Variable 
+
+	// campaign infos
+	campaignCode = Variable
+	campaignTitle = Variable
+	campaignDescription = Variable
+	campaignFrequency = Variable
+	campaignDuration = Variable
+	campaignStartingDate = Variable
+	campaignOwneruid = Variable
+	campaignOwnerfullname = Variable
+	campaignPrioritylevel = Variable
+	
+	// validity
+	codeValid = Variable { type: Boolean}
+	titleValid = Variable { type: Boolean}
+	descValid = Variable { type: Boolean}
+	durationValid = Variable { type: Boolean}
+	
+	
+	doNext = NamedAction (
+	  Set "organisations" to io_currentStep
+	)
+	
+	Group {
+	
+	   layout: Layout { grab: horizontal True vertical True }
+
+		Edit {
+				variable:campaignCode
+				label:$bw_rm_campaigninfo_NLS.campaignuniquecode
+				disabled:StringPredicate(campaignId) { when IsEmpty then False otherwise True }
+				not-empty:True
+				validity: codeValid
+			}
+			Edit {
+				variable:campaignTitle
+				label:$bw_rm_campaigninfo_NLS.Campaigntitle
+				disabled:StringPredicate(campaignId) { when IsEmpty then False otherwise True }
+				not-empty:True
+				validity: titleValid
+			}
+			
+			Edit {
+				variable:campaignDescription
+				label:$bw_rm_campaigninfo_NLS.campaigndescription
+				not-empty:True
+				validity: descValid
+			}
+		
+			
+			Edit {
+				variable:campaignOwnerfullname
+				disabled:True
+				label:$bw_rm_campaigninfo_NLS.campaignowner
+				commands:Command {icon:"16/audit/identity_16.png" actions:Dialog identityPicker ( campaignOwneruid from outUid, campaignOwnerfullname from outDisplayname ) }
+			}
+		
+			Combo {
+				label:Label {
+					value:$bw_rm_campaigninfo_NLS.campaignfrequency
+				}
+				variable:campaignFrequency
+				options:Static {
+					Option {text:$bw_rm_campaigninfo_NLS.adhoc value:""}
+					Option {text:$bw_rm_campaigninfo_NLS.daily value:"d"}
+					Option {text:$bw_rm_campaigninfo_NLS.weekly value:"w"}
+					Option {text:$bw_rm_campaigninfo_NLS.monthly value:"m"}
+					Option {text:$bw_rm_campaigninfo_NLS.quarterly value:"q"}
+					Option {text:$bw_rm_campaigninfo_NLS.semesterly value:"s"}
+					Option {text:$bw_rm_campaigninfo_NLS.yearly value:"y"}
+				}
+			}
+			
+			DateTime {
+				variable:campaignStartingDate
+				label:$bw_rm_campaigninfo_NLS.campaignstartingdate
+				disabled:StringPredicate(campaignFrequency) { when IsEmpty then True otherwise False }
+				type:Date
+			}		
+		
+			Edit {
+				variable:campaignDuration
+				label:$bw_rm_campaigninfo_NLS.campaignduration
+				limit:3
+				match:"^[0-9]*$"
+				tooltip:$bw_rm_campaigninfo_NLS.indays
+				not-empty:True
+				validity: durationValid
+			}
+			Combo {
+				label: $bw_rm_campaigninfo_NLS.prioritylevel
+				variable: campaignPrioritylevel
+				options:
+					Static { 
+						Option { text: $bw_rm_campaigninfo_NLS.low value: "1" } 
+						Option { text: $bw_rm_campaigninfo_NLS.medium value: "2" } 
+						Option { text: $bw_rm_campaigninfo_NLS.high value: "3" }
+					}
+			}
+	
+	}
+	
+	
+	
+	ButtonGroup {
+		mixins: wizardButtonBarMixin
+		Button {
+			text: $bwcdrm_wizardsNLS.button.next
+			disabled: Eval "!(codeValid.get() && titleValid.get() && descValid.get() && durationValid.get())"
+			actions: ExecuteNamedAction doNext
+		}
+	}
+			
+}

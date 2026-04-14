@@ -1,0 +1,243 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the over allocations for a given application
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionuid </b>the selected permission</li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * <li><b>outapplicationname </b>the selected application</li>
+ * <li><b>outidentityuid </b>the selected identity</li>
+ * <li><b>outidentityname </b>the selected identity name</li>
+ * <li><b>outnbproblems </b>number of problems</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentApplicationOverAllocationsList = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inApplicationUid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outnbproblems = Variable { type:Integer }
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	outapplicationname = Variable
+	outidentityuid = Variable
+	outidentityname = Variable
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_applicationoverallocations with inuid to uid
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		 count-variable: outnbproblems
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition ( Count data ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noOver
+					compact: True
+				}
+			] otherwise [
+				Group {
+//					title: $bwf_theoreticalrightsNLS.overAllocs
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						persist-configuration:True
+						double-click:ExecuteNamedAction goDetails
+
+						Column {
+							column: controlcode
+							hidden: True
+							header: $controlresult.controlcode
+						}
+						Column {
+							column: controlrisklevel
+							header: $bwf_theoreticalrightsNLS.risklevel
+							width: 96px
+							sortable: True
+							filterable: True
+							image: TemplateImageSelection(Current controlrisklevel) using bwf_controllevel
+							initially-masked: True
+						}
+						Column {
+							column: controldisplayname
+							header: $controlresult.controldisplayname
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked: True
+						}
+						Column {
+							column: controldescription
+							initially-masked: True
+							header: $controlresult.controldescription
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlriskinfo
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.riskinfo
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: controlsuggestedmitogation
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.suggestedmitigation
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: perm_uid
+							selection:outpermissionuid
+							hidden:True
+						}
+						Column {
+							column: perm_code
+							initially-masked: False
+							header: $ppermission.code
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: perm_displayname
+							selection: outpermissionname
+							initially-masked: False
+							header: $ppermission.displayname
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column:uid
+							hidden:True
+							selection:outidentityuid
+						}
+						Column {
+							column: hrcode
+							initially-masked: False
+							header: $identity.hrcode
+							width: 100%
+							sortable: True
+							filterable: True
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column: fullname
+							initially-masked: False
+							header: $identity.fullname
+							width: 100%
+							sortable: True
+							filterable: True
+							selection:outidentityname
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column: mail
+							initially-masked: True
+							header: $identity.mail
+							width: 100%
+							sortable: True
+							filterable: True
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column: internal
+							initially-masked: True
+							header: $identity.internal
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: active
+							initially-masked: True
+							header: $identity.active
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: jobtitledisplayname
+							initially-masked: True
+							header: $identity.jobtitledisplayname
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: org_shortname
+							initially-masked: True
+							header: $porganisation.shortname
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: org_displayname
+							initially-masked: False
+							header: $organisation.concept
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+					}
+				}
+			]
+		}
+	}
+}

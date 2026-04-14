@@ -1,0 +1,108 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+
+fragmentGroupPerOrgNLS = NLS {
+	perorg [en "Organisations with the group" fr "Organisations avec le groupe"]
+	tooltip [en "{0} identities from this organisation,\n{1} identities in total with the group" fr "{0} personnes de cette organisation\nsur un total de {1} personnes qui disposent de ce groupe"]
+
+	top20 [en "Top 30" fr "Top 30"]
+
+	axe_nbpeople [en "People with the group" fr "Personnes avec le groupe"]
+	axe_groups [en "Groups" fr "Groupes"] 
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the origin organisation of the identities with the group
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate details</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupPerOrg = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	perorg = Dataset {
+		view: bwf_groupnbidentityperorg with inuid to uid, total.nbidentity to total
+		limit:30
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				IntPredicate(total.nbidentity) {
+					when >0 then False
+					otherwise True
+				}
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	total = Record {
+		view: bwf_groupnballidentity with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	Header {
+		value:$fragmentGroupPerOrgNLS.perorg
+		styling:bigTitleStyle
+		tooltip:$fragmentGroupPerOrgNLS.top20
+	}
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: barChart
+		datasets: perorg ( shortname, uid, nbidentity, label ) to chartdata ( label, code , count , description)
+		bindings: 
+			value-of $fragmentGroupPerOrgNLS.axe_nbpeople to xlabel,
+			value-of $fragmentGroupPerOrgNLS.axe_groups to ylabel,
+			value-of True to showxAxesGrid,
+			value-of True to showyAxesGrid,
+			value-of True to isHorizontal,
+			value-of True to isLabelInside,
+			value-of True to beginAtZero,
+			value-of False to maintainAspectRatio,
+			value-of Constant shadesofbluePalette to customColors
+		widget-events: {
+			when onclick then [
+				BooleanCase(incanshowdetails) {
+					when True then [
+						Dialog bwf_organisationDetailsDialog(Current code to inuid
+															,True to inshowteam
+															,True to inshowsuborganisationtree
+															,inuid to infilterteambygroup
+						)
+					]
+					when False then [
+					]
+				}
+			]
+		}
+	}
+	/*
+	Text {
+		iterate-on:perorg
+		value:Current displayname
+		compact:True
+		decorator:Decorator{width:200 after:Bar{max-value:total.nbidentity  value:Current nbidentity width:200 higher-is-better:True tooltip:$fragmentGroupPerOrgNLS.tooltip(Current nbidentity,total.nbidentity) }  }
+		label:Label{break:True}
+	}
+	*/
+	
+}

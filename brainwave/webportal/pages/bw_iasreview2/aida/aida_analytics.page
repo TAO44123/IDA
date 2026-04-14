@@ -1,0 +1,59 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/teamaccessrights.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+bwr_organisation_accessrights_dlgNLS = NLS {
+	title [en "{0} Access Analysis" fr "Analyse des droits d''accès pour {0}"]
+	access [en "Access" fr "Accès"]
+	allapps [ en "Show All Accessible Applications" fr "Montrer toutes les applications accessibles"]
+}
+
+// rights matrix of organization, presented as a dialog box
+// to be used by AIDA review 
+bwr_identity_orga_accessrights_dlg = Dialog {
+	title: $bwr_organisation_accessrights_dlgNLS.title(organisation.displayname)
+	width: 900
+	height:700
+	mixins: simpleReport	
+   buttons: OkButton
+	
+	/* Parameters here */
+    inidentityuid = Variable { type: String  }
+	inonlydirectrights = Variable { multivalued:False initial: True  }
+	inapplications= Variable { multivalued: True}
+	allapplications = Variable { type: Boolean initial: False }
+	
+	identityorg = Record {
+	  view: orgidentity with inidentityuid to id_uid
+	}
+
+	organisation = Record {
+		view:bwf_organisationDetail with identityorg.org_uid to uid 
+	}  
+
+	teamrights = Dataset {
+      view:bwaccess360r_organisation_rights with identityorg.org_uid to uid, True to directonly, UserVariable session_comparisonTimeslotTeam360 to dummy
+          , inonlydirectrights to directrightsonly, Eval "allapplications.get()? null : inapplications" to applicationUids
+	}	
+	Checkbox {
+	  label: $bwr_organisation_accessrights_dlgNLS.allapps  
+	  variable: allapplications
+	}	
+	CrossTable {
+	    label: Label { break: True}
+		data:teamrights
+		cluster-sortable:True
+		multi-selection:True
+		swappable:True
+		user-configurable:True
+		layout:Layout {cell-width:58px  grab: horizontal True vertical True}
+		rows:Dim {value:applicationdisplayname tooltip:applicationdisplayname header:$application.concept},Dim {value:permissiondisplayname tooltip:permissiondisplayname header:$permission.concept} 
+		columns:	Dim {value:orgdisplayname header:$organisation.concept},
+					Dim {value:jobtitledisplayname label:jobtitledisplayname header:$identity.jobtitledisplayname width:160px tooltip:jobtitledisplayname initially-masked:True},
+					Dim {value:internal label:internal header:$identity.internal width:100px initially-masked:True},
+					Dim {value:fullname header:$identity.fullname tooltip:fullname width:160px} 
+		cell-content:CellContent {text: $bwr_organisation_accessrights_dlgNLS.access cluster-value:'X' }		
+	}
+}

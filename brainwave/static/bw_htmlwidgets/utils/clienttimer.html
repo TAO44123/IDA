@@ -1,0 +1,66 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Client timer</title>
+	<script src="bw_pages.js"></script>
+</head>
+<body>
+	<script>
+		var internal = 1000;
+		var active = false;
+		var currentInterval = null;
+		
+		Pages.listenInit(function(varName, initialValue) {
+			if (varName == "interval") {
+				interval = initialValue;
+			} else if (varName == 'active') {
+				active = initialValue;
+			}
+		});
+		
+		Pages.listenInitDone(function() {
+			if (active) {
+				startTimerInterval();
+			}
+		});
+		
+		Pages.listenTo('interval', function(newValue) {
+			var changed = (interval != newValue);
+			interval = newValue;
+			if (changed && active) {
+				stopTimerInterval();
+				startTimerInterval();
+			}
+		});
+		Pages.listenTo('active', function(newValue) {
+			if (newValue && !active) {
+				startTimerInterval();
+			} else if (active && !newValue) {
+				stopTimerInterval();
+			}
+			active = newValue;
+		});
+		
+		function startTimerInterval() {
+			if (currentInterval) {
+				stopTimerInterval();
+			}
+			currentInterval = window.setInterval(intervalTimedout, interval);
+		}
+		
+		function intervalTimedout() {
+			Pages.sendEvent("timer");
+		}
+		
+		function stopTimerInterval() {
+			if (currentInterval) {
+				window.clearInterval(currentInterval);
+				currentInterval = null;
+			}
+		}
+		
+	</script>
+</body>
+</html>

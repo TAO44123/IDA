@@ -1,0 +1,48 @@
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+renameTimeSlotDialog = Dialog {
+	title: $renameDialog.title
+	width: 500
+	height: 400
+	buttons: [
+		ActionButton {
+			text: "Ok"
+			close: True
+			status: Ok
+			disabled: StringPredicate (timeslot_name) {
+				when IsEmpty then True
+				otherwise False
+			}
+			actions:
+				Set timeslotUid to task.timeslot_uid,Set "rename" to task.action_code, Set timeslot_name to task.new_name,
+				TaskComplete task wait
+		}
+		CancelButton
+	]
+
+	timeslotUid = Variable
+	timeslot_name = Variable {
+		type: String
+	}
+	
+	task = TaskRecord (create "virtual_timeslot")
+		
+	// Page Start
+	Group {
+		
+		
+		Group {
+			title: $renameDialog.title
+			
+			margins: Top 5
+			compact: False
+
+		
+			Edit {
+				label: $renameDialog.name
+				variable: timeslot_name
+				not-empty: True		
+			}		
+			
+		}		
+	}	
+}

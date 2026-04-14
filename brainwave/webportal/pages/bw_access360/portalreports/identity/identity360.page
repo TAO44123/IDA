@@ -1,0 +1,327 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/share/details/shareDetails.page"
+import "/webportal/pages/bw_fragments/sharedfolder/details/sharedfolderDetails.page"
+
+/* Nationalized labels here */
+access360r_identity360NLS = NLS {
+	title [en "360° view of the identity" fr "Vue à 360° de la personne"]
+	dyntitle [en "{0} 360° view" fr "Vue à 360° de {0}"]
+	filteredon [en "Filtered on {0}" fr "Filtré sur {0}"]
+	tooltipsuffix [en "" fr ""]
+	
+	showperm [en "Show permissions" fr "Afficher les permissions"]
+	showfolder [en "Show folders" fr "Afficher les répertoires"]
+	showgroup [en "Show direct groups" fr "Afficher les groupes directs"]
+	stopphysics [en "Freeze animation" fr "Geler l'animation"]
+	zoommode [en "Zoom mode" fr "Mode zoom"]
+	zoommode.tooltip [	en "In zoom mode a click on an account, an application or a share allows you to filter the graph in order to limit the display to the selected path. To come back to the complete graph you must either click on the identity or uncheck the zoom mode." 
+						fr "En mode zoom un clic sur un compte, une application ou un partage permet de filter le graphique afin de limiter l'affichage au chemin sélectionné\nPour revenir sur le graphique complet il faut soit cliquer sur l'identité soit décocher le mode zoom."]
+	detailmode [en "Detail mode" fr "Mode détail"]
+	detailmode.tooltip [
+						en "In detail mode, a click on an item displays the detail of this item in a dialog box. The detail mode has priority over the zoom mode." 
+						fr "En mode détail, un clic sur un élément permet d'afficher le détail de cet élement dans une boite de dialogue. Le mode détail est prioritaire par rapport au mode zoom."]
+	
+	description [
+		en "This report presents all user accesses in the form of a network-like graph. It is possible to display both structured and unstructured rights. It is possible to filter the display on accounts, applications and shares. It is possible to display item details."
+		fr "Ce rapport présente l'ensemble des accès de l'utilisateur sous la forme d'un graphique de type réseau. Il est possible d'afficher les droits structurés et les droits non structurés. Il est possible de filtrer l'affichage sur les comptes, les applications et les partages. Il est possible d'afficher les détail des éléments."
+	]
+}
+
+tgtimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tgtimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tgtmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+access360r_identity360 = Page {
+	title: $access360r_identity360NLS.title
+	description: $access360r_identity360NLS.description
+	dynamic-title: $access360r_identity360NLS.dyntitle(identity.fullname)
+	tags: "identity" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa_identity360
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedUID = Variable
+	selectedAccount = Variable
+	selectedAccountName = Variable
+	selectedApplication  = Variable
+	selectedApplicationName = Variable
+	selectedShare  = Variable
+	selectedShareName = Variable
+	
+	showPermissions = Variable { initial:False type:Boolean }
+	showGroups = Variable { initial:False type:Boolean }
+	showFolders = Variable { initial:False type:Boolean }
+
+	zoomMode = Variable { initial:False type:Boolean }
+	detailMode = Variable { initial:False type:Boolean }
+	stopPhysics = Variable { initial:False type:Boolean }
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:br_identityDetail with uid to uid 
+	}
+	data = Dataset {
+		view:bwa_identity360 with uid to uid, showPermissions to showPermissions, showGroups to showGroups, showFolders to showFolders, selectedShare to selectedShare, selectedApplication to selectedapplication, selectedAccount to selectedAccount, $access360r_identity360NLS.tooltipsuffix to tooltipsuffix 
+		excludes: AndPredicate {
+			StringPredicate(Current group) {
+				when "share" then True
+				when "folder" then True
+			}
+			Not FeaturePredicate unstructureddata_license
+		}
+	}
+
+	onIdentityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(selectedUID to inuid,
+										True to inshowaccounts,
+										True to inshowapplications,
+										True to inshowposition,
+										True to inshowshares,
+										True to inshowtheoretical,
+										True to inshowbusinessactivities,
+										True to inshowcontrols,
+										True to inshowdecisionhistory,
+										True to inshowoverallocated,
+										True to inshowusages
+		)
+	)
+	onAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(selectedUID to inuid,
+										True to inshowgroups,
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowcontrols,
+										True to inshowdecisionhistory,
+										True to inshowowner,
+										True to inshowusages
+		)
+	)
+	onGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedUID to inuid,
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onApplicationDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onPermissionDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onShareDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onFolderDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn { group:a },  GridColumn { group:a },  GridColumn { group:a }
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:showGroups
+					text:$access360r_identity360NLS.showgroup
+					
+				}
+				Checkbox {
+					variable:showPermissions
+					text:$access360r_identity360NLS.showperm
+				}
+				Checkbox {
+					variable:showFolders
+					text:$access360r_identity360NLS.showfolder
+					feature:unstructureddata_license
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:zoomMode
+					text:$access360r_identity360NLS.zoommode
+					tooltip:$access360r_identity360NLS.zoommode.tooltip
+					modify-event:
+						BooleanCase(zoomMode) {
+							when True then [
+								Set False to detailMode
+							]
+							when False then [
+								Set '' to selectedApplication,
+								Set '' to selectedApplicationName,
+								Set '' to selectedShare,
+								Set '' to selectedShareName,
+								Set '' to selectedAccount,
+								Set '' to selectedAccountName
+							]
+						}
+				}
+				Checkbox {
+					variable:detailMode
+					text:$access360r_identity360NLS.detailmode
+					tooltip:$access360r_identity360NLS.detailmode.tooltip
+					modify-event:
+						BooleanCase(Eval "detailMode.get() && selectedAccount.isEmpty() && selectedApplication.isEmpty() && selectedShare.isEmpty()") {
+							when  True then [
+								Set False to zoomMode
+							]
+							when False then [
+							]
+						}
+				}
+				Checkbox {
+					variable:stopPhysics
+					text:$access360r_identity360NLS.stopphysics
+				}
+			}
+			GridCell {
+				Header {
+					value: $access360r_identity360NLS.filteredon(selectedAccountName)
+					hidden:StringPredicate(selectedAccount) { when IsEmpty then True } 
+				}
+				Header {
+					value: $access360r_identity360NLS.filteredon(selectedApplicationName)
+					hidden:StringPredicate(selectedApplication) { when IsEmpty then True } 
+				}
+				Header {
+					value: $access360r_identity360NLS.filteredon(selectedShareName)
+					hidden:StringPredicate(selectedShare) { when IsEmpty then True } 
+				}
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				IncludeHTMLWidget {
+					layout: Layout { grab:horizontal True vertical True /* hint:height 500 */ }
+					template: network
+					datasets:data(id, name, parentid, group, description, attrs) to chartdata(code, label, parentcode, group, description, nodeattributes)
+					bindings:
+						value-of stopPhysics to stopPhysics,
+						value-of False to hierarchical,
+						value-of 'box' to shape,
+						value-of 2000 to textboxsize,
+						value-of True to computegroupfontcolor,
+						value-of True to navigationButtons
+					widget-events: {
+						when onclick then [
+							BooleanCase(Eval "zoomMode.get() && !detailMode.get()") {
+								when True then [
+									StringCase(Current group) {
+										when "identity" then [
+											Set '' to selectedApplication,
+											Set '' to selectedApplicationName,
+											Set '' to selectedShare,
+											Set '' to selectedShareName,
+											Set '' to selectedAccount,
+											Set '' to selectedAccountName
+										]
+										when "account" then [
+											Set '' to selectedApplication,
+											Set '' to selectedApplicationName,
+											Set '' to selectedShare,
+											Set '' to selectedShareName,
+											Set Current code to selectedAccount,
+											Set Current label to selectedAccountName
+										]
+										when "application" then [
+											Set Current code to selectedApplication,
+											Set Current label to selectedApplicationName,
+											Set '' to selectedShare,
+											Set '' to selectedShareName,
+											Set '' to selectedAccount,
+											Set '' to selectedAccountName
+										]
+										when "share" then [
+											Set '' to selectedApplication,
+											Set '' to selectedApplicationName,
+											Set Current code to selectedShare,
+											Set Current label to selectedShareName,
+											Set '' to selectedAccount,
+											Set '' to selectedAccountName
+										]
+									}							
+								]
+								when False then [
+								]
+							},
+							BooleanCase(Eval "detailMode.get()") {
+								when True then [
+									Set Current code to selectedUID,
+									StringCase(Current group) {
+										when "identity" then [
+											ExecuteNamedAction onIdentityDetails								
+										]
+										when "account" then [
+											ExecuteNamedAction onAccountDetails								
+										]
+										when "group" then [
+											ExecuteNamedAction onGroupDetails								
+										]
+										when "application" then [
+											ExecuteNamedAction onApplicationDetails								
+										]
+										when "permission" then [
+											ExecuteNamedAction onPermissionDetails								
+										]
+										when "share" then [
+											ExecuteNamedAction onShareDetails								
+										]
+										when "folder" then [
+											ExecuteNamedAction onFolderDetails								
+										]
+									}							
+								]
+								when False then [
+								]
+							}
+						]
+					}
+				}
+
+			}
+		}
+	}
+}

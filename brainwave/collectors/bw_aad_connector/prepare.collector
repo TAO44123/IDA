@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="AD prepare" description="AD repository and public account " scriptfile="collectors/bw_aad_connector/AAD.javascript" name="P1423144150477_9_oNZhbT8yLzYICIkTcCDPg_h6AZO3zVW2fsrWLsYBdd8g_1" startingpoint="C1355754278161_1">
+		<Component name="C1337776139577_2" type="account" x="41" y="352" w="334" h="64" title="PUBLIC account">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Account key="public_name" error="true" event="empty account key">
+				<Attribute name="guid" attribute="public_account_sid_guid"/>
+				<Attribute name="sid" attribute="public_account_sid_guid"/>
+				<Attribute name="login" attribute="public_name"/>
+			</Account>
+		</Component>
+		<Component name="C1355754278161_1" type="library/components/start.component" x="41" y="11" w="334" h="64" title="Start"/>
+		<Component name="C1337776199240_2" type="changefilter" x="43" y="94" w="334" h="64" title="Add name for PUBLIC account">
+			<Actions>
+				<Action name="U1337776274496" action="add" attribute="public_name" type="String" multivalued="false" newvalue="PUBLIC" errorexist="false"/>
+				<Action name="U1445423118575" action="add" attribute="repoType" type="String" multivalued="false" newvalue="AAD" errorexist="false"/>
+				<Action name="U1449147974193" action="add" attribute="group_everyone_id" type="String" multivalued="false" errorexist="false" newvalue="A-1-1-0"/>
+				<Action name="U1449148053536" action="add" attribute="public_account_sid_guid" type="String" multivalued="false" newvalue="{dataset.public_name.get() + &apos;_&apos; +dataset._REPOSITORY_CODE_.get()}" description="calculate sid guid of public group" errorexist="false"/>
+				<Action name="U1538571265114" action="add" attribute="external_public_sid_guid" type="String" multivalued="false" newvalue="{dataset.public_name.get() + &apos;_&apos; +dataset._REPOSITORY_CODE_.get()}#EXT#" errorexist="false"/>
+				<Action name="U1541500883629" action="add" attribute="repoFamily" type="String" multivalued="false" newvalue="Azure" errorexist="false"/>
+				<Action name="U1558016769771" action="add" attribute="EEE_group_displayname" type="String" multivalued="false" newvalue="Everyone except external users" errorexist="false"/>
+				<Action name="U1558017136538" action="add" attribute="EEE_group_id" type="String" multivalued="false" newvalue="EVERYONE_EXCEPT_EXTERNAL_USERS_{dataset._REPOSITORY_CODE_.get()}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1355754302248_1" source="C1355754278161_1" target="C1337776199240_2" priority="1"/>
+		<Component name="C1423144224903" type="repository" x="41" y="181" w="334" h="64" title="Internal repository">
+			<Media type="A" code="_REPOSITORY_CODE_" label="_REPOSITORY_DISPLAYNAME_" repositorytype="repoType"/>
+			<Repository>
+				<Attribute name="repositoryfamily" attribute="repoFamily"/>
+			</Repository>
+		</Component>
+		<Link name="L1423144236165" source="C1337776199240_2" target="C1423144224903" priority="1"/>
+		<Link name="L1423144237041" source="C1423144224903" target="C1558017051868" priority="1"/>
+		<Component name="C1448963242411_1" type="groupmembers" x="41" y="436" w="334" h="64" title="Add Internal Public to Everyone group">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Group code="group_everyone_id"/>
+			<Content members="public_account_sid_guid" error="false"/>
+			<Domain isuniqueidentifier="true" repositorytype="repoType"/>
+		</Component>
+		<Link name="L1449148071365" source="C1337776139577_2" target="C1448963242411_1" priority="1"/>
+		<Component name="C1558017051868" type="group" x="41" y="269" w="334" h="64" title="Create EVERYONE_EXCEPT_EXTERNAL_USERS">
+			<Group code="EEE_group_id">
+				<Attribute name="displayname" attribute="EEE_group_displayname"/>
+				<Attribute name="guid" attribute="EEE_group_id"/>
+				<Attribute name="sid" attribute="EEE_group_id"/>
+			</Group>
+			<Media code="_REPOSITORY_CODE_"/>
+		</Component>
+		<Link name="L1558017563392" source="C1558017051868" target="C1337776139577_2" priority="1"/>
+		<Component name="N1558017840091" type="note" x="438" y="86" w="577" h="225" title="Create repository for azure domain&#xA;&#xA;Create the default group  Everyone_except_external_users that will contains onlu internal users&#xA;&#xA;Create public account for the azure domain and add it to everyone members, public account represent &#xA;all users (internal + external) declared in the azure domain&#xA;"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+		</Variables>
+	</Configuration>
+</Provisioning>

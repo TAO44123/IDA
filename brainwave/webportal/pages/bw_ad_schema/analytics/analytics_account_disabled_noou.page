@@ -1,0 +1,104 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dashboards_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/analytics_nls.page"
+
+
+analytics_account_disabled_noou = Page {
+	title: $ad_dashboard_qualityNLS.kpi.label.account_disabled_noou
+	mixins: base_pageMixin
+	tags: "ADreports"
+	
+	/* Parameters here */
+	domainFilter = Parameter { type: String hidden:True }
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	domainsCriteria = Variable { type: String multivalued: True initial:domainFilter }
+	filterByDomain = Variable { type: String multivalued: True }
+	
+	selectedAccountUid = Variable { type: String }
+	selectedAccountRecorduid = Variable { type: Integer }
+	
+	/* Datasets and records here */
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	accountDisabled = Dataset { view: ad_account_disabled_noou  with domainsCriteria to domains unless-empty
+		trend: Trend { 
+					join-column: uid
+					exclude-new: False
+					include-removed: False
+					exclude-same: False
+					status-column-name:status
+					timeslot: FromPage (-1)
+					value-column: trend
+				}
+	}
+	
+	reconciliation = Record {
+		view: ad_account_reconciliation with selectedAccountUid to uid
+	}
+	
+	jobsAndOrgs = Dataset {
+		view: id_jobs with reconciliation.id_uid to uid unless-empty
+	}
+	
+	allDomains = Dataset {
+		view: getdomains with domainperimeter to domains
+	}
+	
+	clearDomainCriteria = NamedAction (
+		Unset domainsCriteria,
+		TransferData domainperimeterdataset(uid) to ( domainsCriteria )
+	)
+	
+	clearAll = NamedAction (
+		Unset selectedAccountUid, Unset selectedAccountRecorduid
+	)
+	
+	Splitter {
+		disposition: Horizontal
+		size: 70%
+		Group {
+			Table {
+				layout:  Layout  { grab: horizontal True vertical True }
+				data: accountDisabled
+				show-count: True
+				show-filter: True
+				configurable: True 
+				
+				Column {
+					column: status
+					header: $analytics_results_pages.table.headers.status
+					width: 80px
+					text: Transform Current status using statusMapping
+					image: TemplateImageSelection(Current status) using newItemTemplate
+					sortable: True
+				}
+				Column { column: domain_displayname header: $ad_domain.concept width: 100% sortable: True filterable:True}
+				Column { column: login header: $account.login width: 100% sortable: True filterable:True}
+				Column { column: identifier header: $account.identifier width: 100% initially-masked: True sortable: True}
+				Column { column: lastlogindate header: $account.lastlogindate width: 100% text: Date ( Current lastlogindate).value('dd/MM/yyyy') sortable: True}
+			
+				Column { column: uid hidden: True selection: selectedAccountUid }
+				Column { column: recorduid hidden: True selection: selectedAccountRecorduid }	
+			}
+		}
+		Group {
+			
+			IncludeFragment {
+				fragment: accountsMoreDetailTabFolder with
+					selectedAccountRecorduid binds-to selectedAccountRecorduid,
+					selectedAccountUid binds-to selectedAccountUid
+			}	
+		
+			Spacer { height: 16}
+		
+		}
+	}	
+}

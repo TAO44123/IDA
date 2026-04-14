@@ -1,0 +1,62 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_rm/export/importexport_fragment.page"
+
+/* Nationalized labels here */
+rm_adminNLS = NLS {
+	title [en "Role Mining Administration" fr "Administration du Role Mining"]
+	importexport.label [ en "Import / Export" fr "Importer / Exporter"]
+	exportCfg.button [ en "Export Configuration" fr "Exporter la configuration"]
+	importCfg.button [ en "Import Configuration" fr "Importer la configuration"] 
+	importRoleDlg.title [ en "Import roles and annotations" fr "Importer les roles et les annotations"]
+	importRoleDlg.selectFile [ en "Select roles_config.xlsx file" fr "Selectionner le fichier roles_config.xlsx"]
+	importRoleDlg.importBtn [ en "Import" fr "Importer"]
+	importRoleDlg.checkBtn [ en "Check" fr "Vérifier"]
+	importRoleDlg.hasErrors [ en "Some errors were found in import file. Click import to proceed or Cancel to abort import.\n\n" 
+	    fr "Il y a des erreurs dans le fichier d'import. Cliquez Importer pour continuer quand même ou annuler pour abandonner.\n\n"]	
+	importRoleDlg.noErrors [ en "Import file data is valid. Click import to proceed" fr "Les données du fichier d'import sont valides. Cliquez Importer pour continuer"]
+}
+
+
+
+rm_config_admin = Page {
+	title: $rm_adminNLS.title
+	tags: 'admin'
+	
+	selectedFragment = Variable { type: String initial: "importexport" }
+	
+	Grid {
+		columns: GridColumn { width: 100 px }, GridColumn { width: grow }
+		insets: 0
+		gap: 0
+		
+		layout: Layout { grab: horizontal True vertical True }
+		
+		GridRow {
+			GridCell {
+				background: Color RGB (240,240,240)
+				
+				Spacer { height: 5}
+				
+				Button { actions: Set "importexport" to selectedFragment text: "" image: "bw_rm/time_32.png" layout: Layout { hint: width 100 height 40 } presentation: Link } 
+				Button { actions: Set "importexport" to selectedFragment  text: $rm_adminNLS.importexport.label layout: Layout { hint: width 100 height 20  } presentation: Link styling: detailsText  } 				
+				
+			}
+			GridCell {
+				background: Color white
+				
+				ConditionalGroup {
+					StringCondition ( selectedFragment ){
+						when "importexport" then [
+							IncludeFragment {
+								fragment: importExportFragment
+								compact: True
+							}
+						]
+					}
+				}
+			}
+		}
+	}
+	
+}

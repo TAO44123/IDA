@@ -1,0 +1,159 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+revokeactionrepositoryNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel current edition ?" fr "Annuler l'édition en cours ?"]
+	complete.buttontext [en "Task completed" fr "Tâche terminée"]
+	complete.confirm [en "Complete current task ?" fr "Terminer la tâche en cours ?"]
+	complete.flashmessage [en "Task completed" fr "Tâche terminée"]
+	title [en "Please revoke repository access" fr "Please revoke repository access"]
+	_repository [en "repository" fr "Référentiel"]
+	_approvalstatus [en "approval status" fr "approval status"]
+	_organisationcode [ en "Organisation code" fr "Code de l'organisation"]
+	_organisationname [ en "Organisation name" fr "Nom de l'organisation"]
+	approvalstatus.value0 [en "approve" fr "approve"]
+	approvalstatus.value1 [en "deny" fr "deny"]
+	_requestername [en "requester name" fr "requester name"]
+	_emailrequester [en "Adresse mail" fr "Email"]
+}
+
+
+revokeactionrepository = Page {
+	title: $revokeactionrepositoryNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	taskId = Parameter {
+		type: String
+		mandatory: True
+	}
+	
+	/* variables here */
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord(taskId)
+	
+	
+	/* Page content */
+	
+	/* repositoryDataset = Dataset {
+		view: accsbyidentity
+	}*/
+	
+	
+	repositoryDataset = Dataset {
+		view: accsbyidentity with task.repository to acc_uid
+	}
+	
+	organisation = Record {
+	    view: getidentityorganisations with task.requester to uid
+	}   
+	  
+	emailrequester = Record {
+		view: emailbyidentity with task.requester to uid
+	}  
+	
+	
+	Flow {
+
+    disposition: Vertical
+    	
+	Group { 
+	//layout: Layout{hint:height 100}
+	title: "Requester"
+	Text {
+		label: $revokeactionrepositoryNLS._requestername
+		value: task.requestername
+	    }
+	
+	Text {
+		label: $revokeactionrepositoryNLS._organisationcode
+		value: organisation.code
+	     }
+	
+	Text {
+		label: $revokeactionrepositoryNLS._organisationname
+		value: organisation.displayname
+	     }
+	     
+	 Text {
+		label: $revokeactionrepositoryNLS._emailrequester
+		value: emailrequester.ident_mail
+		// commands: Command {actions: Set emailrequester.ident_mail to task.email_requester}
+	}    
+	
+	   }
+	
+	Group {
+	title: "Account/Repository"
+	MultiEdit {
+		
+		hide-remove: True
+		Element {
+			variable: task.repository
+			filterable: True
+			display: Display {
+				data: repositoryDataset match acc_uid
+				value: Current acc_login 
+			}
+		}
+	}
+	}
+	
+	
+	Group {
+		title: $revokeactionrepositoryNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		Combo {
+		label: Concat($revokeactionrepositoryNLS._approvalstatus,"*")
+		variable: task.approvalstatus
+		options: Static {
+			Option {
+				value: "approve"
+				text: $revokeactionrepositoryNLS.approvalstatus.value0
+			}
+			Option {
+				value: "deny"
+				text: $revokeactionrepositoryNLS.approvalstatus.value1
+			}
+		}
+	   }
+
+	
+	Group {
+		title: $revokeactionrepositoryNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		ButtonGroup {
+			Button { 
+				text: $revokeactionrepositoryNLS.cancel.buttontext
+				actions: Confirm $revokeactionrepositoryNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: StringPredicate (task.approvalstatus) { when IsEmpty then True }
+				
+				text: $revokeactionrepositoryNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $revokeactionrepositoryNLS.complete.confirm, TaskComplete task, Flash Information $revokeactionrepositoryNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+	}
+  } // End of Flow
+}
+

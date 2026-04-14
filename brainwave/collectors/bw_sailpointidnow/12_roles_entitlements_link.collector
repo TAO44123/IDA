@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="11 roles entitlements link" scriptfile="/collectors/bw_sailpointidnow/12_roles_entitlements_link.javascript" name="P1752211041094_L9lmFaa20El7Y6ZiG3xg" startingpoint="C1752049508430_1">
+		<Component name="C1752049508430_1" type="discoverysource" x="458" y="65" w="300" h="64" title="idnow_roles">
+			<Discovery file="/discovery/bw_sailpointidnow/idnow_roles.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/roles.csv"/>
+		</Component>
+		<Component name="C1752049527787_1" type="scriptfilter" x="458" y="226" w="300" h="64" title="Get all entitlements in roles">
+			<Attributes>
+				<Attribute name="A1752213505787" attribute="entitlements_id" type="String" multivalued="true"/>
+				<Attribute name="A1752213527523" attribute="entitlements_name" type="String" multivalued="true"/>
+				<Attribute name="A1752213534505" attribute="entitlements_type" type="String" multivalued="true"/>
+			</Attributes>
+			<Script onscriptwrite="get_entitlements"/>
+		</Component>
+		<Component name="C1751457959516_4" type="changefilter" x="458" y="385" w="300" h="64" title="Get IdNow id">
+			<Actions>
+				<Action name="U1751458011379" action="add" attribute="_idnow_id" type="String" multivalued="false" newvalue="IdentityNow" errorexist="false"/>
+				<Action name="U1752072601423" action="add" attribute="_repotype" type="String" multivalued="false" newvalue="SailPoint IdentityNow" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1752053373831_1" type="discoverysource" x="888" y="689" w="300" h="64" title="entitlements">
+			<Discovery file="/discovery/bw_sailpointidnow/entitlements_roles.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/entitlements.csv"/>
+		</Component>
+		<Component name="C1752053438925_1" type="enumfilter" x="458" y="531" w="300" h="64" title="enum entitlements">
+			<Multivalued>
+				<Value name="M1752213546614" attribute="entitlements_id"/>
+				<Value name="M1753113553448" attribute="entitlements_name"/>
+			</Multivalued>
+		</Component>
+		<Component name="C1752053491456_1" type="right" x="458" y="1147" w="300" h="64" title="Roles groups - entitlements perms">
+			<Domain isuniqueidentifier="true" repositorytype="_repotype"/>
+			<Right account="id" application="_appid" permission="entitlements_id"/>
+		</Component>
+		<Component name="C1752053347607_1" type="joinfilter" x="458" y="689" w="300" h="64" title="Get source name">
+			<Join source="C1752053373831_1"/>
+			<Attributes>
+				<Attribute name="A1752053417482" attribute="_appid" source="_source_name" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="entitlements_id" join="id"/>
+		</Component>
+		<Link name="L1752052563976_1" source="C1752049508430_1" target="C1752049527787_1" priority="1"/>
+		<Link name="L1752053326781_1" source="C1752049527787_1" target="C1751457959516_4" priority="1"/>
+		<Link name="L1752053497105_1" source="C1752053347607_1" target="C1752826125670_2" priority="1"/>
+		<Link name="L1752053384401_1" source="C1752053373831_1" target="C1752053347607_1" priority="1"/>
+		<Link name="L1752053447970_1" source="C1752053438925_1" target="C1752053347607_1" priority="1"/>
+		<Link name="L1753111472746" source="C1751457959516_4" target="C1752053438925_1" priority="1"/>
+		<Component name="C1753112117666" type="permission" x="458" y="998" w="300" h="64" title="entitlements from groups">
+			<Permission code="entitlements_id" application="_appid" type="Role">
+				<Attribute name="displayname" attribute="entitlements_name"/>
+			</Permission>
+		</Component>
+		<Link name="L1753112138945" source="C1753112117666" target="C1752053491456_1" priority="1"/>
+		<Component name="C1752826158885_2" type="discoverysource" x="888" y="853" w="300" h="64" title="repositories_apps">
+			<Discovery file="/discovery/bw_sailpointidnow/repositories_apps.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/accounts.csv"/>
+		</Component>
+		<Component name="C1752826125670_2" type="joinfilter" x="458" y="850" w="300" h="64" title="Filter with filtered sources">
+			<Join source="C1752826158885_2" zeroerror="true" zeroevent="_APP_FILTERED_" zerotechnical="true"/>
+			<Cache active="true" main="_appid" join="sourcename"/>
+		</Component>
+		<Link name="L1752826229127_2" source="C1752826158885_2" target="C1752826125670_2" priority="1"/>
+		<Link name="L1753261129164" source="C1752826125670_2" target="C1753112117666" priority="1" expression="(! dataset.hasEvent(&apos;_APP_FILTERED_&apos;))"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

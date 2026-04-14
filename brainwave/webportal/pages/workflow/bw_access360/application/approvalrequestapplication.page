@@ -1,0 +1,150 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+approvalrequestNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel current edition ?" fr "Annuler l'édition en cours ?"]
+	//complete.buttontext [en "Task completed" fr "Tâche terminée"]
+	complete.buttontext [en "Confirm" fr "Confirmer"]
+	complete.confirm [en "Complete current task ?" fr "Terminer la tâche en cours ?"]
+	complete.flashmessage [en "Task completed" fr "Tâche terminée"]
+	title [en "Application access revoke request - Approval is required " fr "Demande de révocation de l'accès d'une application - Approbation requise."]
+	_requestername [en "requester name" fr "requester name"]
+	_organisationcode [en "Organisation code" fr "Code de l'organisation"]
+	_organisationname [en "Organisation display name" fr "Nom de l'organisation"]
+	_emailrequester [en "Adresse mail" fr "Email"]
+	_application [en "application" fr "application"]
+	_approvalstatus [en "approval status" fr "approval status"]
+	approvalstatus.value0 [en "approve" fr "approve"]
+	approvalstatus.value1 [en "deny" fr "deny"]
+}
+
+
+approvalrequestapplication = Page {
+	title: $approvalrequestNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	taskId = Parameter {
+		type: String
+		mandatory: True
+	}
+	
+	/* variables here */
+	organisationCode =  Variable{type: String}
+	organisationName =  Variable{type: String}
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord(taskId)
+	
+	applicationDataset = Dataset {
+		view: workflow_applicationdisplayname_all
+	}
+	
+	organisation = Record {
+	    view: getidentityorganisations with task.requester to uid
+	}   
+	
+	
+	emailrequester = Record {
+		view: emailbyidentity with task.requester to uid
+	}  
+	
+	/* Page content */
+Flow {
+
+    disposition: Vertical
+    	
+	Group { 
+	//layout: Layout{hint:height 100}
+	title: "Requester"
+	Text {
+		label: $approvalrequestNLS._requestername
+		value: task.requestername
+	}
+	
+	Text {
+		label: $approvalrequestNLS._organisationcode
+		value: organisation.code
+	}
+	
+	Text {
+		label: $approvalrequestNLS._organisationname
+		value: organisation.displayname
+	}
+	
+	Text {
+		label: $approvalrequestNLS._emailrequester
+		value: emailrequester.ident_mail
+		// commands: Command {actions: Set emailrequester.ident_mail to task.email_requester}
+	}
+	
+	}
+	
+	Group {
+	title: "Application"
+	MultiEdit {
+		//label: $approvalrequestNLS._application
+		hide-remove: True
+		Element {
+			variable: task.application
+			filterable: True
+			display: Display {
+				data: applicationDataset match uid
+				value: Current displayname
+			}
+		}
+	}
+	}
+
+	
+	Group {
+		title: $approvalrequestNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		Combo {
+		label: Concat($approvalrequestNLS._approvalstatus,"*")
+		variable: task.approvalstatus
+		options: Static {
+			Option {
+				value: "approve"
+				text: $approvalrequestNLS.approvalstatus.value0
+			}
+			Option {
+				value: "deny"
+				text: $approvalrequestNLS.approvalstatus.value1
+			}
+		  }
+	    }
+		
+		
+		ButtonGroup {
+			Button { 
+				text: $approvalrequestNLS.cancel.buttontext
+				actions: Confirm $approvalrequestNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: StringPredicate (task.approvalstatus) { when IsEmpty then True }
+				
+				text: $approvalrequestNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $approvalrequestNLS.complete.confirm, Set emailrequester.ident_mail to task.email_requester,TaskComplete task, Flash Information $approvalrequestNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+  } // End of flow
+}
+

@@ -1,0 +1,481 @@
+import "/webportal/pages/resources/details_nls.page"
+
+import "/webportal/pages/bw_fragments/organisation/details.page"
+import "/webportal/pages/bw_fragments/organisation/managers.page"
+import "/webportal/pages/bw_fragments/organisation/team.page"
+import "/webportal/pages/bw_fragments/organisation/hierarchygraph.page"
+import "/webportal/pages/bw_fragments/organisation/accounts.page"
+import "/webportal/pages/bw_fragments/organisation/analytics.page"
+import "/webportal/pages/bw_fragments/organisation/decisionhistory.page"
+import "/webportal/pages/bw_fragments/organisation/controls.page"
+import "/webportal/pages/bw_fragments/organisation/permissions.page"
+import "/webportal/pages/bw_fragments/organisation/applications.page"
+import "/webportal/pages/bw_fragments/organisation/folders.page"
+import "/webportal/pages/bw_fragments/organisation/usages.page"
+import "/webportal/pages/bw_fragments/organisation/accessrights.page"
+import "/webportal/pages/bw_fragments/organisation/foldersrights.page"
+import "/webportal/pages/bw_fragments/organisation/businessactivities.page"
+import "/webportal/pages/bw_fragments/organisation/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/organisation/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/custom/organisationExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+organisationDetailsPageNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	organisation [en "Organization" fr "Organisation"]
+	accounts [en "Accounts" fr "Comptes"]
+	managers [en "Managers" fr "Responsables"]
+	team [en "Team" fr "Equipe"]
+	hierarchy [en "Hierarchy" fr "Hiérarchie"]
+	groups [en "Groups" fr "Groupes"]
+	access [en "Access" fr "Accès"]
+	applications [en "Applications" fr "Applications"]
+	permissions [en "Permissions" fr "Permissions"]
+	folders [en "Folders" fr "Données"]
+	folderrights [en "Folders rights" fr "Droits sur les données"]
+	accessrights [en "Access rights" fr "Droits d'accès"]
+	shares [en "Shares" fr "Partages"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+
+	notexists [
+		en "This organisation does not exist in the current timeslot, you should select a different timeslot"
+		fr "Cette organisation n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+
+organisationDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (organisation)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Organisation Detail with organisationUid.uid to paramOrganisationUid }
+	feature: organisationdetails_access
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Organisation
+		mandatory: True
+	}
+	
+	organisationUid = Record {
+		view: br_organisationDetail_uid with recorduid to recorduid
+	}
+}
+
+organisationDetailsParkingPage = Page {
+	title: $organisationDetails.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( organisation.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page organisationDetailsPage with-current-parameters
+		}
+	
+	paramOrganisationUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	organisation = Record {
+		view: bwf_organisationDetail with paramOrganisationUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$organisationDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+organisationDetailsPage = Page {
+	title: $organisationDetails.title
+	dynamic-title:  $organisationDetails.dynamictitle (organisation.displayname)
+	icon: %concept.organisation
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( organisation.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page organisationDetailsParkingPage with-current-parameters
+		}
+	enter-event:
+		IntCase(organisation.bwa_organisationanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+		IntCase(organisation.bwa_organisationanalytics_nbbusinessactivity) { when >0 then [ Set True to hasbusinessactivity ] },
+		IntCase(organisation.bwa_organisationanalytics_nbtheoretical) { when >0 then [ Set True to hastheoretical ] },
+		IntCase(organisation.bwa_organisationanalytics_nbapplication) { when >0 then [ Set True to hasapplications ] },
+		IntCase(organisation.bwa_organisationanalytics_nbshare) { when >0 then [ Set True to hasshares ] },
+		Set nbControls._total to nbdefects
+	
+	// Parameters Here
+	paramOrganisationUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Global variables here
+	selectedOrganisationUid = Variable {
+		type: String
+		initial: paramOrganisationUid
+	}
+	
+	nonEmptyUid = Variable { type: String }
+	
+	onlydirectselection = Variable { multivalued:False type:Boolean initial:True }
+
+	nbdefects = Variable 
+	nboverallocated = Variable
+	nbdecision = Variable 
+	hasapplications = Variable
+	hasshares = Variable
+	hasbusinessactivity = Variable
+	hastheoretical = Variable
+	hasusages = Variable { type:Boolean initial:False }
+
+	showextended = Variable { initial:False }
+	
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_model = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_organisation = Variable { initial:False multivalued:False type:Boolean }
+	active_managers = Variable { initial:False multivalued:False type:Boolean }
+	active_team = Variable { initial:False multivalued:False type:Boolean }
+	active_hierarchy = Variable { initial:False multivalued:False type:Boolean }
+	active_businessactivities = Variable { initial:False multivalued:False type:Boolean }
+	active_theoreticalrights = Variable { initial:False multivalued:False type:Boolean }
+	active_overallocatedrights = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_permissions = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_accessrights = Variable { initial:False multivalued:False type:Boolean }
+	active_folders = Variable { initial:False multivalued:False type:Boolean }
+	active_folderrights = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Record for concept details
+	organisation = Record {
+		view: bwf_organisationDetail with selectedOrganisationUid to uid
+	}
+	
+	// Number of control defects for current application (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_organisationallcontroldefects_nb with selectedOrganisationUid to uid
+	}
+	
+	// Start of the Layout based on a 1-column Grid
+	Grid {
+		columns: GridColumn{}
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					
+					TabItem {
+						text:$organisationDetailsPageNLS.details
+						activation-event:Set True to active_detail
+						
+						TabFolder {
+							border:False
+							TabItem {
+								text: $organisationDetailsPageNLS.organisation
+								activation-event:
+									Set True to active_organisation
+								IncludeFragment {
+									fragment: fragmentOrganisationFullDetails with
+										value-of selectedOrganisationUid to inuid,
+										value-of True to inshowrisks,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_organisation.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$organisationDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationExtendedDetails
+									with 	value-of selectedOrganisationUid to inuid, 
+											value-of Eval "active_detail.get() && active_extended.get()" to inenabled, 
+											showextended binds-to outdisplay
+								}
+							}
+
+							TabItem {
+								text:$organisationDetailsPageNLS.managers
+								activation-event:Set True to active_managers
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationManagers
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of True to incanupdateowners,
+									     value-of Eval "active_detail.get() && active_managers.get()" to inenabled
+								}
+							}
+							
+							TabItem {
+								text:$organisationDetailsPageNLS.team
+								activation-event:Set True to active_team
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationTeam
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of True to incancompare,
+									     value-of Eval "active_detail.get() && active_team.get()" to inenabled
+								}
+							}
+							
+							TabItem {
+								text:$organisationDetailsPageNLS.hierarchy
+								activation-event:Set True to active_hierarchy
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationHierarchyGraph
+									with value-of selectedOrganisationUid to inuid,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_detail.get() && active_hierarchy.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$organisationDetailsPageNLS.model
+						activation-event:Set True to active_model
+						feature:Any(sod_license, iam_license)
+						hidden:
+							AndPredicate {
+								Not BooleanPredicate(hasbusinessactivity)
+								Not BooleanPredicate(hastheoretical)
+								IntPredicate(nboverallocated) { when >0 then False otherwise True }
+							}
+					
+						TabFolder {
+							border:False
+							layout:Layout { indent: horizontal 0 vertical 6 }
+							TabItem {
+								text:$organisationDetailsPageNLS.businessactivities
+								feature:sod_license
+								hidden:Not BooleanPredicate(hasbusinessactivity)
+								activation-event:Set True to active_businessactivities
+
+								IncludeFragment {
+									fragment:fragmentOrganisationBusinessActivities
+									with value-of selectedOrganisationUid to inuid, value-of True to incanshowdetails, 
+																onlydirectselection binds-to inonlydirectselection, 
+																value-of Eval "active_model.get() && active_businessactivities.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$organisationDetailsPageNLS.theoretical
+								feature:iam_license
+								hidden:Not BooleanPredicate(hastheoretical)
+								activation-event:Set True to active_theoreticalrights
+							
+								IncludeFragment {
+									fragment:fragmentOrganisationTheoreticalRightsMasterDetails
+									with value-of selectedOrganisationUid to inuid, 
+										value-of True to incanshowdetails, 
+										onlydirectselection binds-to inonlydirectselection, 
+										value-of Eval "active_model.get() && active_theoreticalrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$organisationDetailsPageNLS.overallocated
+								feature:iam_license
+								hidden:IntPredicate(nboverallocated) { when >0 then False otherwise True }
+								activation-event:Set True to active_overallocatedrights
+
+								IncludeFragment {
+									fragment:fragmentOrganisationOverAllocationsList
+									with value-of selectedOrganisationUid to inuid, value-of Eval "active_model.get() && active_overallocatedrights.get()" to inenabled, value-of True to incanshowdetails, onlydirectselection binds-to inonlydirectselection, nboverallocated binds-to outnbproblems
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$organisationDetailsPageNLS.access
+						activation-event:Set True to active_access
+						
+						TabFolder {
+							border:False
+							layout:Layout { indent: horizontal 0 vertical 6 }
+							
+							TabItem {
+								text:$organisationDetailsPageNLS.accounts
+								activation-event:Set True to active_accounts
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationAccounts
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_access.get() && active_accounts.get()" to inenabled
+								}
+							}
+//							TabItem {  // Hidden for now, let's discuss if it is relevant to display infos at a group level
+//								text:$organisationDetailsPageNLS.groups
+//								activation-event:Set True to active_groups
+//								
+//								IncludeFragment {
+//									fragment:fragmentOrganisationGroups
+//									with value-of selectedOrganisationUid to inuid, 
+//									     onlydirectselection binds-to inonlydirectselection,
+//									     value-of True to incanshowdetails,
+//									     value-of active_groups to inenabled
+//								}
+//							}
+							TabItem {
+								text:$organisationDetailsPageNLS.applications
+								hidden:Not BooleanPredicate(hasapplications)
+								activation-event:Set True to active_applications
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationApplications
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_access.get() && active_applications.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$organisationDetailsPageNLS.permissions
+								hidden:Not BooleanPredicate(hasapplications)
+								activation-event:Set True to active_permissions
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationPermissions
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_access.get() && active_permissions.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$organisationDetailsPageNLS.accessrights
+								hidden:Not BooleanPredicate(hasapplications)
+								activation-event:Set True to active_accessrights
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationAccessRights
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_access.get() && active_accessrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$organisationDetailsPageNLS.folders
+								feature:unstructureddata_license
+								hidden:Not BooleanPredicate(hasshares)
+								activation-event:Set True to active_folders
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationFolders
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_access.get() && active_folders.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$organisationDetailsPageNLS.folderrights
+								feature:unstructureddata_license
+								hidden:Not BooleanPredicate(hasshares)
+								activation-event:Set True to active_folderrights
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationFoldersRights
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_access.get() && active_folderrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$organisationDetailsPageNLS.usages
+								hidden:Not BooleanPredicate(hasusages)
+								activation-event:Set True to active_usages
+								
+								IncludeFragment {
+									fragment:fragmentOrganisationUsages
+									with value-of selectedOrganisationUid to inuid, 
+									     onlydirectselection binds-to inonlydirectselection,
+									     value-of True to incanshowdetails,
+									     value-of Eval "active_access.get() && active_usages.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text: $organisationDetailsPageNLS.controls
+						activation-event:
+							Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment: fragmentOrganisationControlDefectsList with
+								value-of selectedOrganisationUid to inuid,
+								value-of active_control to inenabled,
+								value-of True to incanshowdetails,
+								onlydirectselection binds-to inonlydirectselection
+						}
+					}
+					TabItem {
+						text:$organisationDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+					
+						IncludeFragment {
+							fragment:fragmentOrganisationAnalytics
+							with value-of selectedOrganisationUid to inuid,
+							onlydirectselection binds-to inonlydirectselection, 
+							value-of active_analytics to inenabled
+						}
+					
+					}
+					TabItem {
+						text:$organisationDetailsPageNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decision
+						
+						IncludeFragment {
+							fragment:fragmentOrganisationDecisionHistory
+							with value-of selectedOrganisationUid to inuid,
+										 nbdecision binds-to outnbdecision,
+									     onlydirectselection binds-to inonlydirectselection,
+							value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

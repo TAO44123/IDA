@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_users_distribution_history" displayname="users distribution history">
+	<Definition scriptfile="views/bw_cloud_pam/reports/roi/users_distribution.javascript" name="D1627327028350">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1627327028350" title="Human">
+			<InnerView name="bwpam_human_users_history">
+				<Param name="F1638366906488" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1627327038153" type="unionview" x="710" y="206" w="300" h="50" title="Other">
+			<InnerView name="bwpam_other_users_history">
+				<Param name="F1638366814200" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+				<Param name="F1638367583786" viewparam="type" viewparamvalue="{param.other_type.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="human" secondary_discriminator="builtin" discriminatorcolumn="disc1"/>
+			<ExcludeList>
+				<Exclude name="disc1"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627327038269" source="C1627327028350" target="C1627327038153" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1627327076813" type="unionview" x="749" y="237" w="300" h="50" title="Application">
+			<InnerView name="bwpam_application_users_history">
+				<Param name="F1638366796128" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="builtin" secondary_discriminator="application" discriminatorcolumn="disc2"/>
+			<ExcludeList>
+				<Exclude name="disc2"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627327076929" source="C1627327038153" target="C1627327076813" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1733799701078" type="unionview" x="686" y="338" w="300" h="50" title="CA Identity Service">
+			<InnerView name="bwpam_service_users_history">
+				<Param name="F1733800511048" viewparam="vault_code" viewparamvalue="{param.vault_code.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="application" secondary_discriminator="service" discriminatorcolumn="disc3"/>
+			<ExcludeList>
+				<Exclude name="disc3"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1733799701365" source="C1627327076813" target="C1733799701078" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewSort name="sort" attribute1="timeslotcommitday"/>
+	<ViewParam name="vault_code" displayname="vault_code">
+	</ViewParam>
+	<ViewParam name="other_type" displayname="other_type">
+		<Value name="V1736956383311_1" data="Other"/>
+	</ViewParam>
+</View>

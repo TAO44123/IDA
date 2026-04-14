@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA safe members" scriptfile="collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039405111_1_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617040499341">
+		<Component name="C1617040499341" type="discoverysource" x="31" y="11" w="300" h="64" title="CA_EVD_safe_owners">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_OwnersList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-OwnersList.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617040697402" type="right" x="29" y="1016" w="300" h="64" title="safe members">
+			<Domain repository="object_repo" repoerror="true" repoevent="repositoryNotFound"/>
+			<Right account="object_id" application="EVD_safename" permission="roles" error="true" event="accountOrGroupNotFound" permerror="true" permevent="permissionNotFound" apperror="true" appevent="applicationNotFound" grouphierarchy="grouprecursivesearch">
+				<Attribute name="custom1" attribute="ldap_expirationdate"/>
+				<Attribute name="action" attribute="rolePermissions"/>
+				<Attribute name="context" attribute="roleContext"/>
+			</Right>
+		</Component>
+		<Link name="L1617040702878" source="C1617040499341" target="C1635931106677" priority="1"/>
+		<Component name="C1618240531515" type="joinfilter" x="31" y="249" w="300" h="64" title="Join safe members with users">
+			<Join source="C1618240637334" zeroerror="true" zerotechnical="true" zeroevent="join_fails"/>
+			<Attributes>
+				<Attribute name="A1622242472115" attribute="ca_user_userdn" source="EVD_ldapfulldn" type="String" multivalued="false"/>
+				<Attribute name="A1622242507819" attribute="ca_user_repository_code" source="repository_code" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="EVD_ownerid" join="EVD_userid"/>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Component name="C1618240637334" type="discoverysource" x="480" y="249" w="300" h="64" title="CA_users_ldap">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_UsersList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-UsersList.csv&apos;)}"/>
+			<Request/>
+		</Component>
+		<Link name="L1618240649870" source="C1618240637334" target="C1618240531515" priority="1"/>
+		<Component name="C1618241351848" type="joinfilter" x="31" y="376" w="300" h="64" title="Join safe members with groups">
+			<Attributes>
+				<Attribute name="A1622243115919" attribute="ca_group_dn" source="EVD_ldapfulldn" type="String" multivalued="false"/>
+				<Attribute name="A1622243146797" attribute="ca_group_repository_code" source="repository_code" type="String" multivalued="false"/>
+				<Attribute name="A1638464574400" attribute="EVD_ldapdirectory" source="EVD_ldapdirectory" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1618241399441"/>
+			<Cache active="true" main="EVD_ownerid" join="EVD_groupid"/>
+		</Component>
+		<Link name="L1618241370427" source="C1618240531515" target="C1618241351848" priority="1"/>
+		<Component name="C1618241399441" type="discoverysource" x="485" y="376" w="300" h="64" title="CA_groups_ldap">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_GroupsList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-GroupsList.csv&apos;)}"/>
+			<Request/>
+		</Component>
+		<Link name="L1618241408108" source="C1618241399441" target="C1618241351848" priority="1"/>
+		<Component name="C1618241629328" type="changefilter" x="29" y="637" w="300" h="64" title="safe member id and repo">
+			<Actions>
+				<Action name="U1618241684453" action="add" attribute="object_id" type="String" multivalued="false" errorexist="false" newvalue="{(! dataset.isEmpty(&apos;ca_user_userdn&apos;)) ? dataset.ca_user_userdn.get() : ( (! dataset.isEmpty(&apos;ca_group_dn&apos;)) ? dataset.ca_group_dn.get() : dataset.EVD_ownerid.get())}" description="if safe memeber is LDAP User or Group get the DN"/>
+				<Action name="U1618241693608" action="add" attribute="object_repo" type="String" multivalued="false" errorexist="false" newvalue="{(! dataset.isEmpty(&apos;ca_user_userdn&apos;)) ? dataset.ca_user_repository_code.get() : ( (! dataset.isEmpty(&apos;ca_group_dn&apos;)) ? dataset.ca_group_repository_code.get() : dataset._REPOSITORY_CODE_)}" description="if safe memeber is LDAP User or Group get the domain name"/>
+				<Action name="U1624458194173" action="update" attribute="EVD_safename" newvalue="{&apos;SAFE_&apos;+dataset.EVD_safeid.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+				<Action name="U1661501800390" action="add" attribute="permission_type" type="String" multivalued="false" newvalue="ca_safe" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1618242352551" source="C1618241351848" target="C1638462741959_1" priority="1"/>
+		<Link name="L1618242359449" source="C1617040578248_1" target="C1617040697402" priority="2"/>
+		<Component name="C1635931106677" type="changefilter" x="31" y="131" w="300" h="64" title="Format EVD date">
+			<Actions>
+				<Action name="U1635931251309" action="convertdate" oldname="EVD_expirationdate" attribute="EVD_expirationdate_formated" type="Date" multivalued="false" newvalue="{config.dateformat}" errorunknown="false" errorexist="false"/>
+				<Action name="U1635931409073" action="add" attribute="EVD_isExpired_computed" type="Boolean" multivalued="false" newvalue="{ (dataset.isEmpty(&apos;EVD_expirationdate_formated&apos;) ? false : ((dataset.EVD_expirationdate_formated.get().diff(new java.util.Date(),&quot;d&quot;) &gt; 0) ? false : true)) }" errorexist="false"/>
+				<Action name="U1639157021506" action="add" attribute="ldap_expirationdate" type="String" multivalued="false" newvalue="{dataset.EVD_expirationdate_formated.get() != null ? dataset.EVD_expirationdate_formated.get().toLDAPString() : null }" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1635931588601" source="C1635931106677" target="C1618240531515" priority="1" expression="!dataset.EVD_isExpired_computed.get()" labelcustom="true" label="SafeMember Not Expired"/>
+		<Component name="C1617217653791_1" type="enumfilter" x="29" y="763" w="300" h="64" title="Enumerate roles">
+			<Multivalued>
+				<Value name="M1661523787999" attribute="roles"/>
+				<Value name="M1662107959025" attribute="rolePermissions"/>
+				<Value name="M1662107978485" attribute="roleContext"/>
+			</Multivalued>
+		</Component>
+		<Component name="C1617040578248_1" type="permission" x="28" y="891" w="300" h="64" title="Safe roles">
+			<Permission code="roles" application="EVD_safename" apperror="true" appevent="AppNotFound" error="true" event="PermissionNullOrEmpty">
+				<Attribute name="displayname" attribute="roles"/>
+				<Attribute name="permissiontype" attribute="permission_type"/>
+			</Permission>
+		</Component>
+		<Link name="L1617217680683_1" source="C1617217653791_1" target="C1617040578248_1" priority="1"/>
+		<Link name="L1661523719411" source="C1618241629328" target="C1617217653791_1" priority="1"/>
+		<Component name="C1638463980180_1" type="discoverysource" x="486" y="505" w="300" h="64" title="CA_ldap_directories">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_ldap_directories.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_ldapdirectories.csv&apos;)}"/>
+		</Component>
+		<Component name="C1638462741959_1" type="joinfilter" x="31" y="507" w="300" h="64" title="get GroupRecursiveSearch">
+			<Join source="C1638463980180_1"/>
+			<Cache active="true" main="EVD_ldapdirectory" join="domainname"/>
+			<Attributes>
+				<Attribute name="A1638464883281" attribute="grouprecursivesearch" source="grouprecursivesearch" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1638464012982_1" source="C1638463980180_1" target="C1638462741959_1" priority="1"/>
+		<Link name="L1679589368261" source="C1638462741959_1" target="C1618241629328" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="dateformat"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

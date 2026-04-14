@@ -1,0 +1,149 @@
+ds_servicenow_ci_NLS = NLS {
+  title [ en "ServiceNow - CMDB" fr "ServiceNow - CMDB" ]
+  description [ 
+    en "Collects Users, Groups, Roles, memberships and all CI elements to empower analysis and audit"
+    fr "Collecte les utilisateurs, les groupes, les rôles et tous les éléments de configuration afin de faciliter l'analyse et l'audit."]
+  label_url [
+  	en "URL"
+  	fr "URL"
+  ]
+  label_url_TT [
+  	en "ServiceNow URL (https://mytenant.service-now.com)"
+  	fr "ServiceNow URL (https://mytenant.service-now.com)"
+  ]
+  label_login [ 
+  	en "Login"
+  	fr "Login"]
+  label_login_TT [ 
+  	en "ServiceNow user login." 
+  	fr "Login de l'utilisateur ServiceNow"]
+  label_token [ 
+  	en "Token"
+  	fr "Token"]
+  label_token_TT [ 
+  	en "ServiceNow token required to authenticate"
+  	fr "Token ServiceNow requis pour l'authentification"]
+  label_filterbyclass [
+  	en "Filter by Class"
+  	fr "Filtrer par classe"
+  ]
+  label_filterbyclass_TT [
+  	en "Must be provided as a comma separated string without any space."
+  	fr "Doit être fourni sous la forme d'une chaîne de caractères séparée par des virgules, sans espace."
+  ]
+  label_query [
+  	en "Query"
+  	fr "Query"
+  ]
+  label_query_TT [
+  	en "Use ServiceNow search menu and copy/paste your advanced search query here to filter cmdb_ci elements, such as \"used_forINProduction,Staging,QA^operational_statusIN1\""
+  	fr "Utilisez le menu de recherche de ServiceNow et copiez/collez votre requête de recherche avancée ici pour filtrer les éléments cmdb_ci, par exemple \"used_forINProduction,Staging,QA^operational_statusIN1\""
+  ]
+}
+
+ds_servicenow_ci = Page {
+	title: $ds_servicenow_ci_NLS.title
+	tags: "bwds_connector" , "live" , "csv", "servicenow", "cmdb"
+	description: $ds_servicenow_ci_NLS.description
+	icon: "bw_dsm/L/bw_genericapp.png"
+	large-icon: "bw_dsm/XL/bw_genericapp.png"
+	metadata: ( 	    
+	    category -> "infrastructure", 
+	    family -> "API",
+	    collector -> "bw_servicenowci",
+	    action ->"cmdbservicenow",
+	    destPathVar -> "bw_servicenowci_sourcefolder",
+	    filePattern -> "*.csv",
+	    hasMapping -> False,
+	    multiFile -> True  
+	 )
+}
+
+/* config dynamic fragment */
+
+servicenowci_params = Constant { value: "url,login,token,filterbyclass,query" }
+
+deserializeOptions_snci = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant servicenowci_params }
+  options = Input
+  url = Output { }
+  login = Output { }
+  token = Output { }
+  filterbyclass = Output { }
+  query = Output { }
+}
+
+serializeOptions_snci = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant servicenowci_params }
+  secretnames = Input { default: "token"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+
+  url = Input { }
+  login = Input { }
+  token = Input { }
+  filterbyclass = Input { }
+  query = Input { }
+}
+
+
+ds_servicenow_ci_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  // custom
+  url = Variable {}
+  login = Variable {}
+  token = Variable
+  filterbyclass = Variable
+  query = Variable
+  
+   doInit = NamedAction(
+     Call deserializeOptions_snci ( options to options, url from url, login from login, token from token , filterbyclass from filterbyclass, query from query )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_snci ( dsname to secretdsname, 
+          url to url, login to login, token to token , filterbyclass to filterbyclass, query to query   ) to options
+   )
+   
+  Edit { 
+     label: $ds_servicenow_ci_NLS.label_url
+     variable: url
+     not-empty:True
+     tooltip: $ds_servicenow_ci_NLS.label_url_TT
+  }
+  Edit { 
+     label: $ds_servicenow_ci_NLS.label_login
+     variable: login
+     not-empty:True
+     tooltip: $ds_servicenow_ci_NLS.label_login_TT
+  }
+  Edit { 
+     label: $ds_servicenow_ci_NLS.label_token
+     variable: token
+     not-empty:True
+     password-mode: True
+     tooltip: $ds_servicenow_ci_NLS.label_token_TT
+  }
+  Edit { 
+     label: $ds_servicenow_ci_NLS.label_filterbyclass
+     variable: filterbyclass
+     not-empty:False
+     tooltip: $ds_servicenow_ci_NLS.label_filterbyclass_TT
+  } 
+  Edit { 
+     label: $ds_servicenow_ci_NLS.label_query
+     variable: query
+     not-empty:False
+     tooltip: $ds_servicenow_ci_NLS.label_query_TT
+  } 
+  
+}
+
+
+

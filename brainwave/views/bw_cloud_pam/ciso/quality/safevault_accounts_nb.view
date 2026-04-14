@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="safevault_access_accounts_nb" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="safe_access_all accounts" notes="" begindate="" enddate="">
+	<ViewParam name="get_vault_code" displayname="get_vault_code" type="Boolean">
+		<Value name="0" data="false"/>
+	</ViewParam>
+	<ViewParam name="type_filter" displayname="type_filter">
+		<Value name="0" data="ca_safe"/>
+	</ViewParam>
+	<ViewComputedAttribute name="isvault" displayname="isvault" type="Boolean" expression="param.type_filter.get() == &apos;ca_vault&apos;"/>
+	<ViewComputedAttribute name="vault_name" displayname="vault_name" type="String" expression="dataset.vault_code.get() == null ? &apos;$$$all-vaults$$$&apos; : dataset.vault_code.get()"/>
+	<ViewComputedAttribute name="isquality" displayname="isquality" type="Integer" expression="1"/>
+	<ViewComputedAttribute name="controlidentifier" displayname="controlidentifier" type="String" expression="&apos;NB_ACCOUNTS_ACCESSING_&apos; + (param.type_filter.get() == &apos;ca_safe&apos; ? &apos;SAFE&apos; : &apos;VAULT&apos;)"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1617916983940_3953" attribute="recorduid" alias="nbdiscrepancies" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1666079407682_460" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="applicationright">
+		<ViewAttribute name="1666079413678_462" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1664893221268_0" reference="type_filter" operation="eq" ignoreifempty="false">
+				<Value name="0" data=""/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewJoin name="J1617196760370_409" prefix="vault_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="((! param.isEmpty(&apos;get_vault_code&apos;)) &amp;&amp; ((&apos;&apos; + param.get_vault_code.get()) == &apos;true&apos;))" join="repository">
+			<ViewAttribute name="1666079419070_465" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+</View>

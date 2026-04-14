@@ -1,0 +1,1274 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_controls_browser/resources/icons.page"
+
+bw_control_browser_group_picker = Dialog {
+	title: $picker.group.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	controlCode = Variable {
+		type: String
+	}
+	// output variables (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+	outDisplayName = Variable {
+		type: String
+		multivalued: True
+	}
+	// search attributes
+	localCode = Variable {
+		type: String
+	}
+	localDisplayname = Variable {
+		type: String
+	}
+	localRepository = Variable {
+		type: String
+	}
+	localCodeEdit = Variable {
+		type: String
+	}
+	localDisplaynameEdit = Variable {
+		type: String
+	}
+	localRepositoryEdit = Variable {
+		type: String
+	}
+
+	// database view
+	groupList = Dataset {
+		view: bw_control_browser_group_picker with
+			localCode to paramCode,
+			localDisplayname to paramDisplayname,
+			localRepository to paramRepository,
+			inUidList to paramUid,
+			controlCode to controlcode
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 10%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+		Group {
+			Image {
+				image: %concept_16.group
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+			// search fields
+			Edit {
+				variable: localDisplaynameEdit
+				label: $group.concept
+				proposal: Group.displayName
+			}
+			Edit {
+				variable: localCodeEdit
+				label: $group.code
+				proposal: Group.code
+			}
+			Edit {
+				variable: localRepositoryEdit
+				label: $repository.concept
+				proposal: Repository.displayName
+				commands: [
+					Command {
+						icon: %concept_16.repository
+						tooltip: $picker.repository.title
+						actions: Dialog repositoryPicker (localRepositoryEdit from outDisplayname)
+					}
+				]
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions: Set localDisplaynameEdit to localDisplayname, Set localCodeEdit to localCode, Set localRepositoryEdit to localRepository
+					text: $picker.searchaction
+				}
+				Button {
+					actions: Unset localDisplaynameEdit, Unset localCodeEdit, Unset localRepositoryEdit,Unset localDisplayname, Unset localCode, Unset localRepository
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+	// results
+	Table {
+		data: groupList
+		checkboxes: uid to outUid and (displayname to outDisplayName)
+		label: Label {
+			value: $picker.group.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $group.code
+			image: %concept_16.group
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: displayname
+			header: $group.displayname
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: repositorydisplayname
+			header: $repository.concept
+			width: 33%
+			sortable: True
+		}
+	}
+}
+
+bw_control_browser_rootcause_picker = Dialog {
+	title: $picker.permission.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	controlCode = Variable {
+		type: String
+	}
+	// output variables (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+	outDisplayname = Variable {
+		type: String
+		multivalued: True
+	}
+	
+	// search attributes
+	localCode = Variable {
+		type: String
+	}
+	localDisplayname = Variable {
+		type: String
+	}
+	localApplication = Variable {
+		type: String
+	}
+	localCodeEdit = Variable {
+		type: String
+	}
+	localDisplaynameEdit = Variable {
+		type: String
+	}
+	localApplicationEdit = Variable {
+		type: String
+	}
+
+	// database view
+	permissionList = Dataset {
+		view: bw_controls_browser_root_cause_picker with
+			localCode to paramCode,
+			localDisplayname to paramDisplayname,
+			localApplication to paramApplication,
+			inUidList to paramUid,
+			controlCode to controlcode
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 10%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+		Group {
+			Image {
+				image: %concept_16.application
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+			// search fields
+			Edit {
+				variable: localDisplaynameEdit
+				label: $permission.concept
+				proposal: Permission.displayName
+			}
+			Edit {
+				variable: localCodeEdit
+				label: $permission.code
+				proposal: Permission.code
+			}
+			Edit {
+				variable: localApplicationEdit
+				label: $application.concept
+				proposal: Application.displayName
+				commands: [
+					Command {
+						icon: %concept_16.application
+						tooltip: $picker.application.title
+						actions: Dialog applicationPicker (localApplicationEdit from outDisplayname)
+					}
+				]
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions: Set localDisplaynameEdit to localDisplayname, Set localCodeEdit to localCode, Set localApplicationEdit to localApplication
+					text: $picker.searchaction
+				}
+				Button {
+					actions: Unset localDisplaynameEdit, Unset localCodeEdit, Unset localApplicationEdit,Unset localDisplayname, Unset localCode, Unset localApplication
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+	// results
+	Table {
+		data: permissionList
+		checkboxes: uid to outUid and (displayname to outDisplayname)
+		label: Label {
+			value: $picker.permission.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $permission.code
+			image: %concept_16.permission
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: displayname
+			header: $permission.displayname
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: applicationdisplayname
+			header: $application.concept
+			width: 33%
+			sortable: True
+		}
+	}
+}
+
+bw_control_browser_account_picker = Dialog {
+	title: $picker.account.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	controlCode = Variable {
+		type: String
+	}
+	
+	// output variable (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+	outDisplayname = Variable {
+		type:String
+		multivalued:True
+	}
+	// search attributes
+	localIdentifier = Variable {
+		type: String
+	}
+	localLogin = Variable {
+		type: String
+	}
+	localRepository = Variable {
+		type: String
+	}
+	localIdentifierEdit = Variable {
+		type: String
+	}
+	localLoginEdit = Variable {
+		type: String
+	}
+	localRepositoryEdit = Variable {
+		type: String
+	}
+	// database view
+	accountList = Dataset {
+		view: bw_control_browser_account_picker with
+			localIdentifier to paramIdentifier,
+			localLogin to paramLogin,
+			localRepository to paramRepository,
+			inUidList to paramUid,
+			controlCode to controlcode
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 10%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+		Group {
+			Image {
+				image: %concept_16.account
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+			// search fields
+			Edit {
+				variable: localLoginEdit
+				label: $account.login
+				proposal: Account.login
+			}
+			Edit {
+				variable: localIdentifierEdit
+				label: $account.identifier
+				proposal: Account.identifier
+			}
+			Edit {
+				variable: localRepositoryEdit
+				label: $repository.concept
+				proposal: Repository.displayName
+				commands: [
+					Command {
+						icon: %concept_16.repository
+						tooltip: $picker.repository.title
+						actions: Dialog repositoryPicker (localRepositoryEdit from outDisplayname)
+					}
+				]
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions: Set localLoginEdit to localLogin, Set localIdentifierEdit to localIdentifier, Set localRepositoryEdit to localRepository
+					text: $picker.searchaction
+				}
+				Button {
+					actions: Unset localLoginEdit, Unset localIdentifierEdit, Unset localRepositoryEdit,Unset localLogin, Unset localIdentifier, Unset localRepository
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+	// results
+	Table {
+		data: accountList
+		checkboxes: uid to outUid and (login to outDisplayname)
+		label: Label {
+			value: $picker.account.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: identifier
+			header: $account.identifier
+			image: %concept_16.account
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: login
+			header: $account.login
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: repositorydisplayname
+			header: $repository.concept
+			width: 33%
+			sortable: True
+		}
+	}
+}
+
+
+bw_control_browser_application_picker = Dialog {
+
+	title: $picker.application.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	controlCode = Variable {
+		type: String
+	}
+	// output variable (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+	outDisplayname = Variable {
+		type:String
+		multivalued:True
+	}
+	// search attributes
+	localCode = Variable {
+		type: String
+	}
+	localDisplayname = Variable {
+		type: String
+	}
+	localRepository = Variable {
+		type: String
+	}
+	localCodeEdit = Variable {
+		type: String
+	}
+	localDisplaynameEdit = Variable {
+		type: String
+	}
+	localRepositoryEdit = Variable {
+		type: String
+	}
+
+	// database view
+	applicationList = Dataset {
+		view: bw_control_browser_application_picker with
+			localCode to paramCode,
+			localDisplayname to paramDisplayname,
+			localRepository to paramRepository,
+			inUidList to paramUid,
+			controlCode to controlcode
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 10%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+		Group {
+			Image {
+				image: %concept_16.application
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+			// search fields
+			Edit {
+				variable: localDisplaynameEdit
+				label: $application.concept
+			}
+			Edit {
+				variable: localCodeEdit
+				label: $application.code
+			}
+			Edit {
+				variable: localRepositoryEdit
+				label: $repository.concept
+				proposal: Repository.displayName
+				commands: [
+					Command {
+						icon: %concept_16.repository
+						tooltip: $picker.repository.title
+						actions: Dialog repositoryPicker (localRepositoryEdit from outDisplayname)
+					}
+				]
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions: Set localDisplaynameEdit to localDisplayname, Set localCodeEdit to localCode, Set localRepositoryEdit to localRepository 
+					text: $picker.searchaction
+				}
+				Button {
+					actions: Unset localDisplaynameEdit, Unset localCodeEdit, Unset localRepositoryEdit,Unset localDisplayname, Unset localCode, Unset localRepository  
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+	// results
+	Table {
+		data: applicationList
+		checkboxes: uid to outUid and (displayname to outDisplayname)
+		label: Label {
+			value: $picker.application.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: displayname
+			header: $application.concept
+			image: %concept_16.application
+			width: 50%
+			sortable: True
+		}
+		Column {
+			column: repositorydisplayname
+			header: $repository.concept
+			width: 50%
+			sortable: True
+		}
+	}
+}
+
+bw_control_browser_identity_picker = Dialog {
+
+	title: $picker.identity.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	controlCode = Variable {
+		type: String
+	}
+	// output variables (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+	outDisplayname = Variable {
+		type:String
+		multivalued:True
+	}
+	// search attributes
+	localSurname = Variable {
+		type: String
+	}
+	localGivenname = Variable {
+		type: String
+	}
+	localAltname = Variable {
+		type: String
+	}
+	localOrganization = Variable {
+		type: String
+	}
+	localJob = Variable {
+		type: String
+	}
+	localInternal = Variable {
+		type: Boolean
+	}
+	localHrCode = Variable {
+		type: String
+	}
+	localIsManager = Variable {
+		type: Boolean
+	}
+	localSurnameEdit = Variable {
+		type: String
+	}
+	localGivennameEdit = Variable {
+		type: String
+	}
+	localAltnameEdit = Variable {
+		type: String
+	}
+	localOrganizationEdit = Variable {
+		type: String
+	}
+	localJobEdit = Variable {
+		type: String
+	}
+	localInternalEdit = Variable {
+		type: Boolean
+	}
+	localHrCodeEdit = Variable {
+		type: String
+	}
+	localIsManagerEdit = Variable {
+		type: Boolean
+	}
+
+	// database view
+	identityList = Dataset {
+		view: bw_control_browser_identity_picker with
+			localSurname to paramSurname,
+			localGivenname to paramGivenname,
+			localAltname to paramAltname,
+			localOrganization to paramOrganization,
+			localJob to paramJob,
+			localInternal to paramInternal,
+			localHrCode to paramHrCode,
+			localIsManager to paramManager,			
+			inUidList to paramUid,
+			controlCode to controlcode
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 10%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+		Group {
+			Image {
+				image: %concept_16.identity
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+			// search fields
+			Edit {
+				variable: localSurnameEdit
+				label: $identity.surname
+				proposal: Identity.surname
+			}
+			Edit {
+				variable: localGivennameEdit
+				label: $identity.givenname
+				proposal: Identity.givenName
+			}
+			Edit {
+				variable: localAltnameEdit
+				label: $identity.altname
+				proposal: Identity.altName
+			}
+			Edit {
+				variable: localOrganizationEdit
+				label: $organisation.concept
+				proposal: Organisation.displayName
+				commands: [
+					Command {
+						icon: %concept_16.organisation
+						tooltip: $picker.organisation.title
+						actions: Dialog organisationPicker (localOrganizationEdit from outDisplayname)
+					}
+					Command {
+						icon: %chart.hierarchy
+						tooltip: $picker.organisation.hierarchy.title
+						actions: Dialog organisationTreePicker (localOrganizationEdit from outDisplayname)
+					}
+				]
+			}
+			Edit {
+				variable: localJobEdit
+				label: $identity.jobtitledisplayname
+				proposal: JobTitle.displayName
+				commands: [
+					Command {
+						icon: %bwcb.job
+						tooltip: $picker.job.title
+						actions: Dialog jobPicker (localJobEdit from outDisplayname)
+					}
+				]
+			}
+			Combo {
+				variable: localInternalEdit
+				label: $identity.internal
+				allow-none: True
+				options: Static {
+					Option {
+						value: True
+						text: $global.yes
+					}
+					Option {
+						value: False
+						text: $global.no
+					}
+				}
+			}
+			Combo {
+				variable: localIsManagerEdit
+				label: $identity.manager
+				allow-none: True
+				options: Static {
+					Option {
+						value: True
+						text: $global.yes
+					}
+					Option {
+						value: False
+						text: $global.no
+					}
+				}
+			}
+			Edit {
+				variable: localHrCodeEdit
+				label: $identity.hrcode
+				proposal: Identity.hrCode
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions:
+						Set localSurnameEdit to localSurname,
+						Set localGivennameEdit to localGivenname,
+						Set localAltnameEdit to localAltname,
+						Set localOrganizationEdit to localOrganization,
+						Set localJobEdit to localJob,
+						Set localInternalEdit to localInternal,
+						Set localHrCodeEdit to localHrCode,
+						Set localIsManagerEdit to localIsManager
+					text: $picker.searchaction
+				}
+				Button {
+					actions:
+						Unset localSurnameEdit,
+						Unset localGivennameEdit,
+						Unset localAltnameEdit,
+						Unset localOrganizationEdit,
+						Unset localJobEdit,
+						Unset localInternalEdit,
+						Unset localHrCodeEdit,
+						Unset localIsManagerEdit,
+						Unset localSurname,
+						Unset localGivenname,
+						Unset localAltname,
+						Unset localOrganization,
+						Unset localJob,
+						Unset localInternal,
+						Unset localHrCode,
+						Unset localIsManager
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+	// results
+	Table {
+		data: identityList
+		checkboxes: uid to outUid and (fullname to outDisplayname)
+		label: Label {
+			value: $picker.identity.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: fullname
+			hidden: True
+		}
+		Column {
+			column: hrcode
+			header: $identity.hrcode
+			image: IntImageSelection (Current nbmanager) {
+				when > 0 then %concept.manager
+				otherwise %concept.identity
+			}
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: surname
+			header: $identity.surname
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: givenname
+			header: $identity.givenname
+			width: 33%
+			sortable: True
+		}
+	}
+}
+
+bw_control_browser_organisation_picker = Dialog {
+
+	title: $picker.organisation.title
+	width: 500
+	height: 500
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+	
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	controlCode = Variable {
+		type: String
+	}
+	// output variable (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+	outDisplayname =Variable {
+		type:String
+		multivalued:True
+	}
+	// search attributes
+	localCode = Variable {
+		type: String
+	}
+	localShortname = Variable {
+		type: String
+	}
+	localDisplayname = Variable {
+		type: String
+	}
+	localCodeEdit = Variable {
+		type: String
+	}
+	localShortnameEdit = Variable {
+		type: String
+	}
+	localDisplaynameEdit = Variable {
+		type: String
+	}
+
+	// database view
+	organisationList = Dataset {
+		view: bw_control_browser_organisation_picker with
+			localCode to paramCode,
+			localShortname to paramShortname,
+			localDisplayname to paramDisplayname,
+			inUidList to paramUid,
+			controlCode to controlcode
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 15%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+		Group {
+			Image {
+				image: %concept_16.organisation
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+			// search fields
+			Edit {
+				variable: localDisplaynameEdit
+				label: $organisation.concept
+				proposal: Organisation.displayName
+			}
+			Edit {
+				variable: localShortnameEdit
+				label: $organisation.shortname
+				proposal: Organisation.shortName
+			}
+			Edit {
+				variable: localCodeEdit
+				label: $organisation.code
+				proposal: Organisation.code
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions: Set localCodeEdit to localCode, Set localDisplaynameEdit to localDisplayname, Set localShortnameEdit to localShortname
+					text: $picker.searchaction
+				}
+				Button {
+					actions: Unset localCodeEdit, Unset localDisplaynameEdit, Unset localShortnameEdit, Unset localCode, Unset localDisplayname, Unset localShortname
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+	// results
+	Table {
+		data: organisationList
+		checkboxes: uid to outUid and (displayname to outDisplayname)
+		label: Label {
+			value: $picker.organisation.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: shortname
+			header: $organisation.shortname
+			image: %concept_16.organisation
+			width: 50%
+			sortable: True
+		}
+		Column {
+			column: displayname
+			header: $organisation.displayname
+			width: 50%
+			sortable: True
+		}
+	}
+}
+
+bw_control_browser_permission_picker = Dialog {
+
+	title: $picker.permission.title
+	width: 750
+	height: 650
+	mixins: pickerMixin
+
+	buttons: [
+		OkButton {
+			disabled: StringPredicate (outUid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+		CancelButton
+	]
+
+	// input variable : list of uids to restrict scope (if null, no restriction is applied)
+	inUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	// input variable : list of excluded uids to restrict scope (if null, no restriction is applied)
+	inExcludedUidList = Variable {
+		type: String
+		multivalued: True
+	}
+	controlCode = Variable {
+		type: String
+	}
+	// output variables (uid)
+	outUid = Variable {
+		type: String
+		multivalued: True
+	}
+	outDisplayname =Variable {
+		type:String
+		multivalued:True
+	}
+
+	// search attributes
+	localCode = Variable {
+		type: String
+	}
+	localDisplayname = Variable {
+		type: String
+	}
+	localApplication = Variable {
+		type: String
+	}
+	localCodeEdit = Variable {
+		type: String
+	}
+	localDisplaynameEdit = Variable {
+		type: String
+	}
+	localApplicationEdit = Variable {
+		type: String
+	}
+
+	// database view
+	permissionList = Dataset {
+		view: bw_control_browser_permission_picker with
+			localCode to paramCode,
+			localDisplayname to paramDisplayname,
+			localApplication to paramApplication,
+			inUidList to paramUid,
+			controlCode to controlcode
+	}
+
+	// search form
+	Splitter {
+		disposition: Horizontal
+		size: 10%
+		layout: Layout {
+			grab: horizontal False vertical False
+		}
+		Group {
+			Image {
+				image: %concept_16.permission
+				label: Label {
+					break: True
+				}
+			}
+		}
+		Group {
+			// search fields
+			Edit {
+				variable: localDisplaynameEdit
+				label: $permission.concept
+				proposal: Permission.displayName
+			}
+			Edit {
+				variable: localCodeEdit
+				label: $permission.code
+				proposal: Permission.code
+			}
+			Edit {
+				variable: localApplicationEdit
+				label: $application.concept
+				proposal: Application.displayName
+				commands: [
+					Command {
+						icon: %concept_16.application
+						tooltip: $picker.application.title
+						actions: Dialog applicationPicker (localApplicationEdit from outDisplayname)
+					}
+				]
+			}
+			ButtonGroup {
+				layout: Layout {
+					grab: horizontal False vertical False
+					align: horizontal End vertical Beginning
+				}
+				Button {
+					actions: Set localDisplaynameEdit to localDisplayname, Set localCodeEdit to localCode, Set localApplicationEdit to localApplication
+					text: $picker.searchaction
+				}
+				Button {
+					actions: Unset localDisplaynameEdit, Unset localCodeEdit, Unset localApplicationEdit,Unset localDisplayname, Unset localCode, Unset localApplication
+					text: $picker.emptyaction
+				}
+			}
+		}
+	}
+	// results
+	Table {
+		data: permissionList
+		checkboxes: uid to outUid and (displayname to outDisplayname)
+		label: Label {
+			value: $picker.permission.result
+			break: True
+			layout: Layout {
+				align: horizontal Beginning vertical Beginning
+			}
+		}
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		double-click: CloseDialog Ok
+		show-count: True
+
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $permission.code
+			image: %concept_16.permission
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: displayname
+			header: $permission.displayname
+			width: 33%
+			sortable: True
+		}
+		Column {
+			column: applicationdisplayname
+			header: $application.concept
+			width: 33%
+			sortable: True
+		}
+	}
+}

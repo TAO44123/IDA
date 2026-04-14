@@ -1,0 +1,562 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_fragments/lib/mixins.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ""
+	otherwise current
+}
+
+greenBackground = Style {
+	background:Color greenNG
+}
+redBackground = Style {
+	background:Color redNG
+}
+
+review_icons = StringImageTemplate {
+	when LowerCase "ok" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "ok" then "16/famfamfam_silk_icons_v013/accept.png"
+	when LowerCase "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+	when "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+	when LowerCase "reset" then "16/famfamfam_silk_icons_v013/arrow_undo.png"
+	when "reset" then "16/famfamfam_silk_icons_v013/arrow_undo.png"
+	when LowerCase "update" then "16/famfamfam_silk_icons_v013/pencil.png"
+	when "update" then "16/famfamfam_silk_icons_v013/pencil.png"
+	when LowerCase "__IGNORE__" then ""
+	when "__IGNORE__" then ""
+	otherwise "16/famfamfam_silk_icons_v013/help.png"
+}
+
+access360r_application_AccessRightsReviewStatusNLS = NLS {
+	title [en "Access rights review status" fr "Statut de revue des droits d'accès"]
+	description [
+		en "This report lists the application access rights review status. Only active accounts are taken into account. Only the rights directly associated with individuals are taken into account. Only the rights of type 'Application profile' are taken into account. It is possible to modify the columns or to export the results."
+		fr "Ce rapport liste le statut de revue des droits d'accès des applications. Seuls les comptes actifs sont pris en compte. Seuls les droits directement associés aux personnes sont pris en comptes. Seuls les droits de type 'Profil applicatif' sont pris en compte. Il est possible de modifier les colonnes ou d'exporter les résultats"
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+
+	compliancethreshold_label [en "Compliant if last reviewed (nbdays ago)" fr "Conforme si revu il y a (nb de jours)"]
+	compliancethreshold_tooltip [	en "Used to compute the compliance column in the result table:\nAccess rights must have been reviewed in the last X days\nto be considered as compliant"
+									fr "Utilisé pour calculer la colonne de conformité dans la table de résultats:\nLes droits d'accès doivent avoir été revus dans les X derniers jours\npour être considérés comme étant conformes"
+								]
+
+	noncompliant_label [en "Shows non compliant entries only" fr "Afficher seulement les entrées non conforme"]
+	noncompliant_tooltip [en "Shows non compliant entries only" fr "Afficher seulement les entrées non conforme"]
+
+	reviewstatus_label [en "Filter by review status" fr "Filtrer par statut de revue"]
+	reviewstatus_tooltip [en "Filter by review status" fr "Filtrer par statut de revue"]
+
+	col_compliancestatus [en "Compliance \nStatus" fr "Statut de \nconformité"]
+	col_nbdaysleft [en "Nb days left \nbefore next review" fr "Nombre de jours restants \navant la prochaine revue"]
+	col_nbdayslate [en "Nb days late \nto review entry" fr "Nombre de jours \nde retard"]
+	col_reviewstatus [en "Review \nStatus" fr "Statut de \nrevue"]
+	col_reviewedon [en "Reviewed on" fr "Revu le"]
+	col_reviewcomment [en "Review \ncomment" fr "Commentaire \nde revue"]
+	col_reviewedby [en "Reviewed \nby" fr "Revu \npar"]
+	
+	compliance [en "Compliance" fr "Conformité"]
+}
+
+access360r_application_AccessRightsReviewStatus = Page {
+	title: $access360r_application_AccessRightsReviewStatusNLS.title
+	description: $access360r_application_AccessRightsReviewStatusNLS.description
+	tags: "application" priority 100, "byuid" , "review"
+	icon: "16/details/review_16.png" large-icon: "48/details/review_48.png"
+	feature:All(iasreview_license, 	bwa_applicationreviewstatus, Any(governance_license, compliance_license))
+	mixins: simpleReport	
+
+	dock-left:Dock {
+		width:300
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360r_application_AccessRightsReviewStatusNLS.compliance
+			styling:bold
+		}
+		Separator {
+			width:1
+		}
+
+		ParametersEdition {
+			allow-reset:True
+			parameters:	complianceThreshold inline,
+						noncompliantonly inline,
+						reviewstatus inline
+		}
+
+		Spacer {
+			height:Fill
+		}
+		
+	}
+
+	/* Parameters here */
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+
+	complianceThreshold = Parameter {
+		type:Integer
+		constraint:Int{ min:1 max:1000 }
+		default:365
+		label:$access360r_application_AccessRightsReviewStatusNLS.compliancethreshold_label
+		tooltip:$access360r_application_AccessRightsReviewStatusNLS.compliancethreshold_tooltip
+	}
+	
+	noncompliantonly = Parameter {
+		type:Boolean
+		default:False
+		label:$access360r_application_AccessRightsReviewStatusNLS.noncompliant_label
+		tooltip:$access360r_application_AccessRightsReviewStatusNLS.noncompliant_tooltip
+	}
+	
+	reviewstatus = Parameter {
+		type:String
+		multivalued:True
+		mandatory:False
+		label:$access360r_application_AccessRightsReviewStatusNLS.reviewstatus_label
+		tooltip:$access360r_application_AccessRightsReviewStatusNLS.reviewstatus_tooltip
+		constraint:Lookup {
+			data: reviewstatus
+			text: Transform Current val using bwReviewStatus
+			value: Current val
+		}
+	}
+
+	search = SearchDefinition {
+		entity: Application
+		simple-mode-rule: br_application_simple_search
+	}
+	
+		
+	/* Variables here */
+	inpermissiontypes = Variable { multivalued:True initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+
+	outapplicationuid = Variable
+	outpermissionuid = Variable
+	outidentityuid = Variable
+	outaccountuid = Variable
+
+//	applications = Variable { multivalued:True }
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	/* Datasets and records here */
+	accessrights = Dataset {
+		view:access360r_applicationbyuidrightsreviewstatus_bv with complianceThreshold to complianceThreshold, uid to uid
+		excludes:
+			OrPredicate {
+				AndPredicate {
+					StringPredicate(reviewstatus) { when IsEmpty then False otherwise True }
+					Not MultivaluedPredicate(reviewstatus contains Current reviewstatus )
+				}
+			
+				AndPredicate {
+					BooleanPredicate(noncompliantonly)
+					BooleanPredicate(Current compliancestatus)
+				}
+			}
+	}
+
+	reviewstatus = Dataset {
+		values:[	(val->"ok"),
+					(val->"revoke"),
+					(val->"update")
+				]
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	goApplicationDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outapplicationuid to inuid,
+													True to inshowperjob,
+													True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+													True to inshowaccounts,
+													True to inshowperjob,
+													True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowowner,
+												True to inshowcontrols
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				PaginatedTable {
+					data:accessrights
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					page-size:1000
+					double-click:ExecuteNamedAction goPermissionDetails
+					persist-configuration:True
+					Column {
+						column:identityuid
+						hidden:True
+						selection:outidentityuid
+					}
+					Column {
+						column:compliancestatus
+						text:Transform Current compliancestatus using booleanDisplayMapping
+						header:$access360r_application_AccessRightsReviewStatusNLS.col_compliancestatus
+						sortable:True
+						align:Right
+						styling:BooleanStyling(Current compliancestatus) { when True then greenBackground when False then redBackground }
+					}
+					Column {
+						column:compliancenbdaysleft
+						header:$access360r_application_AccessRightsReviewStatusNLS.col_nbdaysleft
+						width:160px
+						sortable:True
+						align:Right
+						initially-masked:True
+					}
+					Column {
+						column:compliancenbdayslate
+						header:$access360r_application_AccessRightsReviewStatusNLS.col_nbdayslate
+						width:160px
+						sortable:True
+						align:Right
+						initially-masked:True
+					}
+					Column {
+						column:reviewstatus
+						header:$access360r_application_AccessRightsReviewStatusNLS.col_reviewstatus
+						tooltip:Current reviewcomment
+						text: Transform Current reviewstatus using bwReviewStatus
+						sortable:True
+						filterable:True
+						image:TemplateImageSelection(LowerCase Current reviewstatus) using bwReviewStatusIcon
+					}
+					Column {
+						column:reviewactiondate
+						header:$access360r_application_AccessRightsReviewStatusNLS.col_reviewedon
+						text:SubString(10) Current reviewactiondate
+						tooltip:Current reviewactiondate
+						sortable:True
+					}
+					Column {
+						column:reviewcomment
+						header:$access360r_application_AccessRightsReviewStatusNLS.col_reviewcomment
+						initially-masked:True
+					}
+					Column {
+						column:reviewerfullname
+						header:$access360r_application_AccessRightsReviewStatusNLS.col_reviewedby
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+			
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						width:128px
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountusername
+						header:$paccount.username
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:reconnoownercode
+						header:$reconciliation.status.noowner
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:reconleavedate
+						header:$reconciliation.leavedate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+
+					Column {
+						column:identityhrcode
+						header:$identity.hrcode
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identityfullname
+						header:$identity.fullname
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identitymail
+						header:$identity.mail
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						header:$identity.internal
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:identityarrivaldate
+						header:$identity.arrivaldate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:identitydeparturedate
+						header:$identity.departuredate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgshortname
+						header:$porganisation.shortname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgdisplayname
+						header:$organisation.concept
+						sortable:True
+						width:160px
+						initially-masked:True
+					}
+			
+			
+					Column {
+						column:uid
+						hidden:True
+						selection:outpermissionuid
+					}
+					Column {
+						column: applicationuid
+						hidden: True
+						selection: outapplicationuid
+					}
+					Column {
+						column:applicationcode
+						header:$papplication.code
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goApplicationDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+						
+					}
+					Column {
+						column:applicationdisplayname
+						header:$application.concept
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goApplicationDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:code
+						header:$ppermission.code
+						width:160px
+						sortable:True
+						filterable:True
+						
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:displayname
+						header:$permission.concept
+						width:100%
+						sortable:True
+						filterable:True
+						
+						actions: ExecuteNamedAction goPermissionDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:permissiontype
+						header:$ppermission.permissiontype
+						width:140px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+
+					Column {
+						column:perimetercode
+						header:$right.perimetercode
+						width:100%
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:perimeterdisplayname
+						header:$right.perimeterdisplayname
+						width:100%
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:action
+						header:$right.action
+						width:100%
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:limit
+						header:$right.limit
+						width:100%
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+				}
+			}
+		}	
+	}
+}

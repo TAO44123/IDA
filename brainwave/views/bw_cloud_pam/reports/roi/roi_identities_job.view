@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpam_roi_identities_job" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="identity" displayname="roi identities job" notes="">
+	<ViewParam name="nbdays" displayname="nbdays" type="Integer" defaultvalue="1000"/>
+	<ViewParam name="loginday" displayname="loginday" type="Integer" defaultvalue="{(Date.now / 3600000 / 24) - param.nbdays.get()}"/>
+	<ViewSort name="sort" attribute1="1627588138888_2703" direction1="DESC"/>
+	<ViewJoin name="J1627419824099_720" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="allocation">
+		<ViewAttribute name="1627588082813_2689" attribute="jobtitledisplayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1627588082813_2690" attribute="jobtitleuid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewJoin name="J1627587672782_2651" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accountreconciliation">
+		<ViewJoin name="J1603717697056_491" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="applicationright">
+			<ViewAttribute name="1627986084516_663" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1627979143979_0" operation="in" ignoreifempty="false">
+					<Value name="0" data="ca_safe"/>
+					<Value name="1" data="ca_vault"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewJoin name="J1620218499229_898" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="bw_pam_userrefaccount_join_metadatavalue">
+			<ViewJoin name="J1620218504642_899" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+				<ViewAttribute name="1627986172605_692" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1627324085441_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="0"/>
+					</ViewAttributeFilter>
+					<ViewAttributeFilter name="F1627324112839_1" operation="isNull" ignoreifempty="false"/>
+				</ViewAttribute>
+				<ViewAttribute name="1627986172605_693" attribute="lastloginday" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1627979693513_0" reference="loginday" operation="lt" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="1627588138888_2703" attribute="recorduid" alias="nb_identities" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+</View>

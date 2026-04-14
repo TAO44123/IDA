@@ -1,0 +1,229 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+/* Nationalized labels here */
+teamreports360NLS = NLS {
+	title [en "Team list" fr "Liste de l'équipe"]
+	dyntitle [en "Team list for {0}" fr "Liste de l''équipe de {0}"]
+	description [
+		en "This report lists the active members of the team. It is possible to restrict the display to the direct team or to display the whole team.  It is possible to filter the results to show only the differences since a given date. It is possible to modify the columns or to export the results by right clicking on the table."
+		fr "Ce rapport liste les membres actifs de l'équipe. Il est possible de restreindre l'affichage à l'équipe directe ou d'afficher toute l'équipe.  Il est possible de filtrer les résultats pour ne faire apparaitre que les différences depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant un clic droit sur le tableau"
+	]
+}
+
+trtimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+trtimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+trmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+teamreports360detail = Page {
+	title: $teamreports360NLS.title
+	description: $teamreports360NLS.description
+	tags: "identityext" priority 200, "byuid" , "browsing", "operationalmanager"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_teamreports
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page teamreports360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+teamreports360hp = Page {
+	title: $teamreports360NLS.title
+	description: $teamreports360NLS.description
+	feature:bwa360_teamreports
+	tags: "myteam_access360" priority 1
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page teamreports360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+teamreports360 = Page {
+	title: $teamreports360NLS.title
+	dynamic-title: $teamreports360NLS.dyntitle(identity.fullname)
+	description: $teamreports360NLS.description
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa360_teamreports
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:br_identityDetail with uid to uid
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	teamreports = Dataset {
+		view:enduser360_teamreports with uid to uid, UserVariable session_indirectTeam360 to indirectteam,UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_indirectTeam360
+					label:$session_indirectTeam360NLS.label
+					tooltip:$session_indirectTeam360NLS.tooltip
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				Table {
+					data:teamreports
+					layout:Layout {grab: horizontal True vertical True }
+					show-count:True
+					show-filter:True
+					configurable:True
+					persist-configuration:True
+					persist-configuration-key:uid
+					
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then trtimeline_highlightnew360 when 'Removed' then trtimeline_highlightremoved360 when 'Invalid' then trtimeline_highlightremoved360 } text:Transform Current status using trmapping360 }
+					Column {
+						sortable:True
+						filterable:True
+						column:hrcode
+						header:$identity.hrcode
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:fullname
+						header:$identity.fullname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:mail
+						header:$identity.mail
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:internal
+						header:$identity.internal
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:arrivaldate
+						header:$identity.arrivaldate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:departuredate
+						header:$identity.departuredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:orgdisplayname
+						header:$organisation.concept
+						width:160px
+					}
+				}
+			}
+		}	
+	}
+}

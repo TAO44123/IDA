@@ -1,0 +1,349 @@
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+
+fragmentFolderNLS = NLS {
+	concept [en "Directory" fr "Répertoire"]
+	code [en "Path" fr "Chemin"]
+	displayname [en "Name" fr "Nom"]
+	alias [en "Alias" fr "Alias"]
+	type [en "Type" fr "Type"]
+	description [en "Description" fr "Description"]
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de sensibilité"]
+	fsnbread [en "Nb read access" fr "Nb de droits en lecture"]
+	fsnbwrite [en "Nb write access" fr "Nb de droits en écriture"]
+	fsnbcontrol [en "Nb full control access" fr "Nb de droits contrôle total"]
+	inherited [en "Inherited ACL" fr "ACL héritée"]
+	lastaccessdate [en "Last access date" fr "Date de dernier accès"]
+	family [en "Share family" fr "Famille de partage"]
+	lastmodifydate [en "Last modification date" fr "Date de derniere modification"]
+	numberoffiles [en "Number of files" fr "Nombre de fichiers"]
+	totalsize [en "Total size" fr "Taille totale"]
+	basic [en "Access type" fr "Type accès"]
+	lastmodifiedby [en "Last modified by" fr "Dernière modification par"]
+	lastmodificationdate [en "Last modification date" fr "Date de dernière modification"]
+	managed [en "Is managed" fr "Sous gestion"]
+	fileserver [en "Server" fr "Serveur"]
+}
+
+fragmentPFolderNLS = NLS {
+	concept [en "Directory" fr "Répertoire"]
+	code [en "Path" fr "Chemin"]
+	displayname [en "Folder name" fr "Nom répertoire"]
+	alias [en "Folder alias" fr "Alias répertoire"]
+	type [en "Folder type" fr "Type répertoire"]
+	description [en "Folder description" fr "Description répertoire"]
+	sensitivitylevel [en "Folder sensitivity level" fr "Niveau sensibilité répertoire"]
+	sensitivityreason [en "Folder sensitivity reason" fr "Raison de sensibilité répertoire"]
+	fsnbread [en "Nb read access" fr "Nb de droits en lecture"]
+	fsnbwrite [en "Nb write access" fr "Nb de droits en écriture"]
+	fsnbcontrol [en "Nb full control access" fr "Nb de droits contrôle total"]
+	inherited [en "Inherited ACL" fr "ACL héritée"]
+	lastaccessdate [en "Folder last access date" fr "Date de dernier accès répertoire"]
+	lastmodifydate [en "Folder last modification date" fr "Date de derniere modification répertoire"]
+	numberoffiles [en "Number of files" fr "Nombre de fichiers"]
+	totalsize [en "Total size" fr "Taille totale"]
+	basic [en "Access type" fr "Type accès"]
+	lastmodifiedby [en "Folder last modified by" fr "Dernière modification répertoire par"]
+	lastmodificationdate [en "Folder last modification date" fr "Date de dernière modification répertoire"]
+	managed [en "Folder is managed" fr "Répertoire sous gestion"]
+}
+
+fragmentShareNLS = NLS {
+	concept [en "Share" fr "Partage"]
+	code [en "Code" fr "Code"]
+	displayname [en "Name" fr "Nom"]
+	basic [en "Access type" fr "Type accès"]
+	family [en "Family" fr "Famille"]
+	pfamily [en "Share \nfamily" fr "Famille \nde partage"]
+	description [en "Description" fr "Description"]
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de sensibilité"]
+	managed [en "Is managed" fr "Sous gestion"]
+}
+
+fragmentPShareNLS = NLS {
+	concept [en "Share" fr "Partage"]
+	code [en "Share code" fr "Code du partage"]
+	displayname [en "Share name" fr "Nom du partage"]
+	basic [en "Share access type" fr "Type accès du partage"]
+	family [en "Share family" fr "Famille de partage"]
+	description [en "Share description" fr "Description partage"]
+	sensitivitylevel [en "Share sensitivity level" fr "Niveau sensibilité partage"]
+	sensitivityreason [en "Share sensitivity reason" fr "Raison de sensibilité partage"]
+	managed [en "Share is managed" fr "Partage sous gestion"]
+}
+
+fragmentFolderTypeNLS = NLS {
+	R [en "Share" fr "Partage"]
+	D [en "Directory" fr "Répertoire"]
+	F [en "File" fr "Fichier"]
+	NA [en "N/A" fr "N.D."]
+}
+
+fragmentFolderTypeMapping = StringMapping {
+	when "R" then $fragmentFolderTypeNLS.R
+	when "D" then $fragmentFolderTypeNLS.D
+	when "F" then $fragmentFolderTypeNLS.F
+	when IsEmpty then $fragmentFolderTypeNLS.NA
+	otherwise current
+}
+
+bwfShareDetailGuessManager_DialogNLS = NLS {
+	title [
+		en "Guess manager"
+		fr "Trouver le responsable"
+	] 
+	description [
+		en "Is the manager of {0} organisation, and {1}% of the people having write access to this share are part of this organisation"
+		fr "Est le responsable de l''organisation {0}, et {1}% des personnes disposant d''un accès en écriture sur ce partage font partie de cette organisation"
+	]
+	empty [
+		en "Oups... we did not guessed anything for this share, sorry."	
+		fr "Oups... nous n'avons rien trouvé de pertinent pour ce partage, désolé."
+	]
+}
+
+bwfShareDetailGuessManager_Dialog = Dialog {
+	title: $bwfShareDetailGuessManager_DialogNLS.title
+	buttons:[ 
+				OkButton {
+						disabled:StringPredicate(selectedmanageruid) { when IsEmpty then True otherwise False }
+				}
+				CancelButton
+			]
+	width:1366
+	height:370
+	
+	uid = Variable
+	selectedmanageruid = Variable
+	
+	candidates = Dataset {
+		view:bwa_sharedidentitywriteaccesslist with uid to uid
+		limit:10
+	}
+
+	ConditionalGroup {
+		IntCondition(Count candidates) {
+			when =0 then [
+				Header {
+					value:$bwfShareDetailGuessManager_DialogNLS.empty
+				}
+			]
+			otherwise [
+				Table {
+					data:candidates
+					layout:Layout { grab:horizontal True vertical True }
+					hide-header:True
+					
+					Column {
+						column:manageruid
+						selection:selectedmanageruid
+						hidden:True
+					}
+			
+					Column {
+						column:managerfullname
+						tooltip:Current managerfullname
+						width:160px
+						actions:Dialog bwf_identityDetailsDialog (
+							selectedmanageruid to inuid,
+							True to inshowposition
+						)
+					}
+					Column {
+						column:uid
+						text:$bwfShareDetailGuessManager_DialogNLS.description(Current orgdisplayname, Current percent)
+						width:100%
+					}	
+				}
+			]		
+		}
+	}
+}
+
+bwfShareDetailsManager_Dialog_NLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel process creation?" fr "Annuler la création du processus ?"]
+	complete.buttontext [en "Start process" fr "Initier le processus"]
+	complete.confirm [en "Start process?" fr "Démarrer le processus ?"]
+	complete.flashmessage [en "Process started" fr "Processus démarré"]
+	title [en "Add a new share manager" fr "Ajouter un nouveau responsable de partage"]
+	removetitle [en "Remove share manager" fr "Supprimer le responsable de partage"]
+	dynamictitle [en "Update share manager for \"{0}\"" fr "Mettre à jour le reponsable de partage \"{0}\""]
+	managerhrcode [en "Current manager HR code" fr "Matricule du responsable actuel"]
+	managerfullname [en "Current manager fullname" fr "Nom du responsable actuel"]
+	newmanagerconfirm [en "Are you sure that you want to add {0} {1} as the {2} of the {3} share?" fr "Êtes-vous sûr de vouloir ajouter {0} {1} en tant que {2} du partage {3}?"]
+	newmanagerremove [en "Are you sure that you want to remove {0} {1} as the {2} of the {3} share?" fr "Êtes-vous sûr de vouloir supprimer {0} {1} en tant que {2} du partage {3}?"]
+	confirmupdate [en "Your request has been received successfully" fr "Votre demande a bien été prise en compte"]
+	removeupdate [en "Your request has been received successfully" fr "Votre demande a bien été prise en compte"]
+	
+	setmanager [en "Set a manager for this share" fr "Assigner un responsable pour ce partage"]
+	removemanager [en "Remove the current manager" fr "Supprimer le responsable actuel"]
+	
+	manageraudittrail [en "View change history" fr "Voir l'historique des modifications"]
+
+	question [en "What do you want to do?" fr "Que voulez-vous faire ?"]	
+	changeinprogress [en "A change request is already in progress. Changes are disabled until the current request is complete" fr "Une demande de changement est déja en cours. Les demandes de changements sont désactivés tant que la demande est en cours"]
+	
+	managertype [en "Manager type" fr "Type de responsable"]
+}
+
+/**
+ * Add share manager
+ * 
+ */
+bwfShareDetailsAddManager_Dialog = Dialog {
+	title: $bwfShareDetailsManager_Dialog_NLS.title
+	buttons:[ 
+				OkButton {
+						disabled:StringPredicate(newmanagerUid) { when IsEmpty then True otherwise False }
+						actions:
+							Confirm $bwfShareDetailsManager_Dialog_NLS.newmanagerconfirm( Transform newManager.hrcode using mayBeNullMapping, newManager.fullname, Transform newManagertype using bwfManagerTypeMapping, application.displayname),
+							Set newManagertype to task.managertype,
+							Set paramApplicationUid to task.application,
+							Set newmanagerUid to task.manager,
+							Set newcomment to task.comments,
+							Set delegation to task.delegation,
+							Set _priority to task.delegationpriority,
+							Set _reason to task.delegationreason,
+							Set Date(startdate).valueLDAP to task.delegationbegindate,
+							Set Date(enddate).valueLDAP to task.delegationenddate,
+							Set 'create' to task.action,
+							TaskComplete task wait-end,
+							Flash Information $bwfShareDetailsManager_Dialog_NLS.confirmupdate
+						}
+				CancelButton
+			]
+	width:800
+	height:430
+	
+	/* Parameters here */
+	paramApplicationUid = Variable {type:String multivalued:False}
+
+	newManagertype = Variable {type:String multivalued:False initial:'businessowner' private:True}
+	newmanagerUid = Variable {type:String multivalued:False private:True}
+	newcomment = Variable {type:String multivalued:False private:True initial:' '}
+
+	delegation = Variable {type:Boolean multivalued:False private:True initial:False}
+	_priority = Variable {type:Integer multivalued:False private:True initial:0}
+	_reason = Variable {type:String multivalued:False private:True initial:' '}
+	startdate = Variable {type:Date multivalued:False private:True initial:Date.value}
+	enddate = Variable {type:Date multivalued:False private:True initial:Date.offset(10 years).value}
+	
+	/* Datasets and records here */
+	// Record for concept details
+	application = Record {
+		view: bwf_applicationDetail with paramApplicationUid to uid
+	}
+	
+	newManager = Record {
+		view: br_identityDetail with newmanagerUid to uid
+	}
+
+	task = TaskRecord (create "bwf_updateapplicationmanager")
+	
+	
+	/* Page content */
+	
+	Header {
+		value:$bwfShareDetailsManager_Dialog_NLS.title
+		styling:bigTitleStyle
+	}
+	Separator {
+	}
+	Combo {
+		label:$bw_fragment_updateownerNLS.managertype
+		variable:newManagertype
+		layout:Layout { grab:horizontal False vertical False hint:width 160 }
+		options:Static {
+			Option {
+				text:$bw_fragment_updateownerNLS.businessowner
+				value:'businessowner'
+			}
+			Option {
+				text:$bw_fragment_updateownerNLS.technicalowner
+				value:'technicalowner'
+			}
+			Option {
+				text:$bw_fragment_updateownerNLS.reviewer
+				value:'areviewer'
+			}
+		}
+	}
+	Text {
+		label:$bw_fragment_updateownerNLS.manager
+		value:newManager.fullname
+		layout:Layout { grab:horizontal False vertical False hint:width 260 }
+		commands: Commands {
+				Command {	
+					actions:Dialog identityPicker(newmanagerUid from outUid)
+	            	icon:%concept_16.manager
+	            	tooltip:$bw_fragment_updateownerNLS.managertooltip
+	           }
+				Command {	
+					actions:Dialog bwfShareDetailGuessManager_Dialog(paramApplicationUid to uid, newmanagerUid from selectedmanageruid)
+	            	icon:%collection_16.bulb 
+	            	tooltip:$bw_fragment_updateownerNLS.guessmanagertooltip
+	            	disabled:StringPredicate(application.applicationfamily) { when "SharedFolders" then False otherwise True }
+	           }
+          }
+	}
+	Edit {
+		label:$bw_fragment_updateownerNLS.comments
+		variable:newcomment
+	}
+		Checkbox {
+			variable:delegation
+			label:$bw_fragment_updateownerNLS.delegatedmanager
+			tooltip:$bw_fragment_updateownerNLS.delegatedmanagertooltip
+			text:$bw_fragment_updateownerNLS.isdelegated
+		}
+	Group {
+		title:$bw_fragment_updateownerNLS.delegationdetails
+		Edit {
+			variable:_reason
+			label:$bw_fragment_updateownerNLS._reason
+			tooltip:$bw_fragment_updateownerNLS._reasontooltip
+			disabled:Not BooleanPredicate(delegation)
+		}
+		Spinner {
+			variable:_priority
+			label:$bw_fragment_updateownerNLS._priority
+		layout:Layout { grab:horizontal False vertical False hint:width 130 }
+			tooltip:$bw_fragment_updateownerNLS._prioritytooltip
+			minimum:0
+			maximum:9
+			disabled:Not BooleanPredicate(delegation)
+		}
+		/*
+		DateTime {
+			variable:startdate
+			layout:Layout { grab:horizontal False vertical False hint:width 160 }
+			label:$bw_fragment_updateownerNLS.begindate
+			type:Date
+			tooltip:$bw_fragment_updateownerNLS.begindatetooltip
+			disabled:Not BooleanPredicate(delegation)
+		}	
+		DateTime {
+			variable:enddate
+			layout:Layout { grab:horizontal False vertical False hint:width 160 }
+			label:$bw_fragment_updateownerNLS.enddate
+			tooltip:$bw_fragment_updateownerNLS.enddatetooltip
+			type:Date
+			disabled:Not BooleanPredicate(delegation)
+		}
+		* 
+		*/
+	}
+}

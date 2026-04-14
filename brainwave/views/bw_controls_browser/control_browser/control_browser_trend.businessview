@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bw_control_browser_trend" displayname="control browser trend">
+	<Definition scriptfile="views/bw_controls_browser/empty.javascript" name="D1600417943483">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1600417943483" title="Get indicators">
+			<InnerView name="bw_control_browser_get_all_discrepancies_and_exception">
+				<Param name="F1600418054342" viewparam="only_discrepancies" viewparamvalue="{param.onlyDiscrepancies.get()}"/>
+				<Param name="F1600418063582" viewparam="risk_level" viewparamvalue="{param.riskLevel}"/>
+				<Param name="F1629728866770" viewparam="controlCode" viewparamvalue="{param.controlCode.get()}"/>
+				<Param name="F1669629641726" viewparam="typeControl" viewparamvalue="{param.typeControl}"/>
+				<Param name="F1669825879193" viewparam="filterControlName" viewparamvalue="{param.filterControlName.get()}"/>
+			</InnerView>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Component name="C1600417956269" type="trendview" x="1016" y="239" w="300" h="50" title="Compute exceptions trend">
+			<Trend usereferencedtimeslots="{config.bw_controls_browser_use_reference_timeslots_in_trend}" timeslot="-1" key="{dataset.controlcode.get()}" comparing_column="exceptions" trend_column_result="exception_trend"/>
+			<ViewComputedAttribute name="_exceptions_trend" displayname="Exceptions trend value without null" type="Integer" expression="dataset.isEmpty( &apos;exception_trend&apos; ) ? 0 : dataset.exception_trend.get()"/>
+		</Component>
+		<Link name="L1600417956393" source="C1600417943483" target="C1600417956269" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1666884111604" type="joinview" x="654" y="293" w="300" h="50" title="Get control info (last exec., etc.)">
+			<InnerView name="bwcontrol_allcontrolswithavailability" prefix="info_"/>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.info_recorduid.get()}"/>
+		</Component>
+		<Link name="L1666884112093" source="C1600417956269" target="C1666884111604" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="onlyDiscrepancies" displayname="List discrepancies only" type="Boolean">
+	</ViewParam>
+	<ViewParam name="riskLevel" displayname="Risk level" type="Integer">
+		<Value name="V1602246779397_7" data="0"/>
+	</ViewParam>
+	<ViewParam name="controlCode" displayname="Control code (optional)" type="String">
+	</ViewParam>
+	<ViewParam name="filterControlName" displayname="Filter on Control Name" type="String"/>
+	<ViewSort name="sort" attribute1="_risklevel" direction1="DESC" attribute2="_nb_discrepancies" direction2="DESC" attribute3="controldisplayname"/>
+	<ViewParam name="typeControl" displayname="Type of control (scope or entity)" type="String"/>
+</View>

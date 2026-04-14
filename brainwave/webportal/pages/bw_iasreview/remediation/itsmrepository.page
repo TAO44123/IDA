@@ -1,0 +1,273 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_iasreview/remediation/remediationstrategymanagement.page"
+import "/webportal/pages/bw_fragments/repository/resources.page"
+
+/* Nationalized labels here */
+bwiasr_itsmrepositoryNLS = NLS {
+	title [en "Repository Remediation Strategy" fr "Repository Remediation Strategy"]
+	error [
+		en "You cannot configure a repository with open tickets\nPlease close all open tickets first" 
+		fr "Vous ne pouvez pas configurer une référentiel qui a des tickets ouverts\nVeuillez fermer vos tickets au préalable"
+	]	
+	confirm [en "Are you sure?" fr "Etes-vous sûr?"]	
+	attach.short [en "Attach" fr "Associer"]
+	attach [en "Attach Remediation Strategy" fr "Associer une stratégie de remédiation"]
+	attachTt [en "Attach Remediation Strategy to selected repositories" fr "Associer une stratégie de remédiation aux référentiels sélectionnés"]
+	reset.short [en "Reset" fr "Réinitialiser"]
+	reset [en "Reset Remediation Strategy" fr "Réinitialiser la stratégie de remédiation"]	
+	resetTt [en "Reset Remediation Strategy for selected repositories" fr "Réinitialiser la stratégie de remédiation pour les référentiels sélectionnés"]
+	remove [en "Detach Remediation Strategy" fr "Retirer la stratégie de remédiation"]	
+	removeTt [en "Detach Remediation Strategy for selected repositories" fr "Retirer la stratégie de remédiation pour les référentiels sélectionnés"]
+	nbopenaccount [en "Nb of \nopen tickets \nAccounts" fr "Nb de \ntickets ouverts \nComptes"]
+	nbopengroupmembership [en "Nb of \nopen tickets \nGroups Membership" fr "Nb de \ntickets ouverts \nMembres de groupes"]
+	remediation.type [en "Remediation \nType" fr "Type de \nremédiation"]
+	remediation.instance [en "Remediation \nInstance" fr "Instance de \nremédiation"]
+	lineage [en "Lineage" fr "Origine"]
+}
+
+bwiasr_itsmrepository = PageFragment {
+//	title: $bwiasr_itsmrepositoryNLS.title
+//	tags:"admin"
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedrepositories = Variable { type: String multivalued: True }
+	selectedremediationuid = Variable { type: String multivalued: True }
+
+	strategytype = Variable { type: String }
+	instancecode = Variable { type: String }
+	nb_noniddmrepos = Variable { type: String }
+	
+	/* Datasets and records here */
+	repositories = Dataset {
+		view: bwiasr_repositories
+	}
+	
+	repositories_nbopentickets = Dataset {
+		view: bwiasr_repositoriesnbopentickets
+	}
+	repositories_nbopenticketsgroupmembership = Dataset {
+		view: bwiasr_repositoriesnbopenticketsgroupmembership
+	}
+	
+	allrepositories1 = Dataset {
+		join: Join {
+			primary-dataset:repositories
+			secondary-dataset:repositories_nbopentickets
+			primary-column:uid
+			secondary-column:uid
+			primary-optional:False
+			secondary-cardinality:optional
+			secondary-prefix:openaccount
+		}
+	}
+	allrepositories = Dataset {
+		join: Join {
+			primary-dataset:allrepositories1
+			secondary-dataset:repositories_nbopenticketsgroupmembership
+			primary-column:uid
+			secondary-column:uid
+			primary-optional:False
+			secondary-cardinality:optional
+			secondary-prefix:opengroupmembership
+		}
+	}
+	
+	selectedreposwithopenaccounttickets = Dataset {
+		view: bwiasr_repositoriesnbopentickets
+		includes:
+			AndPredicate {
+				IntPredicate ( Current nb ) {
+					when >0 then True
+				}
+				MultivaluedPredicate ( selectedrepositories contains Current uid )	
+			}
+	}
+
+	selectedreposwithopengroupmembershiptickets = Dataset {
+		view: bwiasr_repositoriesnbopenticketsgroupmembership
+		includes:
+			AndPredicate {
+				IntPredicate ( Current nb ) {
+					when >0 then True
+				}
+				MultivaluedPredicate ( selectedrepositories contains Current uid )	
+			}
+	}
+	
+	reposelection = Dataset {
+		view: bwiasr_repositories with
+			selectedrepositories to uids
+	}
+
+	noniddmreposelection = Dataset {
+		view: bwiasr_repositories with selectedrepositories to uids
+		excludes:
+			StringPredicate ( Current lineage ) {
+				when "iddm" then True
+			}
+		count-variable: nb_noniddmrepos
+	}
+
+	
+	addrepoitsm = TaskRecord ( create "bwr_attachremediationstrategy" )
+	deleterepoitsm = TaskRecord ( create "bwr_deleteremediationstrategy" )
+	
+	/* Page content */
+	ButtonGroup {
+		align: Left
+		uniform: True
+		Button {
+			text: $bwiasr_itsmrepositoryNLS.attach.short
+			tooltip: $bwiasr_itsmrepositoryNLS.attachTt
+			image: "16/famfamfam_silk_icons_v013/connect.png"
+			actions:
+				IntCase ( Sum ( Count selectedreposwithopenaccounttickets, Count selectedreposwithopengroupmembershiptickets ) ) {
+					when >0 then [
+						Message $bwiasr_itsmrepositoryNLS.error
+					] otherwise [
+						Dialog bwiasr_remediationstrategymanagement_add(
+							Eval "nb_noniddmrepos.get()==0?true:false" to inallowiddmtype,
+							addrepoitsm.remediationtype from strategytype,
+							addrepoitsm.remediationinstanceid from instancecode
+						),
+						StringCase ( addrepoitsm.remediationtype ) {
+							when "embedded" then [
+								Set "" to addrepoitsm.remediationinstanceid
+							]
+						},
+						Set selectedrepositories to addrepoitsm.repository,
+						TaskComplete addrepoitsm wait-end,
+						ReloadData ( repositories ),
+						Unset selectedrepositories						
+					]
+				}
+			disabled:
+				IntPredicate ( SizeOf selectedrepositories ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+		Button {
+			text: $bwiasr_itsmrepositoryNLS.reset.short
+			tooltip: $bwiasr_itsmrepositoryNLS.resetTt
+			image: "16/famfamfam_silk_icons_v013/disconnect.png"
+			actions:
+				IntCase ( Count selectedreposwithopenaccounttickets ) {
+					when >0 then [
+						Message $bwiasr_itsmrepositoryNLS.error
+					] otherwise [
+						Confirm $bwiasr_itsmrepositoryNLS.confirm,
+						TransferData reposelection ( remediationuid ) to ( selectedremediationuid ),
+						Set selectedremediationuid to deleterepoitsm.metadatauid,
+						TaskComplete deleterepoitsm wait-end,
+						ReloadData ( repositories ),						
+						Unset selectedrepositories
+					]
+				}						
+			disabled:
+				IntPredicate ( SizeOf selectedrepositories ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+	}
+	Table {
+		data: allrepositories
+		label: Label { break:True }
+		layout: Layout { grab: horizontal True vertical True }
+		show-count: True
+		show-filter: True
+		configurable: True
+		persist-configuration: True
+		checkboxes:
+			uid to selectedrepositories
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: remediationuid
+			hidden: True
+		}
+		Column {
+			column: code
+			header: $repository.code
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: displayname
+			header: $repository.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: type
+			header: $repository.type
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: repositorytype
+			header: $repository.repositorytype
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: repositoryfamily
+			text: Transform Current repositoryfamily using bwfRepoFamilyType
+			header: $repository.repositoryfamily
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: lineage
+			header: $bwiasr_itsmrepositoryNLS.lineage
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: remediationtype
+			header: $bwiasr_itsmrepositoryNLS.remediation.type
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: remediationinstancecode
+			header: $bwiasr_itsmrepositoryNLS.remediation.instance
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: openaccountnb
+			text: Transform Current openaccountnb using defaultsto0
+			header: $bwiasr_itsmrepositoryNLS.nbopenaccount
+			sortable: True
+			filterable: True
+			width: 100%
+			align: Right
+		}
+		Column {
+			column: opengroupmembershipnb
+			text: Transform Current opengroupmembershipnb using defaultsto0
+			header: $bwiasr_itsmrepositoryNLS.nbopengroupmembership
+			sortable: True
+			filterable: True
+			width: 100%
+			align: Right
+		}
+	}
+}

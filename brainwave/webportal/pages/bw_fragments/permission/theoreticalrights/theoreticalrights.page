@@ -1,0 +1,398 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Display theoretical rights for a given permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outidentityuid </b>the selected identity</li>
+ * <li><b>outidentityname </b>the selected identity name</li>
+ * <li><b>outrolename </b>the selected role</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentPermissionTheoreticalRightsList = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outidentityuid = Variable
+	outidentityname = Variable
+	outrolename = Variable
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_permissiontheoreticalrights with inuid to uid
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	permission = Record {
+		view: bwf_permissionDetail with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid, 
+												True to inshowposition,
+												True to inshowtheoretical,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												False to inshowaccounts,
+												True to inshowapplications,
+												True to inshowoverallocated,
+												permission.application_uid to inapplicationuids
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition ( Count data ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noTR
+					compact: True
+				}
+			] otherwise [
+				Group {
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						persist-configuration:True
+						double-click:ExecuteNamedAction goDetails
+
+
+						Column {
+							column: role
+							selection: outrolename
+							initially-masked: False
+							header: $bwf_theoreticalrightsNLS.role
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column:uid
+							hidden:True
+							selection:outidentityuid
+						}
+						Column {
+							column:hrcode
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.hrcode
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column:fullname
+							selection:outidentityname
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.fullname
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column:mail
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.mail
+							initially-masked: True
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column:internal
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.internal
+							initially-masked: True
+						}
+						Column {
+							column:active
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.active
+							initially-masked: True
+						}
+						Column {
+							column: comment
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.comment
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: trends
+							header: $bw_fragment.trends
+							text:Transform Current trends using bwf_trendStatusColumn 
+							styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+							image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+							tooltip:$bwf_trendStatusColumnNLS.tooltip
+	
+							sortable: True
+							filterable: True
+							width: 10%
+						}												
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentPermissionAccountsForOrgNLS = NLS {
+	directfilter [en "Accounts whom owners are direct members of {0}" fr "Comptes dont les membres sont des membres directs de {0}"]
+	subfilter [en "Accounts whom owners are direct or indirect members of {0}" fr "Comptes dont les membres sont des membres directs ou indirects de {0}"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display theoretical rights for a given permission and a given organisation
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inorganisationuid </b>the organisation uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outidentityuid </b>the selected identity</li>
+ * <li><b>outidentityname </b>the selected identity name</li>
+ * <li><b>outrolename </b>the selected role</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentPermissionTheoreticalRightsListfororganisation = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outidentityuid = Variable
+	outidentityname = Variable
+	outrolename = Variable
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_permissiontheoreticalrightsfororganisation with
+			inuid to uid,
+			inorganisationuid to organisationuid,
+			inonlydirectselection to directonly
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	permission = Record {
+		view: br_permissionDetail with inuid to uid
+	}
+
+	organisation = Record {
+		view: br_organisationDetail with inorganisationuid to uid
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid, 
+												True to inshowposition,
+												True to inshowtheoretical,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												False to inshowaccounts,
+												True to inshowapplications,
+												True to inshowoverallocated,
+												permission.application_uid to inapplicationuids
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentPermissionAccountsForOrgNLS.directfilter(organisation.displayname)
+		hidden:Not BooleanPredicate(inonlydirectselection)
+	}
+	Header {
+		value:$fragmentPermissionAccountsForOrgNLS.subfilter(organisation.displayname)
+		hidden:BooleanPredicate(inonlydirectselection)
+	}
+	ConditionalGroup {
+		IntCondition ( Count data ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noTR
+					compact: True
+				}
+			] otherwise [
+				Group {
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						persist-configuration:True
+						double-click:ExecuteNamedAction goDetails
+						
+
+
+						Column {
+							column: role
+							selection: outrolename
+							initially-masked: False
+							header: $bwf_theoreticalrightsNLS.role
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column:uid
+							hidden:True
+							selection:outidentityuid
+						}
+						Column {
+							column:hrcode
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.hrcode
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column:fullname
+							selection:outidentityname
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.fullname
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column:mail
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.mail
+							initially-masked: True
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column:internal
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.internal
+							initially-masked: True
+						}
+						Column {
+							column:active
+							width: 100%
+							sortable: True
+							filterable: True
+							header: $identity.active
+							initially-masked: True
+						}
+						Column {
+							column: comment
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.comment
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: trends
+							header: $bw_fragment.trends
+							text:Transform Current trends using bwf_trendStatusColumn 
+							styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+							image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+							tooltip:$bwf_trendStatusColumnNLS.tooltip
+	
+							sortable: True
+							filterable: True
+							width: 10%
+						}												
+					}
+				}
+			]
+		}
+	}
+}

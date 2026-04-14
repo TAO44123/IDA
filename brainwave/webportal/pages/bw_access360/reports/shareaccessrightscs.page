@@ -1,0 +1,196 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_access360/reports/shareaccessrights.page"
+
+/* Nationalized labels here */
+shareaccessrightscs360NLS = NLS {
+	title [en "Managed shares access rights analysis" fr "Analyse des droits d'accès des partages gérés"]
+	dyntitle [en "Managed shares access rights analysis for {0}" fr "Analyse des droits d''accès des partages gérés par {0}"]
+	description [
+		en "This report presents the list of managed shares in a form of a pivot table. It is possible to filter the results to show only changes from a given date. It is possible to modify the columns or export the results by right clicking on the table."
+		fr "Ce rapport présente la liste des partages gérés sous la forme d'un tableau croisé dynamique. Il est possible de filtrer les résultats de manière à faire apparaitre uniquement les changements à partir d'une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats à l'aide d'un clic droit sur le tableau."
+	]
+	
+}
+
+shareaccessrights360csdetail = Page {
+	title: $shareaccessrightscs360NLS.title
+	description:$shareaccessrightscs360NLS.description
+	tags: "identityext" priority 200, "byuid" , "analytics", "sharemanager"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(unstructureddata_license, bwa360_shareaccessrightscs)
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page shareaccessrights360cs with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+shareaccessrights360cshp = Page {
+	title: $shareaccessrightscs360NLS.title
+	description: $shareaccessrightscs360NLS.description
+	tags: "myshare_access360" priority 2
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(unstructureddata_license, bwa360_shareaccessrightscs)
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page shareaccessrights360cs with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+shareaccessrights360cs = Page {
+	title: $shareaccessrightscs360NLS.title
+	dynamic-title: $shareaccessrightscs360NLS.dyntitle(identity.fullname)
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	description: $shareaccessrightscs360NLS.description
+	feature:All(unstructureddata_license, bwa360_shareaccessrightscs)
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	sharerights = Dataset {
+		view:enduser360_sharerightscs with uid to uid, UserVariable session_selectedSharesTeam360 to shareuids, UserVariable session_folderDepth to depth, UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+
+	managedshares = Dataset {
+		view:enduser360_managedshare with uid to uid
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					layout:Layout { hint: width 200 }
+					variable:UserVariable session_selectedSharesTeam360
+					options:Dynamic {
+						data:managedshares
+						text:Current resourcename
+						value:Current resourceuid
+					}
+					label:$session_selectedSharesTeam360NLS.label
+					tooltip:$session_selectedSharesTeam360NLS.tooltip
+					allow-none:True
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+				Combo {
+					variable:UserVariable session_folderDepth
+					tooltip:$session_folderDepthNLS.tooltip
+					label:$session_folderDepthNLS.label
+					layout:Layout {grab:horizontal False vertical False hint:width 96}
+					options:Static {
+						Option { text:'<=1' value:'<1' }
+						Option { text:'<=2' value:'<2' }
+						Option { text:'<=3' value:'<3' }
+						Option { text:'=1' value:'=1' }
+						Option { text:'=2' value:'=2' }
+						Option { text:'=3' value:'=3' }
+					}
+				}
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:sharerights
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:36px  grab: horizontal True vertical True}
+					columns:
+						Dim {value:applicationuid label:applicationdisplayname header:$shareaccessrights360NLS.share},
+						Dim {value:permissionuid label:permissioncode header:$shareaccessrights360NLS.folder tooltip:permissioncode} 
+					rows:	
+						Dim {value:orguid label:orgshortname header:$porganisation.shortname},
+						Dim {value:orguid label:orgdisplayname header:$organisation.concept},
+						Dim {value:jobtitleuid label:jobtitledisplayname header:$identity.jobtitledisplayname initially-masked:True},
+						Dim {value:ownerinternal label:ownerinternal header:$identity.internal initially-masked:True},
+						Dim {value:owneruid label:ownerfullname header:$identity.concept},
+						Dim {value:uid label:login header:$account.login}
+					cell-content:CellContent {text: Current rights cluster-value:'X' styling:StringStyling(Current status) { when 'New' then shareartimeline_highlightnew360 when 'Removed' then shareartimeline_highlightremoved360 when 'Modified' then shareartimeline_highlightmodified360}}
+				
+				}
+			}
+		}
+	}
+}

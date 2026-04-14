@@ -1,0 +1,142 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+bwr_scheduler_NLS = NLS {
+   title [ en "Scheduler"  fr "Scheduler"]
+   start_confirm [en "Confirm start Scheduler?" fr "Confirmer le démarrage du scheduler?"]
+   start_msg [en "Scheduler has been started" fr "Le scheduler a été démarré" ]
+   info [en "Scheduler info" fr "Informations sur le scheduler" ]
+   start_date [ en "Start Date" fr "Date de démarrage"]
+   first_iter_date [ en "First Cycle Date" fr "Date du premier cycle"]
+   last_iter_date [ en "Last Cycle Date" fr "Date du dernier cycle"]
+   iter_count [ en "Cycle count" fr "Nombre de cycles"]
+   start_time_of_day [ en "Start time of day" fr "Heure de démarrage"]
+   start_scheduler [ en "Start Scheduler" fr "Démarrer le Scheduler"]
+   
+}
+
+bwr_schedulerStart = Page {
+	title: $bwr_scheduler_NLS.title
+	mixins: workflowDefaultMixin
+	tags:"admin"
+	large-icon:%collection_48.gear
+	
+	/* Parameters here */
+	
+
+	/* variables here */
+	timeOfDay = Variable{  type: Date }
+	nbProcRunning = Variable { type: Integer initial: 1 }
+
+	
+	/* Datasets and records here */
+	existingProcesses = Dataset {
+	   processes: ProcessFilter {
+	     definition:  "bwr_scheduler"
+	     show-completed:  False
+	     show-suspended: False
+	     hide-active: False
+	   }
+	   count-variable: nbProcRunning
+	}
+	
+	activeTickets = Record {
+	 view: bwr_scheduler_active_ticket
+	}
+	
+		
+	task = TaskRecord ( create "bwr_scheduler")
+
+	onStartScheduler = NamedAction (
+		Confirm $bwr_scheduler_NLS.start_confirm, 
+		TaskComplete task wait, 
+		Set 1 to nbProcRunning,
+		ReloadData ( existingProcesses),
+		Flash Information $bwr_scheduler_NLS.start_msg
+					
+	)
+	
+	/* Page content */
+    ConditionalGroup {
+      IntCondition( nbProcRunning) {
+        when > 0 then [
+          Group {
+           title: $bwr_scheduler_NLS.info
+           hidden: Eval "activeTickets.processinstanceid == null "
+	           Text {
+	             label: $bwr_scheduler_NLS.start_date
+	             value: ProcessInfo( process-id activeTickets.processinstanceid, CreationDate) 
+	           } 
+	           Text {
+	             label: $bwr_scheduler_NLS.first_iter_date
+	             value: DateLDAP(activeTickets.firstiterationdate).value
+	           } 
+	           Text {
+	             label: $bwr_scheduler_NLS.last_iter_date
+	             value: DateLDAP(activeTickets.lastiterationdate).value
+	           }	
+	           Text {
+	             label: $bwr_scheduler_NLS.iter_count
+	             value: activeTickets.iterationcount
+	           }	                             
+          }
+
+         Text {
+             value: $bwr_scheduler_NLS.start_msg
+             hidden: Eval "activeTickets.processinstanceid != null "
+           }  
+           
+        ]
+        otherwise [
+  
+      Grid {
+		      columns: GridColumn { }, GridColumn {width: 50px gap: 20px  },  GridColumn { }, GridColumn { width: grow }
+		      layout: Layout { grab: horizontal True vertical False}
+		      GridRow {
+		        fill: False
+		        height: 20
+		        GridCell {
+		          Spinner {
+		            label: $bwr_scheduler_NLS.start_time_of_day
+		            variable: task.scheduleHourOfDay
+		            minimum:0
+		            maximum: 23
+		            layout: Layout { hint: width 60  }
+		            
+		          }
+		        }
+		        GridCell {
+		          Spinner {
+		            variable: task.scheduleMinute
+		            minimum:0
+		            maximum: 59
+		            layout: Layout { hint: width 60 }
+		          }
+		        }
+		        GridCell {
+		  			Button { 
+						disabled: OrPredicate {
+							StringPredicate (task.scheduleHourOfDay) { when IsEmpty then True }
+							StringPredicate (task.scheduleMinute) { when IsEmpty then True }
+						}			
+						text: $bwr_scheduler_NLS.start_scheduler
+						actions: ExecuteNamedAction onStartScheduler
+					}      
+		        }
+		      }
+		    }
+          
+        ]
+      }
+    
+    }
+
+
+	
+
+}
+

@@ -1,0 +1,312 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/sharedfolder/rightsInfos.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/share/resources.page"
+
+fragmentShareRightsNLS = NLS {
+	trends [en "Changes" fr "Changements"]
+	
+	sensitivitylevel[en "sensitivity level" fr "niveau sensibilité"]
+	sensitivityreason[en "sensitivity reason" fr "raison sensibilité"]
+	description[en "permission description" fr "description permission"]
+
+	folderdepth [en "Folder depth" fr "Profondeur arborescence"]
+	aclonlylabel [en 'Display only folders with ACLs' fr 'Afficher seulement les partages avec des ACLs']
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected share rights
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>infolderdepth</b>, optional integer, folder depth, 1 by default</li>
+ * <li><b>inaclonly</b>, optional boolean, show only folders with ACLs, true by default</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outpermissionuid </b>the selected permision uid</li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentShareRights = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanreconcile = Variable { multivalued:False type:Boolean initial:False }
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+	inaclonly = Variable { multivalued:False type:Boolean initial:True }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outpermissionuid = Variable
+	outpermissionname = Variable
+
+	data = Dataset {
+		view: bwf_sharerights with
+			inuid to uid,
+			inaclonly to aclonly,
+			infolderdepth to folderdepth
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												incanreconcile to incanreconcile,
+												True to inshowowner,
+												False to inshowgroups,
+												False to inshowapplications,
+												True to inshowACLs,
+												True to inshowshares,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												inuid to inshareuids,
+												outpermissionuid to insharedfolderuid
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Grid {
+		columns:GridColumn,GridColumn,GridColumn { width:grow }
+		layout:Layout { grab: horizontal True vertical False hint:height 40 }
+		GridRow {
+			GridCell {
+				Combo {
+					variable:infolderdepth
+					label:$fragmentShareRightsNLS.folderdepth
+					layout: Layout { hint:width 120 }
+					options:Static {
+						Option { value:1 text:"<=1" }
+						Option { value:2 text:"<=2" }
+						Option { value:3 text:"<=3" }
+						Option { value:4 text:"<=4" }
+						Option { value:5 text:"<=5" }
+						Option { value:6 text:"<=6" }
+						Option { value:7 text:"<=7" }
+						Option { value:8 text:"<=8" }
+						Option { value:9 text:"<=9" }
+					}
+				}	
+			}
+			GridCell {
+				Checkbox {
+					variable:inaclonly
+					label:$fragmentShareRightsNLS.aclonlylabel
+				}						
+			}
+			GridCell {
+			
+			}
+		}
+	}
+
+	Table {
+		data:data
+		layout:Layout { grab:horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		persist-configuration:True
+		double-click:ExecuteNamedAction goDetails
+		
+		Column {
+			column:accountuid
+			hidden:True
+			selection:outaccountuid
+		}
+		Column {
+			column:accountidentifier
+			initially-masked:True
+			header:$account.identifier
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:accountlogin
+			filterable:True
+			sortable:True
+			header:$account.login
+			selection:outaccountlogin
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:accountusername
+			filterable:True
+			sortable:True
+			header:$account.username
+			width:160px
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:accountlastlogindate
+			sortable:True
+			header:$account.lastlogindate
+			width:120px
+		}
+		Column {
+			column:accountcreationdate
+			initially-masked:True
+			sortable:True
+			header:$account.creationdate
+			width:160px
+		}
+		Column {
+			column:noownercode
+			filterable:True
+			sortable:True
+			header:$reconciliation.noownercode
+		}
+		Column {
+			column:identityhrcode
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$pidentity.hrcode
+		}
+		Column {
+			column:identityfullname
+			filterable:True
+			sortable:True
+			header:$pidentity.fullname
+			width:160px
+		}
+		Column {
+			column:identitymail
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$pidentity.mail
+			width:160px
+		}
+		Column {
+			column:identityinternal
+			initially-masked:True
+			sortable:True
+			header:$pidentity.internal
+		}
+		Column {
+			column:identityactive
+			initially-masked:True
+			sortable:True
+			header:$pidentity.active
+		}
+		Column {
+			column:identitybwa_identityanalyticsdata_joborg
+			initially-masked:True
+			sortable:True
+			filterable:True
+			width:240px
+			header:$pidentity.joborg
+		}
+		Column {
+			column:right
+			filterable:True
+			sortable:True
+			header:$fragmentFolderNLS.basic
+			actions:Dialog bwf_SharedFolderRightsInfosDialog
+		}
+		Column {
+			column:permissionuid
+			hidden:True
+			selection:outpermissionuid
+		}
+		Column {
+			column:permissioncode
+			filterable:True
+			sortable:True
+			header:$fragmentFolderNLS.code
+			width:100%
+		}
+		Column {
+			column:permissiondisplayname
+			filterable:True
+			sortable:True
+			header:$fragmentFolderNLS.displayname
+			selection:outpermissionname
+			initially-masked:True
+		}
+		Column {
+			column:permissionpermissiontype
+			text:Transform Current permissionpermissiontype using fragmentFolderTypeMapping
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$fragmentFolderNLS.type
+		}
+		Column {
+			column:permissionsensitivitylevel
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$fragmentFolderNLS.sensitivitylevel
+		}
+		Column {
+			column:permissionsensitivityreason
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$fragmentFolderNLS.sensitivityreason
+		}
+		Column {
+			column:permissiondescription
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$fragmentFolderNLS.description
+			width:160px
+		}
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+	}
+}	
+	
+	

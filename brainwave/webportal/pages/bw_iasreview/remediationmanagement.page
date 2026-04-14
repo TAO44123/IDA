@@ -1,0 +1,1800 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/permission/resources.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_texteditor/texteditors.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_iasreview/resources.page"
+
+review_icons = StringImageTemplate {
+	when LowerCase "ok" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "ok" then "16/famfamfam_silk_icons_v013/accept.png"
+	when LowerCase "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+	when "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+	when LowerCase "reset" then "16/famfamfam_silk_icons_v013/arrow_undo.png"
+	when "reset" then "16/famfamfam_silk_icons_v013/arrow_undo.png"
+	when LowerCase "update" then "16/famfamfam_silk_icons_v013/pencil.png"
+	when "update" then "16/famfamfam_silk_icons_v013/pencil.png"
+	when LowerCase "__IGNORE__" then ""
+	when "__IGNORE__" then ""
+	otherwise "16/famfamfam_silk_icons_v013/help.png"
+}
+
+remediationclosedstatusNLS = NLS {
+	active [en "Active" fr "Actif"]
+	done [en "Done" fr "Fait"]
+	cancelled [en "Cancelled" fr "Annulé"]
+	init [en "Pending" fr "En attente"]
+}
+
+itsmdef_NLS = NLS {
+	code []
+	name []
+	type []
+
+}
+
+remediationclosedstatus = IntMapping {
+	when =0 then $remediationclosedstatusNLS.active
+	when =1 then $remediationclosedstatusNLS.done
+	when =2 then $remediationclosedstatusNLS.cancelled
+	when =-1 then $remediationclosedstatusNLS.init
+}
+
+mediumTitleStyle = Style {
+	size: 14px
+}
+
+italicStyle = Style {
+	italic:True
+}
+
+blueStyle = Style {
+	foreground: RGB(25,76,127)
+}
+
+/* Nationalized labels here */
+access360_remediationmanagementNLS = NLS {
+	title [en "Remediation Management" fr "Gestion des remédiations"]
+
+	lmhrcode [en "Reviewer \n Employee Number" fr "Matricule de \n l'acteur"]
+	lmfullname [en "Reviewer \n Name" fr "Nom de \n l'acteur"]
+	lmmail [en "Reviewer \n Email" fr "Mail de \n l'acteur"]
+
+	status [en "Review \n Status" fr "Statut de \n la revue"]
+	by [en "Reviewed \n by" fr "Revu \n par"]
+	date [en "Review \n Date" fr "Date \n la revue"]
+	comment [en "Review \n Comment" fr "Commentaire de \n la revue"]
+	
+	commentdialog.title [en "Comment" fr "Commentaire"]
+	commentdialog.subtitle [en "Remediation Comment" fr "Commentaire de la remédiation"]
+	
+	filterdialog.title [en "Filters" fr "Filtres"]
+	filterdialog.subtitle [en "Configure Filters" fr "Configurer les filtres"]
+	filterdialog.filter90 [en "Shows Only Entries Remediated in the Last 90 Days" fr "Afficher seulement les entrées remédiées dans les 90 derniers jours"]
+	filterdialog.filtercampaign [en "Filter by Campaign" fr "Filtrer par campagne"]
+	
+	notificationdialog.title [en "Send a Message to the Technical Owners" fr "Envoyer un message aux responsables techniques"]
+	notificationdialog.confirm [en "Are you sure?" fr "Etes-vous sûr?"]
+	notificationdialog.sent [en "Mails Sent" fr "Mails envoyés"]
+	
+	notificationdialog._title [	en "Access Remediation Requested"
+								fr "Remédiation d'accès requise"
+	]
+	
+	notificationdialog._content [	en "{image.header}<p>Hello {dataset.fullname.get()},</p> {$dataset.isdelegated.get()?\"This task is delegated from \"+dataset.delegatorfullname.get():\"\"} <p>Technical actions are required on your resources.</p> <p>Please connect to the RadiantLogic Identity Analytics system and proceed accordingly.</p> <p>Best Regards,</p> <p>The Security Team</p> <p>&nbsp;</p> <p>&nbsp;</p>"
+									fr "{image.header}<p>Bonjour {dataset.fullname.get()},</p> {$dataset.isdelegated.get()?\"Cette t&acirc;che est d&eacute;l&eacute;gu&eacute;e par \"+dataset.delegatorfullname.get():\"\"} <p>Des actions techniques sont requises sur vos ressources.</p> <p>Veuillez vous connecter sur le portail RadiantLogic et en prendre connaissance.</p> <p>Cordialement,</p> <p>L'&eacute;quipe s&eacute;curit&eacute;</p> <p>&nbsp;</p> <p>&nbsp;</p>"
+	
+	]
+	notificationdialog.subtitle [en "This will send a message to the technical owners" fr "Cela va envoyer un message aux responsables techniques"]
+	notificationdialog.sendto_cc [en "Send To - cc" fr "Envoyer à - cc"]
+	notificationdialog.sendto_bcc [en "Send To - bcc" fr "Envoyer à - bcc"]
+	notificationdialog.mailtitle [en "Mail Title" fr "Titre Mail"]
+	notificationdialog.mailcontent [en "Mail Content" fr "Contenu Mail"]
+	
+	remediationerrordialog.title [en "Display the error details" fr "Afficher les détails des erreurs"]
+	remediationerrordialog.subtitle [en "Error details" fr "Details des erreurs"]
+	remediationerrordialog.status [en "Remediation status" fr "Status de remédiation"]
+	remediationerrordialog.instancecode [en "Remediation instance code" fr "Code de l'instance de remédiation"]
+	remediationerrordialog.error [en "Error returned" fr "Erreur retournée"]
+	
+	update.flash [en "{0} entries updated" fr "{0} entrées mises à jour"]
+	filter._all [en "Displaying ALL Entries" fr "Affichage de toutes les entrées"]
+	filter.campaign [en "Filtered for Campaign: {0}" fr "Filtré pour la campagne: {0}"]
+
+	tab1 [en "Overview" fr "Synthèse"]
+	tab2 [en "Details" fr "Détail"]
+	tab3 [en "Discrepancies" fr "Incohérences"]
+
+	tab1.nbremediation [en "Number of Remediations\n " fr "Nombre de remédiations\n "]
+	tab1.nbremediation.nl [en "Number of\nRemediations" fr "Nombre de\nremédiations"]
+	tab1.nbpendingremediation [en "Number of Pending \nRemediations" fr "Nombre de remédiations \nen attente de lancement"]
+	tab1.nbactiveremediation [en "Number of Active Remediations\n " fr "Nombre de remédiations actives\n "]
+	tab1.nbactiveremediation.nl [en "Number of Active\nRemediations " fr "Nombre de remédiations\nactives"]
+	tab1.nbactiveremediation7 [en "Number of Active Remediations \nOlder than 7 Days" fr "Nombre de remédiations actives \nsupérieures à 7 jours"]
+	tab1.nbactiveremediation7.nl [en "Number of Active\nRemediations >7 Days" fr "Nombre de remédiations\nactives >7 jours"]
+	tab1.nbremediationdone [en "Number of Completed Remediations\n " fr "Nombre de remédiations effectuées\n "]
+	tab1.nbremediationdone.nl [en "Number of Completed \nRemediations" fr "Nombre de \nremédiations effectuées"]
+	tab1.nbremediationcancel [en "Number of Cancelled Remediations\n " fr "Nombre de remédiations annulées\n "]
+	tab1.nbremediationcancel.nl [en "Number of Cancelled\nRemediations" fr "Nombre de\nremédiations annulées"]
+	tab1.remediationvelocity [en "Remediation Velocity" fr "Vélocité de la remédiation"]
+	tab1.remediationstatus [en "Active Remediation Status" fr "Status des remédiations actives"]
+	tab1.emptystatus [en "No Active Remediations Found" fr "Pas de remédiations actives trouvées"]
+	tab1.remediationerror [en  "Number of Remediations \nin error" fr "Nombre de \nremédiations en erreur"]
+	
+	tab2.button.inprogress [en "Bulk In Progress" fr "Marquer comme en cours"]
+	tab2.button.done [en "Bulk Done" fr "Marquer comme fait"]
+	tab2.button.wontfix [en "Bulk Won't Fix" fr "Marquer comme annulé"]
+	tab2.button.sendmessage [en "Send a Message" fr "Envoyer un message"]
+	tab2.button.filter [en "Advanced Filters" fr "Fitrage Avancé"]
+	tab2.button.sendmessage.flash [en "Mail Sent to the Technical Owners" fr "Mail envoyé aux responsables techniques"]
+	tab2.button.sendmessage.tooltip [en "Send a Message to the Technical Owners" fr "Envoyer un message aux responsables techniques"]
+
+	tab2.button.launchpending [en "Launch All Remediation" fr "Lancer toutes les remédiations"]
+	tab2.button.launchpending.tooltip [en "Launch All Pending Remediations" fr "Lancer toutes les remédiations en attente"]
+	tab2.button.refresh [en "Refresh Status" fr "Rafraichir le status"]
+	tab2.button.refresh.tooltip [en "Refresh Third Party (ITSM) Remediation Status" fr "Rafraichir le statut des remédiations externes (ITSM)"]
+	tab2.button.launcherroring [en "Relaunch All remediation in error" fr "Relancer toutes les remédiations en erreur"]
+	tab2.button.launcherroring.tooltip [en "Relaunch All Pending Remediations in error" fr "Relancer toutes les remédiations en erreur"]
+	
+	
+	tab2.filter.reviewstatus [en "Review Status" fr "Statut de revue"]
+	tab2.filter.remediationstatus [en "Remediation Status" fr "Statut de remédiation"]
+	tab2.filter.closedstatus [en "Remediation" fr "Remédiation"]
+	tab2.filter.closedstatus_all [en "Show All" fr "Afficher tout"] 
+	tab2.filter.closedstatus_active [en "Show Only Active Remediations" fr "Afficher seulement les remédiations actives"] 
+	tab2.filter.closedstatus_active7days [en "Show Only Active Remediations older than 7 days" fr "Afficher seulement les remédiations actives de plus de 7 jours"] 
+	tab2.filter.closedstatus_closed [en "Show Only Closed Remediations" fr "Afficher seulement les remédiations cloturées"] 
+	tab2.filter.closedstatus_cancelled [en "Show Only Cancelled Remediations" fr "Afficher seulement les remédiations annulées"]
+	tab2.filter.closedstatus_error [en "Show Only Remediations with Errors" fr "Afficher seulement les remédiations en erreur"]
+	 
+	tab2.filter.closedstatus_init [en "Show Only Pending Remediations" fr "Afficher seulement les remédiations en attente de lancement"] 
+	
+	tab3.subtitle [ en "A discrepancy is a situation where an access still exists in the entitlement catalog although it has been has been marked as being successfully remediated.\nYou should investigate the reason why."
+					fr "Une incohérence est une situation ou un droit d'accès existe toujours alors qu'il a été marqué comme ayant été remédié avec succès.\nVous devriez investiguer la raison de cette situation dans les systèmes."
+	]
+	
+	table.remediationtype [en "Remediation \n Type" fr "Type de \n remédiation"]
+	table.remediationclosestatus [en "Remediation \n Closed Status" fr "Etat de la \n remédiation"]
+	table.remediationcurrentstatus [en "Remediation \n Current Status" fr "Statut de la \n remédiation"]
+	table.remediationlastupdateby [en "Remediation \n Last Update By" fr "Dernière mise à jour \n de la remédiation par"]
+	table.remediationlastupdateon [en "Remediation \n Last Update on" fr "Dernière mise à jour \n de la remédiation le"]
+	table.remediationcreatedon [en "Remediation \n Created On" fr "Remédiation \n créée le"]
+	table.remediationcomment [en "Remediation \n Comment" fr "Commentaire de \n la remédiation"]
+	table.remediationinstance[en "Remediation \nInstance" fr "Instance de \nremédiation"]
+
+	table.itsm [en "External \nReference" fr "Référence \nexterne"]
+
+	resource [en "Resource" fr "Ressource"]
+	target [en "Target" fr "Cible"]
+	
+	warningpending [
+		en "You have {0} remediations to launch"
+		fr "Vous avez {0} remédiations en attente de lancement"
+	]
+	
+	warningerror [
+		en "You have {0} remediations in error"
+		fr "Vous avez {0} remédiations en erreur"
+	]
+
+	action.refresh.confirm [	en "This will refresh ITSM based remediation ticket status" 
+								fr "Le statut des tickets ITSM va être rafraichi"]
+	action.refresh.flash [	en "Tickets status are being refreshed, this can take some time. Please come back later" 
+							fr "Le statut des tickets va être rafraichi, ceci peut prendre un peu de temps. Veuillez revenir plus tard"]
+	action.refresh.error [en "Tickets are already being refreshed" fr "Les tickets sont déja en cours de rafraichissement" ]
+
+	action.new.error [en "Tickets are already being created" fr "Les tickets sont déja en cours de création"]
+	action.new.confirm [en "All pending remediation requests will be launched \nregardless of the selection in the table" fr "Toutes les demandes de remédiation en attente vont être lancées \nquelques soient les éléments sélectionnés dans la table"]
+	action.new.flash [	en "Remediation tasks are being created, this can take some time. Please come back later" 
+						fr "Les tâches de remédiation sont en cours de création ceci peut prendre un peu de temps. Veuillez revenir plus tard"
+	]
+	action.retry.confirm [en "All erroring remediation requests will be retried \nregardless of the selection in the table" fr "Toutes les demandes de remédiation en error vont être relancées \nquelques soient les éléments sélectionnés dans la table"]
+	action.retry.flash [	en "Retrying the remediation tasks creation, this can take some time. Please come back later" 
+						fr "Nouvelle tentative de creation des tâches de remédiation en cours, ceci peut prendre un peu de temps. Veuillez revenir plus tard"
+	]
+	action.itsmticket [en "Open ITSM ticket" fr "Ouvrir le ticket ITSM"]
+}
+
+bwaccess360_remediationComment = Dialog {
+	title:$access360_remediationmanagementNLS.commentdialog.title
+	height:200
+	buttons:[
+			OkButton
+			CancelButton
+	]
+	
+	comment = Variable
+	
+	Header {
+		value:$access360_remediationmanagementNLS.commentdialog.subtitle
+		styling:bigTitleStyle
+	}
+	Separator {
+		width:1
+		color:blue
+	}
+	Edit {
+		variable:comment
+		limit:4000
+	}
+}
+
+bwaccess360_remediationmanagementFilters = Dialog {
+	title:$access360_remediationmanagementNLS.filterdialog.title
+	height:200
+	width:600
+	buttons:[
+		OkButton
+		CancelButton
+	]
+
+	outfilterbycampaign = Variable
+	outfilter90days = Variable { type:Boolean initial:True }
+
+	// used to list the on going campaigns for the current Principal
+	allcampaigns = Dataset {
+		view:bwaccess360_accessreviewcampaigns
+		excludes:
+		AndPredicate {
+			FeaturePredicate iasr_canonlylistitsowncampaigns	
+			Not SameValuePredicate(Current launchedbyuid, Principal.uid)
+		}
+	}
+//	finalizedcampaigns = Dataset {
+//		view:bwaccess360_accessreviewcampaignsfinalized
+//	}
+//	campaigns = Dataset {
+//		join:Join {
+//			primary-dataset:allcampaigns
+//			secondary-dataset:finalizedcampaigns
+//			primary-column:key
+//			secondary-column:key
+//			primary-optional:False
+//			secondary-cardinality:mandatory
+//			secondary-prefix:finalized_
+//		}	
+//	}
+
+	Header {
+		value:$access360_remediationmanagementNLS.filterdialog.subtitle
+		styling:bigTitleStyle
+	}
+	Separator {
+		width:1
+		color:blue
+	}
+
+	Checkbox {
+		variable:outfilter90days
+		text:$access360_remediationmanagementNLS.filterdialog.filter90
+		label:Label { break:True }
+	}			
+	Combo {
+		variable:outfilterbycampaign
+		allow-none:True
+		label:$access360_remediationmanagementNLS.filterdialog.filtercampaign
+		layout:Layout { hint:width 400 }
+		options:Dynamic {
+			data:allcampaigns
+			value:Current recorduid
+			text:Current label
+		}
+	}			
+}
+
+bwaccess360_remediationmanagementSendNotification = Dialog {
+	title:$access360_remediationmanagementNLS.notificationdialog.title
+	width:1200
+	height:700
+	buttons:[
+			OkButton {
+				actions:
+				Confirm $access360_remediationmanagementNLS.notificationdialog.confirm,
+				Set '' to filterbyreviewstatus,
+				ExecuteNotifyRule bwaccess360r_accessreviewperapplicationremediation with
+													campaignid to campaignid,
+													campaignname to campaignname,
+													campaigndescription to campaigndescription,
+													Date(campaigndeadline).valueLDAP to campaigndeadline,
+													campaignpriority to campaignpriority,
+													emailtitle to reviewtitle,
+													emailcontent to reviewmessage,
+													emailcc to emailcc,
+													emailbcc to emailbcc,
+				Message $access360_remediationmanagementNLS.notificationdialog.sent
+			}
+			CancelButton
+			]
+			
+
+	campaignid = Variable
+	campaignname = Variable
+	campaigndescription = Variable
+	campaigndeadline = Variable { type:Date }
+	campaignpriority = Variable
+	filterbyreviewstatus = Variable
+	
+	emailtitle = Variable {initial:$access360_remediationmanagementNLS.notificationdialog._title }
+	emailcontent = Variable {initial:$access360_remediationmanagementNLS.notificationdialog._content }
+	emailcc = Variable {initial:"" }
+	emailbcc = Variable {initial:"" }
+
+	Header {
+		value:$access360_remediationmanagementNLS.notificationdialog.subtitle
+		styling:bigTitleStyle
+	}
+	Separator {
+		color:blue
+		width:1
+	}
+	Edit {
+		variable:emailcc
+		label:Label { value:$access360_remediationmanagementNLS.notificationdialog.sendto_cc }
+	}
+	Edit {
+		variable:emailbcc
+		label:Label { value:$access360_remediationmanagementNLS.notificationdialog.sendto_bcc }
+	}
+	Separator {
+		color:blue
+		width:1
+	}
+	Edit {
+		variable:emailtitle
+		label:Label { value:$access360_remediationmanagementNLS.notificationdialog.mailtitle }
+	}
+
+	Text {
+		value:''
+		compact:True
+		label:$access360_remediationmanagementNLS.notificationdialog.mailcontent
+		styling:blueStyle
+	}
+	IncludeHTMLWidget {
+		template:textEditorArea
+		layout:Layout {grab:horizontal True vertical True}
+		bindings:
+		emailcontent binds-to content,
+		value-of False to readonly
+	}
+}
+
+bwaccess360_remediationerrors = Dialog {
+	title:$access360_remediationmanagementNLS.remediationerrordialog.subtitle
+	width:1200
+	height:400
+	buttons: OkButton
+	
+	remediationerrors = Dataset {
+		view: bwaccess360r_remediationerrors with
+			'3' to filterbyrunstatus
+	}
+	
+	Table {
+		data:remediationerrors
+		layout:Layout { grab:horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		label:Label { break:True }
+		Column {
+			column: remediationstatus
+			header: $access360_remediationmanagementNLS.remediationerrordialog.status
+			initially-masked:False
+			width:150px
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column: remediationinstancecode
+			header: $access360_remediationmanagementNLS.remediationerrordialog.instancecode
+			initially-masked:False
+			width:200px
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column: remediationerrorreason
+			header: $access360_remediationmanagementNLS.remediationerrordialog.error
+			initially-masked:False
+			width:850px
+			sortable:True
+			filterable:True
+		}
+	}
+}
+
+bwaccess360_remediationmanagement = Page {
+	title: $access360_remediationmanagementNLS.title
+	enter-event:
+		IntCase ( nbpendingremediation ) {
+			when >0 then [
+				Set "init" to filterbyclosedstatus
+			]
+		}
+	post-render-event:
+		IntCase ( activeTabParam ) {
+			when Not InvalidInteger then [
+				Set activeTabParam to activeTab
+			]
+		}
+	feature: iasreview_license						
+	header:
+		PageHeader {
+			Button {
+				layout: Layout { grab: horizontal True vertical True indent: vertical 4 horizontal 0 }
+				text: $access360_remediationmanagementNLS.warningpending ( nbpendingremediation )
+				hidden:
+					IntPredicate ( nbpendingremediation ) {
+						when >0 then False
+						otherwise True
+					}
+				presentation: Link
+				styling: warningFieldStyle
+				actions:
+					Unset filterbyremediationstatus,
+					Set 'init' to filterbyclosedstatus,
+					Set 1 to activeTab 
+			}
+			Button {
+				layout: Layout { grab: horizontal True vertical True indent: vertical 4 horizontal 0 }
+				text: $access360_remediationmanagementNLS.warningerror ( nberroringremediation )
+				hidden:
+					IntPredicate ( nberroringremediation ) {
+						when >0 then False
+						otherwise True
+					}
+				presentation: Link
+				styling: warningFieldStyle
+				actions:
+					Unset filterbyremediationstatus,
+					Set 'error' to filterbyclosedstatus,
+					Set 1 to activeTab 
+			}
+	}
+	
+	activeTabParam = Parameter { hidden:True type:Integer mandatory:False  }
+	
+	filterbyremediationstatus = Variable { multivalued:True }
+	filterbyclosedstatus = Variable { initial:'active' }
+
+	revieweruid = Variable
+	
+	incanshowdetails = Variable { initial:True type:Boolean }	
+
+	outapplicationuid = Variable
+	outpermissionuid = Variable
+	outidentityuid = Variable
+	outaccountuid = Variable
+
+	selectedentries = Variable { multivalued:True }
+	selectedremediationitsmlink = Variable { type: String }
+
+	nbremediation = Variable { type:Integer }
+	nbpendingremediation = Variable { type:Integer }
+	nberroringremediation = Variable { type:Integer }
+	nbactiveremediation = Variable { type:Integer }
+	nbactive7daysremediation = Variable { type:Integer }
+	nbclosedremediation = Variable { type:Integer }
+	nbcancelledremediation = Variable { type:Integer }
+	nbinactiveremediation = Variable { type:Integer }
+
+	nbdiscrepancies = Variable { type:Integer }
+
+	statustowrite = Variable
+	commenttowrite = Variable
+	statusisclosed = Variable { type:String }
+	
+	filterolder90days = Variable { type:Boolean initial:True }
+	filterbycampaign = Variable
+	
+	activeTab = Variable
+	detailTabActive = Variable { type: Boolean initial: False }
+	
+	// Overview tab
+	
+	nbremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nbremediation
+	}
+
+	nbpendingremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			'-1' to filterbyrunstatus,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nbpendingremediation
+	}
+	
+	nberroringremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			'3' to filterbyrunstatus,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nberroringremediation
+	}
+
+	nbactiveremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			'0' to filterbyrunstatus,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nbactiveremediation
+	}
+
+	nbactive7daysremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			'0' to filterbyrunstatus, True to filterlessthan7days,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nbactive7daysremediation
+	}
+
+	nbclosedremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			'1' to filterbyrunstatus,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nbclosedremediation
+	}
+
+	nbcancelledremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			'2' to filterbyrunstatus,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nbcancelledremediation
+	}
+	
+	nbinactiveremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			['1','2'] to filterbyrunstatus,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+		count-variable: nbinactiveremediation
+	}
+	
+	nbremediationperstatus = Dataset {
+		view: bwaccess360r_applicationnbremediationperstatus with
+			'0' to filterbyrunstatus,
+			filterolder90days to filterolderthan90days unless-empty,
+			filterbycampaign to campaignid unless-empty
+	}
+	
+	nbperday = Dataset {
+		view: bwaccess360_applicationnbremediationperday with
+			True to sumresult,
+			filterbycampaign to campaignid unless-empty
+	}
+
+	selectedcampaign = Record {
+		view: bwaccess360_accessreviewcampaigns with
+			filterbycampaign to campaignid
+		disabled:
+			StringPredicate ( filterbycampaign ) {
+				when IsEmpty then True
+			}
+	}
+	
+	// Details tab
+	
+	remediationactionlist = Dataset {
+		view: bwaccess360_remediationstatuslist
+		disabled: Not BooleanPredicate(detailTabActive)
+	}
+
+	remediation = Dataset {
+		view: bwaccess360_reviewsandremediation with 
+			filterbycampaign to campaignid unless-empty,
+			filterbyremediationstatus to filterbyremediationstatus unless-empty,
+			Transform filterbyclosedstatus using remediationstatusmapping to filterbyclosedstatus unless-empty,
+			filterolder90days to filterolderthan90days unless-empty
+		disabled: Not BooleanPredicate(detailTabActive)
+	}
+	
+	//Discrepancies tab
+	
+	discrepancies = Dataset {
+		view: bwiasr_reviewandremediation with
+			filterbycampaign to campaignid unless-empty,
+			'1' to remediationclosed,
+			PageTimeslot.UID to currenttimeslot,
+			filterolder90days to filterolderthan90days unless-empty
+		count-variable: nbdiscrepancies
+	}
+
+	// Check remediation processes
+	itsminitinprogress = Record {
+		view: bwiasr_processisactive with
+			"REMEDIATION_INITTICKETS" to tickettype
+	}
+	itsmrefreshinprogress = Record {
+		view: bwiasr_processisactive with
+			"REMEDIATION_REFRESHTICKETS" to tickettype
+	}
+
+	task = TaskRecord(create "bwaccess360_writeRemediationTickets")
+	launchpendingremediation = TaskRecord(create "bwr_inittickets")
+	launchremediationinerror = TaskRecord(create "bwr_retrytickets")
+	refreshpendingremediation = TaskRecord(create "bwr_refreshtickets")
+	
+	goApplicationDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(
+					outapplicationuid to inuid,
+					True to inshowaccounts,
+					True to inshowbusinessactivities,
+					True to inshowcontrols,
+					True to inshowdecisionhistory,
+					True to inshowpermissions,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			] when False then [ ]
+		}
+	)
+	
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(
+					outpermissionuid to inuid,
+					True to inshowaccounts,
+					True to inshowcontrols,
+					True to inshowdecisionhistory,
+					True to inshowoverallocated,
+					True to inshowtheoretical,
+					True to inshowsodmodeldefects,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			] when False then [ ]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(
+					outidentityuid to inuid,
+					True to inshowaccounts,
+					True to inshowapplications,
+					True to inshowbusinessactivities,
+					True to inshowcontrols,
+					True to inshowdecisionhistory,
+					True to inshowoverallocated,
+					True to inshowposition,
+					True to inshowshares,
+					True to inshowtheoretical
+				)
+			] when False then [ ]
+		}
+	)
+
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(
+					outaccountuid to inuid, 
+					True to inshowgroups,
+					True to inshowapplications,
+					True to inshowshares,
+					True to inshowowner,
+					True to inshowcontrols,
+					True to inshowdecisionhistory
+				)
+			] when False then [ ]
+		}
+	)
+
+	updateTickets = NamedAction (
+		Dialog bwaccess360_remediationComment(commenttowrite from comment),
+		Set selectedentries to task.remediationticketrecorduid,
+		Set [statustowrite repeat SizeOf task.remediationticketrecorduid] to task.status,
+		Set [commenttowrite repeat SizeOf task.remediationticketrecorduid] to task.comment,
+		Set [statusisclosed repeat SizeOf task.remediationticketrecorduid] to task.ticketclosed,
+		Set [Date.valueLDAP repeat SizeOf task.remediationticketrecorduid] to task.actiondate,
+		TaskComplete task wait-end timeout-seconds 120,
+		Flash $access360_remediationmanagementNLS.update.flash(SizeOf selectedentries),
+		Unset selectedentries,
+		ReloadData (remediation)
+	)
+	
+	reloadNbRemediations = NamedAction(
+		ReloadData(nbremediation),
+		ReloadData(nberroringremediation),
+		ReloadData(nbpendingremediation),
+		ReloadData(nbactiveremediation),
+		ReloadData(nbactive7daysremediation),
+		ReloadData(nbclosedremediation),
+		ReloadData(nbcancelledremediation),
+		ReloadData(nbperday),
+		ReloadData(nbremediationperstatus),
+		ReloadData(nbinactiveremediation)
+	)
+	
+	// layout
+	Grid {
+		hidden:
+			BooleanPredicate ( Eval "filterolder90days.get() && filterbycampaign.isEmpty()" )
+		columns:
+			GridColumn { width: grow },
+			GridColumn,
+			GridColumn
+		layout: Layout { grab: horizontal True vertical False hint: height 16 }
+		GridRow {
+			GridCell {
+			}
+			GridCell {
+				Header {
+					value:$access360_remediationmanagementNLS.filter._all
+					hidden:BooleanPredicate(filterolder90days)
+					styling:italicStyle
+				}			
+			}
+			GridCell {
+				Header {
+					value:$access360_remediationmanagementNLS.filter.campaign(selectedcampaign.label)
+					hidden:StringPredicate(filterbycampaign) { when IsEmpty then True otherwise False }
+					layout:Layout { grab:horizontal False vertical False hint:width 400 }
+					tooltip:selectedcampaign.description
+					styling:italicStyle
+				}			
+			}
+		}
+	}
+	TabFolder {
+		layout: Layout { indent: vertical 10 horizontal 0 }
+		border: False
+		selected-index: activeTab
+		TabItem {
+			text:$access360_remediationmanagementNLS.tab1
+			activation-event: ExecuteNamedAction reloadNbRemediations
+			Group {
+		       	layout: Layout { grab: horizontal True vertical True }
+		       	styling: cssPageDashboard
+				   				Flow {
+									disposition: Horizontal
+									layout: Layout { grab: horizontal True vertical False }
+					Group {
+				       	layout: Layout { grab: horizontal True vertical False }
+				       	styling: cssRound
+						Header {
+							value: $access360_remediationmanagementNLS.tab1.nbremediation.nl
+							styling: mediumTitleStyle
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+						}
+						IncludeHTMLWidget {
+							template: liquidGaugeIndicator
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center hint: height 150 width 150 }
+							bindings:
+								value-of nbremediation to count,
+											value-of nbremediation to maxValue,
+								value-of False to displayPercent 
+							widget-events: {
+								when onclick then [
+									Unset filterbyremediationstatus,
+									Set 'all' to filterbyclosedstatus,
+									Set 1 to activeTab
+								] 
+							}
+						}
+					}
+					Group {
+				       layout: Layout { grab: horizontal True vertical False }
+				       styling: cssRound
+						Header {
+							value: $access360_remediationmanagementNLS.tab1.nbpendingremediation
+							styling: mediumTitleStyle
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+						}
+						IncludeHTMLWidget {
+							template: liquidGaugeIndicator
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center hint: height 150 width 150 }
+							bindings:
+								value-of nbpendingremediation to count,
+								value-of nbremediation to maxValue,
+								value-of False to displayPercent, 
+								value-of '#CCCCCC' to waveTextColor,
+								value-of '#CCCCCC' to textColor,
+								value-of '#999999' to circleColor,
+								value-of '#999999' to waveColor
+							widget-events: {
+								when onclick then [
+									Unset filterbyremediationstatus,
+									Set 'init' to filterbyclosedstatus,
+									Set 1 to activeTab
+								] 
+									}
+								}
+					}
+					Group {
+									layout: Layout { grab: horizontal True vertical False }
+				       	styling: cssRound
+						Header {
+							value: $access360_remediationmanagementNLS.tab1.nbactiveremediation.nl
+							styling: mediumTitleStyle
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+						}
+						IncludeHTMLWidget {
+							template: liquidGaugeIndicator
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center hint: height 150 width 150 }
+							bindings:
+								value-of nbactiveremediation to count,
+											value-of nbremediation to maxValue,
+								value-of False to displayPercent 
+							widget-events: {
+								when onclick then [
+									Unset filterbyremediationstatus,
+									Set 'active' to filterbyclosedstatus,
+									Set 1 to activeTab
+								] 
+							}
+						}
+					}
+					Group {
+				       	layout: Layout { grab: horizontal True vertical False }
+				       	styling: cssRound
+						Header {
+							value: $access360_remediationmanagementNLS.tab1.nbactiveremediation7.nl
+							styling: mediumTitleStyle
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+						}
+						IncludeHTMLWidget {
+							template: liquidGaugeIndicator
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center hint: height 150 width 150 }
+							bindings:
+								value-of nbactive7daysremediation to count,
+								value-of nbactiveremediation to maxValue,
+								value-of False to displayPercent, 
+								value-of 0 to minValue,
+								value-of '#F99F36' to waveTextColor,
+								value-of '#F99F36' to textColor,
+								value-of '#F1773D' to circleColor,
+								value-of '#F1773D' to waveColor
+							widget-events: {
+								when onclick then [
+									Unset filterbyremediationstatus,
+									Set 'active7days' to filterbyclosedstatus,
+									Set 1 to activeTab
+								] 
+							}
+						}
+					}
+					Group {
+				       	layout: Layout { grab: horizontal True vertical False }
+				       	styling: cssRound
+						Header {
+							value: $access360_remediationmanagementNLS.tab1.nbremediationdone.nl
+							styling: mediumTitleStyle
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+						}
+						IncludeHTMLWidget {
+							template: liquidGaugeIndicator
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center hint: height 150 width 150 }
+							bindings:
+								value-of nbclosedremediation to count,
+											value-of nbinactiveremediation to maxValue,
+								value-of False to displayPercent, 
+								value-of 0 to minValue,
+								value-of '#65BD70' to waveTextColor,
+								value-of '#65BD70' to textColor,
+								value-of '#46A862' to circleColor,
+								value-of '#46A862' to waveColor
+							widget-events: {
+								when onclick then [
+									Unset filterbyremediationstatus,
+									Set 'closed' to filterbyclosedstatus,
+									Set 1 to activeTab
+								] 
+							}
+						}
+					}
+					Group {
+				       	layout: Layout { grab: horizontal True vertical False }
+				       	styling: cssRound
+						Header {
+							value: $access360_remediationmanagementNLS.tab1.nbremediationcancel.nl
+							styling: mediumTitleStyle
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center }
+						}
+						IncludeHTMLWidget {
+							template: liquidGaugeIndicator
+							layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Center hint: height 150 width 150 }
+							bindings:
+								value-of nbcancelledremediation to count,
+											value-of nbinactiveremediation to maxValue,
+								value-of False to displayPercent,
+								value-of 0 to minValue,
+								value-of '#E96959' to waveTextColor,
+								value-of '#E96959' to textColor,
+								value-of '#CF4544' to circleColor,
+								value-of '#CF4544' to waveColor
+							widget-events: {
+								when onclick then [
+									Unset filterbyremediationstatus,
+									Set 'cancelled' to filterbyclosedstatus,
+									Set 1 to activeTab
+								] 
+							}
+						}
+					}
+				}
+				Grid {
+					layout: Layout { grab: horizontal True vertical True }
+					columns:
+						GridColumn {},
+						GridColumn {},
+						GridColumn {}
+					GridRow {
+						height: grow
+						GridCell {
+							span: 2
+							Group {
+						       	layout: Layout { grab:horizontal True vertical True}
+						       	styling: cssRound
+								Header {
+									value:$access360_remediationmanagementNLS.tab1.remediationvelocity
+									styling:mediumTitleStyle
+									layout:Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab:horizontal True vertical True }
+									template: multilineChart
+									datasets: nbperday ( day, label, category, category, nb ) to chartdata ( code, label, categorycode , category, count )
+									bindings: 
+										value-of 'bottom' to legendPosition,
+										value-of False to maintainAspectRatio,
+										value-of True to beginAtZero,
+										value-of 1 to pointRadius
+								}
+							}
+						}
+						GridCell {
+							span: 1
+							Group {
+						       	layout: Layout { grab:horizontal True vertical True}
+						       	styling: cssRound
+								Header {
+									value:$access360_remediationmanagementNLS.tab1.remediationstatus
+									styling:mediumTitleStyle
+									layout:Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+								}
+								ConditionalGroup {
+									IntCondition(Count nbremediationperstatus) {
+										when >0 then [
+											IncludeHTMLWidget {
+												layout: Layout { grab:horizontal True vertical True }
+												template: barChart
+												datasets: nbremediationperstatus ( remediationstatus, remediationstatus, nbremediation, color) to chartdata ( label, code , count , color)
+												bindings: 
+													value-of True to tooltipShowPercent,
+													value-of False to maintainAspectRatio,
+													value-of True to isHorizontal,
+													value-of True to isLabelInside,
+													value-of 4 to datasetMinSize,
+													value-of True to beginAtZero
+													//value-of True to showLegend,
+													//value-of True to showHalfOnly,
+													//value-of "bottom" to legendPosition
+												widget-events:{
+													when onclick then [ Set 'active' to filterbyclosedstatus, Set Current code to filterbyremediationstatus, Set 1 to activeTab ] 
+												}
+											}
+										]
+										otherwise [
+											Spacer { height:64 }
+											Header { value:$access360_remediationmanagementNLS.tab1.emptystatus styling:italicStyle align:Center}								
+										]							
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		TabItem {
+			text:$access360_remediationmanagementNLS.tab2
+			activation-event: Set True to detailTabActive
+			Group {
+				styling:cssPageDashboard
+				layout:Layout { grab:horizontal True vertical True }
+				Group {
+					styling:cssRound
+					layout:Layout { grab:horizontal True vertical False hint:height 40 }
+					ButtonGroup {
+						nb-inline:4
+						Button {
+							actions: 
+								Set "In Progress" to statustowrite,
+								Set '0' to statusisclosed,
+								ExecuteNamedAction updateTickets
+							image:"16/famfamfam_silk_icons_v013/basket_add.png"
+							text:$access360_remediationmanagementNLS.tab2.button.inprogress
+							disabled:
+								OrPredicate {
+									IntPredicate(SizeOf selectedentries) { when >0 then False otherwise True }
+									Not FeaturePredicate iasr_canmanageremediationentries
+								}
+						}
+						Button {
+							actions: 
+								Set "Done" to statustowrite,
+								Set '1' to statusisclosed,
+								ExecuteNamedAction updateTickets
+							image:"16/famfamfam_silk_icons_v013/accept.png"
+							text:$access360_remediationmanagementNLS.tab2.button.done
+							disabled:
+								OrPredicate {
+									IntPredicate(SizeOf selectedentries) { when >0 then False otherwise True }
+									Not FeaturePredicate iasr_canmanageremediationentries
+								}
+						}
+						Button {
+							actions: 
+								Set "Won't Fix" to statustowrite,
+								Set '2' to statusisclosed,
+								ExecuteNamedAction updateTickets
+							image:"16/famfamfam_silk_icons_v013/cancel.png"
+							text:$access360_remediationmanagementNLS.tab2.button.wontfix
+							disabled:
+								OrPredicate {
+									IntPredicate(SizeOf selectedentries) { when >0 then False otherwise True }
+									Not FeaturePredicate iasr_canmanageremediationentries
+								}
+						}
+						Button {
+							actions:
+								Dialog bwaccess360_remediationmanagementSendNotification(
+															filterbycampaign to campaignid,
+															selectedcampaign.title to campaignname,
+															selectedcampaign.description to campaigndescription,
+															selectedcampaign.duedate to campaigndeadline,
+															selectedcampaign.prioritylevel to campaignpriority
+															),
+								Flash $access360_remediationmanagementNLS.tab2.button.sendmessage.flash
+							text:$access360_remediationmanagementNLS.tab2.button.sendmessage
+							tooltip:$access360_remediationmanagementNLS.tab2.button.sendmessage.tooltip
+							image:%collection_16.mail
+							disabled:
+								OrPredicate {
+									Not FeaturePredicate iasr_cansendremediationmessage
+								}
+						}
+						Button {
+						    actions:
+								ReloadData(itsmrefreshinprogress),
+								IntCase(itsmrefreshinprogress.nb) {
+									when >0 then [
+										Message $access360_remediationmanagementNLS.action.refresh.error							
+									]
+									otherwise [
+										Confirm $access360_remediationmanagementNLS.action.refresh.confirm, 
+										TaskComplete refreshpendingremediation wait,
+										Flash $access360_remediationmanagementNLS.action.refresh.flash
+									]
+								}							 
+							text:$access360_remediationmanagementNLS.tab2.button.refresh.tooltip
+							tooltip:$access360_remediationmanagementNLS.tab2.button.refresh.tooltip
+							image:%collection_16.gear
+							disabled:
+								OrPredicate {
+									Not FeaturePredicate iasr_canmanageremediationentries
+								}
+						}
+						Button {
+							actions:Dialog bwaccess360_remediationmanagementFilters(filterolder90days to outfilter90days, filterbycampaign to outfilterbycampaign, 
+																					filterolder90days from outfilter90days, filterbycampaign from outfilterbycampaign)
+							text:$access360_remediationmanagementNLS.tab2.button.filter
+							image:"16/famfamfam_silk_icons_v013/cog.png"
+						}
+					}	
+				}
+				Group {
+					styling:cssRound
+					layout:Layout { grab:horizontal True vertical True }
+					Grid {
+						columns:GridColumn,GridColumn,GridColumn,GridColumn { width:grow }
+						layout:Layout { grab:horizontal True vertical False hint:height 100 }
+						GridRow {
+							GridCell {
+								Combo {
+									variable:filterbyremediationstatus
+									allow-none:True
+									multi-selection:True
+									label:Label {break:True value:$access360_remediationmanagementNLS.tab2.filter.remediationstatus align:Left layout:Layout { align:vertical Beginning horizontal Beginning } } 
+									layout:Layout { hint:width 200 }
+									options:Dynamic {
+										data: remediationactionlist
+										value: Current remediationstatus
+										text: Current remediationstatus
+									}
+								}
+							}		
+							GridCell {
+								Combo {
+									variable:filterbyclosedstatus
+									label:Label {break:True value:$access360_remediationmanagementNLS.tab2.filter.closedstatus align:Left layout:Layout { align:vertical Beginning horizontal Beginning } } 
+									layout:Layout { hint:width 400 }
+									modify-event:Unset selectedentries
+									options:Static {
+										Option {
+											value:''
+											text:$access360_remediationmanagementNLS.tab2.filter.closedstatus_all
+										}
+										Option {
+											value:'active'
+											text:$access360_remediationmanagementNLS.tab2.filter.closedstatus_active
+										}
+										Option {
+											value:'active7days'
+											text:$access360_remediationmanagementNLS.tab2.filter.closedstatus_active7days
+										}
+										Option {
+											value:'closed'
+											text:$access360_remediationmanagementNLS.tab2.filter.closedstatus_closed
+										}
+										Option {
+											value:'cancelled'
+											text:$access360_remediationmanagementNLS.tab2.filter.closedstatus_cancelled
+										}
+										Option {
+											value:'error'
+											text:$access360_remediationmanagementNLS.tab2.filter.closedstatus_error
+										}
+										Option {
+											value:'init'
+											text:$access360_remediationmanagementNLS.tab2.filter.closedstatus_init
+										}
+									}
+								}
+							}
+							GridCell {
+							
+							}		
+						}
+					}
+					Spacer {
+						height:8
+					}
+					Table {
+						data:remediation
+						commands: 
+							Commands{ 
+								position:After
+								orientation:Vertical 
+								presentation:Icon 
+								Command { 
+									actions:BrowseURL selectedremediationitsmlink
+									disabled:StringPredicate(selectedremediationitsmlink) { when IsEmpty then True otherwise False }
+									tooltip:$access360_remediationmanagementNLS.action.itsmticket
+									icon:"16/internet/browser_16.png"
+								}
+								// A second command is required to display it in the top right of the table
+								Command { 
+									actions:BrowseURL selectedremediationitsmlink
+								}
+							}
+						layout:Layout { grab:horizontal True vertical True } 
+						show-count:True
+						show-filter:True
+						configurable:True
+						persist-configuration:True 
+						label:Label { break:True } 
+						checkboxes:remediationrecorduid to selectedentries
+						Column {
+							column:reviewstatus
+							text:Transform LowerCase Current reviewstatus using bwReviewStatus
+							header:$access360_remediationmanagementNLS.status
+							width:100px
+							sortable:True
+							filterable:True
+							image:TemplateImageSelection(LowerCase Current reviewstatus) using bwReviewStatusIcon
+						}
+						Column {
+							column:reviewactorfullname
+							tooltip:Current reviewactorfullname
+							header:$access360_remediationmanagementNLS.by
+							initially-masked:True
+							width:120px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:reviewactiondate
+							text:SubString(10) Current reviewactiondate
+							tooltip:Current reviewactiondate
+							header:$access360_remediationmanagementNLS.date
+							initially-masked:True
+							width:120px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:reviewcomment
+							tooltip:Current reviewcomment
+							header:$access360_remediationmanagementNLS.comment
+							width:200px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:reviewerhrcode
+							header:$access360_remediationmanagementNLS.lmhrcode
+							initially-masked:True
+							styling:StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:reviewerfullname
+							header:$access360_remediationmanagementNLS.lmfullname
+							tooltip:Current reviewerfullname
+							styling:StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+							width:160px
+							sortable:True
+							filterable:True
+							initially-masked:True
+						}
+						Column {
+							column:reviewermail
+							header:$access360_remediationmanagementNLS.lmmail
+							tooltip:Current reviewermail
+							styling:StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+							width:160px
+							sortable:True
+							filterable:True
+							initially-masked:True
+						}
+						Column {
+							column:reviewtype
+							header:$access360_remediationmanagementNLS.target
+							width:80px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:reviewdisplayname
+							tooltip:Current reviewdisplayname
+							header:$access360_remediationmanagementNLS.resource
+							width:100%
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:remediationtype
+							header:$access360_remediationmanagementNLS.table.remediationtype
+							width:100px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:remediationclosed
+							text:Transform Current remediationclosed using remediationclosedstatus
+							header:$access360_remediationmanagementNLS.table.remediationclosestatus
+							width:100px
+							sortable:True
+							initially-masked:True
+						}
+						Column {
+							column:remediationstatus
+							text:Transform Current remediationstatus using remediationStatusMapping
+							header:$access360_remediationmanagementNLS.table.remediationcurrentstatus
+							width:100px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:remediationitsmticketnumber
+							tooltip:Current remediationitsmticketnumber
+							header:$access360_remediationmanagementNLS.table.itsm
+							width:100px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:remediationinstance
+							header:$access360_remediationmanagementNLS.table.remediationinstance
+							width:140px
+							sortable:True
+							filterable:True
+							initially-masked:True
+						}
+						Column {
+							column:remediationactorfullname
+							tooltip:Current remediationactorfullname
+							header:$access360_remediationmanagementNLS.table.remediationlastupdateby
+							initially-masked:True
+							width:120px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:remediationactiondate
+							text:SubString(10) Current remediationactiondate
+							tooltip:Current remediationactiondate
+							header:$access360_remediationmanagementNLS.table.remediationlastupdateon
+							width:120px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:remediationsubmissiondate
+							text:SubString(10) Current remediationsubmissiondate
+							tooltip:Current remediationsubmissiondate
+							header:$access360_remediationmanagementNLS.table.remediationcreatedon
+							width:120px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column:remediationcomment
+							tooltip:Current remediationcomment
+							initially-masked:True
+							header:$access360_remediationmanagementNLS.table.remediationcomment
+							width:180px
+							sortable:True
+							filterable:True
+						}
+						Column {
+							column: remediationitsmlink
+							hidden: True
+							selection: selectedremediationitsmlink
+						}
+					}
+					ButtonGroup {
+						align:Left
+						hidden:
+							StringPredicate(filterbyclosedstatus) { when "init" then False otherwise True }
+						Button {
+							actions:
+								ReloadData(itsminitinprogress),
+								IntCase(itsminitinprogress.nb) {
+									when >0 then [
+										Message $access360_remediationmanagementNLS.action.new.error
+									]
+									otherwise [
+										Confirm $access360_remediationmanagementNLS.action.new.confirm, 
+										// We launch ALL pending remediation because for ITSM they have to be grouped by target
+										//Set selectedentries to launchpendingremediation.filterbytickets,
+										TaskComplete launchpendingremediation wait,
+										Flash $access360_remediationmanagementNLS.action.new.flash
+									]
+								}
+							disabled:
+								OrPredicate { 
+									// We launch ALL pending remediation because for ITSM they have to be grouped by target
+									//IntPredicate(selectedentries) { when >0 then False otherwise True }
+									IntPredicate(nbpendingremediation) { when >0 then False otherwise True }
+									Not FeaturePredicate iasr_canlaunchpendingremediation
+								}
+							text:$access360_remediationmanagementNLS.tab2.button.launchpending
+							tooltip:$access360_remediationmanagementNLS.tab2.button.launchpending.tooltip
+							image:%collection_16.gear
+						}
+					} //TODO Remove time limit for erroring remediations
+					ButtonGroup {
+						align:Left
+						hidden:
+							StringPredicate(filterbyclosedstatus) { when "error" then False otherwise True }
+						Button {
+							actions:
+								ReloadData(itsminitinprogress),
+								IntCase(itsminitinprogress.nb) {
+									when >0 then [
+										Message $access360_remediationmanagementNLS.action.new.error
+									]
+									otherwise [
+										Confirm $access360_remediationmanagementNLS.action.retry.confirm,
+										TaskComplete launchremediationinerror wait,
+										Flash $access360_remediationmanagementNLS.action.retry.flash
+									]
+								}
+							disabled:
+								OrPredicate {
+									IntPredicate(nberroringremediation) { when >0 then False otherwise True }
+									Not FeaturePredicate iasr_canlaunchpendingremediation
+								}
+							text:$access360_remediationmanagementNLS.tab2.button.launcherroring
+							tooltip:$access360_remediationmanagementNLS.tab2.button.launcherroring.tooltip
+							image:%collection_16.gear
+						}
+						Button {
+							actions:Dialog bwaccess360_remediationerrors
+							disabled:IntPredicate(nberroringremediation) { when >0 then False otherwise True }
+							text:$access360_remediationmanagementNLS.remediationerrordialog.title
+							image:%status_16.error
+						}
+					}
+				}
+			}
+		}
+		TabItem {
+			text:$access360_remediationmanagementNLS.tab3
+			badge:Eval "nbdiscrepancies.get()==0?'':nbdiscrepancies.get()"
+			hidden:Eval "nbdiscrepancies.get()==0"
+			Group {
+				styling:cssPageDashboard
+				layout:Layout { grab: horizontal True vertical True }
+				Header {
+					value:$access360_remediationmanagementNLS.tab3.subtitle
+				}
+				Group {
+					styling:cssPageDashboard
+					layout:Layout { grab: horizontal True vertical True }
+					Group {
+						styling:cssRound
+						layout:Layout { grab: horizontal True vertical True }
+						Table {
+							data:discrepancies
+							layout:Layout { grab:horizontal True vertical True }
+							show-count:True
+							show-filter:True
+							configurable:True
+							persist-configuration:True
+							label:Label { break:True }
+							Column {
+								column:reviewstatus
+								text:Transform LowerCase Current reviewstatus using bwReviewStatus
+								header:$access360_remediationmanagementNLS.status
+								width:100px
+								sortable:True
+								filterable:True
+								image:TemplateImageSelection(LowerCase Current reviewstatus) using bwReviewStatusIcon
+							}
+							Column {
+								column:reviewactorfullname
+								tooltip:Current reviewactorfullname
+								header:$access360_remediationmanagementNLS.by
+								initially-masked:True
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:reviewactiondate
+								tooltip:Current reviewactiondate
+								header:$access360_remediationmanagementNLS.date
+								initially-masked:True
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:reviewcomment
+								tooltip:Current reviewcomment
+								header:$access360_remediationmanagementNLS.comment
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:reviewerhrcode
+								header:$access360_remediationmanagementNLS.lmhrcode
+								initially-masked:True
+								styling:StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:reviewerfullname
+								header:$access360_remediationmanagementNLS.lmfullname
+								tooltip:Current reviewerfullname
+								styling:StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+								width:160px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column:reviewermail
+								header:$access360_remediationmanagementNLS.lmmail
+								tooltip:Current reviewermail
+								styling:StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+								width:160px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column:accountuid
+								selection:outaccountuid
+								hidden:True
+							}
+							Column {
+								column:accountlogin
+								header:$account.login
+								tooltip:Current accountlogin
+								actions:ExecuteNamedAction goAccountDetails
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:accountusername
+								header:$account.useraccount
+								tooltip:Current accountusername
+								actions:ExecuteNamedAction goAccountDetails
+								width:160px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:accountlastlogindate
+								header:$account.lastlogindate
+								initially-masked:True
+								width:160px
+								sortable:True
+							}
+							Column {
+								column:repositorydisplayname
+								header:$repository.concept
+								initially-masked:True
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:reconnoownercode
+								header:$reconciliation.noownercode
+								tooltip:Current reconnoownercode
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:reconleavedate
+								header:$reconciliation.leavedate
+								tooltip:Current reconleavedate
+								initially-masked:True
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:reconcomment
+								header:$preconciliation.comment
+								tooltip:Current reconcomment
+								initially-masked:True
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:identityuid
+								selection:outidentityuid
+								hidden:True
+							}
+							Column {
+								column:identityhrcode
+								header:$identity.hrcode
+								actions:ExecuteNamedAction goIdentityDetails
+								initially-masked:True
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:identityfullname
+								header:$identity.fullname
+								tooltip:Current identityfullname
+								actions:ExecuteNamedAction goIdentityDetails
+								initially-masked:True
+								width:160px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:identitymail
+								header:$identity.mail
+								tooltip:Current identitymail
+								initially-masked:True
+								width:160px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:identityinternal
+								header:$identity.internal
+								text:Transform Current identityinternal using booleanDisplayMapping
+								sortable:True
+								initially-masked:True
+							}
+							Column {
+								column:identityactive
+								header:$identity.active
+								text:Transform Current identityactive using booleanDisplayMapping
+								initially-masked:True
+								sortable:True
+							}
+							Column {
+								column:identityarrivaldate
+								header:$identity.arrivaldate
+								text:SubString (10) Current identityarrivaldate 
+								initially-masked:True
+								width:120px
+								sortable:True
+							}
+							Column {
+								column:identitydeparturedate
+								header:$identity.departuredate
+								text:SubString (10) Current identitydeparturedate 
+								initially-masked:True
+								width:120px
+								sortable:True
+							}
+							Column {
+								column:identityjoborg
+								header:$identity.joborg
+								tooltip:Current identityjoborg
+								width:160px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column:permissionuid
+								selection:outpermissionuid
+								hidden:True
+							}
+							Column {
+								column:permissioncode
+								header:$ppermission.code
+								tooltip:Current permissioncode
+								actions:ExecuteNamedAction goPermissionDetails
+								initially-masked:True
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:permissiondisplayname
+								header:$permission.concept
+								tooltip:Current permissiondisplayname
+								actions:ExecuteNamedAction goPermissionDetails
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:permissionsensitivitylevel
+								header:$ppermission.sensitivitylevel
+								text:Transform Current permissionsensitivitylevel using bwfPermissionSensitivityLevelMapping
+								width:120px
+								initially-masked:True
+								sortable:True
+							}
+							Column {
+								column:permissiondescription
+								header:$ppermission.description
+								tooltip:Current permissiondescription
+								initially-masked:True
+								width:160px
+							}
+							Column {
+								column:rightperimeteruid
+								hidden:True
+							}
+							Column {
+								column:rightperimetercode
+								header:$right.perimetercode
+								tooltip:Current rightperimetercode
+								initially-masked:True
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:rightperimeterdisplayname
+								header:$right.perimeterdisplayname
+								tooltip:Current rightperimeterdisplayname
+								width:160px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:rightaction
+								header:$pright.action
+								tooltip:Current rightaction
+								initially-masked:True
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:rightlimit
+								header:$pright.limit
+								tooltip:Current rightlimit
+								initially-masked:True
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:applicationuid
+								selection:outapplicationuid
+								hidden:True
+							}
+							Column {
+								column:applicationdisplayname
+								header:$application.concept
+								actions:ExecuteNamedAction goApplicationDetails
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:remediationtype
+								header:$access360_remediationmanagementNLS.table.remediationtype
+								width:100px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column:remediationclosed
+								text:Transform Current remediationclosed using remediationclosedstatus
+								header:$access360_remediationmanagementNLS.table.remediationclosestatus
+								width:100px
+								sortable:True
+								initially-masked:True
+							}
+							Column {
+								column:remediationstatus
+								header:$access360_remediationmanagementNLS.table.remediationcurrentstatus
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:remediationactorfullname
+								tooltip:Current remediationactorfullname
+								header:$access360_remediationmanagementNLS.table.remediationlastupdateby
+								initially-masked:True
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:remediationactiondate
+								text:SubString(10) Current remediationactiondate
+								tooltip:Current remediationactiondate
+								header:$access360_remediationmanagementNLS.table.remediationlastupdateon
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:remediationsubmissiondate
+								text:SubString(10) Current remediationsubmissiondate
+								tooltip:Current remediationsubmissiondate
+								header:$access360_remediationmanagementNLS.table.remediationcreatedon
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column:remediationcomment
+								tooltip:Current remediationcomment
+								initially-masked:True
+								header:$access360_remediationmanagementNLS.table.remediationcomment
+								width:200px
+								sortable:True
+								filterable:True
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

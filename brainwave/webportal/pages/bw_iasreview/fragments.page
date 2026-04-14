@@ -1,0 +1,971 @@
+import "/webportal/pages/bw_iasreview/nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_iasreview/resources.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/resources/constants.page"
+import "/webportal/pages/bw_iasreview/fragments/missingReviewers.page"
+
+// Buttons to send initial & reminder notifications to selected reviewers
+bw_iasreview_followUpNotifications = PageFragment {
+	
+	// Parameters
+	campaignid = Parameter { type: String hidden: True }
+	campaignname = Parameter { type: String hidden: True }
+	campaigndescription = Parameter { type: String hidden: True }
+	campaigndeadline = Parameter { type: Date hidden: True }
+	campaignpriority = Parameter { type: Integer hidden: True }
+	selectedRevieweruids = Variable { type: String multivalued: True }
+	hide = Variable { type: Boolean initial: False }
+	
+	// EN
+	mailcontent_en = Variable { type: String }
+	mailtitle_en = Variable { type: String }
+	// FR
+	mailcontent_fr = Variable { type: String }
+	mailtitle_fr = Variable { type: String }
+	// ES
+	mailcontent_es = Variable { type: String }
+	mailtitle_es = Variable { type: String }
+	// Default/previous
+	mailcontent = Variable { type: String }
+	mailtitle = Variable { type: String }
+	sendtocc = Variable { type: String }
+	sendtobcc = Variable { type: String }
+	
+	campaign = Record {
+		view: bwaccess360_accessreviewcampaigns with
+			campaignid to campaignid
+	}
+	
+	openMailDialog = NamedAction (
+		Dialog bwaccess360_accessreviewmanagementSendReportsFollowUp(
+			campaignid to campaignid,
+			selectedRevieweruids to reviewers,
+			// EN
+			mailcontent_en to emailcontent_en,
+			mailtitle_en to emailtitle_en,
+			// FR
+			mailcontent_fr to emailcontent_fr,
+			mailtitle_fr to emailtitle_fr,
+			// ES
+			mailcontent_es to emailcontent_es,
+			mailtitle_es to emailtitle_es,
+			// Default / previous
+			mailcontent to emailcontent,
+			mailtitle to emailtitle,
+			sendtocc to emailcc,
+			sendtobcc to emailbcc,
+			campaignname to campaignname,
+			campaigndescription to campaigndescription,
+			campaigndeadline to campaigndeadline,
+			campaignpriority to campaignpriority,
+			campaign.reviewtype to campaigntype,
+			campaign.offlinemode to offlinemode,
+			campaign.duedate to campaigndeadline
+		),
+		Flash $bwaccess360_accessreviewmanagementNLS.SendReports.mailsentselected.flash,
+		Unset selectedRevieweruids
+	)
+	
+	ButtonGroup {
+		align: Center
+		uniform: True
+		hidden: BooleanPredicate ( hide )
+		Button {
+			text: $bwaccess360_accessreviewmanagementNLS.SendReports.ini.text
+			tooltip: $bwaccess360_accessreviewmanagementNLS.SendReports.ini.tooltip
+			image: %collection_16.mail
+			actions:
+				Call mailcontents(
+					campaign.defuid to reviewdefmduid,
+					// EN
+					mailcontent_en from cfg_en,
+					mailtitle_en from cfgtitle_en,
+					// FR
+					mailcontent_fr from cfg_fr,
+					mailtitle_fr from cfgtitle_fr,
+					// ES
+					mailcontent_es from cfg_es,
+					mailtitle_es from cfgtitle_es,
+					// Default / previous
+					mailcontent from cfg,
+					mailtitle from cfgtitle,
+					// To & Cc
+					sendtocc from cfgtocc,
+					sendtobcc from cfgtobcc
+				),
+				ExecuteNamedAction openMailDialog
+			disabled:
+				OrPredicate {
+					StringPredicate ( campaignid ) {
+						when IsEmpty then True
+					}
+					StringPredicate ( selectedRevieweruids ) {
+						when IsEmpty then True
+					}
+					Not FeaturePredicate iasr_cansendmessage
+				}
+		}
+		Button {
+			text: $bwaccess360_accessreviewmanagementNLS.SendReports.reminder.text
+			tooltip: $bwaccess360_accessreviewmanagementNLS.SendReports.reminder.tooltip
+			image: %collection_16.mail
+			actions:
+				Call reminderMailContents(
+					campaign.defuid to reviewdefmduid,
+					// EN
+					mailcontent_en from cfg_en,
+					mailtitle_en from cfgtitle_en,
+					// FR
+					mailcontent_fr from cfg_fr,
+					mailtitle_fr from cfgtitle_fr,
+					// ES
+					mailcontent_es from cfg_es,
+					mailtitle_es from cfgtitle_es,
+					// Default / previous
+					mailcontent from cfg,
+					mailtitle from cfgtitle,
+					// To & Cc
+					sendtocc from cfgtocc,
+					sendtobcc from cfgtobcc
+				),
+				ExecuteNamedAction openMailDialog
+			disabled:
+				OrPredicate {
+					StringPredicate ( campaignid ) {
+						when IsEmpty then True
+					}
+					StringPredicate ( selectedRevieweruids ) {
+						when IsEmpty then True
+					}
+					Not FeaturePredicate iasr_cansendmessage
+				}
+		}
+	}
+}
+
+// Multivalued combo used to filter on the review status
+bw_iasreview_reviewStatusFilter = PageFragment {
+	
+	campaignid = Variable { type: String }
+	filterByReviewStatus = Variable { type: String multivalued: True }
+	filterByExplicitStatus = Variable { type: String multivalued: True }
+	selectedEntries = Variable { type: String multivalued: True }
+	canFilterByStatus = Variable { type: Boolean initial: False }
+	
+	statuses = Dataset {
+		view: bwaccess360r_statuslist with
+			campaignid to campaignid,
+			filterByExplicitStatus to filterbyexplicitstatus
+	}
+	
+	refreshStatuses = NamedAction (
+		ReloadData ( statuses )
+	)
+	
+	Combo {
+		variable: filterByReviewStatus
+		allow-none: True
+		modify-event:
+			Unset selectedEntries
+		multi-selection: True
+		label:
+			Label {
+				value: $bwaccess360_review.reviewstatus
+				align: Left
+				layout: Layout { align: vertical Beginning horizontal Beginning }
+			} 
+		layout: Layout { hint: width 260 }
+		hidden:
+			Not BooleanPredicate(canFilterByStatus)
+		commands:
+			Commands {
+				orientation: Vertical
+				Command {
+					icon: %collection_16.refresh
+					text: $global.refresh
+					tooltip: $global.refreshTt
+					actions:
+						Unset filterByReviewStatus,
+						ExecuteNamedAction refreshStatuses,
+						Flash $global.refresh.complete
+				}
+				Command {
+					icon: %status_16.remove
+					text: $global.clear
+					tooltip: $global.clearTt
+					actions:
+						Unset filterByReviewStatus
+					disabled:
+						StringPredicate ( filterByReviewStatus ) {
+							when IsEmpty then True
+						}
+				}
+			}
+		options:
+			Dynamic {
+				data: statuses
+				value: Current status
+				text: Transform Current status using bwReviewStatus
+		}
+	}
+}
+
+/*
+ * Split entries to process by batches
+ */
+bw_getNextBatch = PageFragment {
+	
+	// Max for MSSQL Server is 2 000
+	batchSize = Variable { type: Integer initial: Constant bwReview_batch_thresold }
+	// List of all entries (input)
+	inselectedentries = Variable { type: String multivalued: True }
+	// Current batch for workflow
+	selectedentries_batch = Variable { type: String multivalued: True }
+	// All remaining entries to process
+	selectedentries_todo = Variable { type: String multivalued: True }
+	// Processed entries
+	selectedentries_done = Variable { type: String multivalued: True }
+	
+	getNextBatch = NamedAction (
+		// Initialization: if no entries have been processes yet, add entries to process to variable
+		IntCase ( SizeOf selectedentries_done ) {
+			when = 0 then [
+				Set inselectedentries to selectedentries_todo
+			]
+		},
+		// Get next batch of entries to process
+		Call srv_getFirtNEnties(
+			selectedentries_todo to entries,
+			batchSize to size,
+			selectedentries_batch from result
+		),
+		// Update done & todo lists
+		MultivaluedRemove all selectedentries_batch from selectedentries_todo,
+		MultivaluedAdd selectedentries_batch to selectedentries_done,
+		IntCase ( SizeOf selectedentries_batch ) {
+			when > 0 then [
+				// Still entries to process
+				MultivaluedAdd selectedentries_batch to selectedentries_done
+			] otherwise [
+				// No more entries
+				Unset selectedentries_done
+			]
+		}
+	)
+}
+
+bw_iasreview_PerimeterTable_bulkActionButtons = PageFragment {
+	periodic-actions:
+		PeriodicAction {
+			actions:
+				ReloadData (actionInProgress),
+				Set actionInProgress.ticketopen to processing,
+				BooleanCase (processing) {
+					when False then [
+						FireFragmentEvent "ReloadTable",
+						Set False to actioninprogress
+					]
+					when True then []
+				}
+			period: 5
+			disabled:
+				Not BooleanPredicate (actioninprogress)
+		}
+
+	inenabled = Variable { initial:False type:Boolean }	
+	incampaignid = Variable
+	inselectedentries = Variable { multivalued:True }
+	// Current batch of entries for workflow
+	inselectedentries_batch = Variable { type: String multivalued: True }
+	
+	delegatedentries = Variable { multivalued:True }
+	
+	actioninprogress = Variable { type:Boolean initial: False }
+	processing = Variable { type:Boolean initial: False }
+	
+	changeaccountable = Variable //in?
+	updatestatus = Variable { type:Boolean }
+	statustowrite = Variable
+	updatecomment = Variable { type:Boolean }
+	commenttowrite = Variable
+	
+	newrevieweruid = Variable
+	newreviewername = Variable
+	
+	// Reviewers (accountables + responsibles)
+	filterMissingReviewers = Variable { type: Boolean initial: False }
+
+	finalizedreview = Record {
+		view: bwaccess360_accessreviewcampaignsfinalized with
+			incampaignid to campaignid
+		disabled:
+			Not BooleanPredicate( inenabled )
+	}
+	
+	delegatedEntries = Dataset {
+		view: bwaccess360_delegatedentries with
+			inselectedentries_batch to recorduid
+		disabled:
+			Not BooleanPredicate( inenabled )
+	}
+	
+	actionInProgress = Record {
+		view: br_workflowticketstatus_parellelmode with
+			incampaignid to custom1,
+			"REVIEW" to tickettype,
+			Principal.uid to actoruid
+	}
+
+	task = TaskRecord( create "bwaccess360_writeAccessRightsReviewTickets")
+	reassigntask = TaskRecord( create "bwaccess360_reassignAccessRightsReviewTickets")
+	escalatetask = TaskRecord ( create "bwaccess360_performBulkEscalateOperation" )
+	resetdelegation = TaskRecord( create "bwaccess360_performBulkResetOperation")
+	markEntryExplicitelyReviewed = TaskRecord( create "bwaccess360_performBulkMarkExplicitelyReviewedOperation")
+	performBulkActionTask = TaskRecord( create "bwaccess360_performBulkOperation")
+
+	checkActionInProgress = NamedAction (
+		ReloadData (actionInProgress),
+		Set actionInProgress.ticketopen to actioninprogress
+	)
+
+	writeBulkComment = NamedAction (
+		Set True to actioninprogress,
+		Set inselectedentries_batch to task.ticketreviewrecorduid,
+		Set [ statustowrite repeat SizeOf inselectedentries_batch ] to task.status,
+		Set [ commenttowrite repeat SizeOf inselectedentries_batch ] to task.comment,
+		Set [ Date.valueLDAP repeat SizeOf inselectedentries_batch ] to task.actiondate,
+		Set updatestatus to task.updatestatus,
+		Set updatecomment to task.updatecomment,
+		Set incampaignid to task.campaignId,
+		TaskComplete task
+	)
+	
+	writeBulkComment_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_PerimeterTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf inselectedentries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction writeBulkComment,
+				// Recursive call on remainder
+				ExecuteNamedAction writeBulkComment_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	bulkSignOff_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_PerimeterTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf inselectedentries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction bulkSignOff,
+				// Recursive call on remainder
+				ExecuteNamedAction bulkSignOff_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	bulkSignOff = NamedAction (
+		Set True to actioninprogress,
+		Set True to markEntryExplicitelyReviewed.forcemarkentry,
+		Set incampaignid to markEntryExplicitelyReviewed.campaignid,
+		Set inselectedentries_batch to markEntryExplicitelyReviewed.reviewtickets,
+		Set Principal.uid to markEntryExplicitelyReviewed.currentreviewer,
+		TaskComplete markEntryExplicitelyReviewed
+	)
+	
+	resetDelegation_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_PerimeterTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf inselectedentries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction resetDelegation,
+				// Recursive call on remainder
+				ExecuteNamedAction resetDelegation_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	resetDelegation = NamedAction (
+		Set True to actioninprogress,
+		Set inselectedentries_batch to resetdelegation.ticketreviewrecorduid,
+		Set [ statustowrite repeat SizeOf inselectedentries_batch ] to resetdelegation.status,
+		Set [ commenttowrite repeat SizeOf inselectedentries_batch ] to resetdelegation.comment,
+		Set [ Date.valueLDAP repeat SizeOf inselectedentries_batch ] to resetdelegation.actiondate,
+		Set updatestatus to resetdelegation.updatestatus,
+		Set updatecomment to resetdelegation.updatecomment,
+		TransferData delegatedEntries(recorduid) to (delegatedentries),
+		Set delegatedentries to resetdelegation.delegatedticketreviewrecorduid,
+		Set incampaignid to resetdelegation.campaignId,
+		TaskComplete resetdelegation
+	)
+	
+	performBulkReviewAction_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_PerimeterTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf inselectedentries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction performBulkReviewAction,
+				// Recursive call on remainder
+				ExecuteNamedAction performBulkReviewAction_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	performBulkReviewAction = NamedAction (
+		Set True to actioninprogress,
+		Set inselectedentries_batch to performBulkActionTask.ticketreviewrecorduid,
+		Set [ statustowrite repeat SizeOf inselectedentries_batch ] to performBulkActionTask.status,
+		Set [ commenttowrite repeat SizeOf inselectedentries_batch ] to performBulkActionTask.comment,
+		Set [ Date.valueLDAP repeat SizeOf inselectedentries_batch ] to performBulkActionTask.actiondate,
+		Set updatestatus to performBulkActionTask.updatestatus,
+		Set updatecomment to performBulkActionTask.updatecomment,
+		// reassign entries to the campaign manager
+		Set Principal.uid to performBulkActionTask.reviewer,
+		Set incampaignid to performBulkActionTask.campaignId,
+		TaskComplete performBulkActionTask
+	)
+	
+	performBulkReassignAction_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_PerimeterTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf inselectedentries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction performBulkReassignAction,
+				// Recursive call on remainder
+				ExecuteNamedAction performBulkReassignAction_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	performBulkReassignAction = NamedAction (
+		Set True to actioninprogress,
+		Set inselectedentries_batch to performBulkActionTask.ticketreviewrecorduid,
+		Set [ statustowrite repeat SizeOf inselectedentries_batch ] to performBulkActionTask.status,
+		Set [ commenttowrite repeat SizeOf inselectedentries_batch ] to performBulkActionTask.comment,
+		Set [ Date.valueLDAP repeat SizeOf inselectedentries_batch ] to performBulkActionTask.actiondate,
+		Set updatestatus to performBulkActionTask.updatestatus,
+		Set updatecomment to performBulkActionTask.updatecomment,
+		// reassign entries to selected identity
+		Set newrevieweruid to performBulkActionTask.reviewer,
+		Set changeaccountable to performBulkActionTask.updateAccountable,
+		Set incampaignid to performBulkActionTask.campaignId,
+		TaskComplete performBulkActionTask
+	)
+	
+	performBulkEscalation_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_PerimeterTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf inselectedentries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction performBulkEscalation,
+				// Recursive call on remainder
+				ExecuteNamedAction performBulkEscalation_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	performBulkEscalation = NamedAction (
+		Set True to actioninprogress,
+		Set inselectedentries_batch to escalatetask.ticketreviewrecorduids,
+		Set incampaignid to escalatetask.campaignId,
+		TaskComplete escalatetask,
+		Unset inselectedentries
+	)
+	
+	checkMissingReviewers = NamedAction (
+		ExecuteFragmentNamedAction reviewStatusMissingReviewers.checkMissingReviewers
+	)
+
+	getNextBatch_PerimeterTable_bulkActionButtons = IncludeFragment {
+		layout: Layout { grab: horizontal False vertical False }
+		fragment: bw_getNextBatch with
+			value-of inselectedentries to inselectedentries,
+			inselectedentries_batch binds-to selectedentries_batch
+	}
+	Group {
+		styling:cssRound
+		layout: Layout { grab:horizontal True vertical False hint:height 40}
+		Grid {
+			columns: GridColumn, GridColumn, GridColumn { width:grow }, GridColumn {}
+			GridRow {
+				GridCell {
+					Image {
+						image: "various/running.svg"
+						hidden:
+							Not BooleanPredicate (actioninprogress)
+					}
+				}
+				GridCell {
+					ButtonGroup {
+						layout:Layout { align:horizontal Beginning vertical Center }
+						nb-inline:2
+						hidden:
+							StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+						// reassign button
+						Button {
+							actions:
+								Dialog identityPicker(newrevieweruid from outUid, newreviewername from outDisplayname),
+								Dialog bwaccess360_accessmanagementreassignconfirm(SizeOf inselectedentries to innbentries,newreviewername to innewreviewername, changeaccountable from outwithaccountable),
+								Set "to be reviewed" to statustowrite,
+								Set "" to commenttowrite,
+								Set True to updatestatus,
+								Set True to updatecomment,
+								ExecuteNamedAction performBulkReassignAction_batch,
+								Unset inselectedentries
+							image:"16/audit/identity_16.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkreassign.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkreassign.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}
+						// escalate button
+						Button {
+							actions:
+								Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkescalate.confirm(SizeOf inselectedentries),
+								ExecuteNamedAction performBulkEscalation_batch
+							image:"16/audit/manager_16.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkescalate.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkescalate.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}
+						// bulk approve button
+						Button {
+							actions:
+								Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkapproval.confirm,
+								Set "ok" to statustowrite,
+								Dialog bwaccess360_accessreviewmanagementComment(commenttowrite from comment),
+								// force status
+								Set True to updatestatus,
+								Set True to updatecomment,
+								ExecuteNamedAction performBulkReviewAction_batch,
+								Unset inselectedentries
+							image:"16/famfamfam_silk_icons_v013/accept.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkapproval.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkapproval.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}
+						// bulk revoke button
+						Button {
+							actions:
+								Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkremove.confirm,
+								Set "revoke" to statustowrite,
+								Dialog bwaccess360_accessreviewmanagementComment(commenttowrite from comment),
+								// force status
+								Set True to updatestatus,
+								Set True to updatecomment,
+								ExecuteNamedAction performBulkReviewAction_batch,
+								Unset inselectedentries
+							image:"16/famfamfam_silk_icons_v013/delete.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkremove.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkremove.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}
+						// bulk update button
+						Button {
+							actions:
+								Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkupdate.confirm,
+								Set "update" to statustowrite,
+								Dialog bwaccess360_accessreviewmanagementComment(commenttowrite from comment),
+								// force status
+								Set True to updatestatus,
+								Set True to updatecomment,
+								ExecuteNamedAction performBulkReviewAction_batch,
+								Unset inselectedentries
+							image:"16/famfamfam_silk_icons_v013/pencil.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkupdate.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkupdate.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}
+						// bulk reset button
+						Button {
+							actions:
+								Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.confirm,
+								// reset status
+								Set "to be reviewed" to statustowrite,
+								Set "" to commenttowrite,
+								Set True to updatestatus,
+								Set True to updatecomment,
+								ExecuteNamedAction resetDelegation_batch,
+								Unset inselectedentries
+							image:"16/famfamfam_silk_icons_v013/resultset_previous.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}
+						// bulk sign off button
+						Button {
+							actions:
+								Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulksignof.confim,
+								ExecuteNamedAction bulkSignOff_batch,
+								Unset inselectedentries
+							image:"16/famfamfam_silk_icons_v013/resultset_next.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulksignof.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulksignof.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}
+						// bulk comment button
+						Button {
+							actions:
+								Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkcomment.confirm,
+								Set False to updatestatus,
+								Set True to updatecomment,
+								Dialog bwaccess360_accessreviewmanagementComment(commenttowrite from comment),
+								ExecuteNamedAction writeBulkComment_batch, 
+								Unset inselectedentries
+							image:"16/famfamfam_silk_icons_v013/comment.png"
+							text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkcomment.text
+							tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkcomment.tooltip
+							disabled:
+								OrPredicate {
+									StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+									IntPredicate(SizeOf inselectedentries) { when =0 then True }
+									IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+									Not FeaturePredicate iasr_canmanagecampaignentries
+									BooleanPredicate (actioninprogress)
+								}
+						}				
+					}		
+				}
+				GridCell {
+					// Layouting: grow
+				}
+				GridCell {
+					// Missing reviewers
+					reviewStatusMissingReviewers = IncludeFragment {
+						layout: Layout { grab: horizontal True vertical False }
+						fragment: bw_ias_review_missingReviewers with
+							value-of incampaignid to campaignTicketLogRecordUid,
+							value-of inenabled to enabled,
+							value-of Constant bw_ias_review_missingReviewers_sourceToReview to source,
+							filterMissingReviewers binds-to filterMissingReviewers
+					}
+				}
+			}
+		}
+	}
+}
+
+bw_iasreview_ExplicitApprovalTable_bulkActionButtons = PageFragment {
+	periodic-actions:
+		PeriodicAction {
+			actions:
+				ReloadData (actionInProgress),
+				Set actionInProgress.ticketopen to processing,
+				BooleanCase (processing) {
+					when False then [
+						FireFragmentEvent "ReloadTable",
+						Set False to actioninprogress
+					]
+					when True then []
+				}
+			period: 5
+			disabled:
+				Not BooleanPredicate (actioninprogress)
+		}
+	
+	inenabled = Variable { initial:False type:Boolean }
+	inexplicitfilter = Variable { initial:["1"] type:String  }
+	incampaignid = Variable
+	inselectedentries = Variable { multivalued:True }
+	infilteredentries = Variable { multivalued:True }
+	inreviewtype = Variable
+	// Current batch of entries for workflow
+	entries_batch = Variable { type: String multivalued: True }
+	
+	entries = Variable { multivalued:True }
+	
+	reviewcount = Variable
+	
+	updatestatus = Variable { type:Boolean }
+	statustowrite = Variable
+	updatecomment = Variable { type:Boolean }
+	commenttowrite = Variable
+	
+	actioninprogress = Variable { type:Boolean initial: False }
+	processing = Variable { type:Boolean initial: False }
+	
+	finalizedreview = Record {
+		view: bwaccess360_accessreviewcampaignsfinalized with
+			incampaignid to campaignid
+		disabled:
+			Not BooleanPredicate ( inenabled )
+	}
+	
+	reviewtickets = Dataset {
+		view: bwaccess360_ticketreviewcampaignsentries_bv with
+			incampaignid to campaignid,
+			[ Constant review_status_revoke, Constant review_status_update ] to status,
+			entries_batch to ticketreviewrecorduids,
+			True to filterprocessed,
+			inreviewtype to reviewtype
+	}
+
+	actionInProgress = Record {
+		view: br_workflowticketstatus_parellelmode with
+			incampaignid to custom1,
+			"REVIEW" to tickettype,
+			Principal.uid to actoruid
+	}
+	
+	resetExplicitApproval = TaskRecord( create "bwaccess360_performBulkResetExplicitApprovalOperation")
+	markEntryExplicitelyProcessed = TaskRecord ( create "bwaccess360_performBulkMarkExplicitelyProcessedOperation" )
+	
+
+	checkActionInProgress = NamedAction (
+		ReloadData (actionInProgress),
+		Set actionInProgress.ticketopen to actioninprogress
+	)
+	
+	resetExplicitApproval_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_ExplicitApprovalTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf entries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction resetExplicitApproval,
+				// Recursive call on remainder
+				ExecuteNamedAction resetExplicitApproval_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	resetExplicitApproval = NamedAction (
+		Set True to actioninprogress,
+		Set entries to resetExplicitApproval.ticketreviewrecorduid,
+		Set [statustowrite repeat SizeOf entries] to resetExplicitApproval.status,
+		Set [commenttowrite repeat SizeOf entries] to resetExplicitApproval.comment,
+		Set [Date.valueLDAP repeat SizeOf entries] to resetExplicitApproval.actiondate,
+		Set updatestatus to resetExplicitApproval.updatestatus,
+		Set updatecomment to resetExplicitApproval.updatecomment,
+		Set incampaignid to resetExplicitApproval.campaignId,
+		TaskComplete resetExplicitApproval
+	)
+	
+	markEntryExplicitelyProcessed_batch = NamedAction (
+		ExecuteFragmentNamedAction getNextBatch_ExplicitApprovalTable_bulkActionButtons.getNextBatch,
+		IntCase ( SizeOf entries_batch ) {
+			when >0 then [
+				// Process current batch
+				ExecuteNamedAction markEntryExplicitelyProcessed,
+				// Recursive call on remainder
+				ExecuteNamedAction markEntryExplicitelyProcessed_batch
+			] otherwise [
+				// Done
+			]
+		}
+	)
+	
+	markEntryExplicitelyProcessed = NamedAction (
+		Set True to actioninprogress,
+		Set entries_batch to markEntryExplicitelyProcessed.reviewrecorduids,
+		Set incampaignid to markEntryExplicitelyProcessed.campaignid,
+		TransferData reviewtickets (recorduid, remediationstatus, remediationclosed, remediationcomment, label, remediationtype)
+			to  (markEntryExplicitelyProcessed.ticketreviewrecorduid, markEntryExplicitelyProcessed.status, markEntryExplicitelyProcessed.ticketclosed,
+					 markEntryExplicitelyProcessed.comment, markEntryExplicitelyProcessed.ticketlabel, markEntryExplicitelyProcessed.tickettype),
+		Set [Date.valueLDAP repeat SizeOf markEntryExplicitelyProcessed.ticketreviewrecorduid] to markEntryExplicitelyProcessed.actiondate,
+		Set ['' repeat SizeOf markEntryExplicitelyProcessed.ticketreviewrecorduid] to markEntryExplicitelyProcessed.accountableuid,
+		TaskComplete markEntryExplicitelyProcessed
+	)
+	
+	getNextBatch_ExplicitApprovalTable_bulkActionButtons = IncludeFragment {
+		layout: Layout { grab: horizontal False vertical False }
+		fragment: bw_getNextBatch with
+			value-of entries to inselectedentries,
+			entries_batch binds-to selectedentries_batch
+	}
+	
+	Group {
+		styling: cssPageDashboard
+		layout: Layout {  grab: horizontal True vertical True}
+		Header {
+			value: $bwaccess360_accessreviewmanagementPerimeterTable.thresholdwarning( Constant bwReview_display_thresold_warning )
+			styling: warningFieldStyle
+			hidden:
+				IntPredicate( reviewcount ) {
+					when > Constant bwReview_display_thresold_warning then False
+					otherwise True
+				}
+		}
+		Group {
+			styling:cssRound
+			layout: Layout { grab:horizontal True vertical False hint:height 40}
+			Grid {
+				columns: GridColumn, GridColumn, GridColumn { width:grow }
+				GridRow {
+					GridCell {
+						Image {
+							image: "various/running.svg"
+							hidden:
+								Not BooleanPredicate (actioninprogress)
+						}
+					}
+					GridCell {
+						ButtonGroup {
+							nb-inline:2
+							layout:Layout { align:horizontal Beginning vertical Center }
+							hidden:
+								StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+							Button {
+								actions:
+									Confirm $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.button.confirm,
+									Flash $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.button.flash,
+									Set inselectedentries to entries,
+									ExecuteNamedAction markEntryExplicitelyProcessed_batch,
+									Unset inselectedentries
+								image:"16/famfamfam_silk_icons_v013/cog.png"
+								text:$bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.button.text
+								tooltip:$bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.button.confirm
+								hidden: Not BooleanPredicate(ConfigurationVariable "ias_reviewcanproceedsignedentries")
+								disabled:
+									OrPredicate {
+										StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+										IntPredicate(SizeOf inselectedentries) { when =0 then True }
+										IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+										Not FeaturePredicate iasr_canmanagecampaignentries
+										StringPredicate(inexplicitfilter) { when '2' then True when '3' then True }
+										BooleanPredicate (actioninprogress)
+									}
+							}
+							Button {
+								actions:
+									Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.confirm,
+									// reset explicit approval
+									Set inselectedentries to entries,
+									Set "to be reviewed" to statustowrite,
+									Set "" to commenttowrite,
+									Set True to updatestatus,
+									Set True to updatecomment,
+									ExecuteNamedAction resetExplicitApproval_batch, 
+											Unset inselectedentries
+								image:"16/famfamfam_silk_icons_v013/resultset_previous.png"
+								text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.text
+								tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.tooltip
+								disabled:
+									OrPredicate {
+										StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+										IntPredicate(SizeOf inselectedentries) { when =0 then True }
+										IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+										Not FeaturePredicate iasr_canmanagecampaignentries
+										StringPredicate(inexplicitfilter) { when '2' then True when '3' then True }
+										BooleanPredicate (actioninprogress)
+									}
+							}
+							Button {
+								actions:
+									Confirm $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.button.confirm,
+									Flash $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.button.flash,
+									FireFragmentEvent "TransferEditableReviewRecordUidToEntries",
+									Set infilteredentries to entries,
+									ExecuteNamedAction markEntryExplicitelyProcessed_batch
+								image:"16/famfamfam_silk_icons_v013/cog.png"
+								text:$bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignofall.button.text
+								tooltip:$bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.button.confirm
+								hidden: Not BooleanPredicate(ConfigurationVariable "ias_reviewcanproceedsignedentries")
+								disabled:
+									OrPredicate {
+										StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+										IntPredicate(SizeOf inselectedentries) { when =0 then True }
+										IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+										Not FeaturePredicate iasr_canmanagecampaignentries
+										StringPredicate(inexplicitfilter) { when '2' then True when '3' then True }
+										BooleanPredicate (actioninprogress)
+									}
+							}
+							Button {
+								actions:
+									Confirm $bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.confirm,
+									// reset explicit approval
+									FireFragmentEvent "TransferEditableReviewRecordUidToEntries",
+									Set infilteredentries to entries,
+									Set "to be reviewed" to statustowrite,
+									Set "" to commenttowrite,
+									Set True to updatestatus,
+									Set True to updatecomment,
+									ExecuteNamedAction resetExplicitApproval_batch
+								image:"16/famfamfam_silk_icons_v013/resultset_previous.png"
+								text:$bwaccess360_accessreviewmanagementPerimeterTable.bulkresetall.text
+								tooltip:$bwaccess360_accessreviewmanagementPerimeterTable.bulkreset.tooltip
+								disabled:
+									OrPredicate {
+										StringPredicate(finalizedreview.recorduid) { when IsEmpty then False otherwise True }
+										IntPredicate(SizeOf inselectedentries) { when =0 then True }
+										IntPredicate(SizeOf inselectedentries) { when > Constant bwReview_selectionMax then True } // SQL limitation
+										Not FeaturePredicate iasr_canmanagecampaignentries
+										StringPredicate(inexplicitfilter) { when '2' then True when '3' then True }
+									}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

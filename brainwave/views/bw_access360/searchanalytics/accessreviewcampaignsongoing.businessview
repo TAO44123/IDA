@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360r_accessreviewcampaignsongoing" displayname="accessreviewcampaignsongoing">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/accessreviewcampaignsongoing.javascript" name="D1626955695995">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1626955695995" title="all campaigns">
+			<InnerView name="bwaccess360_accessreviewcampaigns"/>
+		</Component>
+		<Component name="C1626955701415" type="joinview" x="955" y="198" w="300" h="50" title="finalized">
+			<InnerView name="bwaccess360_accessreviewcampaignsfinalized" prefix="finalized_"/>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.finalized_key.get()}"/>
+			<FilterList>
+				<Filter name="F1626955784996" expression="!dataset.isEmpty(&apos;campaigninstancecurrentstatus&apos;)?(dataset.campaigninstancecurrentstatus.get().equals(&apos;active&apos;)):(dataset.isEmpty(&apos;finalized_recorduid&apos;))" comment="exclude &quot;inactive&quot; campaigns (finalized_recorduid is for historical reasons only...)" type="Include"/>
+			</FilterList>
+		</Component>
+		<Component name="C1662112904614" type="joinview" x="499" y="138" w="300" h="50" title="campaign add. infos">
+			<InnerView prefix="campaigninstance" name="bwr_getcampaigninstanceadditionalinfos"/>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.campaigninstancesubkey.get()}"/>
+		</Component>
+		<Link name="L1662112904842" source="C1626955695995" target="C1662112904614" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1662112905095" source="C1662112904614" target="C1626955701415" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+</View>

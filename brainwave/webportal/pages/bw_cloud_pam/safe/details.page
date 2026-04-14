@@ -1,0 +1,248 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/details_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/workflow_mixins.page"
+
+import "/webportal/pages/bw_cloud_pam/safe/fragments/details.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/accounts.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/secrets.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/controls.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/rights.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/perorg.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/perjob.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/analytics.page"
+
+import "/webportal/pages/bw_cloud_pam/resources/pam_fragments.page"
+
+casafeDetailsPageNLS = NLS {
+	title [en "CyberArk Safe Details" fr "Détails du safe CyberArk" ]
+	dynamictitle [en "CyberArk Safe Details {0}" fr "Détails du safe CyberArk {0}" ]
+
+	casafe [en "Safe" fr "Safe"]
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Accounts" fr "Comptes"]
+	access [en "Access" fr "Accès"]
+	dataviz [en "Graph" fr "Graphe"]
+
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	
+	users [en "Users" fr "Utilisateurs"]
+	secrets [en "Credentials" fr "Secrets"]
+	permissions [en "Folders" fr "Répertoires"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Folders usage" fr "Usage des répertoires"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+
+}
+
+casafeDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (ca_safe)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity CASafe Detail with applicationUid.uid to paramSafeUid }
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Application
+		mandatory: True
+	}
+	
+	applicationUid = Record {
+		view: br_applicationDetail_uid with recorduid to recorduid
+	}
+}
+
+casafeDetailsPage = Page {
+	title: $casafeDetailsPageNLS.title
+	tags: "safedetails"	
+	dynamic-title: $casafeDetailsPageNLS.dynamictitle(application.displayname)
+	mixins: detailsPage
+	enter-event: 	IntCase(application.bwa_applicationanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+					IntCase(application.bwa_applicationanalytics_nbdirectaccountright) { when >0 then [ Set True to hasrights ] },
+					IntCase(application.bwa_applicationanalytics_nbdirectidentityright) { when >0 then [ Set True to hasidentityrights ] }
+						
+	// Parameters Here
+	paramSafeUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedSafeUid = Variable {
+		type: String
+		initial: paramSafeUid
+	}
+
+	nbdefects = Variable 
+	nboverallocated = Variable
+	nbdecision = Variable
+	hasrights = Variable { initial:False }
+	hasidentityrights = Variable { initial:False }	
+	hasusages = Variable { initial:False }
+
+	showextended = Variable { initial:False }
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	active_casafe = Variable { initial:False multivalued:False type:Boolean }
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_secrets = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_dataviz = Variable { initial:False multivalued:False type:Boolean }
+
+	// Record for concept details
+	application = Record {
+		view: bwf_applicationDetail with selectedSafeUid to uid
+	}
+
+	// Start of the Layout based on a 1-column Grid
+	Grid {
+		columns: GridColumn { width: grow }							
+		layout: Layout { grab: horizontal True vertical True }
+		// Row for the Navigator
+
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$casafeDetailsPageNLS.details
+						activation-event:Set True to active_detail
+
+						TabFolder {
+							border:False
+							TabItem {
+								text:$casafeDetailsPageNLS.casafe
+								activation-event:Set True to active_casafe
+							
+								IncludeFragment {
+									fragment:fragmentCASafeFullDetails
+									with value-of selectedSafeUid to inuid, value-of True to incanupdatedescription, value-of True to incanupdateowners, value-of True to incanupdatetags, value-of Eval "active_detail.get() && active_casafe.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$casafeDetailsPageNLS.users
+								activation-event:Set True to active_accounts
+							
+								IncludeFragment {
+									fragment:fragmentCASafeAccounts
+									with value-of selectedSafeUid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$casafeDetailsPageNLS.secrets
+								activation-event:Set True to active_secrets
+							
+								IncludeFragment {
+									fragment:fragmentCASafeSecrets
+									with value-of selectedSafeUid to inuid, value-of Eval "active_detail.get() && active_secrets.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$casafeDetailsPageNLS.dataviz
+								activation-event:Set True to active_dataviz
+								hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+								IncludeFragment {
+									fragment: bwpam_vault_graph
+									with selectedSafeUid binds-to inuid, value-of True to insecretsonly, value-of Eval "active_detail.get() && active_dataviz.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$casafeDetailsPageNLS.access
+						activation-event:Set True to active_access
+						hidden:
+							AndPredicate {
+								Not BooleanPredicate(hasrights)
+							}
+					 
+						TabFolder {
+							border:False
+							TabItem {
+								text:$casafeDetailsPageNLS.rights
+								hidden:Not BooleanPredicate(hasrights)
+								activation-event:Set True to active_rights
+							
+								IncludeFragment {
+									fragment:fragmentSafeRights
+									with value-of selectedSafeUid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile,  value-of Eval "active_access.get() && active_rights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$casafeDetailsPageNLS.oorigin
+								hidden:OrPredicate {   
+									Not BooleanPredicate(hasidentityrights)
+									Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+									}
+								activation-event:Set True to active_perorg
+							
+								IncludeFragment {
+									fragment:fragmentSafePerOrg
+									with value-of selectedSafeUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perorg.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$casafeDetailsPageNLS.jorigin
+								hidden:OrPredicate {   
+									Not BooleanPredicate(hasidentityrights)
+									Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+									}
+								activation-event:Set True to active_perjob
+							
+								IncludeFragment {
+									fragment:fragmentSafePerJob
+									with value-of selectedSafeUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perjob.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$casafeDetailsPageNLS.controls
+						activation-event:Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						IncludeFragment {
+							fragment:fragmentSafeAllControlDefectsList
+							with value-of selectedSafeUid to inuid, value-of True to incanshowdetails, nbdefects binds-to outnbdefects, value-of True to inenabled
+						}
+					}
+					TabItem {
+						text:$casafeDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						IncludeFragment {
+							fragment:fragmentSafeAnalytics
+							with value-of selectedSafeUid to inuid, value-of active_analytics to inenabled
+						}
+					}					
+				}
+			}
+		}
+	}
+}

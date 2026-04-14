@@ -1,0 +1,288 @@
+import "/webportal/pages/bw_fragments/identity/details.page"
+import "/webportal/pages/bw_fragments/identity/organisationtree.page"
+import "/webportal/pages/bw_fragments/identity/accounts.page"
+import "/webportal/pages/bw_fragments/identity/rights.page"
+import "/webportal/pages/bw_fragments/identity/serverrights.page"
+import "/webportal/pages/bw_fragments/identity/data.page"
+import "/webportal/pages/bw_fragments/identity/usages.page"
+import "/webportal/pages/bw_fragments/identity/controls.page"
+import "/webportal/pages/bw_fragments/identity/decisionhistory.page"
+import "/webportal/pages/bw_fragments/identity/businessactivities.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/identity/rolemodel.page"
+import "/webportal/pages/bw_fragments/identity/identitylifecycle.page"
+import "/webportal/pages/bw_fragments/custom/identityExtendedDetails.page"
+
+bwf_identityDetailsDialogNLS = NLS {
+	title [en 'Identity detail' fr "Détails de l'identité"]
+	
+	owner [en "Owner" fr "Propriétaire"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	identity [en "Identity" fr "Identité"]
+	position [en "Position" fr "Position"]
+	lifecycle [en "Lifecycle" fr "Cycle de vie"]
+	accounts [en "Accounts" fr "Comptes"]
+	businessactivities [en "Business activities" fr "Activités métier"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	infrastructure [en "Servers" fr "Serveurs"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	usages [en "Usages" fr "Usages"] 
+	controls [en "Controls" fr "Contrôles"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	rolemodel [en "Roles" fr "Rôles"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Identity details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>identity uid</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>inshowposition </b>optional boolean, true to show identity org position, false by default</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show identity accounts, false by default</li>
+ * <li><b>inshowbusinessactivities </b>optional boolean, true to show assigned business activities tab, false by default</li>
+ * <li><b>inshowtheoretical </b>optional boolean, true to show role model and granted rights tab, false by default</li>
+ * <li><b>inshowoverallocated </b>optional boolean, true to show over allocated rights tab, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show applications tab, false by default</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inapplicationuids </b>optional filter to display only some applications</li>
+ * <li><b>inrepositoryuids </b>optional filter to display only some repositories</li>
+ * <li><b>inshowrisks </b>optional, boolean value, true to show risks indicators in details tile (false by default)</li>
+ * </ul>
+ * </span>
+ */
+bwf_identityDetailsDialog = Dialog {
+	title:$bwf_identityDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	enter-event:IntCase(identity.bwa_identityanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+	IntCase(identity.bwa_identityanalytics_nbinfrastructure) { when >0 then [ Set True to hasinfrastructurerights ] },
+	IntCase(identity.bwa_identityanalytics_nbbusinessactivity) { when >0 then [ Set True to hasbusinessactivity ] },
+	IntCase(identity.bwa_identityanalytics_nbtheoretical) { when >0 then [ Set True to hastheoreticalrights ] },
+	Set identity.bwa_identityanalytics_nbapplication to nbapplications,
+	Set identity.bwa_identityanalytics_nbshare to nbshares,
+	IntCase(nbiamapplications) { when >0 then [ Set True to hasrolemodel ]}
+	
+	inuid = Variable
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowposition = Variable { type:Boolean initial:True }
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowbusinessactivities = Variable { type:Boolean initial:False }
+	inshowtheoretical = Variable { type:Boolean initial:False }
+	inshowoverallocated = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inapplicationuids = Variable {multivalued: True}
+	inrepositoryuids = Variable {multivalued: True}
+	inshowrisks = Variable { multivalued:False type:Boolean initial:False }
+	
+	nbdefects = Variable { private:True }
+	nboverallocated = Variable { private:True }
+	hasbusinessactivity = Variable { private:True initial:False }
+	hasinfrastructurerights = Variable { private:True initial:False }
+	hastheoreticalrights = Variable { private:True initial:False }
+	nbapplications = Variable { private:True }
+	nbshares = Variable { private:True }
+	hasusages = Variable { private:True initial:False }
+	nbiamapplications = Variable 
+	hasrolemodel = Variable { initial:False }
+	nblifecycleevents = Variable
+
+	showextended = Variable { private:True initial:False }
+
+	active_identity = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_position = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_lifecycle = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_businessactivities = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_rolemodel = Variable { initial:False multivalued:False type:Boolean }
+	active_theoretical = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_overallocated = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_infrastructure = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_applications = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_shares = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_usages = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_control = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_decision = Variable { private:True initial:False multivalued:False type:Boolean }
+	
+	identity = Record {
+		view: bwf_identityDetail with inuid to uid
+	}
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.identity
+			activation-event: Set True to active_identity
+			
+			IncludeFragment (fragmentIdentityFullDetails with value-of inuid to inuid,  inshowrisks binds-to inshowrisks, value-of active_identity to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentIdentityExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.position
+			activation-event: Set True to active_position
+			hidden:Not BooleanPredicate(inshowposition)
+			
+			IncludeFragment (fragmentIdentityOrgHierarchy with value-of inuid to inuid, value-of active_position to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.lifecycle
+			activation-event: Set True to active_lifecycle
+			hidden:
+				OrPredicate {
+					IntPredicate(nblifecycleevents) { when >1 then False otherwise True } // shown only if more than 1 events are available (at least one move)
+					Not BooleanPredicate(inshowposition)
+				}
+			
+			IncludeFragment (fragmentIdentityLifecycle with value-of inuid to inuid,  value-of active_lifecycle to inenabled, nblifecycleevents binds-to outnblifecycleevents )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.accounts
+			activation-event: Set True to active_accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+			
+			IncludeFragment (fragmentIdentityAccounts360 with value-of inuid to inuid, value-of incanreconcile to incanreconcile, value-of inrepositoryuids to inrepositoryuids, value-of True to incanshowdetails, value-of active_accounts to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.businessactivities
+			feature:sod_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(hasbusinessactivity)
+					Not BooleanPredicate(inshowbusinessactivities)
+				}
+			activation-event: Set True to active_businessactivities
+			
+			IncludeFragment (fragmentIdentityBusinessActivities with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_businessactivities to inenabled )
+		}
+		TabItem {
+			text:$bwf_identityDetailsDialogNLS.rolemodel
+			feature:iam_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowtheoretical)
+					Not BooleanPredicate(hasrolemodel)
+				}
+			activation-event:Set True to active_rolemodel
+		
+			IncludeFragment {
+				fragment:fragmentIdentityRoleModel
+				with value-of inuid to inuid, value-of True to incanshowdetails, nbiamapplications binds-to nbiamapplications, value-of active_rolemodel to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.theoretical
+			feature:iam_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowtheoretical)
+					Not BooleanPredicate(hastheoreticalrights)
+				}
+			activation-event: Set True to active_theoretical
+			
+			IncludeFragment (fragmentIdentityTheoreticalRightsList with value-of inuid to inuid, inapplicationuids binds-to inapplicationuids, value-of active_theoretical to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.overallocated
+			feature:iam_license
+			hidden:
+				OrPredicate {
+					StringPredicate(nboverallocated) { when IsEmpty then True otherwise False }
+					IntPredicate(nboverallocated) { when >0 then False otherwise True }
+					Not BooleanPredicate(inshowoverallocated)
+				}
+			activation-event: Set True to active_overallocated
+			badge: Eval "nboverallocated.get()>0?nboverallocated.get():''"
+			
+			IncludeFragment (fragmentIdentityOverAllocationsList with value-of inuid to inuid, nboverallocated binds-to outnbproblems, value-of inshowoverallocated to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.infrastructure
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowapplications)
+					Not BooleanPredicate(hasinfrastructurerights)
+				}
+			activation-event: Set True to active_infrastructure
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			
+			IncludeFragment (fragmentIdentityServerRightsList with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_infrastructure to inenabled, inapplicationuids binds-to inapplicationuids )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.applications
+			activation-event: Set True to active_applications
+			hidden:
+				OrPredicate {
+					StringPredicate(nbapplications) { when IsEmpty then True otherwise False }	
+					IntPredicate(nbapplications) { when >0 then False otherwise True }	
+					Not BooleanPredicate(inshowapplications)
+				}
+
+			IncludeFragment (fragmentIdentityRights360 with 	value-of inuid to inuid, 
+																value-of True to incanshowdetails, 
+																inapplicationuids binds-to inapplicationuids, 
+																value-of active_applications to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.shares
+			activation-event: Set True to active_shares
+			feature:unstructureddata_license
+			hidden:
+				OrPredicate {
+					StringPredicate(nbshares) { when IsEmpty then True otherwise False }
+					IntPredicate(nbshares) { when >0 then False otherwise True }			
+					Not BooleanPredicate(inshowshares)
+				}
+				
+			IncludeFragment (fragmentIdentityData360 with 	value-of inuid to inuid, 
+															value-of True to incanshowdetails, 
+															value-of True to incanchangedepth, 
+															value-of active_shares to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.usages
+			activation-event: Set True to active_usages
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowusages)
+					Not BooleanPredicate(hasusages)
+				}
+			
+			IncludeFragment (fragmentIdentityUsages with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_usages to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentIdentityAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of True to inenabled )
+		}
+		TabItem  {
+			text:$bwf_identityDetailsDialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentIdentityAllDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}
+}

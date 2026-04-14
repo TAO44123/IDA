@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="access360r_identityapplicationsincommon" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="applications in common" notes="" begindate="" enddate="">
+	<ViewParam name="totalnbidentities" displayname="totalnbidentities" type="Integer"/>
+	<ViewParam name="lowthreshold" displayname="lowthreshold" type="Integer"/>
+	<ViewParam name="lowvalue" displayname="lowvalue" type="Integer" defaultvalue="{1+(param.totalnbidentities.get()*param.lowthreshold.get())/100}"/>
+	<ViewParam name="applications" displayname="applications" type="String"/>
+	<ViewComputedAttribute name="nbexcludedidentities" displayname="nbexcludedidentities" type="Integer" expression="param.totalnbidentities.get()-dataset.nbidentity.get()"/>
+	<ViewComputedAttribute name="label" displayname="label" type="String" expression="dataset.applicationdisplayname.get()"/>
+	<ViewComputedAttribute name="percent" displayname="percent" type="Integer" expression="(dataset.nbidentity.get()*100)/param.totalnbidentities.get()"/>
+	<ViewComputedAttribute name="empty" displayname="empty" type="String" expression="&apos;&apos;"/>
+	<ViewSort name="sort" attribute1="A1617710107903_909" direction1="DESC"/>
+	<ViewAttribute name="A1617616727781_2411" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1617616729857_0" operation="isNull" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1617616732017_1" operation="isFalse" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1617617159975_2486" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="true" join="identityreconciliation">
+		<ViewAttribute name="A1617710107903_909" attribute="recorduid" alias="nbidentity" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1617710123588_0" reference="lowvalue" operation="ge" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1688121993274_2134" prefix="application" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="applicationright">
+		<ViewAttribute name="1688122012076_2139" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1688122012078_2140" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1688122012080_2141" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1617718583288_0" operation="eq" ignoreifempty="false">
+				<Value name="0" data="Profile"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewAttribute name="1688122012081_2142" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1617710182033_0" reference="applications" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+</View>

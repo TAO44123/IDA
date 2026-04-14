@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwr_identitiesordelegateebyuids" displayname="identities or delegatee by uids">
+	<Definition scriptfile="views/bw_iasreview2/svc/identitieswdelegatorbyuids.javascript" name="D1692778834413" description="replaces identity by delegatee if delegation is active">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1692778834412" title="base identities by uids">
+			<InnerView name="bwr_identitiesmailbyuids">
+				<Param name="F1704211892879" viewparam="uids" viewparamvalue="{param.uids}"/>
+			</InnerView>
+			<ExcludeList>
+			</ExcludeList>
+		</Component>
+		<Component name="C1692778856241" type="joinview" x="570" y="240" w="300" h="50" title="active delegations">
+			<InnerView name="bwaccess360_activedelegations"/>
+			<Join jointype="left" key1="{dataset.targetuid.get()}" key2="{dataset.delegatoruid.get()}"/>
+			<ViewComputedAttribute name="uid" displayname="uid" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetuid.get():dataset.delegateeuid.get()"/>
+			<ViewComputedAttribute name="hrcode" displayname="hrcode" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targethrcode.get():dataset.delegateehrcode.get()"/>
+			<ViewComputedAttribute name="fullname" displayname="fullname" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetfullname.get():dataset.delegateefullname.get()"/>
+			<ViewComputedAttribute name="mail" displayname="mail" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetmail.get():dataset.delegateemail.get()"/>
+			<ViewComputedAttribute name="preferredlanguage" displayname="preferredlanguage" type="String" expression="dataset.isEmpty(&apos;delegateeuid&apos;)?dataset.targetpreferredlanguage.get():dataset.delegateepreferredlanguage.get()"/>
+			<ViewComputedAttribute name="isdelegated" displayname="isdelegated" type="Boolean" expression="!dataset.isEmpty(&apos;delegateeuid&apos;)"/>
+			<ExcludeList>
+				<Exclude name="targetfullname"/>
+				<Exclude name="targethrcode"/>
+				<Exclude name="targetmail"/>
+				<Exclude name="targetpreferredlanguage"/>
+				<Exclude name="targetuid"/>
+				<Exclude name="delegateefullname"/>
+				<Exclude name="delegateehrcode"/>
+				<Exclude name="delegateemail"/>
+				<Exclude name="delegateepreferredlanguage"/>
+				<Exclude name="delegateeuid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1692778856410" source="C1692778834412" target="C1692778856241" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uids" displayname="uids" type="String">
+	</ViewParam>
+</View>

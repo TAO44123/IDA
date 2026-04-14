@@ -1,0 +1,107 @@
+
+import "/webportal/pages/bw_cloud_pam/safe/fragments/details.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/accounts.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/secrets.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/controls.page"
+import "/webportal/pages/bw_cloud_pam/resources/pam_fragments.page"
+
+bwf_casafeDetailsDialogNLS = NLS {
+    title [en 'Safe detail' fr "Détails du safe"]
+	casafe [en "Safe" fr "Safe"]
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Users" fr "Utilisateurs"]
+
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	
+	accounts [en "Users" fr "Utilisateurs"]
+	secrets [en "Credentials" fr "Secrets"]
+	permissions [en "Folders" fr "Répertoires"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Folders usage" fr "Usage des répertoires"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	dataviz [en "Graph" fr "Graphe"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Safe details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>safe uid</li>
+ * </ul>
+ * </span>
+ */
+bwf_casafeDetailsDialog = Dialog {
+	title:$bwf_casafeDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	
+	incode = Variable
+	inuid = Variable
+
+	active_casafe = Variable { initial:False multivalued:False type:Boolean }
+//	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_secrets = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_dataviz = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Record for concept details
+	safe = Record {
+		view: bwpam_safebycode with incode to code unless-empty, inuid to uid unless-empty
+	}
+	
+		TabFolder {
+				border:False
+				TabItem {
+					text:$bwf_casafeDetailsDialogNLS.casafe
+					activation-event:Set True to active_casafe
+				
+					IncludeFragment {
+						fragment:fragmentCASafeFullDetails
+						with value-of safe.uid to inuid, value-of True to incanupdatetags, value-of True to incanupdateowners, value-of True to incanupdatedescription, value-of Eval "active_casafe.get()" to inenabled
+					}
+				}
+				TabItem {
+					text:$bwf_casafeDetailsDialogNLS.accounts
+					activation-event:Set True to active_accounts
+				
+					IncludeFragment {
+						fragment:fragmentCASafeAccounts
+						with value-of safe.uid  to inuid, value-of True to incanshowdetails, value-of True to incanreconcile, value-of Eval "active_accounts.get()" to inenabled
+					}
+				}
+				TabItem {
+					text:$bwf_casafeDetailsDialogNLS.secrets
+					activation-event:Set True to active_secrets
+				
+					IncludeFragment {
+						fragment:fragmentCASafeSecrets
+						with value-of safe.uid  to inuid, value-of Eval "active_secrets.get()" to inenabled
+					}
+				}
+				TabItem {
+					text:$bwf_casafeDetailsDialogNLS.dataviz
+					activation-event:Set True to active_dataviz
+
+					IncludeFragment {
+						fragment: bwpam_vault_graph
+						with value-of safe.uid to inuid, value-of True to insecretsonly, value-of Eval "active_dataviz.get()" to inenabled
+					}
+				}				
+			}
+		}
+

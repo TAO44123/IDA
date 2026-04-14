@@ -1,0 +1,216 @@
+import "/webportal/pages/bw_dsm/services/services.page"
+import "/webportal/pages/bw_dsm/cfg/ds_cfg_edit.page"
+import "/webportal/pages/bw_dsm/cfg/ds_edit_mapping.page"
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+import "/webportal/pages/bw_dsm/resources/dsm_icons.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+import "/webportal/pages/resources/mappings.page"
+
+dsm_toggleEnabledValueMapping = BooleanMapping {
+	when True then False
+	when False then True
+}
+
+bw_dsm_cfg_main = Page {
+	title: $dsm_cfg_NLS.main.page_title
+	description: $dsm_cfg_NLS.main.page_help
+	mixins: defaultPage
+	
+	
+	 IncludeFragment { fragment:  dsm_cfg_datasources inline: True }
+	
+	/*TabFolder {
+	
+	   TabItem {
+	     text: "Data Sources"
+	    
+	   }
+	   TabItem {
+	     text: "Scheduling"
+	   }	   
+	   TabItem {
+	     text: "Notifications"
+	   }
+	   TabItem {
+	     text: "Options"
+	   }
+	}*/
+   
+}
+
+/* FRAGMENTS */
+
+dsm_cfg_datasources = PageFragment {
+mixins: defaultPage
+
+cat = Variable { initial: "all" }
+selectedDsId = Variable 
+selectedDsName = Variable
+selectedDsConnector = Variable
+selectedDsEnabled = Variable
+createdId = Variable 
+res = Variable 
+error = Variable 
+
+deleteTask = TaskRecord ( create "bwdsm_removedatasource" )
+
+_datasources = Dataset {
+	service: bwdsm_listDsCfg with cat to category				
+}
+
+_connectorDescriptors = Dataset {
+  pages: Pages { hide-reports: True tags: "bwds_connector"	}
+}
+
+datasources = Dataset {
+  join: Join {
+    primary-dataset: _datasources
+    primary-column: type
+    secondary-dataset: _connectorDescriptors
+    secondary-column: name
+    secondary-cardinality: optional
+    secondary-prefix: desc_   
+  }
+}
+
+datasource = Record {
+  service: bwdsm_getDsCfg with selectedDsId to pid unless-empty
+}
+
+connector_desc = Record {
+		page: selectedDsConnector
+}
+
+doAddDS = NamedAction (
+   Dialog dsm_cfg_add_edit_wizard ( createdId from outId, error from outError),
+   StringCase( error){
+     when IsEmpty then [
+       ReloadData ( datasources),
+       Set createdId to selectedDsId // cannot force selection to table :-(       
+     ]
+     otherwise [
+       
+     ]
+   }   
+)
+
+doEditDS = NamedAction (
+   Dialog dsm_cfg_add_edit_wizard ( selectedDsId to inId),
+   ReloadData ( datasources)
+) 
+
+doEditMapping = NamedAction (
+   GoTo Page dsm_edit_mapping with selectedDsName to pcode , selectedDsConnector to pconnector 
+)
+
+doToggleEnabled = NamedAction (
+	Set @bwdsm_toggleDsEnabledCfg ( selectedDsId to pid, Transform selectedDsEnabled using dsm_toggleEnabledValueMapping to enabled ) to res,
+	StringCase (res) {
+    	when "OK" then [ReloadData (datasources)]
+    	otherwise [ Message Error $dsm_cfg_NLS.cfg.delete_error3(selectedDsName,res) ]
+	}
+)
+
+doDeleteDS = NamedAction (
+  Confirm $dsm_cfg_NLS.main.message_delete1(selectedDsName),
+  Set  @bwdsm_deleteDsCfg ( selectedDsId to pid) to res, 
+  StringCase (res) {
+    when "OK" then [ 
+      Set selectedDsName to deleteTask.code ,
+      TaskComplete deleteTask wait-end timeout-seconds 10 ,
+    	ReloadData (datasources)]
+    otherwise [ Message Error $dsm_cfg_NLS.cfg.delete_error2(selectedDsName,res) ] //TONLS
+  }
+)
+
+
+Header {
+ value: $dsm_cfg_NLS.main.page_help
+}
+
+// combo, replace by link bar
+Combo {
+  variable: cat
+  label: $dsm_cfg_NLS.main.combo_display
+  layout: Layout { hint: width 300 }
+  options: Static {
+    Option {  text: $dsm_categoriesNLS.^all value: "all" }
+    Option { text: $dsm_categoriesNLS.identity value: "identity"}
+    Option { text: $dsm_categoriesNLS.application value: "application"}
+    Option { text: $dsm_categoriesNLS.infrastructure value: "infrastructure"}
+    Option { text: $dsm_categoriesNLS.cloud value: "cloud"} 
+  }  
+}
+
+ Grid {
+ 	columns: GridColumn{ width: grow },GridColumn{}
+ 	GridRow {
+ 		GridCell {
+	 		Table {
+			  data: datasources			  		  
+			  layout: Layout { grab: horizontal True vertical True }
+			  show-count: True			 		  
+			  Column { column: id   hidden: True selection: selectedDsId }
+			  Column { column: type   hidden: True selection: selectedDsConnector }
+			  Column { column: name header: $dsm_cfg_NLS.main.header_name
+			     image: TemplateImageSelection( Current category) using dsm_ds_cat_IconMapping 
+			     width: 150px
+			     selection: selectedDsName}
+			  Column { column: enabled header: $dsm_cfg_NLS.main.header_enabled text: Transform Current enabled using booleanDisplayMapping width: 70px selection: selectedDsEnabled }			  
+			  Column { column: desc_title header: $dsm_cfg_NLS.main.header_connector
+			    width: 200px
+			    } 
+			  Column { column: scheduling header: $dsm_cfg_NLS.main.header_scheduling width: 250px
+			    text: @cronDescriptionString( Current scheduling to cron)
+			    }
+			  Column { column: category header: $dsm_cfg_NLS.main.header_category  
+			    text: Transform Current category using dsm_categoryMapping }
+			  // manque la colonne description dans l'API 
+			  // Column { column: description header: "Description" sortable: True}
+			  //Column { column: enabled header: "Active" sortable: True}
+			}	
+ 		}   
+ 		
+ 		GridCell {
+ 			Button {			 
+ 			  text: $dsm_cfg_NLS.main.button_add
+ 			  actions: ExecuteNamedAction doAddDS
+ 			}
+ 			Button {			 
+ 			  text: $dsm_cfg_NLS.main.button_edit
+ 			  disabled: Eval "selectedDsId.isEmpty()"
+ 			  actions: ExecuteNamedAction doEditDS
+ 			} 
+ 			Button {			 
+ 			  text: $dsm_cfg_NLS.main.button_mapping
+ 			  disabled: OrPredicate { Eval "selectedDsName.isEmpty()"  Not BooleanPredicate ( connector_desc.hasMapping) }
+ 			  actions: ExecuteNamedAction doEditMapping
+ 			} 
+ 			Button {			 
+ 			  text: $dsm_cfg_NLS.main.button_delete
+ 			  disabled: Eval "selectedDsId.isEmpty()"
+ 			  actions: ExecuteNamedAction doDeleteDS
+ 			}
+ 			Button {			 
+ 			  text: Transform selectedDsEnabled using dsm_toggleEnabledMapping 
+ 			  disabled: Eval "selectedDsEnabled.isEmpty()"
+ 			  actions: ExecuteNamedAction doToggleEnabled
+ 			}				
+ 		}       		
+ 	}
+ 	/*GridRow {
+ 	 GridCell {
+ 	 
+ 	   Header { value: "Detail_1"}
+ 	   Text { value: datasource.title label: "Title" }
+ 	   Text { value: datasource.disabled label: "Temp Disabled" }
+ 	   Text { value: datasource.connector label: "Connector" }
+ 	   Text { value: datasource.options label: "Options Json" }	   
+ 	 }
+ 	}*/	
+ }
+	
+}
+
+

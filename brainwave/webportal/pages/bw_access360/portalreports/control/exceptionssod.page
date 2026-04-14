@@ -1,0 +1,500 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+
+import "/webportal/pages/bw_sodanalysis/identitysodproblemrootcauseanalysis.page"
+import "/webportal/pages/bw_sodanalysis/identitysodexceptions.page"
+
+import "/webportal/pages/bw_fragments/identity/details.page"
+import "/webportal/pages/bw_fragments/control/details.page"
+import "/webportal/pages/bw_fragments/exception/details.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+/* Nationalized labels here */
+bwa360_exceptionssodNLS = NLS {
+	title [en "SoD Exceptions - User level" fr "Exceptions SoD - Niveau utilisateur"]
+	selectcontrol [en "Select a control" fr "Selectionner un contrôle"]
+	selectidentity [en "Select an identity" fr "Selectionner une identité"]
+	
+	risklevel [en "Risk Level" fr "Niveau de risque"]
+	controlcode [en "Control Code" fr "Code contrôle"]
+	control [en "Control" fr "Contrôle"]
+	controldescription [en "Control Description" fr "Description Contrôle"]
+	controlfilter [en "Filter on control" fr "Filter sur le contrôle"]
+	identityfilter [en "Filter on identity" fr "Filter sur l'identité"]
+	risk [en "Risk" fr "Risque"]
+	minrisklevel [en "Minimum Risk Level" fr "Niveau de risque minimum"]
+	issuername [en "Issuer name" fr "Nom de l'émetteur"]
+	
+	updatetooltip [en "Update the selected exceptions" fr "Mettre à jour les exceptipon sélectionnées"]
+	deletetooltip [en "Delete the selected exceptions" fr "Supprimer les exceptions sélectionnées"]
+	
+	controldetails [en "Control details" fr "Détails du contrôle"]
+	exceptiondetails [en "Exception details" fr "Détails de l'exception"]
+	identitydetails [en "Identity details" fr "Détails de l'identité"]
+	nocontrol [en "No control selected" fr "Aucun contrôle sélectionné"]
+	noexception [en "No exception selected" fr "Aucune exception sélectionnée"]
+	noidentity [en "No identity selected" fr "Aucune identité sélectionnée"]
+}
+
+bwa360_exceptionssod_controlpicker = Dialog {
+	title:$bwa360_exceptionssodNLS.selectcontrol
+	width:1024
+	height:600
+	buttons:[
+		OkButton { disabled:StringPredicate(outControlCode) { when IsEmpty then True otherwise False } }
+		CancelButton
+		] 
+
+	controlcodes = Variable { multivalued:True }
+	
+	outControlCode = Variable
+	outControlDisplayname = Variable
+	
+	controls = Dataset {
+		view:bwa360_identitysodcontrols with controlcodes to controlcode
+	}
+
+	Table {
+		data:controls
+		layout: Layout { grab: horizontal True vertical True }
+		configurable:True
+		show-filter:True
+		
+		Column {
+			column:controldisplayname
+			tooltip:Current controldisplayname
+			header:$bwa360_exceptionssodNLS.control
+			selection:outControlDisplayname
+			sortable:True
+			filterable:True
+			width:100%
+		}	
+		Column {
+			column:risklevel
+			text:Transform Current risklevel using bwf_ControlLevelMapping
+			header:$bwa360_exceptionssodNLS.risklevel
+			width:128px
+			sortable:True
+			filterable:True
+			image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+		}	
+		Column {
+			column:controlcode
+			tooltip:Current controlcode
+			header:$bwa360_exceptionssodNLS.controlcode
+			initially-masked:True
+			selection:outControlCode
+			sortable:True
+			filterable:True
+		}	
+		Column {
+			column:controldescription
+			tooltip:Current controldescription
+			header:$bwa360_exceptionssodNLS.controldescription
+			initially-masked:True
+			sortable:True
+			filterable:True
+			width:100%
+		}	
+		Column {
+			column:riskinfo
+			tooltip:Current riskinfo
+			header:$bwa360_exceptionssodNLS.risk
+			initially-masked:True
+			sortable:True
+			filterable:True
+			width:100%
+		}	
+	}
+}
+
+bwa360_exceptionssod_identitypicker = Dialog {
+	title:$bwa360_exceptionssodNLS.selectidentity
+	width:1024
+	height:600
+	buttons:[
+		OkButton { disabled:StringPredicate(outIdentityUid) { when IsEmpty then True otherwise False } }
+		CancelButton
+		] 
+
+	identityuids = Variable { multivalued:True }
+	
+	outIdentityUid = Variable
+	outIdentityFullname = Variable
+	
+	identities = Dataset {
+		view:getidentities with identityuids to uids
+	}
+
+	Table {
+		data:identities
+		layout: Layout { grab: horizontal True vertical True }
+		configurable:True
+		show-filter:True
+		initial-sort: fullname
+		Column {
+			column:uid
+			hidden: True
+			selection:outIdentityUid
+		}
+		Column {
+			column:hrcode
+			header:$identity.hrcode
+			width:100%
+			sortable:True
+			filterable:True
+		}	
+		Column {
+			column:fullname
+			header:$identity.fullname
+			width:100%
+			selection: outIdentityFullname
+			initially-masked:False
+			sortable:True
+			filterable:True
+		}	
+		Column {
+			column:mail
+			header:$identity.mail
+			width:100%
+			initially-masked:False
+			sortable:True
+			filterable:True
+		}	
+		Column {
+			column:organisationdisplayname
+			header:$porganisation.displayname
+			width:100%
+			initially-masked:False
+			sortable:True
+			filterable:True
+		}
+	}
+}
+
+bwa360_exceptionssod = Page {
+	title: $bwa360_exceptionssodNLS.title
+	feature:All(sod_license, bwa_controlallidentitysodmatrix, compliance_license)
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedExceptions = Variable { multivalued: True}
+	selectedIdentities = Variable { multivalued: True}
+	selectedControlCodes = Variable { multivalued: True}
+	selectedControlResultTypes = Variable { multivalued: True}
+	
+	selectedControlCode = Variable {type: String}
+	selectedControlDisplayName = Variable {type: String}
+	selectedIdentityUid = Variable {type: String}
+	selectedIdentityFullname = Variable {type: String}
+	
+	allcontrols = Variable { multivalued: True}
+	allidentities = Variable { multivalued: True}
+	
+	selectedcontrol = Variable {type: String}
+	selectedexception = Variable {type: String}
+	selectedidentity = Variable {type: String}
+	
+	selectedMinimumRiskLevel = Variable {type: String}
+	
+	/* Datasets and records here */
+	exceptions = Dataset {
+		view: bwa360_identitysodexception with 
+			selectedMinimumRiskLevel to minimumRiskLevel unless-empty,
+			selectedControlCode to controlcode unless-empty,
+			selectedIdentityUid to identityuid unless-empty
+	}
+	
+	/* Page content */
+	Splitter {
+		disposition: Horizontal
+		size: 70%
+		Group {
+			Grid {
+				columns: GridColumn {}, GridColumn { width: 150px }, GridColumn { width: 150px }, GridColumn {}, GridColumn{}
+				layout: Layout { grab: horizontal True vertical False }
+				GridRow {
+					GridCell {
+						Combo {
+							variable:selectedMinimumRiskLevel
+							label: $bwa360_exceptionssodNLS.minrisklevel
+							allow-none:True
+							options:Static {
+								Option { value:4 text:$bwf_ControlLevel_NLS._4 }
+								Option { value:3 text:$bwf_ControlLevel_NLS._3 }
+								Option { value:2 text:$bwf_ControlLevel_NLS._2 }
+								Option { value:1 text:$bwf_ControlLevel_NLS._1 }
+								Option { value:0 text:$bwf_ControlLevel_NLS._0 }
+							}
+						}
+					}
+					GridCell {
+						Edit {
+							label: $bwa360_exceptionssodNLS.controlfilter
+							variable:selectedControlDisplayName
+							tooltip:selectedControlDisplayName
+							commands: Commands {
+								Command {
+									actions:
+										IntCase(SizeOf allcontrols) {
+											when =0 then [
+												TransferData exceptions(identitysodexceptioncontrolcode) to (allcontrols),
+												MultivaluedDistinct allcontrols
+											]
+										},
+										Dialog bwa360_exceptionssod_controlpicker(allcontrols to controlcodes, selectedControlCode from outControlCode, selectedControlDisplayName from outControlDisplayname)
+									icon:%concept_16.control
+								}										
+								Command {
+									actions:
+										Unset selectedControlCode,
+										Unset selectedControlDisplayName
+									icon:%collection_16.delete
+								}										
+							}
+						}	
+					}
+					GridCell {
+						Edit {
+							label: $bwa360_exceptionssodNLS.identityfilter
+							variable:selectedIdentityFullname
+							tooltip:selectedIdentityFullname
+							commands: Commands {
+								Command {
+									actions:
+										IntCase(SizeOf allidentities) {
+											when =0 then [
+												TransferData exceptions(identityuid) to (allidentities),
+												MultivaluedDistinct allidentities
+											]
+										},
+										Dialog bwa360_exceptionssod_identitypicker(allidentities to identityuids, selectedIdentityUid from outIdentityUid, selectedIdentityFullname from outIdentityFullname)
+									icon:%concept_16.identity
+								}										
+								Command {
+									actions:
+										Unset selectedIdentityUid,
+										Unset selectedIdentityFullname
+									icon:%collection_16.delete
+								}										
+							}
+						}	
+					}
+					GridCell {
+					
+					}
+					GridCell {
+						ButtonGroup {
+							align: Right
+							uniform: True
+							layout: Layout { grab: horizontal True vertical False }
+							Button {
+								actions: 
+									Dialog bwsod_identitysodexceptionsupdateDialog(
+										selectedExceptions to exceptions,
+										selectedIdentities to identities,
+										selectedControlCodes to controlcodes,
+										selectedControlResultTypes to controlresulttype
+									),
+									Unset selectedExceptions,
+									ReloadData(exceptions)
+								text: $bwsod_identitysodexceptionsNLS.updateexception
+								tooltip: $bwa360_exceptionssodNLS.updatetooltip
+								image: %status_16.update 
+								disabled: IntPredicate(SizeOf selectedExceptions) { when >=1 then False otherwise True }
+							}
+							Button {
+								actions: 
+									Dialog bwsod_identitysodexceptionsdeleteDialog(
+										selectedIdentities to identities,
+										selectedControlCodes to controlcodes,
+										selectedControlResultTypes to controlresulttype
+									),
+									Unset selectedExceptions,
+									ReloadData(exceptions)
+								text: $bwsod_identitysodexceptionsNLS.deleteexception
+								tooltip: $bwa360_exceptionssodNLS.deletetooltip
+								image: %status_16.remove 
+								disabled: IntPredicate(SizeOf selectedExceptions) { when >=1 then False otherwise True }
+							}
+						}
+					}
+				}
+			}
+			Table {
+				data: exceptions
+				layout:Layout {grab: horizontal True vertical True}
+				configurable:True
+				show-count:True
+				show-filter:True
+				persist-configuration:True
+				checkboxes: identitysodexceptionuid to selectedExceptions and (identityuid to selectedIdentities, identitysodexceptioncontrolcode to selectedControlCodes, controlresulttype to selectedControlResultTypes )
+				Column {
+					column:identityfullname
+					header:$identity.fullname
+					sortable:True
+					filterable:True
+					initially-masked: False
+					width:100%
+				}
+				Column {
+					column:organisationshortname
+					header: $porganisation.shortname
+					sortable:True
+					filterable:True
+					initially-masked: True
+					width:100%
+				}
+				Column {
+					column:risklevel
+					text:Transform Current risklevel using bwf_ControlLevelMapping
+					header:$bwa360_exceptionssodNLS.risklevel
+					width:128px
+					sortable:True
+					filterable:True
+					image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+				}
+				Column {
+					column:identitysodexceptioncontrolcode
+					header:$bwa360_exceptionssodNLS.controlcode
+					sortable:True
+					filterable:True
+					initially-masked:True
+					selection:selectedcontrol
+				}
+				Column {
+					column:controldisplayname
+					tooltip:Current controldisplayname
+					header:$bwa360_exceptionssodNLS.control
+					sortable:True
+					filterable:True
+					width:100%
+				}
+				Column {
+					column:controldescription
+					tooltip:Current controldescription
+					header:$bwa360_exceptionssodNLS.controldescription
+					sortable:True
+					filterable:True
+					initially-masked:True
+					width:100%
+				}
+				Column {
+					column:riskinfo
+					tooltip:Current riskinfo
+					header:$bwa360_exceptionssodNLS.risk
+					sortable:True
+					filterable:True
+					initially-masked:True
+					width:100%
+				}
+				Column {
+					column:identitysodexceptionreason
+					header: $bwsod_identitysodexceptionsNLS.reason_
+					sortable:True
+					filterable:True
+					initially-masked: False
+					width:100%
+				}
+				Column {
+					column:exceptioncomment
+					header:$bwsod_identitysodexceptionsNLS.comment
+					sortable:True
+					filterable:True
+					initially-masked: False
+					width:100%
+				}
+				Column {
+					column:identitysodexceptionvaliduntildate
+					header:$bwsod_identitysodexceptionsNLS.expirationdate
+					text: NonEmpty(Date(Current identitysodexceptionvaliduntildate).value("MM-dd-yyyy"), "No expiration date") 
+					sortable:True
+					filterable:True
+					initially-masked: False
+					width:100%
+				}
+				Column {
+					column:identitysodexceptionissuername
+					header:$bwa360_exceptionssodNLS.issuername
+					sortable:True
+					filterable:True
+					initially-masked: False
+					width:100%
+				}
+				Column {
+					column: identityuid
+					hidden: True
+					selection: selectedidentity
+				}
+				Column {
+					column: identitysodexceptionuid
+					hidden: True
+					selection: selectedexception
+				}
+			}
+		}
+		Group {
+			TabFolder {
+				TabItem {
+					text: $bwa360_exceptionssodNLS.exceptiondetails
+					hidden: True
+					ConditionalGroup {
+						StringCondition(selectedexception) {
+							when IsEmpty then [
+								Text {
+									value:$bwa360_exceptionssodNLS.noexception
+									compact:True
+								}
+							]
+							otherwise [
+								IncludeFragment ( fragmentExceptionDetails with value-of selectedexception to inexception )
+							]
+						}
+					}
+				}
+				TabItem {
+					text: $bwa360_exceptionssodNLS.controldetails
+					ConditionalGroup {
+						StringCondition(selectedcontrol) {
+							when IsEmpty then [
+								Text {
+									value:$bwa360_exceptionssodNLS.nocontrol
+									compact:True
+								}
+							]
+							otherwise [
+								IncludeFragment ( fragmentControlDetails with value-of selectedcontrol to incontrolcode)
+							]
+						}
+					}
+				}
+				TabItem {
+					text: $bwa360_exceptionssodNLS.identitydetails
+					ConditionalGroup {
+						StringCondition(selectedidentity) {
+							when IsEmpty then [
+								Text {
+									value:$bwa360_exceptionssodNLS.noidentity
+									compact:True
+								}
+							]
+							otherwise [
+								IncludeFragment ( fragmentIdentityDetails with value-of selectedidentity to inuid )
+							]
+						}
+					}
+				}
+			}
+		}
+	}
+}

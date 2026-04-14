@@ -1,0 +1,385 @@
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/workflow/bw_delegations/deleteDelegation.page"
+import "/webportal/pages/workflow/bw_delegations/delegationSharedResources.page"
+
+adminDelegations = Page {
+	title: $delegations_NLS.delegation_admin
+	feature: All(Not(DelegationActive), delegation_admin_list)
+	tags:"admin"
+	icon: "16/audit/allidentity_16.png"
+	large-icon: "48/audit/identity_48.png"
+	
+	// Admin Variables
+	show_inactive = Variable { type: Boolean initial: False }
+	
+	delegator_filter = Variable {}
+	
+	selected_delegation = Variable { type: Integer }
+	
+	selected_delegator = Variable { type: String }
+	selected_delegator_fullname = Variable { type: String }
+	
+	selected_delegate = Variable { type: String }
+	selected_delegate_fullname = Variable { type: String }
+	
+	selected_delegation_starDate = Variable { type: Date }
+	selected_delegation_endDate = Variable { type: Date }
+	selected_delegation_comment = Variable { type: String }
+	
+	selected_active = Variable { type: Boolean initial: False }
+	selected_enabled = Variable { type: Boolean }
+	
+	admindelegations = Dataset {
+		view: br_delegationslist_filter with
+			delegator_filter to delegatorUid,
+			LowerCase show_inactive to show_inactive
+	}
+	
+	detailDelegator = Record {
+		view: br_delegationidentity with
+			selected_delegator to uid
+	}
+	detailDelegate = Record {
+		view: br_delegationidentity with
+			selected_delegate to uid
+	}
+	delegatorRecord = Record {
+		view: workflow_identitydisplayname with
+			delegator_filter to uid
+	}
+	
+	Grid {
+		columns: GridColumn{width: 140 px}, GridColumn {width: 10px}, GridColumn{width: grow},GridColumn{width: 21 px}, GridColumn{width: 400 px }
+		GridRow { 				
+			GridCell {
+				Spacer {height: 33}
+				Text {
+					label: Label {
+						break: True
+						value: $delegations_NLS.delegator_title 
+					}
+					value: delegatorRecord.displayname
+					layout: Layout {hint: width 200}
+					commands:
+						Commands {
+							presentation: Icon
+							Command { 
+								actions:
+									Dialog identityPicker(delegator_filter from outUid)
+								icon: "16/audit/identity_16.png"
+							}
+							Command {
+								actions:
+									Set "" to delegator_filter
+								icon: "webportal/delete_32.png"
+							}
+						}
+				}				
+				Separator { }
+				Checkbox {
+					variable: show_inactive
+					label: $delegations_NLS.show_inactive
+				}
+				Separator { }
+				Button {
+					actions:
+						GoTo NewProcessPage "br_createDelegation"
+					text: $delegations_NLS.delegation_create.short
+					tooltip: $delegations_NLS.delegation_create
+					feature: delegation_admin_create
+					image:"16/famfamfam_silk_icons_v013/add_black.png"
+				}
+				Button {
+					actions:
+						GoTo NewProcessPage "br_modifyDelegation" with selected_delegation to delegationRecordUid
+					text: $delegations_NLS.delegation_edit.short
+					tooltip: $delegations_NLS.delegation_edit
+					image:"16/famfamfam_silk_icons_v013/pencil.png"
+					feature: delegation_admin_edit
+					disabled:
+						OrPredicate {
+							IntPredicate ( selected_delegation)  {
+								when InvalidInteger then True
+							}
+							Not BooleanPredicate(selected_active)
+						}
+				}
+				Button {
+					actions:
+						Dialog deleteDelegation(
+							selected_delegation to delegationRecordUid,
+							selected_delegate to selected_delegate,
+							selected_delegate_fullname to selected_delegate_fullname,
+							selected_delegator to selected_delegator,
+							selected_delegator_fullname to selected_delegator_fullname,
+							selected_delegation_starDate to selected_delegation_starDate,
+							selected_delegation_endDate to selected_delegation_endDate,
+							selected_delegation_comment to selected_delegation_comment
+						), 
+						Flash Information $delegations_NLS.delegation_deleted,
+						ReloadData(admindelegations)
+					text: $delegations_NLS.delegation_delete.short
+					tooltip: $delegations_NLS.delegation_delete
+					image:"16/famfamfam_silk_icons_v013/delete.png"
+					feature: delegation_admin_delete
+					disabled:
+						OrPredicate {
+							IntPredicate ( selected_delegation ) {
+								when InvalidInteger then True
+							}
+							Not BooleanPredicate ( selected_active )
+						}
+				}
+				Button {
+					text: $delegations_NLS.delegation_refresh
+					tooltip: $delegations_NLS.delegation_refresh.tt
+					image:"16/famfamfam_silk_icons_v013/arrow_refresh.png"
+					actions:
+						ReloadData ( admindelegations )
+				}
+			}
+			GridCell {}					
+			GridCell {
+				Table {
+					data: admindelegations
+					layout: Layout {
+						grab: horizontal True vertical True
+					}
+					show-count: True
+					show-filter: True
+					// Not supported by tables using GroupingColumn
+//					configurable: True
+//					persist-configuration: True
+//					persist-configuration-key: "adminDelegations"
+					double-click:
+						GoTo NewProcessPage "br_modifyDelegation" with selected_delegation to delegationRecordUid
+					GroupingColumn {
+						width: 260px
+						header: $delegations_NLS.fromto
+						GroupedAttribute {
+							column: delegatorfullname
+						}
+						RowAttribute {
+							column: delegateefullname
+							image: "16/audit/identity_16.png"
+							text: Concat ( "    ", Current delegateefullname ) 							
+						}
+					}
+					Column {
+						column: recorduid
+						hidden: True
+						selection: selected_delegation
+					}
+					Column {
+						column: delegatoruid
+						hidden: True
+						selection: selected_delegator
+					}
+					Column {
+						column: delegateeuid
+						hidden: True
+						selection: selected_delegate
+					}					
+					Column {
+						column: delegatorfullname
+						hidden: True
+						selection: selected_delegator_fullname
+					}
+					Column {
+						column: delegateefullname
+						hidden: True
+						selection: selected_delegate_fullname
+					}
+					Column {
+						column: comment
+						hidden: True
+						selection: selected_delegation_comment
+					}
+					Column {
+						column: label
+						header: $delegations_NLS.label
+						width: 33%
+						filterable: True
+					}		
+					Column {
+						column: begindate
+						header: $delegations_NLS.delegation_startdate
+						text: Date(Current begindate).value( $delegations_NLS.date.short )
+						tooltip: Date(Current begindate).value( $delegations_NLS.date.long )
+						sortable: True
+						width: 120px
+						selection: selected_delegation_starDate
+					}
+					Column {
+						column: enddate
+						header: $delegations_NLS.delegation_enddate
+						text: Transform Date(Current enddate).value( $delegations_NLS.date.short ) using endDateMapping
+						tooltip: Transform Date(Current enddate).value( $delegations_NLS.date.long ) using endDateMapping
+						sortable: True
+						width: 120px
+						selection: selected_delegation_endDate
+					}
+					Column {
+						column: active
+						header: $delegations_NLS.delegation_active
+						text: Transform Current active using delegationStatus
+						width: 80px
+						align: Center
+						selection: selected_active
+						// Not supported
+//						initially-masked: True
+						hidden: True
+					}
+					Column {
+						column: _enabled
+						header: $delegations_NLS.delegation_enabled
+						text: Transform Current _enabled using booleanDisplayMapping
+						width: 80px
+						align: Center
+						selection: selected_enabled
+					}
+				}					
+			} // GridCell
+			GridCell {}	
+			GridCell {
+				Spacer { height: 23}	
+				ConditionalGroup {
+					title: $delegations_NLS.delegator_title
+					mixins: detailItem
+					border:True
+					StringCondition ( selected_delegator ) {
+						when IsEmpty then [
+							Spacer { height: 20 }
+							Text {
+								value: $delegations_NLS.delegation_select
+							}
+						]
+						otherwise [
+							Spacer {
+								height:5
+							}
+							Text {
+								label: $delegations_NLS.delegator_hrcode
+								value: detailDelegator.hrcode
+							}
+							Text {
+								label: $delegations_NLS.delegator_titledisplayname
+								value: detailDelegator.titledisplayname
+							}
+							Link {
+								label: $delegations_NLS.delegator_fullname
+								value: detailDelegator.fullname
+								icon:"details/link_profile_14.png"	
+								target: Activity Identity Detail with selected_delegator to paramIdentityUid
+								disabled:
+									StringPredicate ( selected_delegator ) {
+										when IsEmpty then True
+									}
+							}
+							Text {
+								label: $delegations_NLS.delegator_mail
+								value: detailDelegator.mail
+							}
+							Text {
+								label: $delegations_NLS.delegator_phone
+								value: detailDelegator.phone
+							}
+							Text {
+								label: $delegations_NLS.delegator_mobile
+								value: detailDelegator.mobile
+							}
+							Text {
+								label: $delegations_NLS.delegator_internal
+								value: Transform detailDelegator.internal using booleanDisplayMapping
+							}
+							Grid {
+								columns: GridColumn { width: grow }, GridColumn { width: 140px}
+								fill: Horizontal
+								layout: Layout { hint: height 55 }
+								GridRow{
+									GridCell {}
+									GridCell {
+										Button {
+											actions:
+												GoTo Activity Identity Detail with selected_delegator to paramIdentityUid
+											text: $delegations_NLS.delegation_more
+										}
+									}						
+								}
+							}
+							Spacer { height: 5}
+						]
+					}	
+				}
+				Spacer { height: 1}
+				ConditionalGroup {
+					title: $delegations_NLS.delegate_title
+					border:True
+					mixins: detailItem
+					StringCondition ( selected_delegate ) {
+						when IsEmpty then [
+							Spacer { height: 20 }
+							Text {
+								value: $delegations_NLS.delegation_select
+							}
+						]
+						otherwise [
+							Spacer {
+								height:5
+							}
+							Text {
+								label: $delegations_NLS.delegate_hrcode
+								value: detailDelegate.hrcode
+							}
+							Text {
+								label: $delegations_NLS.delegate_titledisplayname
+								value: detailDelegate.titledisplayname
+							}
+							Link {
+								label: $delegations_NLS.delegate_fullname
+								value: detailDelegate.fullname
+								icon:"details/link_profile_14.png"	
+								target: Activity Identity Detail with selected_delegate to paramIdentityUid
+								disabled: StringPredicate ( selected_delegate ) { when IsEmpty then True otherwise False }
+							}
+							Text {
+								label: $delegations_NLS.delegate_mail
+								value: detailDelegate.mail
+							}
+							Text {
+								label: $delegations_NLS.delegate_phone
+								value: detailDelegate.phone
+							}
+							Text {
+								label: $delegations_NLS.delegate_mobile
+								value: detailDelegate.mobile
+							}
+							Text {
+								label: $delegations_NLS.delegate_internal
+								value: Transform detailDelegate.internal using booleanDisplayMapping
+							}	
+							Grid {
+								columns: GridColumn { width: grow }, GridColumn { width: 140px}
+								fill: Horizontal
+								layout: Layout { hint: height 55 }
+								GridRow{
+									GridCell {}
+									GridCell {
+										Button {
+											actions:
+												GoTo Activity Identity Detail with selected_delegate to paramIdentityUid
+											text: $delegations_NLS.delegation_more
+										}
+									}						
+								}
+							}
+							Spacer { height: 5}
+						]
+					}
+				}
+				Spacer { height: 11}
+			}			
+		}
+	} // Grid
+}

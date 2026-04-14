@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow version="1.0">
+	<Definition name="bwr_inititsmtickets" statictitle="inititsmtickets" scriptfile="/workflow/bw_iasreview/inititsmtickets.javascript" displayname="inititsmtickets" type="builtin-technical-workflow">
+		<Component name="CSTART" type="startactivity" x="301" y="58" w="200" h="114" title="Start" compact="true">
+			<Ticket create="true"/>
+			<Candidates name="role" role="A1655215897427"/>
+			<Actions>
+				<Action name="U1655217131432" action="executeview" viewname="bwiasr_initaccountsperrepobv" append="false" attribute="repository">
+					<ViewAttribute name="P1655217131432_0" attribute="repositoryuid" variable="repository"/>
+					<ViewAttribute name="P1655217131432_1" attribute="repositorybwr_remediation_repository_instancecode" variable="remediationinstancecode"/>
+				</Action>
+				<Action name="U1655217292365" action="multiclean" attribute="repository" emptyvalues="true" duplicates="true" attribute1="remediationinstancecode"/>
+				<Action name="U1656433311382" action="executeview" viewname="bwiasr_initrightsperapplibv" append="false" attribute="application">
+					<ViewAttribute name="P1656433311382_0" attribute="applicationuid" variable="application"/>
+					<ViewAttribute name="P1656433311382_1" attribute="applicationbwr_remediation_application_instancecode" variable="applicationremediationinstancecode"/>
+				</Action>
+				<Action name="U1656434131595" action="multiclean" attribute="application" emptyvalues="true" duplicates="true" attribute1="applicationremediationinstancecode"/>
+				<Action name="U1656663006509" action="update" attribute="debug" newvalue="{(config.sndebug!=null&amp;&amp;&apos;true&apos;.equalsIgnoreCase(config.sndebug))?true:false}"/>
+			</Actions>
+		</Component>
+		<Component name="CEND" type="endactivity" x="301" y="509" w="200" h="98" title="End" compact="true"/>
+		<Link name="CLINK" source="CSTART" target="C1655217249604" priority="1"/>
+		<Component name="C1655217249604" type="callactivity" x="175" y="171" w="300" h="98" title="create itsm&amp;mail tickets per repository">
+			<Process workflowfile="/workflow/bw_iasreview/inititsmticketsperrepository.workflow">
+				<Input name="A1655217321696" variable="repository" content="repository"/>
+				<Input name="A1655218439663" variable="remediationinstancecode" content="remediationinstancecode"/>
+				<Input name="A1656663114047" variable="debug" content="debug"/>
+			</Process>
+			<Iteration listvariable="repository" sequential="true">
+				<Variable name="A1655218454673" variable="remediationinstancecode"/>
+			</Iteration>
+		</Component>
+		<Link name="L1655217267571" source="C1655217249604" target="C1655217249604_1" priority="1"/>
+		<Component name="C1655217249604_1" type="callactivity" x="175" y="331" w="300" h="98" title="create itsm&amp;mail tickets per application">
+			<Process workflowfile="/workflow/bw_iasreview/inititsmticketsperapplication.workflow">
+				<Input name="A1655218439663" variable="remediationinstancecode" content="applicationremediationinstancecode"/>
+				<Input name="A1656434099528" variable="application" content="application"/>
+				<Input name="A1656663119791" variable="debug" content="debug"/>
+			</Process>
+			<Iteration listvariable="application" sequential="true">
+				<Variable name="A1656434160087" variable="applicationremediationinstancecode"/>
+			</Iteration>
+		</Component>
+		<Link name="L1656433324278" source="C1655217249604_1" target="CEND" priority="1"/>
+	</Definition>
+	<Roles>
+		<Role name="A1655215897427" icon="/reports/icons/48/people/personal_48.png" smallicon="/reports/icons/16/people/personal_16.png" displayname="owner" description="owner">
+			<Rule name="A1655215913616" rule="bwdc_active_identities" description="active identities"/>
+		</Role>
+	</Roles>
+	<Variables>
+		<Variable name="A16552171314320" variable="repository" displayname="repository" multivalued="true" visibility="local" type="String" editortype="Ledger Repository"/>
+		<Variable name="A16552171314321" variable="remediationinstancecode" displayname="remediationinstancecode" multivalued="true" visibility="local" type="String" editortype="Default"/>
+		<Variable name="A16564333113820" variable="application" displayname="application" multivalued="true" visibility="local" type="String" editortype="Ledger Application"/>
+		<Variable name="A16564333113821" variable="applicationremediationinstancecode" displayname="applicationremediationinstancecode" multivalued="true" visibility="local" type="String" editortype="Default"/>
+		<Variable name="A1656662906160" variable="debug" displayname="debug" editortype="Default" type="Boolean" multivalued="false" visibility="local" initialvalue="false" notstoredvariable="true"/>
+	</Variables>
+</Workflow>

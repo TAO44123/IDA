@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwaccess360r_application_similarprofilemembersbv" displayname="simular profile members with threshold">
+	<Definition scriptfile="/views/bw_access360/portalreports/application/similarprofilemembersbv.javascript" name="D1594046006890">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1594046006890" title="similar profile members">
+			<InnerView name="bwaccess360r_application_similarprofilemembers">
+				<Param name="F1594046064178" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1594048793719" viewparam="nbmembersThreshold" viewparamvalue="{param.nbmembersThreshold.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1594046132268" expression="!param.isEmpty(&apos;threshold&apos;) &amp;&amp; (param.threshold.get()&gt;dataset.similarity.get())" type="Exclude"/>
+				<Filter name="F1594046283122" expression="dataset.profile1uid.get() == dataset.profile2uid.get()" type="Exclude"/>
+				<Filter name="F1594106377703" expression="param.dedup.get()?dataset.key.get():(dataset.profile1uid.get()+dataset.profile2uid.get())" comment="dedup if needed" type="Deduplicate"/>
+			</FilterList>
+			<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.profile1uid.get()&lt;dataset.profile2uid.get()?(dataset.profile1uid.get()+dataset.profile2uid.get()):(dataset.profile2uid.get()+dataset.profile1uid.get())"/>
+		</Component>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1594137413701_1" data="SAP_1591082799580_109693"/>
+	</ViewParam>
+	<ViewParam name="threshold" displayname="threshold" type="Integer" defaultvalue="80"/>
+	<ViewParam name="nbmembersThreshold" displayname="nbmembersThreshold" type="Integer" defaultvalue="20"/>
+	<ViewParam name="dedup" displayname="dedup" type="Boolean" defaultvalue="false"/>
+	<ViewSort name="sort" attribute1="similarity" direction1="DESC" attribute2="nbaccount" direction2="DESC"/>
+</View>

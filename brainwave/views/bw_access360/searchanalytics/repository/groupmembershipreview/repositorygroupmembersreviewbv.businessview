@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="access360r_repositorygroupmembersreviewbv" displayname="repository group direct members review bv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/repository/groupmembershipreview/repositorygroupmembersreviewbv.javascript" name="D1697218257563">
+		<Component type="innerview" x="30" y="10" w="372" h="64" name="C1697218257562" title="repository group direct members review">
+			<InnerView name="access360r_repositorygroupmembersreview">
+				<Param name="F1697292813939" viewparam="filterbyaccounttag" viewparamvalue="{param.filterbyaccounttag}"/>
+				<Param name="F1697292840100" viewparam="repositorylist" viewparamvalue="{param.repositorylist}"/>
+				<Param name="F1697292855561" viewparam="filterbygrouptag" viewparamvalue="{param.filterbygrouptag}"/>
+				<Param name="F1697292875933" viewparam="includegroupswithoutowner" viewparamvalue="{param.includegroupswithoutowner.get()}"/>
+				<Param name="F1697377184536" viewparam="includedynamicgroups" viewparamvalue="{param.includedynamicgroups.get()}"/>
+				<Param name="F1755523294178" viewparam="ruleuid" viewparamvalue="{param.ruleuid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1697218443810" type="scriptview" x="30" y="180" w="305" h="114" title="filter user accounts" enable="{param.includeuseraccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1697375839707" expression="!dataset.isEmpty(&apos;identityuid&apos;)" comment="remove user accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1697293027388" type="scriptview" x="30" y="290" w="309" h="114" title="filter orphaned accounts" enable="{param.includeorphanaccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1697375875138" expression="dataset.isEmpty(&apos;reconuid&apos;)" comment="remove orphaned accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1697293027816" source="C1697218443810" target="C1697293027388" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1697293041286" type="scriptview" x="30" y="400" w="309" h="114" title="filter leaver accounts" enable="{param.includeleaveraccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1697375905742" expression="!dataset.isEmpty(&apos;reconnoownercode&apos;) &amp;&amp; dataset.reconnoownercode.get().equalsIgnoreCase(&apos;leave&apos;)" comment="remove leaver accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1697293041497" source="C1697293027388" target="C1697293041286" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1697293051052" type="scriptview" x="30" y="510" w="309" h="114" title="filter tech accounts" enable="{param.includetechaccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1697375937815" expression="!dataset.isEmpty(&apos;reconnoownercode&apos;) &amp;&amp; !dataset.reconnoownercode.get().equalsIgnoreCase(&apos;leave&apos;)" comment="remove tech accounts" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1697293051246" source="C1697293041286" target="C1697293051052" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1697374627924" type="joinview" x="949" y="326" w="300" h="50" title="get latest review status">
+			<InnerView name="bwaccess360r_repositorygroupmemberslastreview">
+				<Param name="F1697374764529" viewparam="filterminimumreviewdate" viewparamvalue="{param.filterminimumreviewdate.get()}"/>
+				<Param name="F1697374779022" viewparam="includelatestreviewstatus" viewparamvalue="{param.includelatestreviewstatus.get()}"/>
+				<Param name="F1697374790312" viewparam="repositorylist" viewparamvalue="{param.repositorylist}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+		</Component>
+		<Link name="L1697374628115" source="C1697293051052" target="C1697374627924" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1697377243115" type="scriptview" x="30" y="620" w="416" h="114" title="do not take latest review status if identity position changed since then" enable="{param.includelatestreviewstatus.get().equals(&apos;1&apos;)}">
+			<Script onscriptread="checkIdentityPosition"/>
+		</Component>
+		<Link name="L1697377244081" source="C1697374627924" target="C1697377243115" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1697377702359" type="scriptview" x="30" y="730" w="416" h="114" title="filter if already reviewed" enable="{param.includelatestreviewstatus.get().equals(&apos;1&apos;) &amp;&amp; param.filterifalreadyreviewed.get().equals(&apos;1&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1697377770922" expression="!dataset.isEmpty(&apos;reviewstatus&apos;)" type="Exclude" comment="filter if the entry has already been reviewed in the timeframe"/>
+			</FilterList>
+		</Component>
+		<Link name="L1697377702583" source="C1697377243115" target="C1697377702359" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625819976919_2" type="joinview" x="632" y="160" w="300" h="50" title="add repo owner">
+			<InnerView name="bwaccess360r_repository1businessowner">
+				<Param name="F1626101742402" viewparam="repositorylist" viewparamvalue="{param.repositorylist}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.repositoryuid.get()}" key2="{dataset.repositoryuid.get()}"/>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Link name="L1697378065218" source="C1697377702359" target="C1625819976919_2" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625819976919_5" type="joinview" x="669" y="198" w="300" h="50" title="add account owner">
+			<InnerView name="bwaccess360r_accountrepo1businessowner">
+				<Param name="F1686558407458" viewparam="repositorylist" viewparamvalue="{param.repositorylist}"/>
+			</InnerView>
+			<Join jointype="left" key2="{dataset.accountuid.get()}" key1="{dataset.accountuid.get()}"/>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Component name="C1697379221660" type="joinview" x="596" y="925" w="300" h="50" title="add group owner">
+			<InnerView name="group1businessowner">
+				<Param name="F1697379307913" viewparam="filterbygrouptag" viewparamvalue="{param.filterbygrouptag}"/>
+				<Param name="F1697379319054" viewparam="repositorylist" viewparamvalue="{param.repositorylist}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.groupuid.get()}" key2="{dataset.groupuid.get()}"/>
+		</Component>
+		<Link name="L1697379222119" source="C1625819976919_2" target="C1697379221660" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1697379222812" source="C1697379221660" target="C1625819976919_5" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1625833211998_2" type="joinview" x="426" y="705" w="300" h="50" title="get default reviewer infos if needed">
+			<InnerView name="bw_access360r_applicationdefaultreviewer">
+				<Param name="F1625833335047" viewparam="uid" viewparamvalue="{param.defaultrevieweruid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key2="{dataset.defkey.get()}" key1="{dataset.defkey.get()}"/>
+			<ExcludeList>
+			</ExcludeList>
+		</Component>
+		<Link name="L1697379557759" source="C1625819976919_5" target="C1625833211998_2" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1697379736381" type="scriptview" x="793" y="1115" w="300" h="50" title="set reviewer">
+			<Script onscriptread="setreviewer"/>
+			<ExcludeList>
+				<Exclude name="defaultreviewerfullname"/>
+				<Exclude name="defaultreviewerhrcode"/>
+				<Exclude name="defaultreviewermail"/>
+				<Exclude name="defaultrevieweruid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1697379737422" source="C1625833211998_2" target="C1697379736381" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1697379871128" type="scriptview" x="703" y="1247" w="300" h="50" title="filter for one reviewer if needed" enable="{!param.isEmpty(&apos;filterbyreviewer&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1697379953739" expression="!dataset.isEmpty(&apos;revieweruid&apos;) &amp;&amp; param.filterbyreviewer.get().equals(dataset.revieweruid.get())" type="Include" comment="Filter the results for one reviewer only"/>
+			</FilterList>
+		</Component>
+		<Link name="L1697379871620" source="C1697379736381" target="C1697379871128" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1697466889775" source="C1697218257562" target="C1697218443810" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="includeuseraccounts" displayname="include user accounts" type="String" defaultvalue="1"/>
+	<ViewParam name="includeorphanaccounts" displayname="include orphaned accounts" type="String" defaultvalue="1"/>
+	<ViewParam name="includetechaccounts" displayname="include tech accounts" type="String" defaultvalue="1"/>
+	<ViewParam name="includeleaveraccounts" displayname="include leaver accounts" type="String" defaultvalue="1"/>
+	<ViewParam name="includelatestreviewstatus" displayname="include latest review status" type="String" defaultvalue="1"/>
+	<ViewParam name="filterifalreadyreviewed" displayname="filter if already reviewed in the timeframe" type="String" defaultvalue="0"/>
+	<ViewParam name="defaultrevieweruid" displayname="default reviewer uid" type="String"/>
+	<ViewParam name="forcebusinessownerasreviewer" displayname="force repository owner as reviewer" type="String" defaultvalue="0"/>
+	<ViewParam name="filterbygrouptag" displayname="filter by group tag" type="String"/>
+	<ViewParam name="filterbyaccounttag" displayname="filter by account tag" type="String"/>
+	<ViewParam name="filterminimumreviewdate" displayname="filter minimum review date" type="String"/>
+	<ViewParam name="filterbyreviewer" displayname="filter by reviewer uid" type="String"/>
+	<ViewParam name="repositorylist" displayname="repositorylist" type="String"/>
+	<ViewParam name="forcedefaultreviewerasreviewer" displayname="forcedefaultreviewerasreviewer" type="String" defaultvalue="0"/>
+	<ViewParam name="forcebusinessownerforallotheraccounts" displayname="forcebusinessownerforallotheraccounts" type="String" defaultvalue="0"/>
+	<ViewParam name="forcehimselfasreviewer" displayname="forcehimselfasreviewer" type="String" defaultvalue="0"/>
+	<ViewParam name="reviewerscript" displayname="reviewer script (must return a string in this list: linemanager, applicationowner, accountowner, permissionowner, default, myself)" type="String"/>
+	<ViewParam name="includegroupswithoutowner" displayname="include groups without owner" type="String"/>
+	<ViewParam name="includedynamicgroups" displayname="include dynamic groups" type="String"/>
+	<ViewParam name="forcegroupownerfortechaccounts" displayname="forcegroupownerfortechaccounts" type="String" defaultvalue="0"/>
+	<ViewParam name="forcegroupownerforallotheraccounts" displayname="forcegroupownerforallotheraccounts" type="String" defaultvalue="0"/>
+	<ViewParam name="forcegroupownerasreviewer" displayname="forcegroupownerasreviewer" type="String" defaultvalue="0"/>
+	<ViewParam name="ruleuid" displayname="ruleuid"/>
+</View>

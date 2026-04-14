@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_findirectidentitypaths" displayname="findirectidentitypaths">
+	<Definition scriptfile="/views/bw_fragments/businessactivity/findirectidentitypaths.javascript" name="D1600847422041" description="Build a tree for a given identity/permission pair to highlight all paths from the identity to the permission">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1600847422040" title="indirect">
+			<InnerView name="bwaf_baindirectidentitypaths">
+				<Param name="F1600847507671" viewparam="identityuid" viewparamvalue="{param.identityuid.get()}"/>
+				<Param name="F1600847512927" viewparam="permissionuid" viewparamvalue="{param.permissionuid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1600847434515" type="joinview" x="499" y="162" w="300" h="50" title="parent in the list?">
+			<InnerView name="bwaf_baindirectidentitypaths" prefix="parentinthelist_">
+				<Param name="F1600847548174" viewparam="identityuid" viewparamvalue="{param.identityuid.get()}"/>
+				<Param name="F1600847554229" viewparam="permissionuid" viewparamvalue="{param.permissionuid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key2="{dataset.parentinthelist_permissionuid.get()}" key1="{dataset.parentpermissionuid.get()}"/>
+			<FilterList>
+				<Filter name="F1600847764733" expression="dataset.isEmpty(&apos;parentpermissionuid&apos;) || !dataset.isEmpty(&apos;parentinthelist_permissionuid&apos;)" comment="filter to grab only parent perms assigned to the user" type="Include"/>
+			</FilterList>
+			<ExcludeList>
+				<Exclude name="parentinthelist_parentpermissionuid"/>
+				<Exclude name="parentinthelist_permissioncode"/>
+				<Exclude name="parentinthelist_permissiondisplayname"/>
+				<Exclude name="parentinthelist_permissionpermissiontype"/>
+				<Exclude name="parentinthelist_permissionuid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1600847435401" source="C1600847422040" target="C1600847434515" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1600848029111" type="unionview" x="725" y="247" w="300" h="50" title="leafs">
+			<InnerView name="bwf_baindirectnodes">
+				<Param name="F1600848051257" viewparam="identityuid" viewparamvalue="{param.identityuid.get()}"/>
+				<Param name="F1600848058030" viewparam="permissionuid" viewparamvalue="{param.permissionuid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="prim" secondary_discriminator="sec" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1600848029539" source="C1600847434515" target="C1600848029111" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1600848092957" type="unionview" x="609" y="379" w="300" h="50" title="direct">
+			<InnerView name="bwaf_badirectidentitypaths">
+				<Param name="F1600848117138" viewparam="identityuid" viewparamvalue="{param.identityuid.get()}"/>
+				<Param name="F1600848125956" viewparam="permissionuid" viewparamvalue="{param.permissionuid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="prim" secondary_discriminator="sec" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1600848093171" source="C1600848029111" target="C1600848092957" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1600848262435" type="note" x="408" y="55" w="393" h="124" title="Build a tree for a given identity/permission pair to highlight all paths from the identity to the permission"/>
+	</Definition>
+	<ViewParam name="identityuid" displayname="identityuid">
+		<Value name="V1600847612604_2" data="ID0000020_1591082650905_188"/>
+	</ViewParam>
+	<ViewParam name="permissionuid" displayname="permissionuid">
+		<Value name="V1600847593778_1" data="ME21N_1591082906927_140441"/>
+	</ViewParam>
+</View>

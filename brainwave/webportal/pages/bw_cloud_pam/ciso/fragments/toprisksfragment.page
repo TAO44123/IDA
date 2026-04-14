@@ -1,0 +1,82 @@
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_risk.page"
+import "/webportal/pages/bw_cloud_pam/resources/styles.page"
+
+
+
+ciso_risk_toprisksfragment = PageFragment {
+	//mixins: dashboardMixin
+	enter-event: 
+		TransferData topriskaccounts_source ( uid, repocode, repouid, login, risk, refrisk )
+			to ( top_uid, top_repocode, top_repouid, top_login, top_risk, top_refrisk )
+	
+	reftimeslotuid = Variable
+	
+	top_uid = Variable { multivalued: True type: String }
+	top_repocode = Variable { multivalued: True type: String }
+	top_repouid = Variable { multivalued: True type: String }
+	top_login = Variable { multivalued: True type: String }
+	top_risk = Variable { multivalued: True type: Integer }
+	top_refrisk = Variable { multivalued: True type: Integer }
+	
+	topriskaccounts_source = Dataset {
+		view: ciso_risk_topriskaccount with reftimeslotuid to reftimeslotuid
+		limit: 50
+	}
+	
+	topriskaccounts = Dataset {
+		columns: top_uid as uid, top_repocode as repocode, top_repouid as repouid , top_login as login, top_risk as risk, top_refrisk as refrisk
+	}
+	
+	Group {
+		mixins: homePanelMixin
+		styling: cssRound
+		
+		Header { 
+			value: $bwcd_pam_ciso_risk_NLS.group.toprisks.title
+			icon: %status.risk
+		}
+		Spacer {
+			height: 13
+		}
+		TabFolder {
+			border: False
+			TabItem {
+				text: $bwcd_pam_ciso_risk_NLS.user.concept
+				Table {
+					data: topriskaccounts
+					layout: Layout { grab: horizontal True vertical True indent: horizontal 0 vertical 10  }
+					initial-sort: risk descending
+					Column {
+						column: repocode
+						header: $repository.concept
+						width: 30%
+						sortable: True
+						filterable: True
+						actions: GoTo Activity Repository Detail with Current repouid to paramRepositoryUid
+					}
+					Column {
+						column: login
+						header: $account.login
+						width: 100%
+						sortable: True
+						filterable: True
+						actions: GoTo Activity Account (CAusers) Detail with Current uid to paramAccountUid
+					}
+					Column {
+						header: $bwcd_pam_ciso_risk_NLS.concept.risk
+						column: risk
+						sortable: True 
+						filterable: True
+						image:TemplateImageSelection(Difference(Current risk, Current refrisk)) using bwf_trend
+						align:Left
+						fixed-width:True
+						width: 100px
+					}
+				}
+			}
+		}
+	}
+}

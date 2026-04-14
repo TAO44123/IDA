@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwcontrol_identityrightsallocchanged" prefix="identity" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="identity" displayname="identityrights" notes="" begindate="" enddate="">
+	<ViewParam name="analysisthreshold" displayname="analysis threshold" defaultvalue="10"/>
+	<ViewParam name="permissiontype" displayname="permissiontype" type="String" defaultvalue="{(config.ias_permissionroletype!=null &amp;&amp; config.ias_permissionroletype.trim().length&gt;0)?config.ias_permissionroletype:&quot;Role&quot;}"/>
+	<ViewComputedAttribute name="val" displayname="val" type="Integer" expression="1"/>
+	<ViewComputedAttribute name="rightkey" displayname="rightkey" type="String" expression="dataset.accountuid.get()+&apos;$$&apos;+dataset.permuid.get()"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.orguid.get()+&apos;$$&apos;+dataset.permuid.get()"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1589536347423_2365" prefix="org" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="organisation">
+		<ViewAttribute name="A1589536354980_2366" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1657632071029_2523" attribute="bwa_control_organisation_nbdirectmembers" operator="or" removedfromprojection="false" globalfilter="true">
+			<ViewAttributeFilter name="F1657632022659_0" reference="analysisthreshold" operation="ge" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1589540223993_2395" prefix="account" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accountreconciliation">
+		<ViewJoin name="J1589540235270_2396" prefix="perm" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermissionright">
+			<ViewAttribute name="1589540244407_2398" attribute="permissiontype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1589536418315_0" reference="permissiontype" operation="in" ignoreifempty="false">
+					<Value name="0" data="Role"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+			<ViewAttribute name="A1589540250635_2399" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1589542386799_2489" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewAttribute name="A1589540271638_2400" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1589540274480_0" operation="isFalse" ignoreifempty="false"/>
+			<ViewAttributeFilter name="F1589540277302_1" operation="isNull" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1589542383550_2488" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1700038056404_436" attribute="uid" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewAttribute name="A1589547513620_3077" attribute="organisationchanged" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1589547516386_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="1"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+</View>

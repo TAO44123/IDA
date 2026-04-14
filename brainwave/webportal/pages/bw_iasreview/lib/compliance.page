@@ -1,0 +1,552 @@
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_iasreview/fragments.page"
+import "/webportal/pages/bw_campaignmanager/resources.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+
+// Compliance ---------------------------
+bwaccess360_complianceTable = PageFragment {
+	incampaignid = Variable { type: String }
+	inactive = Variable { type: Boolean initial: False }
+	
+	accountableuid = Variable { type: String }
+	accountablename = Variable { type: String }
+	groupcompliancereportperreviewer = Variable { type: Boolean initial: False }
+
+	inrevieweruid = Variable { type: String }
+	inreviewername = Variable { type: String }
+	infilterbyreviewstatus = Variable { type: String multivalued: True }
+	
+	nbperimeter = Variable { type: Integer initial: 0 }
+	
+	// finalized campaigns suppl info
+	fcampaign = Record {
+		view: bwaccess360_accessreviewcampaignsfinalized with
+			incampaignid to campaignid
+		disabled:
+			Not BooleanPredicate ( inactive )
+	}
+	
+	reviewers = Dataset {
+		view: bwaccess360r_applicationreviewers with
+			incampaignid to campaignid
+		disabled:
+			Not BooleanPredicate ( inactive )
+	}
+	
+	campaigncompliancedata = Dataset {
+		view: bwaccess360_complianceForcampaign with
+			incampaignid to campaignid, True to compliancereportmode, 
+			infilterbyreviewstatus to filterbyreviewstatus unless-empty,
+			inrevieweruid to revieweruid unless-empty,
+			accountableuid to accountableuid unless-empty,
+			True to includeremediation
+		limit: 10000
+		disabled:
+			Not BooleanPredicate ( inactive )
+	}
+	
+	cperimeter = Dataset {
+		view: bwaccess360_campaign_count with
+			incampaignid to campaignid unless-empty
+		count-variable: nbperimeter
+		disabled:
+			Not BooleanPredicate ( inactive )
+	}
+	
+	campaigncompliancedata_reviewers = Dataset {
+		union: Union {
+			datasets: 
+				reviewers projects ( uid to reviewer_uid, fullname to reviewer_fullname ),
+				campaigncompliancedata
+			discriminator-column: source
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inactive )
+				Not BooleanPredicate ( groupcompliancereportperreviewer )
+			}
+	}
+	
+	campaigncompliancedata_reviewers_tree = HierarchicalData {
+		dataset: campaigncompliancedata_reviewers
+		connect: parent reviewer_uid to child revieweruid
+		initial: reviewer_uid IsNotNull
+		max-level: 1
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inactive )
+				Not BooleanPredicate ( groupcompliancereportperreviewer )
+			}
+	}
+	
+	refreshStatuses = NamedAction (
+		ExecuteFragmentNamedAction reviewStatusFilter.refreshStatuses
+	)
+	
+	Group {
+		styling: cssPageDashboard
+		Header {
+			value: $bwaccess360_accessreviewmanagementComplianceTable.thresholdwarning( Constant bwaccess360_accessreviewmanagement_ComplianceTable_threshold )
+			styling: warningFieldStyle
+			hidden:
+				IntPredicate ( nbperimeter ) {
+					when > Constant bwaccess360_accessreviewmanagement_ComplianceTable_threshold then False
+					otherwise True
+				}
+		}
+		Group {
+			styling: cssRound
+			layout: Layout { grab: horizontal True vertical True }
+			Grid {
+				columns:
+					GridColumn,
+					GridColumn,
+					GridColumn { fill: True width: grow },
+					GridColumn
+				layout: Layout { grab: horizontal True vertical False hint: height 96 }
+				GridRow {
+					GridCell {
+						Text {
+							label: $bwaccess360_accessreviewmanagementPerimeterTable.reviewer
+							layout: Layout { hint: width 220 }
+							value: inreviewername
+							tooltip: inreviewername
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_accessreviewmanagementPickReviewer(
+												incampaignid to incampaignid,
+												inrevieweruid from outidentityuid,
+												inreviewername from outidentityname
+											)
+										icon: %concept_16.identity
+									}
+									Command {
+										actions:
+											Unset inreviewername,
+											Unset inrevieweruid
+										icon: %collection_16.delete
+									}
+								}
+						}
+						Text {
+							label: $bwaccess360_accessreviewmanagementPerimeterTable.accountable
+							layout: Layout { hint: width 220 }
+							value: accountablename
+							tooltip: accountablename
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_accessreviewmanagementPickAccountable(
+												incampaignid to incampaignid,
+												accountableuid from outidentityuid,
+												accountablename from outidentityname
+											)
+										icon: %concept_16.identity
+									}
+									Command {
+										actions:
+											Unset accountablename,
+											Unset accountableuid
+										icon: %collection_16.delete
+									}
+								}
+						}
+						Checkbox {
+							variable: groupcompliancereportperreviewer
+							label: $bwaccess360_accessreviewmanagementNLS.groupcompliancebyreviewer
+							hidden:
+								IntPredicate ( nbperimeter ) {
+									when > Constant bwaccess360_accessreviewmanagement_ComplianceTable_threshold then True
+									otherwise False
+								}
+						}
+					}
+					GridCell {
+						reviewStatusFilter = IncludeFragment {
+							fragment: bw_iasreview_reviewStatusFilter with
+								value-of incampaignid to campaignid,
+								value-of True to canFilterByStatus,
+								infilterbyreviewstatus binds-to filterByReviewStatus
+						}
+					}
+					GridCell {
+					}
+					GridCell {
+						Button {
+							actions:
+								DownloadComplianceReport fcampaign.recorduid
+							text: $bwaccess360_accessreviewmanagementNLS.compliancereport.tooltip
+							tooltip: $bwaccess360_accessreviewmanagementNLS.compliancereport.tooltip
+							image: %report_16.report
+							presentation: Link
+							align: Right
+							disabled:
+								OrPredicate {
+									StringPredicate ( incampaignid ) {
+										when IsEmpty then True
+									}
+									StringPredicate ( fcampaign.recorduid ) {
+										when IsEmpty then True
+									}
+									Not HasComplianceReportPredicate ( fcampaign.recorduid )
+									Not FeaturePredicate iasr_candownloadcompliancereport
+								}
+						}
+					}
+				}
+			}
+			Spacer {
+				height: 8
+			}
+			Header {
+				value: $bwaccess360_accessreviewmanagementNLS.compliancereport.reviewerwarning
+				styling: warning
+			}
+			ConditionalGroup {
+				BooleanCondition (groupcompliancereportperreviewer) {
+					when False then [
+						Table {
+							data: campaigncompliancedata
+							layout: Layout { grab: horizontal True vertical True }
+							show-count: True
+							show-filter: True
+							configurable:True
+							persist-configuration:True
+							Column {
+								column: reviewerhrcode
+								header: $bwaccess360_accessreviewmanagementNLS.lmhrcode
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: reviewerfullname
+								header: $bwaccess360_accessreviewmanagementNLS.lmfullname
+								width: 200px
+								sortable: True
+								filterable: True
+							}
+							Column {
+								column: reviewermail
+								header: $bwaccess360_accessreviewmanagementNLS.lmmail
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: accountablehrcode
+								header: $bwaccess360_accessreviewmanagementNLS.achrcode
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: accountablefullname
+								header: $bwaccess360_accessreviewmanagementNLS.acfullname
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: accountablemail
+								header: $bwaccess360_accessreviewmanagementNLS.acmail
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: reviewstatus
+								text: Transform LowerCase Current reviewstatus using bwReviewStatus
+								header: $bwaccess360_accessreviewmanagementNLS.lrstatus
+								width: 120px
+								sortable: True
+								filterable: True
+								image: TemplateImageSelection(LowerCase Current reviewstatus) using bwReviewStatusIcon
+							}
+							Column {
+								column: reviewactiondate
+								header: $bwaccess360_accessreviewmanagementNLS.lrdate
+								text: SubString(10) Current reviewactiondate
+								tooltip: Current reviewactiondate
+								width: 120px
+								sortable: True
+								filterable: True
+							}
+							Column {
+								column: reviewlabel
+								header: $bwaccess360_accessreviewmanagementNLS.lrdetails
+								width: 100%
+								sortable: True
+								filterable: True
+								actions:
+									Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+										SubString(10) Current reviewactiondate to review_date,
+										Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+										Current reviewlabel to review_displayname,
+										Current reviewcomment to review_comment,
+										Current reviewerfullname to reviewer_fullname
+									)
+							}
+							Column {
+								column: reviewcomment
+								tooltip: Current reviewcomment
+								header: $bwaccess360_accessreviewmanagementNLS.lrcomment
+								width: 200px
+								sortable: True
+								filterable: True
+								actions:
+									Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+										SubString(10) Current reviewactiondate to review_date,
+										Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+										Current reviewlabel to review_displayname,
+										Current reviewcomment to review_comment,
+										Current reviewerfullname to reviewer_fullname
+									)
+							}
+							Column {
+								column: reviewsignoffby
+								tooltip: Current reviewsignoffby
+								header: $bwaccess360_accessreviewmanagementActionsTable.reviewsignofby
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: reviewsignoffon
+								text: DateLDAP(Current reviewsignoffon).value
+								tooltip: Current reviewsignoffon
+								header: $bwaccess360_accessreviewmanagementActionsTable.reviewsignofon
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationtype
+								column: remediationtype
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationclosed
+								text: Transform Current remediationclosedstatus using remediationclosedstatus
+								column: remediationclosedstatus
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationstatus
+								column: remediationstatus
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationon
+								column: remediationactiondate
+								text: SubString(10) Current remediationactiondate 
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationactorfullname
+								column: remediationactorfullname
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationticketnumber
+								column: remediationextticket
+								actions:
+									StringCase ( Current remediationhyperlink ) {
+										when Not IsEmpty then [
+											BrowseURL Current remediationhyperlink
+										]
+									}
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+						}		
+					] when True then [
+						Tree {
+							data: campaigncompliancedata_reviewers_tree
+							layout: Layout { grab: horizontal True vertical True }
+							show-filter: True
+							expand-level: All
+							configurable: True
+							persist-configuration: True
+							Column {
+								column: reviewer_uid
+								text: Current reviewer_fullname
+								header: $bwaccess360_accessreviewmanagementNLS.lrby
+								width: 200px
+								sortable: True
+								filterable: True
+							}
+							Column {
+								column: accountablefullname
+								header: $bwaccess360_accessreviewmanagementNLS.acfullname
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: reviewstatus
+								text: Transform LowerCase Current reviewstatus using bwReviewStatus
+								header: $bwaccess360_accessreviewmanagementNLS.lrstatus
+								width: 120px
+								sortable: True
+								filterable: True
+								image: TemplateImageSelection(LowerCase Current reviewstatus) using bwReviewStatusIcon
+							}
+							Column {
+								column: reviewactiondate
+								header: $bwaccess360_accessreviewmanagementNLS.lrdate
+								text: SubString(10) Current reviewactiondate
+								tooltip: Current reviewactiondate
+								width: 120px
+								sortable: True
+								filterable: True
+							}
+							Column {
+								column: reviewlabel
+								header: $bwaccess360_accessreviewmanagementNLS.lrdetails
+								width: 100%
+								sortable: True
+								filterable: True
+								actions:
+									Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+										SubString(10) Current reviewactiondate to review_date,
+										Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+										Current reviewlabel to review_displayname,
+										Current reviewcomment to review_comment,
+										Current reviewerfullname to reviewer_fullname
+									)
+							}
+							Column {
+								column: reviewcomment
+								tooltip: Current reviewcomment
+								header: $bwaccess360_accessreviewmanagementNLS.lrcomment
+								width: 200px
+								sortable: True
+								filterable: True
+								actions:
+									Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+										SubString(10) Current reviewactiondate to review_date,
+										Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+										Current reviewlabel to review_displayname,
+										Current reviewcomment to review_comment,
+										Current reviewerfullname to reviewer_fullname
+									)
+							}
+							Column {
+								column: reviewsignoffby
+								tooltip: Current reviewsignoffby
+								header: $bwaccess360_accessreviewmanagementActionsTable.reviewsignofby
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								column: reviewsignoffon
+								text: DateLDAP(Current reviewsignoffon).value
+								tooltip: Current reviewsignoffon
+								header: $bwaccess360_accessreviewmanagementActionsTable.reviewsignofon
+								width: 200px
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationtype
+								column: remediationtype
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationclosed
+								column: remediationclosedstatus
+								text: Transform Current remediationclosedstatus using remediationclosedstatus
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationstatus
+								column: remediationstatus
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationon
+								column: remediationactiondate
+								text: SubString(10) Current remediationactiondate 
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationactorfullname
+								column: remediationactorfullname
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+							Column {
+								header: $bwaccess360_accessreviewmanagementActionsTable.remediationticketnumber
+								column: remediationextticket
+								actions:
+									StringCase ( Current remediationhyperlink ) {
+										when Not IsEmpty then [
+											BrowseURL Current remediationhyperlink
+										]
+									}
+								sortable: True
+								filterable: True
+								initially-masked: True
+							}
+						}
+					]
+				}
+			}
+			Text {
+				label: Label { break: True }
+				value: fcampaign.description
+				tooltip: $bwaccess360_accessreviewmanagementNLS.generalComment.tooltip
+				lines: 10
+				layout: Layout { grab: horizontal True vertical False hint: height 48 }
+				compact: True
+				hidden:
+					StringPredicate ( fcampaign.description ) {
+						when IsEmpty then True
+					}
+			}
+		}
+	}
+}

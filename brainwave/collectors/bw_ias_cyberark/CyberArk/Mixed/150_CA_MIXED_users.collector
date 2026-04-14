@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA users" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039485303_3_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039877974">
+		<Component name="C1617039877974" type="discoverysource" x="56" y="14" w="300" h="64" title="CA_EVD_users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_UsersList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-UsersList.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617039915793" type="account" x="56" y="510" w="300" h="64" title="CA vault users">
+			<Account key="EVD_userid" error="true" event="AccountNullOrEmpty">
+				<Attribute name="login" attribute="EVD_username"/>
+				<Attribute name="disabled" attribute="EVD_disabled"/>
+				<Attribute name="custom1" attribute="source"/>
+				<Attribute name="custom3" attribute="EVD_locationname"/>
+				<Attribute name="custom5" attribute="EVD_ldapfulldn"/>
+				<Attribute name="expiredate" attribute="EVD_expirationdate_formated"/>
+				<Attribute name="dontexpirepassword" attribute="EVD_passwordneverexpires"/>
+				<Attribute name="lastlogindate" attribute="EVD_lastlogondate_formated"/>
+				<Attribute name="locked" attribute="suspended"/>
+				<Attribute name="custom2" attribute="componentuser"/>
+				<Attribute name="custom4" attribute="usertype"/>
+				<Attribute name="service" attribute="service"/>
+				<Attribute name="custom6" attribute="EVD_usertypeid"/>
+			</Account>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepoNotFound"/>
+		</Component>
+		<Link name="L1617040086469" source="C1617039877974" target="C1637250510725" priority="1"/>
+		<Component name="C1617202559099" type="right" x="53" y="836" w="300" h="64" title="CA users vaultauthorization">
+			<Domain repository="account_repo" repoerror="true" repoevent="RepoNotFound"/>
+			<Right account="account_identifier" application="_APPLICATION_CODE_" permission="vaultauthorization" error="true" event="accountOrGroupNotFound" permerror="true" permevent="permissionNotFound" apperror="true" appevent="applicationNotFound">
+				<Attribute name="action" attribute="action"/>
+			</Right>
+		</Component>
+		<Link name="L1617202577098" source="C1617039915793" target="C1617202762591" priority="1"/>
+		<Component name="C1617202762591" type="changefilter" x="56" y="619" w="300" h="64" title="Add action attribute">
+			<Actions>
+				<Action name="U1617202781529" action="add" attribute="action" type="String" multivalued="false" newvalue="hasVaultAuthorization" errorexist="false"/>
+				<Action name="U1618242882011" action="add" attribute="account_identifier" type="String" multivalued="false" newvalue="{(! dataset.isEmpty(&apos;EVD_ldapfulldn&apos;)) ? dataset.EVD_ldapfulldn.get() : dataset.EVD_userid.get()}" description="account identifier id DN if ca user has LDAP type" errorexist="false"/>
+				<Action name="U1618243182042" action="add" attribute="account_repo" type="String" multivalued="false" newvalue="{(! dataset.isEmpty(&apos;EVD_ldapdirectory&apos;)) ? dataset.repository_code.get() : dataset._REPOSITORY_CODE_}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1617202788074" source="C1617202762591" target="C1638536506381" priority="1" expression="(! dataset.isEmpty(&apos;vaultauthorization&apos;))"/>
+		<Component name="C1622406029783" type="joinfilter" x="56" y="201" w="300" h="64" title="Join with Rest data">
+			<Join source="C1622406054643"/>
+			<Cache active="true" main="EVD_userid" join="vaultuser_id"/>
+			<Attributes>
+				<Attribute name="A1622406217629" attribute="suspended" source="suspended" type="Boolean" multivalued="false"/>
+				<Attribute name="A1622406236854" attribute="componentuser" source="componentuser" type="Boolean" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1622406036182" source="C1622406029783" target="C1636550266517" priority="1"/>
+		<Component name="C1622406054643" type="discoverysource" x="472" y="203" w="252" h="64" title="CA_users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_users.csv&apos;)}"/>
+		</Component>
+		<Link name="L1622406070460" source="C1622406054643" target="C1622406029783" priority="1"/>
+		<Component name="C1635874784445_1" type="changefilter" x="56" y="414" w="300" h="64" title="Format EVD dates">
+			<Actions>
+				<Action name="U1635874539838" action="convertdate" oldname="EVD_creationdate" attribute="EVD_creationdate_formated" type="Date" multivalued="false" newvalue="{config.dateformat}" errorunknown="false" errorexist="false"/>
+				<Action name="U1635874572446" action="convertdate" oldname="EVD_expirationdate" attribute="EVD_expirationdate_formated" type="Date" multivalued="false" newvalue="{config.dateformat}" errorunknown="false" errorexist="false"/>
+				<Action name="U1635874663896" action="convertdate" oldname="EVD_lastlogondate" attribute="EVD_lastlogondate_formated" type="Date" multivalued="false" newvalue="{config.dateformat}" errorunknown="false" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1635930398906" source="C1635874784445_1" target="C1617039915793" priority="1"/>
+		<Component name="C1636550266517" type="joinfilter" x="53" y="301" w="300" h="64" title="Ignore mappings">
+			<Cache active="true" main="EVD_username" join="mappingname"/>
+			<Join source="C1618854300326_1" zeroerror="true" zeroevent="JoinFails" zerotechnical="true" severalaction="none"/>
+		</Component>
+		<Component name="C1618854300326_1" type="discoverysource" x="472" y="511" w="252" h="64" title="CA_ldap_mappings">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_ldap_mappings.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_ldapmapping.csv&apos;)}"/>
+		</Component>
+		<Link name="L1636550302202" source="C1618854300326_1" target="C1638549919446" priority="1"/>
+		<Link name="L1636550310628" source="C1636550266517" target="C1635874784445_1" priority="1" expression="(dataset.hasEvent(&apos;JoinFails&apos;))"/>
+		<Component name="C1637250510725" type="joinfilter" x="53" y="106" w="300" h="64" title="Get type name">
+			<Join source="C1637250549891"/>
+			<Attributes>
+				<Attribute name="A1637250670793" attribute="usertype" source="usertypename" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="EVD_usertypeid" join="usertypeid"/>
+		</Component>
+		<Link name="L1637250519065" source="C1637250510725" target="C1622406029783" priority="1"/>
+		<Component name="C1637250549891" type="csvsource" x="472" y="105" w="252" h="64" title="CyberArkUserTypeMatching.csv">
+			<Source file="{config.projectPath}/discovery/bw_ias_cyberark/CyberArk/CyberArkUserTypeMatching.csv" separator=";" encoding="ISO-8859-1" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A6090030565165278546" attribute="usertypeid" column="UserTypeID" type="Number" multivalued="false"/>
+				<Attribute name="A4204321254893137200" attribute="usertypename" column="UserTypeName" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1637250637362" source="C1637250549891" target="C1637250510725" priority="1"/>
+		<Component name="C1638536506381" type="joinfilter" x="56" y="729" w="300" h="64" title="Ignore users belong to a mapping(ldap)">
+			<Cache active="true" main="EVD_mapname" join="mappingname"/>
+			<Join source="C1618854300326_1" zeroerror="true" zeroevent="user_have_not_a_mapping" zerotechnical="true"/>
+		</Component>
+		<Link name="L1638536513884" source="C1638536506381" target="C1617202559099" priority="1" expression="(dataset.hasEvent(&apos;user_have_not_a_mapping&apos;))" labelcustom="true"/>
+		<Link name="L1638538259933" source="C1618854300326_1" target="C1638549935360" priority="2"/>
+		<Component name="N1638538608170" type="note" x="772" y="660" w="336" h="121" title="Collect vault rights only of user haven&apos;t not memeber of ldap mapping &#xA;&#xA;ldap users will inherit rights directely from their groups (see 200_CA_MIXED_ldap_mappings.collector)"/>
+		<Component name="C1638549919446" type="routefilter" x="472" y="302" w="252" h="64" title="Route-1"/>
+		<Link name="L1638549928223" source="C1638549919446" target="C1636550266517" priority="1"/>
+		<Component name="C1638549935360" type="routefilter" x="472" y="725" w="252" h="64" title="Route-2"/>
+		<Link name="L1638549941293" source="C1638549935360" target="C1638536506381" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="dateformat"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

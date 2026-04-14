@@ -1,0 +1,152 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+
+fragmentPermissionReview = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	
+	selectedTicket = Variable { type: Integer }	
+	selectedAuthor = Variable
+
+	permission = Record {
+		view:br_permissionDetail with inuid to uid
+	 	disabled:Not BooleanPredicate(inenabled)
+	}
+
+    reviews = Dataset {
+      view: rm_perm_review_ticket with inuid to permissionuid 
+	  disabled:Not BooleanPredicate(inenabled)
+    }
+    
+    lastReview = Record { 
+        view: rm_perm_review_ticket with inuid to permissionuid 
+		disabled:Not BooleanPredicate(inenabled)
+    }
+    
+    delete_task = TaskRecord (create "rm_permission_review")
+    
+    delete_comment = NamedAction (
+		Set "delete" to delete_task.in_action,
+		Set inuid to delete_task.in_permissionuid,
+		Set selectedTicket to delete_task.in_tr_toreplace,
+		TaskComplete delete_task wait-end,
+		Flash $bwrm_permcomments_NLS.permcomment.deleted.flash
+    )
+    
+	
+	Header {
+		value:permission.displayname
+		styling:bigTitleStyle
+		//icon:"48/audit/permission_48.png"
+		layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False 
+		  hint:width 500
+		  }
+	}
+	Text {
+	    label: $bwrm_permcomments_NLS.annotation
+		value:lastReview.comment
+		lines:3
+		compact:True
+	}
+	Text {
+	    label: $bwrm_permcomments_NLS.author
+		value:lastReview.actor_fullname
+		compact:True
+	}
+	Text {
+	    label: $bwrm_permcomments_NLS.date
+		value:lastReview.date
+		compact:True
+	}
+	Separator	
+	Text { 
+	   label: $bwrm_permcomments_NLS.permcomment.log.label  value: "" compact: True
+	}
+
+   ButtonGroup {
+	   align: Left	  
+	   Button {
+	     actions: Dialog permissionReview_Dialog ( inuid to in_PermissionUid), ReloadData (reviews) , ReloadData( lastReview)
+	     text: $bwrm_permcomments_NLS.permcomment.addnote
+	   }
+	   Button {
+	     actions: Dialog permissionReview_Dialog ( inuid to in_PermissionUid, selectedTicket to in_ticketUid), ReloadData (reviews)  , ReloadData( lastReview)
+	     text: $bwrm_permcomments_NLS.permcomment.edit
+	     disabled: Eval "selectedTicket.isEmpty()" // || selectedAuthor.get() != principal.uid"
+	   }
+	   Button {
+	     actions: Confirm $bwrm_permcomments_NLS.permcomment.delete.confirm, ExecuteNamedAction delete_comment, ReloadData (reviews)  , ReloadData( lastReview)
+	     text: $bwrm_permcomments_NLS.permcomment.delete
+	     disabled: Eval "selectedTicket.isEmpty()" // || selectedAuthor.get() != principal.uid"
+	   }
+	   Button {
+	     actions: ReloadData (reviews)  , ReloadData( lastReview)
+	     text: $bwrm_permcomments_NLS.permcomment.refresh
+	   }	   
+	}
+	Table {	  
+	  data: reviews	
+	  label: Label { value: "" break: True} 
+	  layout: Layout { grab: horizontal True vertical True}	 
+	  Column { column: recorduid hidden: True selection: selectedTicket }  
+	  Column { column: comment header: $bwrm_permcomments_NLS.annotation width: 200px }  
+	  Column { column: actor_fullname header: $bwrm_permcomments_NLS.author } 
+	  Column { column: date header: $bwrm_permcomments_NLS.date} 	  
+
+	}	   
+
+}
+
+permissionReview_Dialog = Dialog {
+	title: $bwrm_permcomments_NLS.permcomment.add.title
+	buttons:[
+	
+		OkButton {
+			disabled:Eval " comment.isEmpty()"
+			actions:
+			Set Eval "in_ticketUid.isEmpty() ?'add':'replace' " to review_task.in_action,
+			Set in_PermissionUid to review_task.in_permissionuid,
+			Set in_ticketUid to review_task.in_tr_toreplace,
+			Set comment to review_task.in_comment,
+			TaskComplete review_task wait-end
+		} 	
+		CancelButton
+	]
+	
+	width:800
+	height:180
+	enter-event:
+		Set ticket.comment to comment
+		
+	/* Parameters here */
+	in_PermissionUid = Variable {type:String }
+	in_ticketUid = Variable { type: Integer }
+
+	comment = Variable
+	
+	selecteddescription = Variable
+	
+	changed = Variable{type:String initial:'0'}
+
+	ticket = Record {
+		view: rm_perm_review_ticket with in_PermissionUid to permissionuid , Eval"in_ticketUid.isEmpty() ? 0:in_ticketUid.get() "to ticketuid 
+	}
+
+	review_task = TaskRecord (create "rm_permission_review")
+
+	Edit {
+		variable:comment
+		label: Label{ value: $bwrm_permcomments_NLS.annotation break:True}
+		multi-lines:True
+		layout:Layout{grab: horizontal True vertical False hint:height 64}
+	}	
+	
+}
+

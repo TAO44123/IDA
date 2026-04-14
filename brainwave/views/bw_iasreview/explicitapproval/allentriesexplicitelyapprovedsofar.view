@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwa_allentriesexplicitelyapprovedsofar" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketreview" displayname="entriesreviewedsofar" notes="" begindate="" enddate="">
+	<ViewParam name="reviewtickets" displayname="reviewtickets" type="Integer"/>
+	<ViewParam name="filterbydelay" displayname="filterbydelay (in nb days)" type="Integer" defaultvalue="0"/>
+	<ViewParam name="datethreshold" displayname="datethreshold (computed parameter)" type="String" defaultvalue="{new Date(date.now-((param.filterbydelay.get()!=null?param.filterbydelay.get():0)*(1000*3600*24))).toLDAPString()}  "/>
+	<ViewParam name="status" displayname="status" type="String">
+		<Value name="0" data="revoke"/>
+		<Value name="1" data="update"/>
+	</ViewParam>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1698049124107_423" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1698221951211_0" reference="reviewtickets" operation="in" ignoreifempty="true"/>
+	</ViewAttribute>
+	<ViewAttribute name="1698049124108_425" attribute="status" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1666109275890_0" reference="status" operation="in" ignoreifempty="true">
+			<Value name="0" data="ok"/>
+			<Value name="1" data="revoke"/>
+			<Value name="2" data="update"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1666091654387_426" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketaction">
+		<ViewJoin name="J1666091657761_427" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+			<ViewAttribute name="A1698222719144_429" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1698222722823_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="ADHOC_UAR"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1698050642907_433" attribute="custom5" alias="signofstate" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1698050647325_1" operation="eq" ignoreifempty="false">
+			<Value name="0" data="1"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewNote name="N1699614572063_408" displayname="Entries signed-of so far in &quot;pending&quot; mode&#xA;Can filter by delay (decisions signed-of at least X days ago)" x="470" y="36" width="372" height="113"/>
+	<ViewAttribute name="A1699614977417_420" attribute="custom7" alias="signofdate" operator="or" removedfromprojection="true" globalfilter="false" enabled="!param.isEmpty(&apos;filterbydelay&apos;)">
+		<ViewAttributeFilter name="F1699615115665_0" reference="datethreshold" operation="le" ignoreifempty="false"/>
+	</ViewAttribute>
+</View>

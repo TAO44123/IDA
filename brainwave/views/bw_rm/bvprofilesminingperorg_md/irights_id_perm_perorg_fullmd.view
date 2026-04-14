@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpm_rights_id_perm_perorg_fullmd" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="bwrm_scopedata" displayname="rigthts identities permissions for org" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="0" data="DFIN_1608805967047_74"/>
+	</ViewParam>
+	<ViewParam name="nbdays" displayname="nbdays" type="String" defaultvalue="180"/>
+	<ViewParam name="directOnly" displayname="directOnly" type="String" defaultvalue="1"/>
+	<ViewParam name="permRules" displayname="perm rules">
+		<Value name="0" data="DYN:992386523d284bf2b058704534089a25"/>
+	</ViewParam>
+	<ViewParam name="subkey" displayname="subkey"/>
+	<ViewParam name="lang" displayname="lang" defaultvalue="en"/>
+	<ViewComputedAttribute name="hasComments" displayname="has Comments" type="String" expression="dataset.nbcomments.get() &gt; 0 ? &apos;1&apos;: &apos;0&apos;"/>
+	<ViewComputedAttribute name="interncontractor" displayname="intern or contractor (localized)" type="String" expression="dataset.identityinternal.get()?(param.lang.get() == &apos;fr&apos;? &apos;Employé&apos;:&apos;Employee&apos;):(param.lang.get() == &apos;fr&apos;? &apos;Prestataire&apos;:&apos;Contractor&apos;)"/>
+	<ViewComputedAttribute name="accountusage" displayname="account usage" type="String" expression="(!dataset.isEmpty(&apos;lastlogindate&apos;) &amp;&amp; dataset.lastlogindate.get().add(&apos;d&apos;,param.nbdays.get()).getTime() &lt;= new Date().getTime() ) ?&apos;x&apos;: (dataset.indirect.get() ? &apos;i&apos;: &apos;v&apos;)"/>
+	<ViewComputedAttribute name="right" displayname="right" type="Integer" expression="1"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.identityuid.get()+&apos;$$&apos;+dataset.permissionuid.get()"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1584726193411_1206" prefix="identity" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="valueIdentity">
+		<ViewAttribute name="1584726214439_1213" attribute="hrcode" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1584726214440_1214" attribute="fullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1584726214441_1215" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1584726214442_1216" attribute="internal" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1521480658062_2552" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="allocation">
+			<ViewAttribute name="1584726480409_1278" attribute="jobtitledisplayname" displayname="job" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1521480783694_2554" prefix="organisation" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="organisation">
+				<ViewAttribute name="1584726480411_1279" attribute="shortname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1584726480412_1280" attribute="displayname" displayname="organisation name" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1584726480412_1281" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewJoin name="J1584726246950_1219" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="valuePermission">
+		<ViewAttribute name="1584726272242_1224" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1584726272246_1225" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1584726272249_1226" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1552580950509_1243" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="!param.isEmpty(&apos;permRules&apos;)" join="ruleresult">
+			<ViewAttribute name="1584726441804_1262" attribute="rulename" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1552581076777_0" reference="permRules" operation="in" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewJoin name="J1546610984241_2132" prefix="comment" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+			<ViewAttribute name="1584726431554_1258" attribute="recorduid" alias="nbcomments" operator="or" aggregate="COUNT" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1584726431555_1259" attribute="status" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1546616352496_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="RM_PERM_REVIEW"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewJoin name="J1521818648832_4754" prefix="application" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="1584726423120_1251" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1584726423121_1252" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1584726423122_1253" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1521818923087_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="Profile"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+			<ViewAttribute name="1584726423124_1254" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1584726325261_1241" attribute="bwrm_scopedata_lastdate" alias="lastlogindate" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1584726326820_1242" attribute="bwrm_scopedata_indirect" alias="indirect" operator="or" removedfromprojection="false" globalfilter="false" enabled="param.directOnly.get() == &apos;1&apos;">
+		<ViewAttributeFilter name="F1584726376539_0" operation="isFalse" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="A1584978023298_1373" attribute="bwrm_scopedata_subkey" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1584978025869_0" reference="subkey" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+</View>

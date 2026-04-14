@@ -1,0 +1,67 @@
+
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/styles.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+
+
+timeslotFullInfo = Dialog {
+	title: $timingdetailsdialog.title
+	enter-event: ExecuteNamedAction loadAllDetails
+	height: 400
+	width: 650
+	
+	uid = Variable { type: String }
+	labels = Variable { type: String multivalued: True }
+	values = Variable { type: String multivalued: True }
+	
+	timeslot = Record {
+		view: timeslot_timing with uid to uid
+	}
+	
+	allDetails = Dataset { columns: labels , values }
+	
+	loadAllDetails = NamedAction (
+	
+		MultivaluedAdd $context.displayname to labels, 	MultivaluedAdd Transform timeslot.ts_displayname using optionStringMapping to values,
+		MultivaluedAdd $context.importdate to labels, 		MultivaluedAdd Transform timeslot.ts_importdate using optionStringMapping to values,
+		MultivaluedAdd $context.commitdate to labels, 		MultivaluedAdd Transform timeslot.ts_commitdate using optionStringMapping to values,
+		MultivaluedAdd $context.status to labels, 			MultivaluedAdd Transform timeslot.ts_status using optionStringMapping to values,
+		MultivaluedAdd $context.portal to labels, 			MultivaluedAdd Transform timeslot.ts_portal using optionStringMapping to values,
+		MultivaluedAdd $context.productversion to labels, 	MultivaluedAdd Transform timeslot.ts_productversion using optionStringMapping to values,
+		MultivaluedAdd $context.configuration to labels, 	MultivaluedAdd Transform timeslot.ts_configuration using optionStringMapping to values,
+		MultivaluedAdd $context.optimizedrecon to labels, 	MultivaluedAdd Transform timeslot.ts_optimizedrecon using optionStringMapping to values,
+		MultivaluedAdd $context.multithread to labels, 	MultivaluedAdd Transform timeslot.ts_multithread using optionStringMapping to values,
+		MultivaluedAdd $context.projectpath to labels, 	MultivaluedAdd Transform timeslot.ts_projectpath using optionStringMapping to values,
+		MultivaluedAdd $context.osname to labels, 			MultivaluedAdd Transform timeslot.ts_osname using optionStringMapping to values,
+		MultivaluedAdd $context.osversion to labels, 		MultivaluedAdd Transform timeslot.ts_osversion using optionStringMapping to values,
+		MultivaluedAdd $context.javavendor to labels, 		MultivaluedAdd Transform timeslot.ts_javavendor using optionStringMapping to values,
+		MultivaluedAdd $context.javaversion to labels, 	MultivaluedAdd Transform timeslot.ts_javaversion using optionStringMapping to values,
+		MultivaluedAdd $context.maxmemoryinmb to labels, 	MultivaluedAdd Transform timeslot.ts_maxmemoryinmb using optionStringMapping to values,
+		MultivaluedAdd $context.availablecpus to labels, 	MultivaluedAdd Transform timeslot.ts_availablecpus using optionStringMapping to values,
+		MultivaluedAdd $context.usedcpus to labels, 		MultivaluedAdd Transform timeslot.ts_usedcpus using optionStringMapping to values,
+		MultivaluedAdd $context.databasetype to labels, 	MultivaluedAdd Transform timeslot.ts_databasetype using optionStringMapping to values,
+		MultivaluedAdd $context.databaseversion to labels,	MultivaluedAdd Transform timeslot.ts_databaseversion using optionStringMapping to values,
+		MultivaluedAdd $context.databaseurl to labels, 	MultivaluedAdd Transform timeslot.ts_databaseurl using optionStringMapping to values,
+		MultivaluedAdd $context.driverversion to labels, 	MultivaluedAdd Transform timeslot.ts_driverversion using optionStringMapping to values,
+		MultivaluedAdd $context.computername to labels, 	MultivaluedAdd Transform timeslot.ts_computername using optionStringMapping to values,
+		MultivaluedAdd $context.arguments to labels, 		MultivaluedAdd Transform timeslot.ts_arguments using optionStringMapping to values
+		
+	)
+	
+	Spacer { height: 5 }
+	Header { value: $timingdetailsdialog.header ( timeslot.ts_displayname ) layout: Layout { indent: horizontal 12 vertical 0 }}
+	Spacer { height: 5 }
+	Table {
+		data: allDetails
+		layout: Layout { grab: horizontal False vertical True hint: width 600 }
+		hide-header: True
+		hide-lines: True 
+		
+		Column { column: labels  width: 200px styling: labelsst align: Right }
+		Column { column: values width: 10px styling: labelsst text: "" }
+		Column { column: values width: 10px styling: valuesst text: "" }
+		Column { column: values  width: 100% styling: valuesst  }
+	}
+
+	
+}

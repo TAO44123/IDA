@@ -1,0 +1,100 @@
+/* Import other pages here */
+import "/webportal/pages/bw_cloud_base/widgets/stepper/stepper.page"
+
+stepper = PageFragment {
+  currentStep = Variable
+  
+  steps = Dataset {
+    pages: Pages {  tags: 'my_wizard' } 
+  }
+  
+  IncludeHTMLWidget {
+				layout: Layout { grab:horizontal True vertical False hint: height 200  }
+				
+				template: stepper
+				//datasets:steps ( name, title, description, icon, ^priority ) to stepsdata (id, label, description, iconclass, order)
+				bindings:
+				   value-of "horizontal" to orientation 
+				  , value-of currentStep to currentStep
+				  , value-of False to showState
+				  , value-of True to sort
+				widget-events:
+				  { 
+				    when onlabelclick then [ 
+				      GoTo Dynamic ( "page", Current id) 
+				    ]
+				  }   	   				
+		}	
+}
+
+wiz_page1 = Page {
+  title: "Step 1"
+  tags: "my_wizard" priority 10
+  IncludeFragment ( stepper with value-of "wiz_page1" to currentStep)
+  
+  Text {
+    value: "Contenu de la page 1"
+  }
+  
+  
+  ButtonGroup {
+    Button {
+      actions: Flash "rien" 
+      disabled: True
+      text: "Previous"
+    }
+    
+    Button {
+      actions: GoTo Page wiz_page2
+      text: "Next"
+    }
+  }
+}
+
+wiz_page2 = Page {
+  title: "Step 2"
+   tags: "my_wizard" priority 20
+  
+  IncludeFragment ( stepper with value-of "wiz_page2" to currentStep)
+  
+  Text {
+    value: "Contenu de la page 2"
+  }
+  
+  
+  ButtonGroup {
+    Button {
+      actions: GoTo Page wiz_page1
+      text: "Previous"
+    }
+    
+    Button {
+      actions: GoTo Page wiz_page3 
+      text: "Next"
+    }
+  }
+}
+
+wiz_page3 = Page {
+  title: "Step 3"
+   tags: "my_wizard" priority 30
+   
+  IncludeFragment ( stepper with value-of "wiz_page3" to currentStep)
+  
+  Text {
+    value: "Contenu de la page 3"
+  }
+  
+  
+  ButtonGroup {
+    Button {
+      actions:  GoTo Page wiz_page2 
+      text: "Previous"
+    }
+    
+    Button {
+      actions: Flash "Terminé" 
+      text: "Finish"
+    }
+  }
+}

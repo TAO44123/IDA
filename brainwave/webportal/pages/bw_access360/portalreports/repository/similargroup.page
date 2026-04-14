@@ -1,0 +1,419 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_comparison/group_comparison.page"
+
+/* Nationalized labels here */
+access360r_repository_similargroupNLS = NLS {
+	title [en "Similar Group Analytics" fr "Analyse des groupes similaires"]
+	dyntitle [en "{0} Similar Group Analytics" fr "Analyse des groupes similaires pour {0}"]
+	limited [
+		en "More than {0} groups found, please refine your mining criterias"
+		fr  "Plus de {0} groupes trouvés, veuillez affiner vos critères d'analyse"
+	]
+	groupfilter [en "Filter" fr "Filtre"]
+	groupfilter_tooltip [en "Filter by Group Code or Group Name" fr "Filtrer par code groupe ou nom de groupe"]
+	
+	Similarity_threshold [en "Similarity Threshold" fr "Seuil de similarité"]
+	Similarity_threshold_tooltip [en "Filter the results based on the given similarity threshold\nall result under the threshold will be filtered" fr "Filtrer les résultats sur la base du seuil de similarité configuré\ntous les résultats sous le seuil seront filtrés"]
+	nbmemberthreshold [en "Minimum Number of Accounts" fr "Nombre de comptes minimum"]
+	nbmemberthreshold_tooltip [	en "Minimum Number of Accounts to Consider\nAll results with a number of joint accounts under the threshold\nwon't be considered" 
+								fr "Nombre de comptes minimum à considérer\nTous les résultats avec un nombre de comptes commun inférieur au seuil\nseront exclus des résultats"]
+	apply [en 'Apply Filter' fr 'Appliquer le filtre']
+	analysis [en 'Analysis' fr 'Analyse']
+	refgroup [en 'Reference Group' fr 'Groupe de référence']
+	group [en 'Group' fr 'Groupe']
+	details [en 'Details' fr 'Détails']
+	empty [en "{0} does not contain any group" fr "{0} ne contient pas de groupes"]
+	noresults [en "No results found, try to refine the filtering parameters" fr "Pas de résultats, essayez d'affiner les paramètres de filtrage"]
+	comparegroups [en 'Click to Compare Group Content' fr 'Cliquer pour comparer le contenu des groupes']
+	refgroupcodeheader [en "Reference Group Code" fr "code groupe de référence"]
+	refgroupheader [en "Reference Group" fr "groupe de référence"]
+	groupdetailtooltip [en "Click to Display Group Details" fr "Cliquer pour afficher les détails du groupe"]
+	compgroupcodeheader [en "Comparison Group Code" fr "code groupe de comparaison"]
+	compgroupheader [en "Comparison Group" fr "groupe de comparaison"]
+	nbaccountscommonheader [en "Number of Accounts \nin Common" fr "nb de comptes \nen commun"] 
+	similarityheader [en "Similarity \n(percentage)" fr "similarité \n(pourcentage)"]
+	similaritytooltip [	en "100% means the reference group accounts and the comparison group accounts are the same\nthe higher the percentage, the greater the opportunity to merge those groups"
+						fr "100% signifie que les comptes du groupe de référence et les comptes du groupe de comparaison sont les mêmes\nplus le pourcentage est élevé, plus vous avez de chances de pouvoir fusionner ces groupes" ]
+	pt_tooltip [en "{0}% Similarity\nwith {1} Accounts in Common" fr "{0}% de similarité\navec {1} comptes en commun"]
+
+	included [en "Included in \nComparison Group" fr "Inclus dans \nle groupe de comparaison"]
+	includedtooltip [	en "Yes means the reference group accounts are all\nincluded in the comparison group\ntherefore reference group can be considered as a subgroup\nof the comparison group"
+						fr "Oui signifie que tous les comptes du groupe de référence\nsont inclus dans le groupe de comparaison\nle groupe de référence peut donc être considéré comme étant un sous groupe\ndu groupe de comparaison" ]
+	includedpercent [en "Inclusion Factor\n(percentage)" fr "facteur d'inclusion\n(pourcentage)"]
+	includedpercenttooltip [	en "100% means the reference group accounts are all\nincluded in the comparison group\ntherefore reference group can be considered as a subgroup\nof the comparison group"
+								fr "Oui signifie que tous les comptes du groupe de référence\nsont inclus dans le groupe de comparaison\nle groupe de référence peut donc être considéré comme étant un sous groupe\ndu groupe de comparaison" ]
+	description [
+		fr "Ce rapport permet d'analyser les similitudes entre les groupes. Un calcul est effectué afin d'identifier le nombre de comptes actifs en commun entre les groupes. Les résultats sont présentés sous la forme d'un tableau croisé dynamique. Seuls les groupes directs sont pris en compte. Il est aussi possible de présenter les résultats sous forme de liste afin de faciliter l'export des résultats. Quelque soit le mode d'affichage retenu, il est possible d'obtenir des détails sur les 'profils applicatifs' ainsi que d'identifier les comptes en commun et les comptes spécifiques de chaque profil."
+		en "This report allows you to analyze the similarities between groups. A calculation is performed to identify the number of active accounts in common between the groups. The results are presented in the form of a pivot table. Only direct groups assignments are taken into consideration. It is also possible to present the results in a list format in order to facilitate the export of results. Regardless of the display mode selected, it is possible to obtain details on the 'application profiles' as well as to identify the common accounts and the specific accounts of each profile."
+	]
+}
+
+green1style = Style {
+	background:Color RGB(0, 203, 178)
+}
+green2style = Style {
+	background:Color RGB(0, 178, 140)
+}
+green3style = Style {
+	background:Color RGB(0, 153, 102)
+	foreground:white
+}
+green4style = Style {
+	background:Color RGB(0, 128, 64)
+	foreground:white
+}
+
+similarStyle = IntStylingTemplate {
+	when >80 then green4style
+	when >60 then green3style
+	when >40 then green2style
+	when >20 then green1style
+}
+
+clusterBuckets = IntMapping {
+	when = 100 then 'A'
+	when >= 90 then 'B'
+	when >= 90 then 'C'
+	when >= 90 then 'D'
+	when >= 90 then 'E'
+	when >= 90 then 'F'
+	otherwise 'G'
+}
+
+inclusionMapping = IntMapping {
+	when = 100 then $yesnoNLS.yes
+	otherwise $yesnoNLS.no
+}
+
+access360r_repository_similargroup_threshold = Constant {
+	value:200
+	type:Integer
+}
+
+access360r_repository_similargroup = Page {
+	title: $access360r_repository_similargroupNLS.title
+	description: $access360r_repository_similargroupNLS.description
+	dynamic-title: $access360r_repository_similargroupNLS.dyntitle(repository.displayname)
+	tags: "server", "repository" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	enter-event:Set 80 to similarityThreshold, Set 80 to currentsimilarityThreshold  
+	feature:bwa_repositorysimilargroup
+	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+	similarityThreshold = Variable { type:Integer }
+	nbmembersThreshold = Variable { initial:20 type:Integer }
+	codefilter = Variable { type:String }
+
+	currentsimilarityThreshold = Variable { type:Integer }
+	currentnbmembersThreshold = Variable { initial:20 type:Integer }
+	currentcodefilter = Variable { type:String }
+	
+	/* Variables here */
+	grp1 = Variable
+	grp2 = Variable
+
+	ptgrp1 = Variable
+	ptgrp2 = Variable
+	
+	selectedTab = Variable
+	
+	grpCount = Variable 
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:bwf_repositoryDetail with uid to uid
+	}
+
+	grpCount = Dataset {
+		view:bwaccess360r_repository_similargroupnb with uid to uid, currentnbmembersThreshold to nbmembersThreshold, currentcodefilter to codefilter
+		disabled:IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then False otherwise True } 
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:500
+			}
+		]
+	}
+
+
+	groupmining = Dataset {
+		view:bwaccess360r_repository_similargroupmembersbv with uid to uid, currentsimilarityThreshold to threshold, currentnbmembersThreshold to nbmembersThreshold, currentcodefilter to codefilter
+		disabled:
+			OrPredicate {
+				// disable mining if more than access360r_repository_similargroup_threshold groups are spotted
+				IntPredicate(Count grpCount) { when >Constant access360r_repository_similargroup_threshold then True otherwise False }	
+				IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then False otherwise True } 
+			}
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:500
+			}
+		]
+	}
+
+	groupminingdetails = Dataset {
+		view:bwaccess360r_repository_similargroupmembersbv with uid to uid, currentsimilarityThreshold to threshold, currentnbmembersThreshold to nbmembersThreshold, True to dedup, currentcodefilter to codefilter
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:500
+			}
+		]
+		disabled:
+		OrPredicate {
+			IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then False otherwise True } 
+			StringPredicate(selectedTab) { when "DETAILS" then False otherwise True }
+		}
+	}
+
+	grp1detail = NamedAction (
+		Dialog bwf_groupDetailsDialog(
+								grp1 to inuid,
+								True to inshowaccounts,
+								True to inshowapplications,
+								True to inshowshares,
+								True to inshowperorg,
+								True to inshowperjob)
+	)
+
+	grp2detail = NamedAction (
+		Dialog bwf_groupDetailsDialog(
+								grp2 to inuid,
+								True to inshowaccounts,
+								True to inshowapplications,
+								True to inshowshares,
+								True to inshowperorg,
+								True to inshowperjob)
+	)
+
+	grpcomparison = NamedAction (
+		Dialog bwc_group_comparison_dialog(grp1 to inuid, grp2 to inotheruid)
+	)
+	
+	/* Page content */
+	ConditionalGroup {
+		IntCondition(repository.bwa_repositoryanalytics_nbgroup) {
+			when >0 then [
+				Grid {
+					columns:GridColumn,GridColumn,GridColumn,GridColumn {width:grow},GridColumn
+					layout:Layout {grab:horizontal True vertical False hint:height 40}
+					GridRow {
+						GridCell {
+							Combo {
+								variable:similarityThreshold
+								label:$access360r_repository_similargroupNLS.Similarity_threshold
+								tooltip:$access360r_repository_similargroupNLS.Similarity_threshold_tooltip
+								allow-none:False
+								options:Static {
+									Option { value:100 text:"100%" }
+									Option { value:90 text:"90%" }
+									Option { value:80 text:"80%" }
+									Option { value:70 text:"70%" }
+									Option { value:60 text:"60%" }
+									Option { value:50 text:"50%" }
+									Option { value:40 text:"40%" }
+									Option { value:30 text:"30%" }
+									Option { value:20 text:"20%" }
+									Option { value:10 text:"10%" }
+								}
+							}
+						}
+						GridCell {
+							Spinner {
+								variable:nbmembersThreshold
+								minimum:5
+								maximum:99999
+								label:$access360r_repository_similargroupNLS.nbmemberthreshold
+								tooltip:$access360r_repository_similargroupNLS.nbmemberthreshold_tooltip
+							}
+						}
+						GridCell {
+							Edit {
+								variable:codefilter
+								label:$access360r_repository_similargroupNLS.groupfilter
+								tooltip:$access360r_repository_similargroupNLS.groupfilter_tooltip
+								layout:Layout { grab:horizontal False vertical False hint:width 160 } 
+							}
+						}
+						GridCell {
+						}
+						GridCell {
+							Button {
+								actions:Set nbmembersThreshold to currentnbmembersThreshold, Set similarityThreshold to currentsimilarityThreshold, Set codefilter to currentcodefilter
+								text:$access360r_repository_similargroupNLS.apply
+							}
+						}
+					}
+				}
+					Header {
+						value:$access360r_repository_similargroupNLS.limited(Constant access360r_repository_similargroup_threshold)
+						hidden: IntPredicate(Count grpCount) { when >=Constant access360r_repository_similargroup_threshold then False otherwise True }	
+						styling:errorStyle
+					}
+				TabFolder {
+					hidden: IntPredicate(Count grpCount) { when <Constant access360r_repository_similargroup_threshold then False otherwise True }	
+					TabItem {
+						text:$access360r_repository_similargroupNLS.analysis		
+						activation-event:Set "ANALYSIS" to selectedTab
+					
+						ConditionalGroup {
+							IntCondition(Count groupmining) {
+								when =0 then [
+									Header {
+										value:$access360r_repository_similargroupNLS.noresults					
+									}					
+								]
+								otherwise [
+									CrossTable {
+										data:groupmining		
+										multi-selection:False
+										cluster-sortable:True
+										layout:Layout {cell-width:32px  grab: horizontal True vertical True}
+										rows:Dim { value:grp1uid label:grp1displayname header:$access360r_repository_similargroupNLS.refgroup selection:ptgrp1 header-click:grp1 }
+										columns:Dim { value:grp2uid label:grp2displayname header:$access360r_repository_similargroupNLS.group selection:ptgrp2 header-click:grp2 }
+										cell-content:CellContent { text:Current similarity cluster-value:Transform Current similarity using clusterBuckets styling:StylingTemplateSelection (Current similarity) using similarStyle align:Right tooltip:$access360r_repository_similargroupNLS.pt_tooltip(Current similarity, Current nbaccount) } 
+										row-header-click:ExecuteNamedAction grp1detail
+										column-header-click:ExecuteNamedAction grp2detail
+									}
+									ButtonGroup {
+										Button {
+											actions:Set ptgrp1 to grp1, Set ptgrp2 to grp2, ExecuteNamedAction grpcomparison
+											text:$access360r_repository_similargroupNLS.comparegroups					
+											disabled:
+												OrPredicate {
+													StringPredicate(ptgrp1) { when IsEmpty then True otherwise False }
+													StringPredicate(ptgrp2) { when IsEmpty then True otherwise False }
+												}		
+										}
+									}
+								]				
+							}
+						}
+					}
+					TabItem {
+						text:$access360r_repository_similargroupNLS.details		
+						activation-event:Set "DETAILS" to selectedTab
+					
+						Table {
+							data:groupminingdetails			
+							layout:Layout {grab: horizontal True vertical True}
+							configurable:True
+							persist-configuration:True
+							persist-configuration-key:uid
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:grp1uid
+								selection:grp1
+								hidden:True
+							}
+							Column {
+								column:grp1code
+								actions:ExecuteNamedAction grp1detail
+								header:$access360r_repository_similargroupNLS.refgroupcodeheader
+								width:300px
+								initially-masked:True
+								sortable:True
+								filterable:True
+								tooltip:$access360r_repository_similargroupNLS.groupdetailtooltip
+							}
+							Column {
+								column:grp1displayname
+								actions:ExecuteNamedAction grp1detail
+								header:$access360r_repository_similargroupNLS.refgroupheader
+								width:300px
+								sortable:True
+								filterable:True
+								tooltip:$access360r_repository_similargroupNLS.groupdetailtooltip
+							}
+							Column {
+								column:grp2uid
+								selection:grp2
+								hidden:True
+							}
+							Column {
+								column:grp2code
+								actions:ExecuteNamedAction grp2detail
+								header:$access360r_repository_similargroupNLS.compgroupcodeheader
+								width:300px
+								initially-masked:True
+								sortable:True
+								filterable:True
+								tooltip:$access360r_repository_similargroupNLS.groupdetailtooltip
+							}
+							Column {
+								column:grp2displayname
+								actions:ExecuteNamedAction grp2detail
+								header:$access360r_repository_similargroupNLS.compgroupheader
+								width:300px
+								sortable:True
+								filterable:True
+								tooltip:$access360r_repository_similargroupNLS.groupdetailtooltip
+							}
+							Column {
+								column:nbaccount
+								header:$access360r_repository_similargroupNLS.nbaccountscommonheader
+								actions:ExecuteNamedAction grpcomparison
+								tooltip:$access360r_repository_similargroupNLS.comparegroups
+								width:100px
+								align:Right 
+								sortable:True
+							}
+							Column {
+								column:similarity
+								width:100px
+								header:$access360r_repository_similargroupNLS.similarityheader
+								styling:StylingTemplateSelection (Current similarity) using similarStyle 
+								sortable:True
+								align:Right 
+								tooltip:$access360r_repository_similargroupNLS.similaritytooltip
+								
+							}
+							Column {
+								column:included
+								text:Transform Current included using inclusionMapping
+								width:160px
+								header:$access360r_repository_similargroupNLS.included
+								sortable:True
+								align:Right 
+								tooltip:$access360r_repository_similargroupNLS.includedtooltip
+							}
+							Column {
+								column:included
+								width:160px
+								header:$access360r_repository_similargroupNLS.includedpercent
+								sortable:True
+								align:Right 
+								tooltip:$access360r_repository_similargroupNLS.includedpercenttooltip
+								initially-masked:True
+							}
+						}
+						ButtonGroup {
+							Button {
+								actions:ExecuteNamedAction grpcomparison
+								text:$access360r_repository_similargroupNLS.comparegroups
+								disabled:
+									OrPredicate {
+										StringPredicate(grp1) { when IsEmpty then True otherwise False }
+										StringPredicate(grp2) { when IsEmpty then True otherwise False }
+									}
+							}
+						}
+					}
+				}
+			]
+			otherwise [
+				Header {
+					value: $access360r_repository_similargroupNLS.empty( repository.displayname )
+				}
+			]
+		} 
+	}
+}

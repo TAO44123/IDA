@@ -1,0 +1,130 @@
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/mappings.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_quality_nls.page"
+
+pam_indicator_tile = PageFragment {
+  mixins: dashboardMixin
+  enter-event: ExecuteNamedAction updateVals
+  type = Parameter { mandatory: True}
+  title = Parameter { mandatory: True}
+  hasLink = Parameter { type: Boolean  }
+  evalMode = Parameter { default: "none" mandatory: False constraint: Choice { values: [ "none", "diff", "val" ] }}
+  icon = Variable {  }
+  val = Variable { type: Integer }
+  total = Variable { type: Integer}
+  val_prev = Variable { type: Integer}
+  total_prev = Variable { type: Integer}
+  
+  prc = Variable { type: Boolean private: True}
+  val_prc = Variable { type: Integer private: True} // valeur en pourcentage 
+  val_prc_prev =   Variable { type: Integer private: True} // valeur en pourcentage 
+  diff = Variable {type: Integer private: True}
+  diff2 = Variable { type: Integer private: True}
+  diff_prc = Variable {type: Integer private: True}
+  val_str = Variable {private: True}
+  diff_str = Variable {private: True }
+  status = Variable { private: True}
+  
+  /* on calcule les valeurs suivantes:
+   * - prc : boolean
+   * - val_prc = si prc:  val / total, sinon 0
+   * - val_prc_prev = si prv && val_prev != null && total_prev != null : val_prev / total_prev  sinon 0
+   * - diff = si val_prev != nullval - val_prev sinon ''
+   * - diff2 = si val_prc_prev != null : val_prc - val_prc_prev sinon ''
+   * - diff_prc = si prc : diff2 sinon (diff.get()*100/val_prev.get())
+   */ 
+     
+   updateVals = NamedAction(        
+    Set Eval "!total.isEmpty()" to prc  // valeurs en %
+    , Set Eval " prc.get() ? (val.get()*100/total.get()) : '' " to val_prc //valeur en % ou '' si valeur absolue
+    , Set Eval "prc.get() ? val_prc.toString()+'%': val.get() " to val_str   //str de val (nn% ou nn) 
+    , Set Eval " prc.get() && !val_prev.isEmpty() && !total_prev.isEmpty()? (val_prev.get()*100/total_prev.get()) : '' " to val_prc_prev 
+    , Set Eval "val_prev.isEmpty()? '': val.get() - val_prev.get() " to diff  //diff en absolu
+    , Set Eval "val_prc_prev.isEmpty()? '': val_prc.get() - val_prc_prev.get() " to diff2  // diff en pts si val en %   
+    // diff en % si absolu, ou en points si %.  si prev = 0 ou % > 100%, afficher la différence en absolu 
+    , Set Eval "prc.get()? diff2.get(): (diff.isEmpty() ? '' :  ( (val_prev.get()==0 && val.get()!=0) ? 999 : (diff.get()*100/val_prev.get())))" to diff_prc 
+    , Set Eval "diff_prc.isEmpty()? '': (diff_prc.get() > 100 || diff_prc.get() < -100)? (diff > 0 ? '+'+diff : diff) : ( diff_prc.get()>0 ? '+': '') + diff_prc.get()+'%' " to diff_str
+    , Set Eval "evalMode.get() == 'diff' &&  !diff_prc.isEmpty() && diff_prc.get() != 0 ? (diff_prc.get() > 0 ? 'KO' : 'OK') : ''  " to status 
+    
+   )
+   Group {
+     styling: StringStyling( status){
+       when "OK" then cssTileCompact, greenBG
+       when "KO" then cssTileCompact, redBG
+       otherwise cssTileCompact
+     }
+	   Grid {
+	      fill: Horizontal
+	      layout: Layout { grab: horizontal True vertical False  }
+	      gap: 0      
+	   	  columns: GridColumn{ width: 64 },GridColumn { width: 16}, GridColumn { width: grow} 	  
+	   	  GridRow {
+	   	    // icon
+	   	    GridCell {
+	   	     	gap: 0 
+	   	      Image { 
+	   	        styling: tileImage
+	   	        image: icon
+				    } 	    
+	   	    }
+	   	    // value
+	   	    GridCell {  
+	   	      gap: 0  
+	   	      span: 2	    
+	   	    	Button { 	   	    	  
+	   	    	  actions: FireFragmentEvent "click"
+	   	    		text: val_str 
+			     		tooltip: Eval "prc.get() ? val.toString() + ' / ' + total : '' "  
+					    align: Left
+					    presentation: Link
+					    styling: indCountMediumStyle
+					    hidden: Not BooleanPredicate( hasLink)
+	   	    	}
+	   	    	Text { 
+	   	    		value: val_str 
+			     		tooltip: Eval "prc.get() ? val.toString() + ' / ' + total : '' " 
+					    align: Left
+					    styling: indCountMediumStyle
+					    hidden: BooleanPredicate( hasLink)
+	   	    	}
+	   	    }
+
+	   	  }
+	   	  GridRow {
+		   	  // trend
+	   	    GridCell {
+	   	      skip: 1   
+	   	      Image { 
+	   	        image: TemplateImageSelection( diff_prc) using bwcdrm_trend_16 
+	   	        styling: StringStyling(status) {
+	   	         when "OK" then greenImageText
+	   	         when "KO" then redImageText
+	   	        }
+	   	      }
+	   	    }
+	   	    GridCell {
+	   	      Text {   	        
+	   	        value: diff_str 
+	   	        tooltip: $pam_indicator_tileNLS.tooltip1 (Eval "prc.get() ? val_prc_prev.toString()+'%' : val_prev.get() " )        
+	   	        hidden: Eval "(prc.get() ? val_prc_prev.toString()+'%' : val_prev.get() ) == null" 
+	   	        styling: StringStyling(status) {
+	   	         when "OK" then indCountSmallStyle, greenImageText
+	   	         when "KO" then indCountSmallStyle, redImageText
+	   	         otherwise indCountSmallStyle
+	   	        }	   	         
+	   	      }
+	   	    }   	    
+	   	  }
+	   	  GridRow {
+	   	    GridCell {
+	   	      span: 4
+	   	      Text { value: title styling: indLabelStyle
+	   	       lines: 2 layout: Layout { grab: horizontal True vertical False hint: height 50 } }
+	   	    }
+	   	  }
+	   }      
+   }
+ 
+  } 
+ 

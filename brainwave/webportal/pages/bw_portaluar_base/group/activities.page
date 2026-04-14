@@ -1,0 +1,43 @@
+import "/webportal/pages/bw_portaluar_base/group/search.page"
+import "/webportal/pages/bw_portaluar_base/group/details.page"
+
+Activity {
+	concept: Group
+	kind: Search
+	to: Page groupSearchPage
+}
+
+Activity {
+	concept: Group
+	kind: Detail
+	priority:1000
+	to: Page groupDetailsPageDispatcher
+}
+
+/**
+ * Redirect to the right activity depending on the group repository family
+ */
+groupDetailsPageDispatcher = Page {
+	title: ''
+	conditional-redirect:
+		// test to avoid infinite loops...
+		ConditionalRedirect {
+			condition: BooleanPredicate(paramFirstTime) target:Activity Group (value-of group.repository_repositoryfamily) Detail with 
+														paramGroupUid to paramGroupUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														False to paramFirstTime
+		},
+		ConditionalRedirect {
+			// fall back to the default detail page 
+			condition: Not BooleanPredicate(paramFirstTime) target:Page groupDetailsPage with-current-parameters
+		}
+	
+	
+	paramGroupUid = Parameter {type: String hidden: True mandatory: True}
+	paramSearchMode = Parameter {type: Boolean hidden: True	default: False}
+	paramInitialIndex = Parameter {type: Integer hidden: True}
+	paramFirstTime = Parameter {type: Boolean hidden: True mandatory:False default:True}
+
+	group = Record { view: br_groupDetail with paramGroupUid to uid }
+}

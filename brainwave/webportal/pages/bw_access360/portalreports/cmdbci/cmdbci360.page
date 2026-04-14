@@ -1,0 +1,259 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/share/details/shareDetails.page"
+import "/webportal/pages/bw_fragments/sharedfolder/details/sharedfolderDetails.page"
+
+/* Nationalized labels here */
+access360r_cmdbci360NLS = NLS {
+	title [en "360° view of the configuration item resources by organization" fr "Vue à 360° des ressources de l''élément CMDB par organisation"]
+	dyntitle [en "{0} 360° view" fr "Vue à 360° de {0}"]
+	filteredon [en "Filtered on {0}" fr "Filtré sur {0}"]
+	tooltipsuffix [en "" fr ""]
+	
+	actiononclic [en "Action on Node Clic" fr "Action sur clic"]
+	
+	action_nothing [en "Do Nothing" fr "Ne rien faire"]
+	action_filter [en "Filter" fr "Filtrer"]
+	action_detail [en "Show Details" fr "Afficher les détails"]
+	
+	description [
+		en "This report presents all resources associated with a CMDB CI in the form of a network-like graph along with identity organisations. It is possible to filter the display on the elements. It is possible to display item details."
+		fr "Ce rapport présente l'ensemble des ressources associées à un élément CMDB sous la forme d'un graphique de type réseau ainsi que les organisations des personnes associées. Il est possible de filtrer l'affichage sur les éléments. Il est possible d'afficher les détail des éléments."
+	]
+}
+
+tgtimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tgtimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tgtmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+access360r_cmdbci360 = Page {
+	title: $access360r_cmdbci360NLS.title
+	description: $access360r_cmdbci360NLS.description
+	dynamic-title: $access360r_cmdbci360NLS.dyntitle(cmdbci.displayname)
+	tags: "cmdbci" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa_cmdbci360
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedUID = Variable
+	selectedOrganisation  = Variable
+	selectedOrganisationName = Variable
+	selectedResource = Variable
+	selectedResourceName = Variable
+	
+	showPermissions = Variable { initial:False type:Boolean }
+	showGroups = Variable { initial:False type:Boolean }
+	showFolders = Variable { initial:False type:Boolean }
+
+	zoomMode = Variable { initial:False type:Boolean }
+	detailMode = Variable { initial:False type:Boolean }
+	stopPhysics = Variable { initial:False type:Boolean }
+	
+	clicAction = Variable {initial:0 type:Integer }
+	
+	/* Datasets and records here */
+	cmdbci = Record {
+		view:bwa_cmdbci with uid to uid
+	}
+	data = Dataset {
+		view:bwa_cmdb360 with uid to uid, selectedOrganisation to filterByOrganisation unless-empty , selectedResource to filterByResource unless-empty
+	}
+
+	onIdentityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(selectedUID to inuid,
+										True to inshowaccounts,
+										True to inshowapplications,
+										True to inshowposition,
+										True to inshowshares,
+										True to inshowtheoretical,
+										True to inshowbusinessactivities,
+										True to inshowcontrols,
+										True to inshowdecisionhistory,
+										True to inshowoverallocated,
+										True to inshowusages
+		)
+	)
+	onAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(selectedUID to inuid,
+										True to inshowgroups,
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowcontrols,
+										True to inshowdecisionhistory,
+										True to inshowowner,
+										True to inshowusages
+		)
+	)
+	onGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedUID to inuid,
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onApplicationDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg,
+										True to inshowaccounts,
+										True to inshowpermissions
+		)
+	)
+	onRepositoryDetails = NamedAction (
+		Dialog bwf_repositoryDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg,
+										True to inshowaccounts,
+										True to inshowgroups
+		)
+	)
+	onPermissionDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onShareDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onFolderDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog(selectedUID to inuid,
+										True to inshowperjob,
+										True to inshowperorg
+		)
+	)
+	onOrganisationDetails = NamedAction (
+		Dialog bwf_organisationDetailsDialog(selectedUID to inuid,
+										True to inshowteamwithci,
+										True to inshowperjob,
+										True to inshowperorg,
+										uid to incmdbciuid
+		)
+	)
+
+	/* Page content */
+	Combo {
+		variable:clicAction
+		label:$access360r_cmdbci360NLS.actiononclic
+		layout:Layout { grab:horizontal False vertical False hint: width 300 }
+		options:Static {
+			Option { value:0 text:$access360r_cmdbci360NLS.action_nothing }
+			Option { value:1 text:$access360r_cmdbci360NLS.action_filter }
+			Option { value:2 text:$access360r_cmdbci360NLS.action_detail }
+		}
+	}
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True /* hint:height 500 */ }
+		template: network
+		datasets:data(graphid, graphname, graphparentid, graphtype, attrs, graphedgelabel, graphtype) to chartdata(code, label, parentcode, group, nodeattributes, edgelabel, description)
+		bindings:
+			value-of False to stopPhysics,
+			value-of 'LR' to hierarchical_direction,
+			value-of 300 to hierarchical_levelseparation,
+			value-of 75 to hierarchical_nodespacing,
+			value-of True to hierarchical_parentcentralization,
+			value-of True to hierarchical,
+			value-of 'box' to shape,
+			value-of 2000 to textboxsize,
+			value-of True to computegroupfontcolor,
+			value-of True to navigationButtons
+		widget-events: {
+			when onclick then [
+				IntCase(clicAction) {
+					when =2 then [ // Show details
+						StringCase(Current group) {
+							when "asset" then [
+							]
+							when "organisation" then [
+								Set Current code to selectedUID,
+								ExecuteNamedAction onOrganisationDetails
+							]
+							when "repository" then [
+								Set Current code to selectedUID,
+								ExecuteNamedAction onRepositoryDetails
+							]
+							when "server" then [
+								Set Current code to selectedUID,
+								ExecuteNamedAction onRepositoryDetails
+							]
+							when "application" then [
+								Set Current code to selectedUID,
+								ExecuteNamedAction onApplicationDetails
+							]
+						}
+					]
+					when =1 then [ // Filter
+						StringCase(Current group) {
+							when "asset" then [
+								Unset selectedUID,
+								Unset selectedResource,
+								Unset selectedResourceName,
+								Unset selectedOrganisation,
+								Unset selectedOrganisationName
+							]
+							when "organisation" then [
+								Set Current code to selectedUID,
+								Unset selectedResource,
+								Unset selectedResourceName,
+								Set Current code to selectedOrganisation,
+								Set Current label to selectedOrganisationName
+							]
+							when "repository" then [
+								Set Current code to selectedUID,
+								Set Current code to selectedResource,
+								Set Current label to selectedResourceName,
+								Unset selectedOrganisation,
+								Unset selectedOrganisationName
+							]
+							when "server" then [
+								Set Current code to selectedUID,
+								Set Current code to selectedResource,
+								Set Current label to selectedResourceName,
+								Unset selectedOrganisation,
+								Unset selectedOrganisationName
+							]
+							when "application" then [
+								Set Current code to selectedUID,
+								Set Current code to selectedResource,
+								Set Current label to selectedResourceName,
+								Unset selectedOrganisation,
+								Unset selectedOrganisationName
+							]
+						}
+					]
+				}
+			]
+		}
+	}
+
+}

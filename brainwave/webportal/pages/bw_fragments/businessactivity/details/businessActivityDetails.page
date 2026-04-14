@@ -1,0 +1,188 @@
+import "/webportal/pages/bw_fragments/businessactivity/details.page"
+import "/webportal/pages/bw_fragments/businessactivity/definition.page"
+import "/webportal/pages/bw_fragments/businessactivity/soddefects.page"
+import "/webportal/pages/bw_fragments/permission/accounts.page"
+import "/webportal/pages/bw_fragments/permission/perorg.page"
+import "/webportal/pages/bw_fragments/permission/perjob.page"
+import "/webportal/pages/bw_fragments/permission/controls.page"
+import "/webportal/pages/bw_fragments/permission/decisionhistory.page"
+
+bwf_businessActivityDetailsDialogNLS = NLS {
+	title [en 'Business Activity detail' fr "Détails de l'activité métier"]
+	
+	businessactivity [en "Business activity" fr "Activité métier"]
+	definition [en "Definition" fr "Définition"]
+	accounts [en "Accounts" fr "Comptes"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	controls [en "Controls" fr "Contrôles"]
+	sodproblems [en "SoD problems" fr "Problèmes de SoD"]
+	coremodelsoddefects [en "Core model SoD problems" fr "Problèmes de SoD interne"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * business activity details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>permission uid</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, true by default</li>
+ * <li><b>inorganisationaccounts </b>optional boolean, true to show accounts tab for a given organisation, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show permission origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show permission origin per job tab, false by default</li>
+ * <li><b>inshowsoddefects </b>optional boolean, true to show SoD defects tab, false by default</li>
+ * <li><b>inshoworganisationsoddefects </b>optional boolean, true to show SoD defects tab for a given organisation, false by default</li>
+ * <li><b>inshowsodmodeldefects </b>optional boolean, true to show SoD defects at a core model level (shown only if defects are found), false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inidentityuid </b>optional filter sod results for a given identity</li>
+ * <li><b>inorganisationuid </b>optional filter sod results for a given organisation</li>
+ * <li><b>inapplicationuid </b>optional filter if provided, SoD defects tab will shows identity applications rights as well to facilitate SoD investigation</li>
+ * <li><b>inpermissionuid </b>optional filter if provided, content tab will only contain permissions associated (subpermissions) with the provided permission</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update permission owners (false by default)</li>
+ * </ul>
+ * </span>
+ */
+bwf_businessActivityDetailsDialog = Dialog {
+	title:$bwf_businessActivityDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	
+	inuid = Variable
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshoworganisationaccounts = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowsoddefects = Variable { type:Boolean initial:False }
+	inshoworganisationsoddefects = Variable { type:Boolean initial:False }
+	inshowsodmodeldefects = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+
+	inidentityuid = Variable { type:String }
+	inapplicationuid = Variable { type:String }
+	inpermissionuid = Variable { type:String }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	
+	nbsoddefects = Variable { private:True }
+	nbcoremodelsoddefects = Variable { private:True }
+	nbsoddefectsorganisation = Variable { private:True }
+	nbdefects = Variable { private:True }
+
+	grouptype = Variable { private:True }
+
+	active_businessactivity = Variable { initial:False multivalued:False type:Boolean }
+	active_content = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_organisationaccounts = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_soddefects = Variable { initial:False multivalued:False type:Boolean }
+	active_organisationsoddefects = Variable { initial:False multivalued:False type:Boolean }
+	active_sodmodeldefects = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.businessactivity
+			tooltip:$fragmentBusinessActivityDetailsNLS.tooltip
+			activation-event: Set True to active_businessactivity
+			
+			IncludeFragment (fragmentBusinessActivityFullDetails with value-of inuid to inuid, value-of incanupdateowners to incanupdateowners, value-of active_businessactivity to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.definition
+			tooltip:$fragmentBusinessActivityDefinitionNLS.tooltip
+			activation-event: Set True to active_content
+			
+			IncludeFragment (fragmentBusinessActivityDefinition with value-of inuid to inuid, value-of active_content to inenabled, value-of inidentityuid to inidentityuid, value-of inpermissionuid to inpermissionuid)
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.accounts
+			tooltip:$fragmentPermissionAccountsNLS.tooltip
+			hidden:Not BooleanPredicate(inshowaccounts)
+			activation-event: Set True to active_accounts
+			
+			IncludeFragment (fragmentPermissionAccounts with value-of inuid to inuid, value-of True to incanshowdetails,  value-of active_accounts to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.accounts
+			tooltip:$fragmentPermissionAccountsNLS.tooltip
+			hidden:Not BooleanPredicate(inshoworganisationaccounts)
+			activation-event: Set True to active_organisationaccounts
+			
+			IncludeFragment (fragmentPermissionAccountsForOrg with value-of inuid to inuid, value-of inorganisationuid to inorganisationuid, inonlydirectselection binds-to inonlydirectselection, value-of True to incanshowdetails,  value-of active_organisationaccounts to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.oorigin
+			tooltip:$fragmentPermissionPerOrgNLS.tooltip
+			hidden:Not BooleanPredicate(inshowperorg)
+			activation-event: Set True to active_perorg
+			
+			IncludeFragment (fragmentPermissionPerOrg with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perorg to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.jorigin
+			tooltip:$fragmentPermissionPerJobNLS.tooltip
+			hidden:Not BooleanPredicate(inshowperjob)
+			activation-event: Set True to active_perjob
+			
+			IncludeFragment (fragmentPermissionPerJob with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perjob to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.sodproblems
+			feature:sod_license
+			hidden:Not BooleanPredicate(inshowsoddefects)
+			activation-event: Set True to active_soddefects
+			tooltip:$fragmentBusinessActivitySoDdefectNLS.tooltip
+			badge: Eval "nbsoddefects.get()>0?nbsoddefects.get():''"
+			
+			IncludeFragment (fragmentBusinessActivitySoDdefect with value-of inuid to inuid, value-of inidentityuid to inidentityuid, value-of inapplicationuid to inapplicationuid, nbsoddefects binds-to outnbdefects, value-of True to incanshowdetails, value-of inshowsoddefects to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.sodproblems
+			feature:sod_license
+			hidden:Not BooleanPredicate(inshoworganisationsoddefects)
+			activation-event: Set True to active_organisationsoddefects
+			tooltip:$fragmentBusinessActivityOrganisationSoDdefectNLS.tooltip
+			badge: Eval "nbsoddefectsorganisation.get()>0?nbsoddefectsorganisation.get():''"
+			
+			IncludeFragment (fragmentBusinessActivityOrganisationSoDdefect with value-of inuid to inuid, value-of inorganisationuid to inorganisationuid, inonlydirectselection binds-to inonlydirectselection, nbsoddefectsorganisation binds-to outnbdefects, value-of True to incanshowdetails, value-of inshoworganisationsoddefects to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.coremodelsoddefects
+			feature:sod_license
+			hidden:Not BooleanPredicate(inshowsodmodeldefects)
+			activation-event: Set True to active_sodmodeldefects
+			tooltip:$fragmentBusinessActivityCoreModelSoDdefectNLS.tooltip
+			badge: Eval "nbcoremodelsoddefects.get()>0?nbcoremodelsoddefects.get():''"
+			
+			IncludeFragment (fragmentBusinessActivityCoreModelSoDdefect with value-of inuid to inuid, nbcoremodelsoddefects binds-to outnbdefects, value-of True to incanshowdetails, value-of inshowsodmodeldefects to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.controls
+			tooltip:$fragmentPermissionAllControlDefectsListNLS.tooltip
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentPermissionAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_businessActivityDetailsDialogNLS.decisionhistory
+			tooltip:$fragmentPermissionDecisionHistoryNLS.tooltip
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentPermissionDecisionHistory with value-of inuid to inuid, value-of active_decision to inenabled )
+		}
+	}
+}

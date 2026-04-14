@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwaccess360r_applicationnbremediationfinalizedperday" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketreview" displayname="nbremediationperperiod" notes="" begindate="" enddate="">
+	<ViewParam name="minus90days" displayname="minus90days" type="Integer" defaultvalue="{(new Date()).add(&apos;d&apos;,-90).getTime()/(1000*3600*24)}"/>
+	<ViewParam name="campaignid" displayname="campaignid" type="String"/>
+	<ViewSort name="sort" attribute1="A1628236922644_1538"/>
+	<ViewJoin name="J1628236728855_1523" prefix="remediation" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="remediations">
+		<ViewAttribute name="A1628236922644_1538" attribute="submissionday" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1628237062550_0" reference="minus90days" operation="gt" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewJoin name="J1628237231283_1551" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketAction">
+			<ViewJoin name="J1628237234625_1552" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+				<ViewAttribute name="A1628237245727_1553" attribute="custom2" alias="finalstatus" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1628237255038_0" operation="notIn" ignoreifempty="false">
+						<Value name="0" data="0"/>
+						<Value name="1" data="-1"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+				<ViewAttribute name="A1628269600356_1786" attribute="actionday" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1628236764925_1526" attribute="status" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1628236780234_0" operation="in" ignoreifempty="false">
+			<Value name="0" data="revoke"/>
+			<Value name="1" data="update"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="A1628236907245_1536" attribute="recorduid" alias="nbfinalized" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1628845015399_2369" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketaction">
+		<ViewJoin name="J1628845026858_2370" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+			<ViewAttribute name="1630309226866_3239" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1626620234166_0" operation="in" ignoreifempty="false">
+					<Value name="0" data="ADHOC_UAR"/>
+					<Value name="1" data="ADHOC_REMEDIATION"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+			<ViewAttribute name="1630309962089_3426" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1630309887906_0" reference="campaignid" operation="eq" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+</View>

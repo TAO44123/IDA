@@ -1,0 +1,728 @@
+/* Import other pages here */
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+/* Nationalized labels here */
+bwc_group_comparisonNLS = NLS {
+	title [en "Group comparison" fr "Comparaison de groupes"]
+	dyntitle [en "comparing {0} with {1}" fr "comparaison de {0} avec {1}"]
+
+	refaccounts [en "only for {0}" fr "seulement pour {0}"]
+	joinaccounts [en "in common" fr "en commun"]
+	otheraccounts [en "only for {0}" fr "seulement pour {0}"]
+
+	accountlevel [en "Account level" fr "Comptes"]
+	
+	internal [en "internal" fr "interne"]
+	contractor [en "contractor" fr "prestataire"]
+	
+	refgroup [en "reference group" fr "groupe de référence"]
+	groupstocomparewith [en "groups to compare with" fr "groupes à comparer"]
+	
+	reference [en "reference group" fr "groupe de référence"]
+	other [en "comparison group" fr "groupe de comparaison"]
+	
+	dataviz [en "Data visualisation" fr "Analyse graphique"]
+	tooltipSuffix [en "accounts" fr "comptes"]
+	tooltipnSuffix [en "accounts in common" fr "comptes en commun"]
+}
+
+BWCG_SELECTEDTAB_ACCOUNT 		= Constant { type:Integer value:0}
+BWCG_SELECTEDTAB_DATAVIZ		= Constant { type:Integer value:1}
+
+bwc_group_status = BooleanMapping {
+	when True then $bwc_group_comparisonNLS.internal
+	when False then $bwc_group_comparisonNLS.contractor
+}
+
+bwc_group_comparison_search = Page {
+	title: $bwc_group_comparisonNLS.title
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+//	tags:"group", "byuids"
+	feature:bwc_groupcomparisonsearchanalytics
+	conditional-redirect:ConditionalRedirect{condition:True target:Page bwc_group_comparison with uids to uids }
+	
+	uids = Parameter {
+		multivalued:True
+		mandatory:True
+	}
+	
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Compare two group direct members
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>first group</li>
+ * <li><b>inotheruid </b>second group</li>
+ * </ul>
+ * </span>
+ */
+bwc_group_comparison_fragment = PageFragment {
+	mixins: simpleReport
+
+	inuid = Variable
+	inotheruid = Variable
+	
+
+	// 0: account
+	selectedTab = Variable {initial:Constant BWCG_SELECTEDTAB_ACCOUNT type:Integer}
+	
+	/* Datasets and records here */
+	refgroup = Record {
+		view:br_groupDetail with inuid to uid
+	}
+	othergroup = Record {
+		view:br_groupDetail with inotheruid to uid
+	}
+
+	// ---------------------------------------
+	// application
+	accountref = Dataset {
+		view:bwc_group_accounts with inuid to uid
+		disabled:
+			AndPredicate {
+				IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_ACCOUNT then True }
+				IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_DATAVIZ then True }
+			}		
+	}
+	
+	accountother = Dataset {
+		view:bwc_group_accounts with inotheruid to uid
+		disabled:
+			AndPredicate {
+				IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_ACCOUNT then True }
+				IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_DATAVIZ then True }
+			}		
+	}
+	
+	joinaccounts = Dataset {
+		join:Join {
+			primary-dataset:accountref
+			secondary-dataset:accountother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refaccounts = Dataset {
+		join:Join {
+			primary-dataset:accountref
+			secondary-dataset:accountother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current otheridentifier) { when IsEmpty then False otherwise True }
+	}
+
+	otheraccounts = Dataset {
+		join:Join {
+			primary-dataset:accountother
+			secondary-dataset:accountref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refidentifier) { when IsEmpty then False otherwise True }
+	}
+
+	unionaccounts = Dataset {
+		union: Union {
+			datasets:accountref discriminator $bwc_group_comparisonNLS.reference, accountother discriminator $bwc_group_comparisonNLS.other
+			discriminator-column:discr 
+		}
+		disabled:IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_DATAVIZ then True }
+	}
+
+
+	Grid {
+		columns:GridColumn{width:64 align:leading},GridColumn{width:grow group:a  align:leading},GridColumn{width:64},GridColumn{width:grow group:a}
+		layout:Layout {grab:horizontal True vertical False hint:height 120}
+		
+		GridRow {
+			GridCell {
+				Image {
+					image:"/48/audit/group_48.png"				
+				}
+			}
+			GridCell {
+				align:leading
+				Text {
+					value:refgroup.displayname
+					tooltip:refgroup.displayname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False  hint:width 320}
+					//target:Activity Account Detail with uid to paramAccountUid
+				}
+				Text {
+					value:refgroup.code
+					tooltip:refgroup.code
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:refgroup.comment
+					tooltip:refgroup.comment
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:refgroup.repository_displayname
+					tooltip:refgroup.repository_displayname
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+			}
+			GridCell {
+				Image {
+					image:"/48/audit/group_48.png"				
+				}
+			}
+			GridCell {
+				align:leading
+				Text {
+					value:othergroup.displayname
+					tooltip:othergroup.displayname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint:width 320}
+					//target:Activity Account Detail with otheruid to paramAccountUid
+				}
+				Text {
+					value:othergroup.code
+					tooltip:othergroup.code
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:othergroup.comment
+					tooltip:othergroup.comment
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:othergroup.repository_displayname
+					tooltip:othergroup.repository_displayname
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+			}
+		}
+	}
+
+	TabFolder {
+		TabItem {
+			text:$bwc_group_comparisonNLS.accountlevel
+			icon:"/16/audit/account_16.png"
+			activation-event:Set  Constant BWCG_SELECTEDTAB_ACCOUNT to selectedTab
+
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_group_comparisonNLS.refaccounts(refgroup.displayname) to string, 30 to maxlength)
+							tooltip:$bwc_group_comparisonNLS.refaccounts(refgroup.displayname)
+							compact:True
+						}
+						Table {
+							data:refaccounts
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+							persist-configuration:True
+						
+							Column {
+								column:identifier
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.identifier
+								initially-masked:True
+							}
+							Column {
+								column:login
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.login
+							}
+							Column {
+								column:username
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.username
+							}
+							Column {
+								column:mail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.mail
+								initially-masked:True
+							}
+							Column {
+								column:creationdate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.creationdate
+								initially-masked:True
+							}
+							Column {
+								column:lastlogindate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.lastlogindate
+								initially-masked:True
+							}
+							Column {
+								column:repositorydisplayname
+								filterable:True
+								sortable:True
+								width:100px
+								header:$repository.concept
+							}
+							Column {
+								column:service
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.service
+								initially-masked:True
+							}
+							Column {
+								column:identityhrcode
+								filterable:True
+								sortable:True
+								width:100px
+								header:$pidentity.hrcode
+								initially-masked:True
+							}
+							Column {
+								column:identityfullname
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.fullname
+								initially-masked:True
+							}
+							Column {
+								column:identitymail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.mail
+								initially-masked:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_group_comparisonNLS.joinaccounts
+							compact:True
+						}
+						Table {
+							data:joinaccounts
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+							persist-configuration:True
+						
+							Column {
+								column:identifier
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.identifier
+								initially-masked:True
+							}
+							Column {
+								column:login
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.login
+							}
+							Column {
+								column:username
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.username
+							}
+							Column {
+								column:mail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.mail
+								initially-masked:True
+							}
+							Column {
+								column:creationdate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.creationdate
+								initially-masked:True
+							}
+							Column {
+								column:lastlogindate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.lastlogindate
+								initially-masked:True
+							}
+							Column {
+								column:repositorydisplayname
+								filterable:True
+								sortable:True
+								width:100px
+								header:$repository.concept
+							}
+							Column {
+								column:service
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.service
+								initially-masked:True
+							}
+							Column {
+								column:identityhrcode
+								filterable:True
+								sortable:True
+								width:100px
+								header:$pidentity.hrcode
+								initially-masked:True
+							}
+							Column {
+								column:identityfullname
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.fullname
+								initially-masked:True
+							}
+							Column {
+								column:identitymail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.mail
+								initially-masked:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_group_comparisonNLS.otheraccounts(othergroup.displayname) to string, 30 to maxlength)
+							tooltip:$bwc_group_comparisonNLS.otheraccounts(othergroup.displayname)
+							compact:True
+						}
+						Table {
+							data:otheraccounts
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+							persist-configuration:True
+						
+							Column {
+								column:identifier
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.identifier
+								initially-masked:True
+							}
+							Column {
+								column:login
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.login
+							}
+							Column {
+								column:username
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.username
+							}
+							Column {
+								column:mail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.mail
+								initially-masked:True
+							}
+							Column {
+								column:creationdate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.creationdate
+								initially-masked:True
+							}
+							Column {
+								column:lastlogindate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.lastlogindate
+								initially-masked:True
+							}
+							Column {
+								column:repositorydisplayname
+								filterable:True
+								sortable:True
+								width:100px
+								header:$repository.concept
+							}
+							Column {
+								column:service
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.service
+								initially-masked:True
+							}
+							Column {
+								column:identityhrcode
+								filterable:True
+								sortable:True
+								width:100px
+								header:$pidentity.hrcode
+								initially-masked:True
+							}
+							Column {
+								column:identityfullname
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.fullname
+								initially-masked:True
+							}
+							Column {
+								column:identitymail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.mail
+								initially-masked:True
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_group_comparisonNLS.dataviz
+			icon:"/16/audit/account_16.png"
+			activation-event:Set  Constant BWCG_SELECTEDTAB_DATAVIZ to selectedTab
+
+			IncludeHTMLWidget {
+				layout: Layout { hint: height 250 width 500 align: horizontal Center vertical Center }
+				template: vennDiagramChart
+				datasets: unionaccounts (discr, discr, uid) to chartdata (code,label,element)
+				bindings: 
+					value-of $bwc_group_comparisonNLS.tooltipSuffix to tooltipSuffix,
+					value-of $bwc_group_comparisonNLS.tooltipnSuffix to tooltipnSuffix
+			}
+		}
+	}
+}
+
+bwc_group_comparison_dialog = Dialog {
+	title: $bwc_group_comparisonNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	
+	inuid = Variable
+	inotheruid = Variable
+	
+	
+	IncludeFragment (bwc_group_comparison_fragment with value-of inuid to inuid, value-of inotheruid to inotheruid)
+}
+
+bwc_group_comparison = Page {
+	title: $bwc_group_comparisonNLS.title
+	dynamic-title: $bwc_group_comparisonNLS.dyntitle(Concat(refgroup.displayname,'/',refgroup.repository_displayname) , Concat(othergroup.displayname,'/',othergroup.repository_displayname))
+//	tags: "group" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: bwc_groupcomparisonpage
+	enter-event:Set [] to groupperimeter, MultivaluedAdd uid to groupperimeter, MultivaluedAdd otheruid to groupperimeter
+	
+	mixins: simpleReport
+	/*
+	dock-left: Dock {
+		collapsed:True
+		collapsible:True
+		width:300
+		
+		ParametersEdition {
+			parameters:uids inline
+		}
+	}
+	*/
+	/* Parameters here */
+	uid = Parameter {
+		label:$bwc_group_comparisonNLS.refgroup
+		multivalued:False
+		type:String
+		constraint:Picker {picker:groupPicker returning outUid display:Display { value: Concat(Current displayname, ' (',Current repositorydisplayname,')') data: groups match uid  } }
+		mandatory:True
+		hidden:True
+	}
+	
+	uids = Parameter {
+		label:$bwc_group_comparisonNLS.groupstocomparewith
+		multivalued:True
+		type:String
+		constraint:Picker {picker:groupPicker returning outUid display:Display { value: Concat(Current displayname, ' (',Current repositorydisplayname,')') data: groups match uid  } }
+		mandatory:True
+		hidden:True
+	}
+	
+	/* Variables here */
+	selectedRepository = Variable
+	selectedShare = Variable
+	groupperimeter = Variable {multivalued:True}
+	otheruid = Variable
+	
+	// 0: account
+	selectedTab = Variable {initial:Constant BWCG_SELECTEDTAB_ACCOUNT type:Integer}
+	
+	/* Datasets and records here */
+	groups = Dataset {
+		view:bwc_groupslist
+	}
+	
+	refgroup = Record {
+		view:br_groupDetail with uid to uid
+	}
+	othergroup = Record {
+		view:br_groupDetail with otheruid to uid
+	}
+
+	selectedGroups = Dataset {
+		view:bwc_groups with uids to uids
+	}
+
+	// ---------------------------------------
+	// application
+	accountref = Dataset {
+		view:bwc_group_accounts with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	accountother = Dataset {
+		view:bwc_group_accounts with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	joinaccounts = Dataset {
+		join:Join {
+			primary-dataset:accountref
+			secondary-dataset:accountother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refaccounts = Dataset {
+		join:Join {
+			primary-dataset:accountref
+			secondary-dataset:accountother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current otheridentifier) { when IsEmpty then False otherwise True }
+	}
+
+	otheraccounts = Dataset {
+		join:Join {
+			primary-dataset:accountother
+			secondary-dataset:accountref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refidentifier) { when IsEmpty then False otherwise True }
+	}
+
+
+
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// Page content
+	
+	SetNavigator {
+		data:selectedGroups
+		column:uid
+		selection:otheruid
+		label:Concat(Current displayname, ' / ', Current repositorydisplayname)
+		label-width:320
+		show-count:True
+		selection-changed-event:Set [] to groupperimeter, MultivaluedAdd uid to groupperimeter, MultivaluedAdd otheruid to groupperimeter
+		show-first:True
+		show-last:True
+		dropdown:Dropdown {
+			height:300
+			text:Concat(Current displayname, ' / ', Current repositorydisplayname)
+		}
+		hidden:IntPredicate(Count selectedGroups) { when <=1 then True }
+	}
+	
+	
+	IncludeFragment (bwc_group_comparison_fragment with value-of uid to inuid, otheruid binds-to inotheruid) 
+}
+
+

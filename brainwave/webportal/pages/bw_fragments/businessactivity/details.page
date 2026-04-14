@@ -1,0 +1,808 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/resources/audittrail.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/resources.page"
+
+fragmentBusinessActivityDetailsNLS = NLS {
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	nbaccounts [en "Number of active accounts" fr "Nombre de comptes actifs"]
+	nbprofiles [en "Number of profiles" fr "Nombre de profils"]
+	expertise [en "Expertise" fr "Responsabilité"]
+	managers [en "Managers" fr "Responsables"]
+	content [en "content" fr "contenu"]
+	description [en "description" fr "description"]
+	updatemetadata [en "Update permission description" fr "Mise à jour de la description de la permission"]
+	nomanagers [en "No manager set" fr "Pas de responsable configuré"]
+	kpis [en "KPIs" fr "KPIs"]
+	classification [en "Classification" fr "Classification"]
+
+	tooltip [en "This tile presents the details of a given business activity\nincluding, if any, its owners"
+			 fr "Cette tuile présente les détails pour une activité métier donnée\nceci inclus, si nécessaire\nla liste de ses propriétaires"
+			]
+	addowner [en "Add a new business activity owner" fr "Ajout d'un nouveau responsable d'activité métier"]
+	deleteowner [en "Delete selected business activity owner" fr "Suppression du responsable de l'activité métier"]
+	auditowner [en "Business activity owner updates audit trail" fr "Piste d'audit des changements de reponsable de l'activité métier"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected business activity details in compact mode
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the business activity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update permission description (false by default)</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update permission owners (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessActivityDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+
+	selectedManager = Variable { private:True }
+	selectedManagerLink = Variable { private: True }
+	selectedExpertiseDomain = Variable { private:True }
+
+	permission = Record {
+		view: bwf_permissionDetail with inuid to uid
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevpermission = Record {
+		view: bwf_permissionDetail with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:FromPage(-1)
+	}
+
+	nbaccounts = Record {
+		view: bwf_permissionnbaccounts with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	subpermissions = HierarchicalData {
+		view: bwf_permissionsubpermissions with inuid to uid
+		connect:parent uid to child parentuid
+		initial:parentuid = inuid
+		max-level: 5
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	managers = Dataset {
+		view: bwf_permissionmanagers with inuid to uid
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	// compact	
+	Text {
+		label:$permission.code
+		value:permission.code
+		compact:True
+		hidden:SameValuePredicate(permission.code, permission.displayname)
+	}
+	Text {
+		label:$permission.displayname
+		value:permission.displayname
+		compact:True
+		commands:Commands { position: After orientation: Horizontal 
+						Command{	actions:Dialog bwfPermissionDetailsMetadata_Dialog(inuid to paramPermissionUid,
+																						permission.sensitivitylevel to sensitivitylevel,
+																						permission.sensitivityreason to sensitivityreason,
+																						permission.description to description), 
+											ReloadData (permission)
+		                        	icon:%collection_16.pencil
+		                        	disabled:Not BooleanPredicate(incanupdatedescription)
+		                        	feature:permissiondetails_updatemetadata 
+		                        	tooltip:$fragmentBusinessActivityDetailsNLS.updatemetadata
+		                       }
+		                  }
+	}
+	Text {
+		value:permission.description
+		lines:3
+		compact:True
+		layout: Layout{hint:height 48}
+		hidden:StringPredicate(permission.description) { when IsEmpty then True otherwise False }
+	}
+
+	Header {
+		value:$fragmentBusinessActivityDetailsNLS.classification
+	}
+	Separator {
+		width:1
+	}
+
+	Text {
+		value:permission.application_displayname
+		label:$application.concept
+		compact:True
+		commands: Command {   
+			actions:Dialog bwf_applicationDetailsDialog (permission.application_uid to inuid,
+														True to inshowperorg,
+														True to inshowperjob
+							)
+			icon:%browsing_16.zoom
+		}
+	}
+	Text {
+		value:Transform permission.sensitivitylevel using bwfPermissionSensitivityLevelMapping
+		label:$fragmentBusinessActivityDetailsNLS.sensitivitylevel
+		compact:True
+	}
+	Text {
+		value:permission.sensitivityreason
+		label:$fragmentBusinessActivityDetailsNLS.sensitivityreason
+		compact:True
+	}
+
+
+	Header {
+		value:$fragmentBusinessActivityDetailsNLS.kpis
+	}
+	Separator {
+		width:1
+	}
+
+	Text {
+		value:Transform permission.bwa_permissionanalytics_nbaccount using bwf_defaultsTo0
+		label:$search.permission.nbaccount
+		compact:True
+		align:Right
+		tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbaccount using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbaccount using mayBeNullMapping)
+		decorator:Decorator {
+			width:100
+			after:Image {
+				image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbaccount, prevpermission.bwa_permissionanalytics_nbaccount)) using bwf_trend
+				width:16
+			}
+		}
+	}
+
+	Text {
+		value:Transform permission.bwa_permissionanalytics_nbidentity  using bwf_defaultsTo0
+		label:$search.permission.nbidentity
+		compact:True
+		align:Right
+		tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbidentity using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbidentity using mayBeNullMapping)
+		decorator:Decorator {
+			width:100
+			after:Image {
+				image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbidentity, prevpermission.bwa_permissionanalytics_nbidentity)) using bwf_trend
+				width:16
+			}
+		}
+	}
+
+
+	Header {
+		value:$fragmentBusinessActivityDetailsNLS.managers
+	}
+	Separator {
+		width:1
+	}
+			
+	ConditionalGroup {
+		IntCondition(Count managers) {
+			when =0 then [
+				Header {
+					value:$fragmentBusinessActivityDetailsNLS.nomanagers			
+					commands: Commands {
+						position: After orientation: Vertical
+						Command{	
+							actions:Dialog bwfPermissionDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																						selectedExpertiseDomain to paramManagerType, 
+																						inuid to paramPermissionUid),
+										ReloadData (managers)
+	                        	icon:%concept_16.manager
+	                        	disabled:Not BooleanPredicate(incanupdateowners)
+	                        	feature:permissiondetails_updatemanager
+	                        	tooltip:$fragmentBusinessActivityDetailsNLS.addowner
+	                       }
+					}
+				}
+			]
+			otherwise [
+				Table {
+					data:managers
+					layout:Layout { grab:horizontal True vertical False hint:height 90 }
+					configurable:True
+					commands:Commands { position: After orientation: Vertical
+									Command{	
+											actions:Dialog bwfPermissionDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																										selectedExpertiseDomain to paramManagerType, 
+																										inuid to paramPermissionUid),
+													ReloadData (managers)
+				                        	icon:%concept_16.manager
+				                        	disabled:Not BooleanPredicate(incanupdateowners)
+				                        	feature:permissiondetails_updatemanager
+				                        	tooltip:$fragmentBusinessActivityDetailsNLS.addowner
+				                       }
+									Command{	
+											actions:Dialog bwfPermissionDetailsRemoveManager_Dialog(	selectedManager to paramManagerUid, 
+																										selectedExpertiseDomain to paramManagerTypeCode, 
+																										selectedManagerLink to paramManagerLinkRecorduid,
+																										inuid to paramPermissionUid),
+													ReloadData (managers)
+				                        	icon:%status_16.delete
+				                        	disabled:
+				                        		OrPredicate {
+					                        		Not BooleanPredicate(incanupdateowners)
+				                        			StringPredicate(selectedManager) { when IsEmpty then True otherwise False }
+				                        		}
+				                        	feature:permissiondetails_updatemanager 
+				                        	tooltip:$fragmentBusinessActivityDetailsNLS.deleteowner
+				                       }
+									Command{	
+											actions:Dialog bwf_entityDetailsManagerAuditDialog("Permission" to type, inuid to entity)
+				                        	icon:%browsing_16.information 
+				                        	disabled:
+					                        		Not BooleanPredicate(incanupdateowners)
+				                        	feature:permissiondetails_updatemanager 
+				                        	tooltip:$fragmentBusinessActivityDetailsNLS.auditowner
+				                       }
+				                  }
+					
+					Column {
+						column:uid
+						hidden:True
+						selection:selectedManager
+					}
+					Column {
+						column: managerLinkRecorduid 
+						hidden: True
+						selection: selectedManagerLink
+					}
+					Column {
+						column:expertisedomaincode
+						hidden:True
+						selection:selectedExpertiseDomain
+					}
+					Column {
+						column:expertisedomaindisplayname
+						text:Transform Current expertisedomaincode using bwfManagerTypeMapping
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						header:$bwfManagement.type
+						sortable:True
+						width:140px
+					}
+					Column {
+						column:hrcode
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						header:$identity.hrcode
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:fullname
+						header:$identity.fullname
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						sortable:True
+						width:100%
+					}
+					Column {
+						column:internal
+						header:$pidentity.internal
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:active
+						header:$pidentity.active
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+			
+			
+					Column {
+						column:comment
+						header:$bwfManagement.comment
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:delegation
+						header:$bwfManagement.delegated
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:delegationreason
+						header:$bwfManagement.^reason
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:_priority
+						header:$bwfManagement.^priority
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:startdate
+						header:$bwfManagement.startdate
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:enddate
+						header:$bwfManagement.enddate
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+				}
+			]
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected business activity details in 1366px wide
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the business activity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update permission description (false by default)</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update permission owners (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessActivityFullDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+
+	selectedManager = Variable { private:True }
+	selectedManagerLink = Variable { private: True }
+	selectedExpertiseDomain = Variable { private:True }
+
+	permission = Record {
+		view: bwf_permissionDetail with inuid to uid
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevpermission = Record {
+		view: bwf_permissionDetail with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:FromPage(-1)
+	}
+
+	nbaccounts = Record {
+		view: bwf_permissionnbaccounts with inuid to uid
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	subpermissions = HierarchicalData {
+		view: bwf_permissionsubpermissions with inuid to uid
+		connect:parent uid to child parentuid
+		initial:parentuid = inuid
+		max-level: 5
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	managers = Dataset {
+		view: bwf_permissionmanagers with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	// standard	
+	Grid {
+		columns:GridColumn { width: 160 px }, GridColumn { width:grow }
+		layout:Layout { grab:horizontal True vertical False hint: height 120 }
+		GridRow {
+			height:120
+			GridCell {
+				Header {
+					value:''
+					styling:bigTitleStyle
+					icon:%concept_48.permission
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False}
+				}
+			}		
+			GridCell {
+				Header {
+					value:permission.displayname
+					styling:bigTitleStyle
+					commands:Commands { position: After orientation: Horizontal 
+									Command{	actions:Dialog bwfPermissionDetailsMetadata_Dialog(inuid to paramPermissionUid,
+																									permission.sensitivitylevel to sensitivitylevel,
+																									permission.sensitivityreason to sensitivityreason,
+																									permission.description to description), 
+														ReloadData (permission)
+					                        	icon:%collection_16.pencil
+					                        	disabled:Not BooleanPredicate(incanupdatedescription)
+					                        	feature:permissiondetails_updatemetadata 
+					                        	tooltip:$fragmentBusinessActivityDetailsNLS.updatemetadata
+					                       }
+					                  }
+				}
+				Header {
+					value:permission.code
+					hidden:SameValuePredicate(permission.code, permission.displayname)
+				}
+				Text {
+					value:permission.description
+					lines:3
+					compact:True
+					layout: Layout{hint:height 48}
+				}
+			}		
+		}
+	}
+
+	Grid {
+		columns:GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical False hint:height 220 }
+		GridRow {
+			GridCell {
+				Group {
+					title:$fragmentBusinessActivityDetailsNLS.kpis
+
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbaccount using bwf_defaultsTo0
+						label:$search.permission.nbaccount
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbaccount using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbaccount using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbaccount, prevpermission.bwa_permissionanalytics_nbaccount)) using bwf_trend
+								width:16
+							}
+						}
+					}
+
+					Text {
+						value:Transform permission.bwa_permissionanalytics_nbidentity  using bwf_defaultsTo0
+						label:$search.permission.nbidentity
+						compact:True
+						align:Right
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbidentity using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbidentity using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbidentity, prevpermission.bwa_permissionanalytics_nbidentity)) using bwf_trend
+								width:16
+							}
+						}
+					}
+
+					Text {
+						value:permission.bwa_permissionanalytics_nbsubpermission
+						label:$search.permission.nbsubpermission_compact
+						compact:True
+						align:Right
+						hidden:AndPredicate {
+							IntPredicate(permission.bwa_permissionanalytics_nbsubpermission) { when >0 then False otherwise True }
+							IntPredicate(prevpermission.bwa_permissionanalytics_nbsubpermission) { when >0 then False otherwise True }
+						}
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbsubpermission using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbsubpermission using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbsubpermission, prevpermission.bwa_permissionanalytics_nbsubpermission)) using bwf_trend
+								width:16
+							}
+						}
+					}
+
+					Text {
+						value:permission.bwa_permissionanalytics_nbtheoretical
+						label:$search.permission.nbtheoretical_compact
+						feature:iam_license
+						compact:True
+						align:Right
+						hidden:AndPredicate {
+							IntPredicate(permission.bwa_permissionanalytics_nbtheoretical) { when >0 then False otherwise True }
+							IntPredicate(prevpermission.bwa_permissionanalytics_nbtheoretical) { when >0 then False otherwise True }
+						}
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbtheoretical using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbtheoretical using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbtheoretical, prevpermission.bwa_permissionanalytics_nbtheoretical)) using bwf_trend
+								width:16
+							}
+						}
+					}
+
+					Text {
+						value:permission.bwa_permissionanalytics_nbusage
+						label:$search.permission.nbusage
+						compact:True
+						align:Right
+						hidden:AndPredicate {
+							IntPredicate(permission.bwa_permissionanalytics_nbusage) { when >0 then False otherwise True }
+							IntPredicate(prevpermission.bwa_permissionanalytics_nbusage) { when >0 then False otherwise True }
+						}
+						tooltip:$search.repository.ratiotooltip(Transform permission.bwa_permissionanalytics_nbusage using mayBeNullMapping, Transform prevpermission.bwa_permissionanalytics_nbusage using mayBeNullMapping)
+						decorator:Decorator {
+							width:100
+							after:Image {
+								image:TemplateImageSelection (Difference(permission.bwa_permissionanalytics_nbusage, prevpermission.bwa_permissionanalytics_nbusage)) using bwf_trend
+								width:16
+							}
+						}
+					}
+				}
+			}
+			GridCell {
+				Group {
+					title:$fragmentBusinessActivityDetailsNLS.classification
+
+					Text {
+						value:permission.application_displayname
+						label:$application.concept
+						compact:True
+						commands: Command {   
+							actions:Dialog bwf_applicationDetailsDialog (permission.application_uid to inuid,
+																		True to inshowperorg,
+																		True to inshowperjob
+											)
+							icon:%browsing_16.zoom
+						}
+					}
+					Text {
+						value:Transform permission.sensitivitylevel using bwfPermissionSensitivityLevelMapping
+						label:$fragmentBusinessActivityDetailsNLS.sensitivitylevel
+						compact:True
+					}
+					Text {
+						value:permission.sensitivityreason
+						label:$fragmentBusinessActivityDetailsNLS.sensitivityreason
+						compact:True
+					}
+				}
+			}
+		}
+	}
+	
+	Group {
+		title:$fragmentBusinessActivityDetailsNLS.managers
+		layout:Layout { grab:horizontal True vertical False hint: height 100 }
+
+		ConditionalGroup {
+			IntCondition(Count managers) {
+				when =0 then [
+					Header {
+						value:$fragmentBusinessActivityDetailsNLS.nomanagers			
+						commands: Commands {
+							position: After orientation: Vertical
+							Command{	
+								actions:Dialog bwfPermissionDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																							selectedExpertiseDomain to paramManagerType, 
+																							inuid to paramPermissionUid),
+											ReloadData (managers)
+		                        	icon:%concept_16.manager
+		                        	disabled:Not BooleanPredicate(incanupdateowners)
+		                        	feature:permissiondetails_updatemanager
+		                        	tooltip:$fragmentBusinessActivityDetailsNLS.addowner
+		                       }
+						}
+					}
+				]
+				otherwise [
+					Table {
+						data:managers
+						layout:Layout { grab:horizontal True vertical False hint:height 90 }
+						configurable:True
+						commands:Commands { position: After orientation: Vertical
+										Command{	
+												actions:Dialog bwfPermissionDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																											selectedExpertiseDomain to paramManagerType, 
+																											inuid to paramPermissionUid),
+														ReloadData (managers)
+					                        	icon:%concept_16.manager
+					                        	disabled:Not BooleanPredicate(incanupdateowners)
+					                        	feature:permissiondetails_updatemanager
+					                        	tooltip:$fragmentBusinessActivityDetailsNLS.addowner
+					                       }
+										Command{	
+												actions:Dialog bwfPermissionDetailsRemoveManager_Dialog(	selectedManager to paramManagerUid, 
+																											selectedExpertiseDomain to paramManagerTypeCode, 
+																											selectedManagerLink to paramManagerLinkRecorduid,
+																											inuid to paramPermissionUid),
+														ReloadData (managers)
+					                        	icon:%status_16.delete
+					                        	disabled:
+					                        		OrPredicate {
+						                        		Not BooleanPredicate(incanupdateowners)
+					                        			StringPredicate(selectedManager) { when IsEmpty then True otherwise False }
+					                        		}
+					                        	feature:permissiondetails_updatemanager 
+					                        	tooltip:$fragmentBusinessActivityDetailsNLS.deleteowner
+					                       }
+										Command{	
+												actions:Dialog bwf_entityDetailsManagerAuditDialog("Permission" to type, inuid to entity)
+					                        	icon:%browsing_16.information 
+					                        	disabled:
+						                        		Not BooleanPredicate(incanupdateowners)
+					                        	feature:permissiondetails_updatemanager 
+					                        	tooltip:$fragmentBusinessActivityDetailsNLS.auditowner
+					                       }
+					                  }
+						
+						Column {
+							column:uid
+							hidden:True
+							selection:selectedManager
+						}
+						Column {
+							column: managerLinkRecorduid 
+							hidden: True
+							selection: selectedManagerLink
+						}
+						Column {
+							column:expertisedomaincode
+							hidden:True
+							selection:selectedExpertiseDomain
+						}
+						Column {
+							column:expertisedomaindisplayname
+							text:Transform Current expertisedomaincode using bwfManagerTypeMapping
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							header:$bwfManagement.type
+							sortable:True
+							width:140px
+						}
+						Column {
+							column:hrcode
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							header:$identity.hrcode
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:fullname
+							header:$identity.fullname
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							sortable:True
+							width:100%
+						}
+						Column {
+							column:internal
+							header:$pidentity.internal
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:active
+							header:$pidentity.active
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+				
+				
+						Column {
+							column:comment
+							header:$bwfManagement.comment
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:delegation
+							header:$bwfManagement.delegated
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:delegationreason
+							header:$bwfManagement.^reason
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:_priority
+							header:$bwfManagement.^priority
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:startdate
+							header:$bwfManagement.startdate
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:enddate
+							header:$bwfManagement.enddate
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+					}
+				]
+			}
+		}
+	}
+}

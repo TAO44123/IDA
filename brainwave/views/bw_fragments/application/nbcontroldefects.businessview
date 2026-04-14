@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_applicationallcontroldefects_nb" displayname="Number of control defects for application">
+	<Definition scriptfile="/views/bw_fragments/application/allcontroldefects.javascript" name="D1585318737660" description="Number of control defects for application">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1585318737659" title="Application">
+			<InnerView name="bwwf_applicationcontroldefects_nb">
+				<Param name="F1585318816441" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1585318837988" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1637318553296" type="joinview" x="767" y="183" w="300" h="50" title="# Account defects">
+			<InnerView name="accountcontrwf_applicationoldefects_nb" prefix="acc_">
+				<Param name="F1637318583926" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637318592407" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.applicationuid.get()}" key2="{dataset.acc_app_uid.get()}"/>
+		</Component>
+		<Link name="L1637318554624" source="C1585318737659" target="C1637318553296" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637318602486" type="joinview" x="717" y="220" w="300" h="50" title="# Identity defects">
+			<InnerView name="bwf_applicationidentitycontroldefects_nb" prefix="idt_">
+				<Param name="F1637318630522" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637318641237" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.applicationuid.get()}" key2="{dataset.idt_app_uid.get()}"/>
+			<ViewComputedAttribute name="_total" displayname="Total number of defects" type="Integer" expression="( dataset.isEmpty( &apos;nb&apos; ) ? 0 : dataset.nb.get() ) + ( dataset.isEmpty( &apos;acc_nb&apos; ) ? 0 : dataset.acc_nb.get() ) + ( dataset.isEmpty( &apos;idt_nb&apos; ) ? 0 : dataset.idt_nb.get() )"/>
+			<ExcludeList>
+				<Exclude name="acc_app_uid"/>
+				<Exclude name="acc_nb"/>
+				<Exclude name="idt_app_uid"/>
+				<Exclude name="idt_nb"/>
+				<Exclude name="nb"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1637318602939" source="C1637318553296" target="C1637318602486" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1585319219902_1" data="BPATECHFR_1637094118386_9806748"/>
+	</ViewParam>
+	<ViewParam name="minimumrisklevel" displayname="minimum risk level" type="Integer"/>
+	<ViewSort name="sort" attribute1="controlrisklevel" direction1="DESC" attribute2="controldisplayname" attribute3="accountlogin" attribute4="identityfullname"/>
+</View>

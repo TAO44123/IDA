@@ -1,0 +1,143 @@
+ds_sailpointidnow_NLS = NLS {
+  title [ en "Sailpoint IdentityNow" fr "Sailpoint IdentityNow" ]
+  description [ 
+    en "Collects Sailpoint IdentityNow accounts, applications and roles for discovery"
+    fr "Collecte les informations sur les comptes, les applications et les roles Sailpoint IdentityNow"]
+  label_clientid [ 
+  	en "Client ID"
+  	fr "Client ID"]
+  label_clientid_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation." 
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_secret [ 
+  	en "Secret"
+  	fr "Secret"]
+  label_secret_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_tenant [ 
+  	en "Tenant"
+  	fr "Tenant"]
+  label_tenant_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_overridenurl [ 
+  	en "Overriden URL (optional)"
+  	fr "Surcharge d'URL (optionnel)"]
+  label_overridenurl_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_accountfilter [ 
+  	en "Account query filter (optional)"
+  	fr "Filtre de requête comptes (optionnel)"]
+  label_accountfilter_TT [ 
+  	en "For more information on how to set up this field, refer to the SailPoint IdentityNow v3 Accounts API documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation SailPoint IdentityNow v3 Accounts API."]
+}
+
+ds_sailpointidnow = Page {
+	title: $ds_sailpointidnow_NLS.title
+	tags: "bwds_connector" , "live" , "csv", "sailpointidnow"
+	description: $ds_sailpointidnow_NLS.description
+	icon: "bw_sailpointidnow/bw_sailpointidnow_48.png"
+	large-icon: "bw_sailpointidnow/bw_sailpointidnow_96.png"	
+	metadata: (
+	    category -> "infrastructure", 
+	    family -> "API",
+	    collector -> "bw_sailpointidnow",
+	    action ->"sailpointidentitynow",
+	    destPathVar -> "bw_sailpointidnow_sourcefolder",
+	    filePattern -> "*.csv",
+	    hasMapping -> False,
+	    multiFile -> True  
+	 )
+}
+
+/* config dynamic fragment */
+
+sailpointidnow_params = Constant { value: "clientid,secret,tenant,overridenurl,accountfilter" }
+
+deserializeOptions_adp = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant sailpointidnow_params }
+  options = Input
+  clientid = Output { }
+  secret = Output { }
+  tenant = Output { }
+  overridenurl = Output { }
+  accountfilter = Output { }
+}
+
+serializeOptions_adp = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant sailpointidnow_params }
+  secretnames = Input { default: "secret"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+
+  clientid = Input { }
+  secret = Input { }
+  tenant = Input { }
+  overridenurl = Input { }
+  accountfilter = Input { }
+}
+
+
+ds_sailpointidnow_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  // custom
+  clientid = Variable {}
+  secret = Variable
+  tenant = Variable
+  overridenurl = Variable 
+  accountfilter = Variable
+  
+   doInit = NamedAction(
+     Call deserializeOptions_adp ( options to options, clientid from clientid, secret from secret , tenant from tenant , overridenurl from overridenurl, accountfilter from accountfilter )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_adp ( dsname to secretdsname, 
+          clientid to clientid, secret to secret , tenant to tenant , overridenurl to overridenurl , accountfilter to accountfilter ) to options
+   )
+   
+  Edit { 
+     label: $ds_sailpointidnow_NLS.label_clientid
+     variable: clientid
+     not-empty:True
+     tooltip: $ds_sailpointidnow_NLS.label_clientid_TT
+  }
+  Edit { 
+     label: $ds_sailpointidnow_NLS.label_secret
+     variable: secret
+     not-empty:True
+     password-mode: True
+     tooltip: $ds_sailpointidnow_NLS.label_secret_TT
+  }
+  Edit { 
+     label: $ds_sailpointidnow_NLS.label_tenant
+     variable: tenant
+     not-empty:True
+     tooltip: $ds_sailpointidnow_NLS.label_tenant_TT
+  } 
+  Edit { 
+     label: $ds_sailpointidnow_NLS.label_overridenurl
+     variable: overridenurl
+     not-empty:False
+     tooltip: $ds_sailpointidnow_NLS.label_overridenurl_TT
+  }
+  Edit { 
+     label: $ds_sailpointidnow_NLS.label_accountfilter
+     variable: accountfilter
+     not-empty:False
+     tooltip: $ds_sailpointidnow_NLS.label_accountfilter_TT
+  } 
+  
+}
+
+
+

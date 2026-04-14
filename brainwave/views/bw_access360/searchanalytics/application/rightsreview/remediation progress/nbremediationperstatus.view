@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwaccess360r_applicationnbremediationperstatus" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketreview" displayname="nbremediation" notes="" begindate="" enddate="">
+	<ViewParam name="minus7day" displayname="minus7day" type="Integer" defaultvalue="{(new Date()).add(&apos;d&apos;,-7).getTime()/(1000*3600*24)}"/>
+	<ViewParam name="filterbyrunstatus" displayname="filterbyrunstatus" type="String"/>
+	<ViewParam name="filterlessthan7days" displayname="filterlessthan7days" type="Boolean" defaultvalue="false"/>
+	<ViewParam name="minus90days" displayname="minus90days" type="Integer" defaultvalue="{(new Date()).add(&apos;d&apos;,-90).getTime()/(1000*3600*24)}"/>
+	<ViewParam name="filterolderthan90days" displayname="filterolderthan90days" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="campaignid" displayname="campaignid" type="String"/>
+	<ViewComputedAttribute name="color" displayname="color" type="String" expression="dataset.remediationstatus.get().equals(&apos;in progress&apos;)?&apos;#5899DA&apos;:dataset.remediationstatus.get().equals(&apos;done&apos;)?&apos;#19A979&apos;:dataset.remediationstatus.get().equals(&quot;won&apos;t fix&quot;)?&apos;#ED4A7B&apos;:dataset.remediationstatus.get().equals(&apos;new&apos;)?&apos;#D5DADC&apos;:&apos;&apos;"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1628179768796_1206" prefix="remediation" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="remediations">
+		<ViewJoin name="J1628179774419_1207" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketAction">
+			<ViewJoin name="J1628179778588_1208" prefix="remediation" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+				<ViewAttribute name="A1628179864360_1213" attribute="recorduid" alias="nbremediation" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1628179915376_1216" attribute="status" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1628179981389_1217" attribute="custom2" alias="runstatus" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1628180165792_0" reference="filterbyrunstatus" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewAttribute name="A1628180021675_1220" attribute="submissionday" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.filterlessthan7days.get()">
+			<ViewAttributeFilter name="F1628180181663_0" reference="minus7day" operation="lt" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1628182382363_1250" attribute="submissionday" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.filterolderthan90days.get()">
+			<ViewAttributeFilter name="F1628182394199_0" reference="minus90days" operation="gt" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewAttribute name="A1628179802738_1209" attribute="status" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1628179805295_0" operation="in" ignoreifempty="false">
+			<Value name="0" data="revoke"/>
+			<Value name="1" data="update"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1628845015399_2369" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketaction">
+		<ViewJoin name="J1628845026858_2370" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+			<ViewAttribute name="1630309208483_3237" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1626620234166_0" operation="in" ignoreifempty="false">
+					<Value name="0" data="ADHOC_UAR"/>
+					<Value name="1" data="ADHOC_REMEDIATION"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+			<ViewAttribute name="1630309972927_3442" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1630309887906_0" reference="campaignid" operation="eq" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+</View>

@@ -1,0 +1,410 @@
+import "/webportal/pages/resources/details_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/application/details.page"
+import "/webportal/pages/bw_fragments/application/accounts.page"
+import "/webportal/pages/bw_fragments/application/groups.page"
+import "/webportal/pages/bw_fragments/application/permissions.page"
+import "/webportal/pages/bw_fragments/application/rights.page"
+import "/webportal/pages/bw_fragments/application/usages.page"
+import "/webportal/pages/bw_fragments/application/perorg.page"
+import "/webportal/pages/bw_fragments/application/perjob.page"
+import "/webportal/pages/bw_fragments/application/perprofile.page"
+import "/webportal/pages/bw_fragments/application/analytics.page"
+import "/webportal/pages/bw_fragments/application/controls.page"
+import "/webportal/pages/bw_fragments/application/decisionhistory.page"
+import "/webportal/pages/bw_fragments/application/businessactivities.page"
+import "/webportal/pages/bw_fragments/application/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/application/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/application/cis.page"
+import "/webportal/pages/bw_fragments/custom/applicationExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+applicationDetailsPageNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	application [en "Application" fr "Application"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Account" fr "Compte"]
+	groups [en "Groups" fr "Groupes"]
+	access [en "Access" fr "Accès"]
+	usages [en "Usages" fr "Usages"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	
+	accounts [en "Accounts" fr "Comptes"]
+	permissions [en "Permissions" fr "Permissions"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Permission usage" fr "Usage de la permission"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	components [en "Components" fr "Composants"]
+
+	notexists [
+		en "This application does not exist in the current timeslot, you should select a different timeslot"
+		fr "Cette application n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+applicationDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (application)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Application Detail with applicationUid.uid to paramApplicationUid }
+	feature: applicationdetails_access
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Application
+		mandatory: True
+	}
+	
+	applicationUid = Record {
+		view: br_applicationDetail_uid with recorduid to recorduid
+	}
+}
+
+applicationDetailsParkingPage = Page {
+	title: $applicationDetails.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( application.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page applicationDetailsPage with-current-parameters
+		}
+	
+	paramApplicationUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	application = Record {
+		view: bwf_applicationDetail with paramApplicationUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$applicationDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+applicationDetailsPage = Page {
+	title: $applicationDetails.title
+	dynamic-title: $applicationDetails.dynamictitle(application.displayname)
+	icon: %concept.application
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( application.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page applicationDetailsParkingPage with-current-parameters
+		}
+	mixins: detailsPage
+	enter-event:
+		IntCase(application.bwa_applicationanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+		IntCase(application.bwa_applicationanalytics_nbdirectaccountright) { when >0 then [ Set True to hasrights ] },
+		IntCase(application.bwa_applicationanalytics_nbdirectidentityright) { when >0 then [ Set True to hasidentityrights ] },
+		IntCase(application.bwa_applicationanalytics_nbbusinessactivity) { when >0 then [ Set True to hasbusinessactivity ] },
+		IntCase(application.bwa_applicationanalytics_nbtheoretical) { when >0 then [ Set True to hastheoreticalrights ] },
+		Set nbControls._total to nbdefects
+	
+	// Parameters Here
+	paramApplicationUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedApplicationUid = Variable {
+		type: String
+		initial: paramApplicationUid
+	}
+
+	nbdefects = Variable 
+	nboverallocated = Variable
+	nbdecision = Variable
+	hasbusinessactivity = Variable { initial:False }
+	hastheoreticalrights = Variable { initial:False }
+	hasrights = Variable { initial:False }
+	hasidentityrights = Variable { initial:False }
+	hasusages = Variable { initial:False }
+	
+	showextended = Variable { initial:False }
+
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_model = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+
+	active_application = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_permissions = Variable { initial:False multivalued:False type:Boolean }
+	active_cis = Variable { initial:False multivalued:False type:Boolean }
+	active_businessactivities = Variable { initial:False multivalued:False type:Boolean }
+	active_theoreticalrights = Variable { initial:False multivalued:False type:Boolean }
+	active_overallocatedrights = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_permissionsusage = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_controls = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Record for concept details
+	application = Record {
+		view: bwf_applicationDetail with selectedApplicationUid to uid
+	}
+	
+	// Number of control defects for current application (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_applicationallcontroldefects_nb with selectedApplicationUid to uid
+	}
+
+	// Start of the Layout based on a 1-column Grid
+	Grid {
+		columns: GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$applicationDetailsPageNLS.details
+						activation-event:Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text:$applicationDetailsPageNLS.application
+								activation-event:Set True to active_application
+								IncludeFragment {
+									fragment: fragmentApplicationFullDetails with
+										value-of selectedApplicationUid to inuid,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdateowners,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_application.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$applicationDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentApplicationExtendedDetails with value-of selectedApplicationUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.accounts
+								activation-event:Set True to active_accounts
+							
+								IncludeFragment {
+									fragment:fragmentApplicationAccounts
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of True to incanreconcile, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.groups
+								activation-event:Set True to active_groups
+							
+								IncludeFragment {
+									fragment:fragmentApplicationGroups
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of Eval "active_detail.get() && active_groups.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.permissions
+								activation-event:Set True to active_permissions
+							
+								IncludeFragment {
+									fragment:fragmentApplicationPermissionSelection
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of True to incangotosodanalysis, value-of Eval "active_detail.get() && active_permissions.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.components
+								activation-event:Set True to active_cis
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								IncludeFragment {
+									fragment:fragmentApplicationCIs
+									with value-of selectedApplicationUid to inuid, value-of Eval "active_detail.get() && active_cis.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$applicationDetailsPageNLS.model
+						activation-event:Set True to active_model
+						feature:Any(sod_license, iam_license)
+						hidden:
+							AndPredicate {
+								Not BooleanPredicate(hasbusinessactivity)
+								Not BooleanPredicate(hastheoreticalrights)
+								IntPredicate(nboverallocated) { when >0 then False otherwise True }
+							}
+					
+						TabFolder {
+							border:False
+							layout:Layout { indent: horizontal 0 vertical 6 }
+							TabItem {
+								text:$applicationDetailsPageNLS.businessactivities
+								hidden:Not BooleanPredicate(hasbusinessactivity)
+								feature:sod_license
+								activation-event:Set True to active_businessactivities
+
+								IncludeFragment {
+									fragment:fragmentApplicationBusinessActivities
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to incanupdateowners, value-of Eval "active_model.get() && active_businessactivities.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.theoretical
+								feature:iam_license
+								hidden:Not BooleanPredicate(hastheoreticalrights)
+								activation-event:Set True to active_theoreticalrights
+							
+								IncludeFragment {
+									fragment:fragmentApplicationTheoreticalRightsMasterDetails
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_model.get() && active_theoreticalrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.overallocated
+								feature:iam_license
+								activation-event:Set True to active_overallocatedrights
+								badge: Eval "nboverallocated.get()>0?nboverallocated.get():''"
+
+								IncludeFragment {
+									fragment:fragmentApplicationOverAllocationsList
+									with value-of selectedApplicationUid to inuid, nboverallocated binds-to outnbproblems, value-of True to incanshowdetails, value-of True to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$applicationDetailsPageNLS.access
+						activation-event:Set True to active_access
+						hidden:
+							AndPredicate {
+								Not BooleanPredicate(hasrights)
+								Not BooleanPredicate(hasusages)
+							}
+					 
+						TabFolder {
+							border:False
+							TabItem {
+								text:$applicationDetailsPageNLS.rights
+								hidden:Not BooleanPredicate(hasrights)
+								activation-event:Set True to active_rights
+							
+								IncludeFragment {
+									fragment:fragmentApplicationRights
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile,  value-of Eval "active_access.get() && active_rights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.oorigin
+								hidden:Not BooleanPredicate(hasidentityrights)
+								activation-event:Set True to active_perorg
+							
+								IncludeFragment {
+									fragment:fragmentApplicationPerOrg
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perorg.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.jorigin
+								hidden:Not BooleanPredicate(hasidentityrights)
+								activation-event:Set True to active_perjob
+							
+								IncludeFragment {
+									fragment:fragmentApplicationPerJob
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perjob.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.pusage
+								hidden:Not BooleanPredicate(hasrights)
+								activation-event:Set True to active_permissionsusage
+							
+								IncludeFragment {
+									fragment:fragmentApplicationPerProfile
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_permissionsusage.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$applicationDetailsPageNLS.usages
+								hidden:Not BooleanPredicate(hasusages)
+								activation-event:Set True to active_usages
+							
+								IncludeFragment {
+									fragment:fragmentApplicationUsages
+									with value-of selectedApplicationUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_usages.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$applicationDetailsPageNLS.controls
+						activation-event:
+							Set True to active_controls
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment:fragmentApplicationAllControlDefectsList with
+								value-of selectedApplicationUid to inuid,
+								value-of True to incanshowdetails,
+								value-of active_controls to inenabled
+						}
+					}
+					TabItem {
+						text:$applicationDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+					
+						IncludeFragment {
+							fragment:fragmentApplicationAnalytics
+							with value-of selectedApplicationUid to inuid, value-of active_analytics to inenabled
+						}
+					}
+					TabItem {
+						text:$applicationDetailsPageNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decision
+					
+						IncludeFragment {
+							fragment:fragmentApplicationDecisionHistory
+							with value-of selectedApplicationUid to inuid, nbdecision binds-to outnbdecision, value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

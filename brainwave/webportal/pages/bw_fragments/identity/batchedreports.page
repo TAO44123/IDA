@@ -1,0 +1,114 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+fragmentIdentityBatchedReportsNLS = NLS {
+	description [en "Description" fr "Description"]
+	closedate [en "Close date" fr "Date de fermeture"]
+	submissiondate [en "Submission date" fr "Date de soumission"]
+	title [en "Title" fr "Titre"]
+	requester [en "Requester" fr "Demandeur"]
+	status [en "Status" fr "Statut"]
+	tickettype [en "Ticket type" fr "Type de ticket"]
+	managedpendingtasks [en "My pending tasks" fr "Mes tâches en attente"]
+
+	batchedreports.grouptitle [ en "Available Reports" fr "Rapports Disponibles"]
+	batchedreports.status [ en "Status" fr "Statut"]
+	batchedreports.title [ en "Title" fr "Titre"]
+	batchedreports.submissiondate [ en "Submission Date" fr "Date de Soumission" ]
+	batchedreports.completitiondate [ en "Completion Date" fr "Date de Finalisation" ]
+	batchedreports.goto [ en "View report" fr "Voir le rapport" ]
+	batchedreports.status.s [ en "Submitted" fr "Soumis"]
+	batchedreports.status.r [ en "Running" fr "En Cours"]
+	batchedreports.status.c [ en "Available" fr "Disponible"]
+	batchedreports.status.e [ en "Error" fr "Erreur" ]
+
+	empty [en "No reports available" fr "Pas de rapports disponibles"]
+}
+
+transformStatus = StringMapping {
+	when "S" then $fragmentIdentityBatchedReportsNLS.batchedreports.status.s
+	when "R" then $fragmentIdentityBatchedReportsNLS.batchedreports.status.r
+	when "C" then $fragmentIdentityBatchedReportsNLS.batchedreports.status.c
+	when "E" then $fragmentIdentityBatchedReportsNLS.batchedreports.status.e
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Current identity batched reports
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbreports</b>, String value, the number of pending tasks</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityBatchedReports = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	outnbreports = Variable
+
+	currentReportStatus = Variable { type: String private:True }
+	currentReportPosition = Variable { type: String private:True }
+
+	/* dataset */
+	batchedReports = Dataset {
+		batched-reports: BatchedReports { status: Submitted, Running, Completed, Error with-anonymous:False}
+		disabled:Not BooleanPredicate(inenabled)
+		count-variable: outnbreports
+	}
+
+	ConditionalGroup {
+		IntCondition(Count batchedReports) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityBatchedReportsNLS.empty
+					styling:bigTitleStyle
+				}			
+			]		
+			otherwise [
+				Table {
+					data: batchedReports
+					layout: Layout { grab: horizontal True vertical True }
+					configurable: True 
+					initial-sort: submissionDate descending
+					double-click: StringCase( Current status ) { when "C" then [ GoTo Position currentReportPosition ] }
+					show-filter: True
+					
+					Column  { 
+						column: status 
+						text: Concat ( "  " ,  Transform Current status using transformStatus )  
+						header: $fragmentIdentityBatchedReportsNLS.batchedreports.status sortable: True 
+						width: 95px
+						image: StringImageSelection ( Current status ) {
+							when "S" then %collection_16.clock
+							when "R" then %collection_16.clock
+							when "C" then %report_16.report
+							when "E" then %status_16.error
+						}
+						selection:currentReportStatus
+					}
+					
+					Column { column: title width: 100% header: $fragmentIdentityBatchedReportsNLS.batchedreports.title sortable: True filterable: True}
+					Column { column: submissionDate text: DateLDAP ( Current submissionDate ).value width: 132px header: $fragmentIdentityBatchedReportsNLS.batchedreports.submissiondate sortable: True }
+					Column { column: completionDate text: DateLDAP ( Current completionDate ).value width: 132px header: $fragmentIdentityBatchedReportsNLS.batchedreports.completitiondate  sortable: True initially-masked: True }
+					Column { column: position hidden: True selection:currentReportPosition}
+				}
+				ButtonGroup {
+					Button {
+						text:$fragmentIdentityBatchedReportsNLS.batchedreports.goto
+						actions: StringCase(currentReportStatus) { when "C" then [ GoTo Position currentReportPosition] } 
+						image: %browsing_16.link
+						disabled: StringPredicate (currentReportStatus) { when "C" then False otherwise True }
+						tooltip: $fragmentIdentityBatchedReportsNLS.batchedreports.goto
+					}
+				}
+			]
+		}
+	}
+}

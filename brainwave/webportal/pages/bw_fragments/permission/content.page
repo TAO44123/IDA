@@ -1,0 +1,275 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+fragmentPermissionContentNLS = NLS {
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	nbaccounts [en "Number of active accounts" fr "Nombre de comptes actifs"]
+	nbprofiles [en "Number of profiles" fr "Nombre de profils"]
+	expertise [en "Expertise" fr "Responsabilité"]
+	managers [en "Managers" fr "Responsables"]
+	content [en "content" fr "contenu"]
+	description [en "description" fr "description"]
+	empty [en "Permission does not contains sub-permissions" fr "Cette permission ne contient pas de sous permissions"]
+	
+	firstlist [ en "First List" fr "Première liste"]
+	secondlist [ en "Second List" fr "Deuxième liste"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected permission content as a Tree
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionuid</b>, the selected permission</li>
+ * <li><b>outpermissioncode</b>, the selected permission code</li>
+ * <li><b>outpermissionname</b>, the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentPermissionContent = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+	subpermissions = HierarchicalData {
+		view: bwf_permissionsubpermissions with inuid to uid
+		connect:parent uid to child parentuid
+		initial:parentuid = inuid
+		max-level: 5
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid)
+			]
+			when False then [
+			]
+		}
+	)	
+
+	ConditionalGroup {
+		IntCondition(Count subpermissions) {
+			when =0 then [
+				Header {
+					value:$fragmentPermissionContentNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Tree {
+					data:subpermissions
+					layout:Layout {grab:horizontal True vertical True}
+					show-filter:True
+					configurable:True
+					expand-level:2
+					Column {
+						column:code
+						width:33%
+						header:$permission.code
+						filterable:True
+						selection:outpermissioncode
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:displayname
+						width:66%
+						header:$permission.displayname
+						filterable:True
+						selection:outpermissionname
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:permissiontype
+						width:33%
+						initially-masked:True
+						header:$permission.permissiontype
+						filterable:True
+					}
+					Column {
+						column:description
+						width:34%
+						initially-masked:True
+						header:$fragmentPermissionContentNLS.description
+					}
+					Column {
+						column:uid
+						hidden:True
+						selection:outpermissionuid
+					}
+				}
+			]
+		}
+	}
+}
+
+
+fragmentPermissionContentwSoDColors1 = Style { background:Color RGB(144, 188, 216) } 
+fragmentPermissionContentwSoDColors2 = Style { background:Color RGB(254, 190, 138) } 
+fragmentPermissionContentwSoDColorsStyle = IntStylingTemplate {
+	when =1 then fragmentPermissionContentwSoDColors1
+	when =2 then fragmentPermissionContentwSoDColors2
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected permission content as a Tree and highlight permissions with different background colors if they are part of a provided list.
+ * This is useful to highlight SOD problems within a permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inlist1name </b>the first permission list name</li>
+ * <li><b>inlist1uid </b>the first permission list uids</li>
+ * <li><b>inlist2name </b>the second permission list name</li>
+ * <li><b>inlist2uid </b>the second permission list uids</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionuid</b>, the selected permission</li>
+ * <li><b>outpermissioncode</b>, the selected permission code</li>
+ * <li><b>outpermissionname</b>, the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentPermissionContentwSoDColors = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inlist1name = Variable { type:String initial:$fragmentPermissionContentNLS.firstlist}
+	inlist2name = Variable { type:String initial:$fragmentPermissionContentNLS.secondlist}
+	inlist1uid = Variable { multivalued:True type:String }
+	inlist2uid = Variable { multivalued:True type:String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outpermissionuid = Variable
+	outpermissioncode = Variable
+	outpermissionname = Variable
+
+
+	subpermissions = HierarchicalData {
+		view:bwf_subpermissionswbuckets with inuid to uid, inlist1uid to list1uid, inlist2uid to list2uid
+		connect:parent uid to child parentuid
+		initial:parentuid = inuid
+		max-level: 5
+		disabled:Not BooleanPredicate(inenabled)
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid)
+			]
+			when False then [
+			]
+		}
+	)	
+
+	ConditionalGroup {
+		IntCondition(Count subpermissions) {
+			when =0 then [
+				Header {
+					value:$fragmentPermissionContentNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Grid {
+					columns: GridColumn { width: grow}, GridColumn
+					layout: Layout { grab: horizontal True vertical True}
+					GridRow {
+						GridCell {
+							Tree {
+								data:subpermissions
+								layout:Layout {grab:horizontal True vertical True}
+								show-filter:True 
+								configurable:True
+								expand-level:2
+								Column {
+									column:code
+									width:100%
+									header:$permission.code
+									filterable:True
+									selection:outpermissioncode
+									actions:ExecuteNamedAction goDetails
+									actions-disabled:Not BooleanPredicate(incanshowdetails)
+									styling:StylingTemplateSelection (Current isinlist) using fragmentPermissionContentwSoDColorsStyle
+								}
+								Column {
+									column:displayname
+									width:100%
+									header:$permission.displayname
+									filterable:True
+									selection:outpermissionname
+									actions:ExecuteNamedAction goDetails
+									actions-disabled:Not BooleanPredicate(incanshowdetails)
+									styling:StylingTemplateSelection (Current isinlist) using fragmentPermissionContentwSoDColorsStyle
+								}
+								Column {
+									column:permissiontype
+									width:100%
+									initially-masked:True
+									header:$permission.permissiontype
+									filterable:True
+									styling:StylingTemplateSelection (Current isinlist) using fragmentPermissionContentwSoDColorsStyle
+								}
+								Column {
+									column:description
+									width:100%
+									initially-masked:True
+									header:$fragmentPermissionContentNLS.description
+									styling:StylingTemplateSelection (Current isinlist) using fragmentPermissionContentwSoDColorsStyle
+								}
+								Column {
+									column:uid
+									hidden:True
+									selection:outpermissionuid
+									styling:StylingTemplateSelection (Current isinlist) using fragmentPermissionContentwSoDColorsStyle
+								}
+							}
+						}
+						GridCell {
+							Text { value: "" compact: True}
+							Text {
+								label: inlist1name
+								value: "       "
+								styling:fragmentPermissionContentwSoDColors1
+							}
+							Text {
+								label: inlist2name
+								value: "       "
+								styling:fragmentPermissionContentwSoDColors2
+							}
+						}
+					} 
+				}
+			]
+		}
+	}
+}
+

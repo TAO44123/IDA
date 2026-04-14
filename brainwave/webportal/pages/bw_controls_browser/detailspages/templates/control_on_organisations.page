@@ -1,0 +1,258 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/fragments/organisations/organisation_details_table.page"
+import "/webportal/pages/bw_controls_browser/fragments/root_causes/root_cause_details_table.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_controls_browser/resources/picker.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_controls_browser/fragments/organisations/organization_exceptions.page"
+import "/webportal/pages/bw_controls_browser/details_panel.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Template of detailed page for control on organisations
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlType</b> (in) the designed control type</li>
+ * <li><b>controlCode</b> (in) the designed control code</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_control_on_organisations = PageFragment {
+	
+	/* Variables here */
+	filter = Variable { type: String }
+	controlCode = Variable { type: String }
+	controlType = Variable { type: String }
+	selectedOrganisationUid = Variable { type: String }
+	selectedOrganisationUids = Variable { type: String }
+	selectedExceptionOrganisationUid = Variable { type: String }
+	selectedExceptionOrganisationUids = Variable { type: String multivalued: True }
+	hasRootCause = Variable { type: Boolean initial: False }
+	nbExceptions = Variable { type: Integer }
+	includedOrganisationUid = Variable { type: String multivalued: True }
+	includedRootcauseUid = Variable { type: String multivalued: True }
+	includedOrganisationDisplayname = Variable { type: String multivalued: True }
+	includedRootcauseDisplayname = Variable { type: String multivalued: True }
+	updateRequired = Variable { type: Boolean }
+	useExceptions = Variable { type: Boolean }
+	// KPI information
+	selectedDiscrepancies = Variable { type: Integer }
+	selectedException = Variable { type: Integer }
+	selectedDiscrepanciesTrend = Variable { type: Integer }
+	selectedExceptionTrend = Variable { type: Integer }
+	// Active tabs
+	activeOrganizationsTab = Variable { type: Boolean initial: False }
+	activeImpactsTab = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	control_root_cause = Dataset {
+		view: bw_control_browser_all_root_cause with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	resetPickerValue = NamedAction (
+		Unset includedOrganisationUid,
+		Unset includedRootcauseUid,
+		Unset includedOrganisationDisplayname,
+		Unset includedRootcauseDisplayname
+	)
+	
+	reload = NamedAction (
+		ExecuteFragmentNamedAction exceptions.reload,
+		ExecuteFragmentNamedAction discrepancies.reload
+	)
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text: $detailpanel.control
+			IncludeFragment {
+				fragment: bw_control_browser_details_tab with
+					value-of controlCode to selectedControlCode,
+					value-of selectedDiscrepancies to selectedDiscrepancies,
+					value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					value-of selectedException to selectedException,
+					value-of selectedExceptionTrend to selectedExceptionTrend,
+					hasRootCause binds-to hasRootCause
+			}
+		}
+		TabItem {
+			text: $bw_control_browser.organizations
+			activation-event:
+				BooleanCase ( activeOrganizationsTab ) {
+					when False then [
+						Set True to activeOrganizationsTab
+					] when True then [
+						// Nothing to do	
+					]
+				}
+			discrepancies = IncludeFragment {
+				fragment: bw_control_browser_organisation_details_table with 
+					value-of controlCode to controlCode,
+					value-of useExceptions to useExceptions,
+					selectedOrganisationUid binds-to selectedOrganisationUid,
+					selectedOrganisationUids binds-to selectedOrganisationUids,
+					value-of controlType to controlType,
+					updateRequired binds-to updateRequired,
+					value-of activeOrganizationsTab to isActive
+			}
+		}
+		TabItem {
+			text: $detailspages.exception
+			badge: nbExceptions
+			feature: bw_control_browser_exceptions
+			hidden:
+				IntPredicate (nbExceptions) {
+					when =0 then True
+				}
+			ButtonGroup {
+				layout: Layout { align: horizontal End vertical End }
+				Button {
+					actions:
+						StringCase ( selectedExceptionOrganisationUids ) {
+							when IsEmpty then [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionOrganisationUid to targetuid,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							] otherwise [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionOrganisationUids to targetuids,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							]
+						},
+						Set True to updateRequired,
+						ExecuteNamedAction reload,
+						Unset selectedExceptionOrganisationUids
+					presentation: Button
+					text: $detailspages.removeexception
+					image: %collection_16.remove_user
+					disabled:
+						AndPredicate {
+							StringPredicate ( selectedExceptionOrganisationUid ) {
+								when IsEmpty then True
+							}
+							StringPredicate ( selectedExceptionOrganisationUids ) {
+								when IsEmpty then True
+							}
+						}
+				}
+			}
+			exceptions = IncludeFragment {
+				fragment: bw_control_browser_organization_exceptions with
+					value-of controlCode to controlCode,
+					nbExceptions binds-to nbExceptions,
+					selectedExceptionOrganisationUid binds-to selectedOrganisationUid,
+					selectedExceptionOrganisationUids binds-to selectedOrganisationUids
+			}
+		}
+		TabItem {
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			text: $rootcause.concept
+			IncludeFragment {
+				fragment: bw_control_browser_root_cause with
+					value-of controlCode to controlCode
+			}
+		}
+		TabItem {
+			text: $detailspages.analytics 
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			activation-event:
+				Set True to activeImpactsTab
+			Grid {
+				columns: GridColumn { width: grow 1 }, GridColumn {}, GridColumn {}
+				layout: Layout { grab: horizontal True vertical False }
+				GridRow {
+				 	GridCell {
+						Text {
+							label: $detailspages.filteron.organisations
+							value: Eval "includedOrganisationDisplayname.toString().slice(1, -1)"
+							tooltip: Eval "includedOrganisationDisplayname.toString().slice(1, -1)"
+							compact: True
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Dialog bw_control_browser_organisation_picker (
+									controlCode to controlCode,
+									includedOrganisationUid to outUid, 
+									includedOrganisationUid from outUid,
+									includedOrganisationDisplayname from outDisplayname
+								)
+							image: %collection_16.plus
+							presentation: Link 
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Unset includedOrganisationUid,
+								Unset includedOrganisationDisplayname
+							image: %collection_16.delete
+							presentation: Link
+							disabled:
+								StringPredicate ( includedOrganisationUid ) {
+									when IsEmpty then True
+								}
+						}
+					}
+				}
+				GridRow {
+					GridCell {
+						Text {
+							label: $detailspages.filteron.rootcause
+							value: Eval "includedRootcauseDisplayname.toString().slice(1, -1)"
+							tooltip: Eval "includedRootcauseDisplayname.toString().slice(1, -1)"
+							compact: True
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Dialog bw_control_browser_rootcause_picker (
+									controlCode to controlCode,
+									includedRootcauseUid to outUid,
+									includedRootcauseUid from outUid,
+									includedRootcauseDisplayname from outDisplayname
+								)
+							image: %collection_16.plus
+							presentation: Link 
+						}
+					}
+					GridCell {
+						Button {
+							image: %collection_16.delete
+							actions:
+								Unset includedRootcauseUid,
+								Unset includedRootcauseDisplayname
+							presentation: Link
+							disabled:
+								StringPredicate ( includedRootcauseUid ) {
+									when IsEmpty then True
+								} 					
+						}
+					}
+				}
+			}
+			IncludeFragment {
+				fragment: bw_control_browser_organisation_details_table_with_root_cause with 
+					value-of controlCode to controlCode,
+					includedOrganisationUid binds-to includedOrganisationUid, 
+					includedRootcauseUid binds-to includedRootcauseUid,
+					value-of activeImpactsTab to isActive
+			}
+		}
+	}
+}

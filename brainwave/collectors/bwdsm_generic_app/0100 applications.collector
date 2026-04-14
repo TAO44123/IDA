@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0100 applications" scriptfile="collectors/bwdsm_generic_app/0100 applications.javascript" description="applications declared in metadata" name="P1621088080749_lvVawJqjBA1RPEwvvmHQ_J5G6fgR29CvV1cfhEL1ZA_1" startingpoint="C1621088225162">
+		<Component name="C1621088225162" type="viewsource" x="108" y="-34" w="300" h="64" title="get datasource app defs">
+			<View viewname="bwdsm_listdsdefwoptions">
+				<ViewParam name="collector" paramvalue="bwdsm_generic_app"/>
+			</View>
+		</Component>
+		<Component name="C1621088260816" type="repository" x="108" y="156" w="300" h="64" title="repository">
+			<Media type="A" code="code" label="name"/>
+		</Component>
+		<Component name="C1621089060803" type="application" x="108" y="361" w="300" h="64" title="application">
+			<Application key="code" type="Profile">
+				<Attribute name="displayname" attribute="name"/>
+			</Application>
+			<Media code="code"/>
+		</Component>
+		<Link name="L1621089186501" source="C1621088225162" target="C1621092912696" priority="1"/>
+		<Link name="L1621089187102" source="C1621088260816" target="C1621185051642" priority="1"/>
+		<Component name="C1621092193854" type="callfilter" x="108" y="581" w="300" h="64" title="0200 application_accounts">
+			<Line provisioningfile="/collectors/bwdsm_generic_app/0200 application_accounts.collector">
+				<Configuration name="A1621092229568" variable="repositorycode" content="{dataset.code}"/>
+				<Configuration name="A1662400841768" variable="file" content="{dataset.filepath}"/>
+			</Line>
+		</Component>
+		<Component name="C1621092233714" type="callfilter" x="108" y="682" w="300" h="64" title="0300 application permrights">
+			<Line provisioningfile="/collectors/bwdsm_generic_app/0300 application_permrights.collector">
+				<Configuration name="A1621092277048" variable="file" content="{dataset.filepath}"/>
+				<Configuration name="A1621092310334" variable="repositorycode" content="{dataset.code}"/>
+				<Configuration name="A1621092319614" variable="applicationcode" content="{dataset.code}"/>
+			</Line>
+		</Component>
+		<Link name="L1621092330556" source="C1621089060803" target="C1621185150426" priority="1"/>
+		<Link name="L1621092331231" source="C1621092193854" target="C1621092233714" priority="1"/>
+		<Component name="N1621092340855" type="note" x="441" y="-5" w="300" h="113" title="Since we set the metadata for the app, that are configured in the datasource, we cannot simply iterate over files in import files, we need to iterate over app datasources (to get the metadata), then over files found in the import files for this app ( should be only one) "/>
+		<Component name="C1621092912696" type="changefilter" x="108" y="61" w="300" h="64" title="set vars from options and destvarpath">
+			<Actions function="computeFilePath">
+				<Action name="U1662388284267" action="add" attribute="code" type="String" multivalued="false" newvalue="{dataset.get(&quot;opt_code&quot;).get()}" errorexist="false"/>
+				<Action name="U1662388325811" action="add" attribute="name" type="String" multivalued="false" newvalue="{dataset.get(&quot;opt_label&quot;).get()}" errorexist="false"/>
+				<Action name="U1662388524105" action="add" attribute="category" type="String" multivalued="false" newvalue="{dataset.get(&quot;opt_category&quot;).get()}" errorexist="false"/>
+				<Action name="U1662388542773" action="add" attribute="sensitivitylevel" type="String" multivalued="false" newvalue="{dataset.get(&quot;opt_sensitivitylevel&quot;).get()}" errorexist="false"/>
+				<Action name="U1662388667434" action="add" attribute="sensitivityreason" type="String" multivalued="false" newvalue="{dataset.get(&quot;opt_sensitivityreason&quot;).get()}" errorexist="false"/>
+				<Action name="U1662400206645" action="add" attribute="filepath" type="String" multivalued="false" errorexist="false"/>
+				<Action name="U1662541712162" action="siloname" newvalue="{dataset.code.get()}"/>
+			</Actions>
+			<Attributes>
+			</Attributes>
+		</Component>
+		<Link name="L1621092952376" source="C1621092912696" target="C1621088260816" priority="1"/>
+		<Component name="C1621185051642" type="metadata" x="108" y="261" w="300" h="64" title="repository metadata">
+			<Metadata schema="bwa_repositorymetadata" key=" " repository="code">
+				<Attribute name="value3string" attribute="category"/>
+				<Attribute name="value4string" attribute="description"/>
+				<Attribute name="value5string" attribute="sensitivityreason"/>
+				<Attribute name="value1integer" attribute="sensitivitylevel"/>
+			</Metadata>
+		</Component>
+		<Component name="C1621185150426" type="metadata" x="108" y="464" w="300" h="64" title="application metadata">
+			<Metadata schema="bwa_applicationmetadata" key=" " application="code">
+				<Attribute name="value3string" attribute="category"/>
+				<Attribute name="value4string" attribute="description"/>
+				<Attribute name="value5string" attribute="sensitivityreason"/>
+				<Attribute name="value1integer" attribute="sensitivitylevel"/>
+			</Metadata>
+		</Component>
+		<Link name="L1621185224041" source="C1621185051642" target="C1621089060803" priority="1"/>
+		<Link name="L1621185231361" source="C1621185150426" target="C1621092193854" priority="1" expression="(! dataset.isEmpty(&apos;filepath&apos;))" labelcustom="true" label="We found a file"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

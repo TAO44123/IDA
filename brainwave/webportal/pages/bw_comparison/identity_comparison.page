@@ -1,0 +1,2383 @@
+/* Import other pages here */
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pickers.page"
+
+/* Nationalized labels here */
+bwc_identity_comparisonNLS = NLS {
+	title [en "Identity comparison" fr "Comparaison de personnes"]
+	dyntitle [en "comparing {0} with {1}" fr "comparaison de {0} avec {1}"]
+
+	refapps [en "only for {0}" fr "seulement pour {0}"]
+	joinapps [en "in common" fr "en commun"]
+	otherapps [en "only for {0}" fr "seulement pour {0}"]
+
+	refperms [en "only for {0}" fr "seulement pour {0}"]
+	joinperms [en "in common" fr "en commun"]
+	otherperms [en "only for {0}" fr "seulement pour {0}"]
+
+	refreps [en "only for {0}" fr "seulement pour {0}"]
+	joinreps [en "in common" fr "en commun"]
+	otherreps [en "only for {0}" fr "seulement pour {0}"]
+
+	refgroup [en "only for {0}" fr "seulement pour {0}"]
+	joingroup [en "in common" fr "en commun"]
+	othergroup [en "only for {0}" fr "seulement pour {0}"]
+
+	refshare [en "only for {0}" fr "seulement pour {0}"]
+	joinshare [en "in common" fr "en commun"]
+	othershare [en "only for {0}" fr "seulement pour {0}"]
+
+	reffolder [en "only for {0}" fr "seulement pour {0}"]
+	joinfolder [en "in common" fr "en commun"]
+	otherfolder [en "only for {0}" fr "seulement pour {0}"]
+	
+	identityorg [en "{0} in {1}" fr "{0} dans {1}"]
+	
+	rights [en "Rights" fr "Droits"] 
+	folder [en "Folder" fr "Répertoire"]
+	share [en "Share" fr "Partage"]
+	
+	applicationlevel [en "Application level" fr "Applications"]
+	permissionlevel [en "Permission level" fr "Permissions"]
+	accountlevel [en "Account level" fr "Comptes"]
+	grouplevel [en "Group level" fr "groupes"]
+	sharelevel [en "Share level" fr "Partages"]
+	folderlevel [en "Folder level" fr "Répertoires"]
+	
+	internal [en "internal" fr "interne"]
+	contractor [en "contractor" fr "prestataire"]
+	
+	refidentity [en "reference identity" fr "personne de référence"]
+	identitiestocomparewith [en "identities to compare with" fr "personnes à comparer"]
+	
+	selectedrepository [en "selected repository" fr "référentiel sélectionné"]
+	selectedshare [en "selected share" fr "partage sélectionné"]
+}
+
+BWC_SELECTEDTAB_APPLICATION 	= Constant { type:Integer value:0}
+BWC_SELECTEDTAB_PERMISSION 		= Constant { type:Integer value:1}
+BWC_SELECTEDTAB_ACCOUNT 		= Constant { type:Integer value:2}
+BWC_SELECTEDTAB_GROUP 			= Constant { type:Integer value:3}
+BWC_SELECTEDTAB_SHARE 			= Constant { type:Integer value:4}
+BWC_SELECTEDTAB_FOLDER 			= Constant { type:Integer value:5}
+
+bwc_identity_status = BooleanMapping {
+	when True then $bwc_identity_comparisonNLS.internal
+	when False then $bwc_identity_comparisonNLS.contractor
+}
+
+bwc_identity_comparison_search = Page {
+	title: $bwc_identity_comparisonNLS.title
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	tags:"identity", "byuids"
+	feature:bwc_identitycomparisonsearchanalytics
+	conditional-redirect:ConditionalRedirect{condition:True target:Page bwc_identity_comparison with uids to uids }
+	
+	uids = Parameter {
+		multivalued:True
+		mandatory:True
+	}
+	
+}
+
+bwc_identity_comparison = Page {
+	title: $bwc_identity_comparisonNLS.title
+//	tags: "identity" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: bwc_identitycomparisonpage
+	conditional-redirect:ConditionalRedirect{ condition: BooleanPredicate(True) target:Page bwc_inner_identity_comparison with-current-parameters }
+
+	/* Parameters here */
+	uid = Parameter {
+		label:$bwc_identity_comparisonNLS.refidentity
+		multivalued:False
+		type:String
+		constraint:Picker {picker:identityPicker returning outUid display:Display { value: Current fullname data: identities match uid  } }
+		mandatory:True
+	}
+	
+	uids = Parameter {
+		label:$bwc_identity_comparisonNLS.identitiestocomparewith
+		multivalued:True
+		type:String
+		constraint:Picker {picker:identityPicker returning outUid display:Display { value: Current fullname data: identities match uid  } }
+		mandatory:True
+	}
+
+	/* Datasets and records here */
+	identities = Dataset {
+		view:br_identity
+	}
+}
+
+bwc_inner_identity_comparison = Page {
+	title: $bwc_identity_comparisonNLS.title
+	dynamic-title: $bwc_identity_comparisonNLS.dyntitle(refidentity.fullname, otheridentity.fullname)
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	enter-event:Set [] to identityperimeter, MultivaluedAdd uid to identityperimeter, MultivaluedAdd otheruid to identityperimeter
+	
+	mixins: simpleReport
+	
+	dock-left: Dock {
+		collapsed:True
+		collapsible:True
+		width:300
+		
+		ParametersEdition {
+			parameters:uids inline
+		}
+	}
+	
+	/* Parameters here */
+	uid = Parameter {
+		label:$bwc_identity_comparisonNLS.refidentity
+		multivalued:False
+		type:String
+		constraint:Picker {picker:identityPicker returning outUid display:Display { value: Current fullname data: identities match uid  } }
+		mandatory:True
+	}
+	
+	uids = Parameter {
+		label:$bwc_identity_comparisonNLS.identitiestocomparewith
+		multivalued:True
+		type:String
+		constraint:Picker {picker:identityPicker returning outUid display:Display { value: Current fullname data: identities match uid  } }
+		mandatory:True
+	}
+	
+	/* Variables here */
+	selectedRepository = Variable
+	selectedShare = Variable
+	identityperimeter = Variable {multivalued:True}
+	otheruid = Variable
+	
+	// 0: application
+	// 1: permission
+	// 2: account
+	// 3: group
+	// 4: share
+	// 5: folder
+	selectedTab = Variable {initial:Constant BWC_SELECTEDTAB_APPLICATION type:Integer}
+	
+	/* Datasets and records here */
+	identities = Dataset {
+		view:br_identity
+	}
+	
+	refidentity = Record {
+		view:br_identityDetail with uid to uid
+	}
+	refidentityorgs = Dataset {
+		view:bwc_identityorgs with uid to uid
+	}
+
+	otheridentity = Record {
+		view:br_identityDetail with otheruid to uid
+	}
+	otheridentityorgs = Dataset {
+		view:bwc_identityorgs with otheruid to uid
+	}
+
+	selectedIdentities = Dataset {
+		view:bwc_identities with uids to uids
+	}
+
+	// ---------------------------------------
+	// application
+	appref = Dataset {
+		view:bwc_identity_applications with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_APPLICATION then True }
+	}
+	
+	appother = Dataset {
+		view:bwc_identity_applications with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_APPLICATION then True }
+	}
+	
+	joinapps = Dataset {
+		join:Join {
+			primary-dataset:appref
+			secondary-dataset:appother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refapps = Dataset {
+		join:Join {
+			primary-dataset:appref
+			secondary-dataset:appother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherapps = Dataset {
+		join:Join {
+			primary-dataset:appother
+			secondary-dataset:appref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+
+	// ---------------------------------------
+	// permission
+
+	permref = Dataset {
+		view:bwc_identity_permissions with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_PERMISSION then True }
+	}
+	
+	permother = Dataset {
+		view:bwc_identity_permissions with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_PERMISSION then True }
+	}
+	
+	joinperms = Dataset {
+		join:Join {
+			primary-dataset:permref
+			secondary-dataset:permother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refperms = Dataset {
+		join:Join {
+			primary-dataset:permref
+			secondary-dataset:permother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherperms = Dataset {
+		join:Join {
+			primary-dataset:permother
+			secondary-dataset:permref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ---------------------------------------
+	// ACCOUNT
+
+	repref = Dataset {
+		view:bwc_identity_repositories with uid to uid
+		disabled:IntPredicate(selectedTab) { when !=  Constant BWC_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	repother = Dataset {
+		view:bwc_identity_repositories with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	joinrep = Dataset {
+		join:Join {
+			primary-dataset:repref
+			secondary-dataset:repother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refrep = Dataset {
+		join:Join {
+			primary-dataset:repref
+			secondary-dataset:repother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherrep = Dataset {
+		join:Join {
+			primary-dataset:repother
+			secondary-dataset:repref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+
+	// ---------------------------------------
+	// group
+
+	groups = Dataset {
+		view:bwc_repositorieswithgroups with identityperimeter to uids
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_GROUP then True }
+	}
+
+	groupref = Dataset {
+		view:bwc_identity_groups with uid to uid, selectedRepository to repositoryuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_GROUP then True }
+	}
+	
+	groupother = Dataset {
+		view:bwc_identity_groups with otheruid to uid, selectedRepository to repositoryuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_GROUP then True }
+	}
+	
+	joingroup = Dataset {
+		join:Join {
+			primary-dataset:groupref
+			secondary-dataset:groupother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refgroup = Dataset {
+		join:Join {
+			primary-dataset:groupref
+			secondary-dataset:groupother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	othergroup = Dataset {
+		join:Join {
+			primary-dataset:groupother
+			secondary-dataset:groupref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ---------------------------------------
+	// share
+
+	shareref = Dataset {
+		view:bwc_identity_shares with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_SHARE then True }
+	}
+	
+	shareother = Dataset {
+		view:bwc_identity_shares with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_SHARE then True }
+	}
+	
+	joinshares = Dataset {
+		join:Join {
+			primary-dataset:shareref
+			secondary-dataset:shareother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refshares = Dataset {
+		join:Join {
+			primary-dataset:shareref
+			secondary-dataset:shareother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	othershares = Dataset {
+		join:Join {
+			primary-dataset:shareother
+			secondary-dataset:shareref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ---------------------------------------
+	// shared folder
+
+	sharesincommon = Dataset {
+		view:bwc_joinshares with identityperimeter to uids
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_FOLDER then True }
+	}
+
+	folderref = Dataset {
+		view:bwc_identity_sharedfolders with uid to uid, selectedShare to shareuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_FOLDER then True }
+	}
+	
+	folderother = Dataset {
+		view:bwc_identity_sharedfolders with otheruid to uid, selectedShare to shareuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_FOLDER then True }
+	}
+	
+	joinfolders = Dataset {
+		join:Join {
+			primary-dataset:folderref
+			secondary-dataset:folderother
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	reffolders = Dataset {
+		join:Join {
+			primary-dataset:folderref
+			secondary-dataset:folderother
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherfolders = Dataset {
+		join:Join {
+			primary-dataset:folderother
+			secondary-dataset:folderref
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// Page content
+	
+	SetNavigator {
+		data:selectedIdentities
+		column:uid
+		selection:otheruid
+		label:Current fullname
+		label-width:320
+		show-count:True
+		selection-changed-event:Set [] to identityperimeter, MultivaluedAdd uid to identityperimeter, MultivaluedAdd otheruid to identityperimeter
+		show-first:True
+		show-last:True
+		dropdown:Dropdown {
+			height:300
+			text:Current fullname
+		}
+		hidden:IntPredicate(Count selectedIdentities) { when <=1 then True }
+	}
+	
+	Grid {
+		columns:GridColumn{width:64 align:leading},GridColumn{width:grow group:a  align:leading},GridColumn{width:64},GridColumn{width:grow group:a}
+		layout:Layout {grab:horizontal True vertical False hint:height 120}
+		
+		GridRow {
+			GridCell {
+				Image {
+					image:"/various/photo.jpg"				
+				}
+			}
+			GridCell {
+				align:leading
+				Link {
+					value:refidentity.fullname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center hint:width 320}
+					target:Activity Identity Detail with uid to paramIdentityUid
+				}
+				Text {
+					value:refidentity.mail
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:Transform refidentity.internal using bwc_identity_status
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					iterate-on:refidentityorgs
+					value:$bwc_identity_comparisonNLS.identityorg(Current jobtitledisplayname, Current displayname)
+					compact:True
+					styling:detailsText
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+					align:Left
+				}
+			}
+			GridCell {
+				Image {
+					image:"/various/photo.jpg"				
+				}
+			}
+			GridCell {
+				Link {
+					value:otheridentity.fullname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center hint:width 320}
+					target:Activity Identity Detail with otheruid to paramIdentityUid
+				}
+				Text {
+					value:otheridentity.mail
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:Transform otheridentity.internal using bwc_identity_status
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					iterate-on:otheridentityorgs
+					value:$bwc_identity_comparisonNLS.identityorg(Current jobtitledisplayname, Current displayname)
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+			}
+		}
+	}
+
+	TabFolder {
+		TabItem {
+			text:$bwc_identity_comparisonNLS.applicationlevel
+			icon:"/16/audit/application_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_APPLICATION to selectedTab
+
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refapps(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refapps(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refapps
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinapps
+							compact:True
+						}
+						Table {
+							data:joinapps
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherapps(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherapps(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherapps
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.permissionlevel
+			icon:"/16/audit/permission_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_PERMISSION to selectedTab
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refperms(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refperms(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refperms
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								header:$permission.code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$permission.concept
+								width:100%
+							}
+							Column {
+								sortable:True
+								column:description
+								filterable:True
+								width:100%
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:applicationdisplayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinperms
+							compact:True
+						}
+						Table {
+							data:joinperms
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								header:$permission.code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$permission.concept
+								width:100%
+							}
+							Column {
+								sortable:True
+								column:description
+								filterable:True
+								width:100%
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:applicationdisplayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherperms(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherperms(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherperms
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								header:$permission.code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$permission.concept
+								width:100%
+							}
+							Column {
+								sortable:True
+								column:description
+								filterable:True
+								width:100%
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:applicationdisplayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.accountlevel
+			icon:"/16/audit/account_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_ACCOUNT to selectedTab
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refreps(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refreps(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refrep
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$repository.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinreps
+							compact:True
+						}
+						Table {
+							data:joinrep
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$repository.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherreps(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherreps(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherrep
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$repository.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.grouplevel
+			icon:"/16/audit/group_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_GROUP to selectedTab
+		
+			Combo {
+				options:Dynamic {
+					data:groups
+					text:Current displayname
+					value:Current uid
+				}
+				variable:selectedRepository
+				label:$bwc_identity_comparisonNLS.selectedrepository
+				layout:Layout {grab:horizontal False vertical False hint: width 300}
+			}
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refgroup(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refgroup(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refgroup
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$group.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joingroup
+							compact:True
+						}
+						Table {
+							data:joingroup
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$group.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.othergroup(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.othergroup(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:othergroup
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$group.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.sharelevel
+			icon:"/16/audit/application_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_SHARE to selectedTab
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refshare(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refshare(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refshares
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinshare
+							compact:True
+						}
+						Table {
+							data:joinshares
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.othershare(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.othershare(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:othershares
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.folderlevel
+			icon:"/16/audit/folder_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_FOLDER to selectedTab
+		
+			Combo {
+				options:Dynamic {
+					data:sharesincommon
+					text:Current displayname
+					value:Current uid
+				}
+				variable:selectedShare
+				label:$bwc_identity_comparisonNLS.selectedshare
+				layout:Layout {grab:horizontal False vertical False hint: width 300}
+			}
+
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.reffolder(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.reffolder(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:reffolders
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:basic
+								header:$bwc_identity_comparisonNLS.rights
+								width:25%
+								sortable:True
+							}
+							Column {
+								column:code
+								filterable:True
+								header:$bwc_identity_comparisonNLS.folder
+								width:100%
+								sortable:True
+							}
+							Column {
+								column:applicationdisplayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:25%
+								sortable:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinfolder
+							compact:True
+						}
+						Table {
+							data:joinfolders
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:basic
+								header:$bwc_identity_comparisonNLS.rights
+								width:25%
+								sortable:True
+							}
+							Column {
+								column:code
+								filterable:True
+								header:$bwc_identity_comparisonNLS.folder
+								width:100%
+								sortable:True
+							}
+							Column {
+								column:applicationdisplayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:25%
+								sortable:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherfolder(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherfolder(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherfolders
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:basic
+								header:$bwc_identity_comparisonNLS.rights
+								width:25%
+								sortable:True
+							}
+							Column {
+								column:code
+								filterable:True
+								header:$bwc_identity_comparisonNLS.folder
+								width:100%
+								sortable:True
+							}
+							Column {
+								column:applicationdisplayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:25%
+								sortable:True
+							}
+						}
+					}				
+				}
+			}
+		}
+	}
+}
+
+bwc_readonly_identity_comparison = Page {
+	title: $bwc_identity_comparisonNLS.title
+	dynamic-title: $bwc_identity_comparisonNLS.dyntitle(refidentity.fullname, otheridentity.fullname)
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	enter-event:Set [] to identityperimeter, MultivaluedAdd uid to identityperimeter, MultivaluedAdd otheruid to identityperimeter
+	
+	mixins: simpleReport
+	
+	/* Parameters here */
+	uid = Parameter {
+		label:$bwc_identity_comparisonNLS.refidentity
+		multivalued:False
+		type:String
+		hidden:True
+		mandatory:True
+	}
+	
+	uids = Parameter {
+		label:$bwc_identity_comparisonNLS.identitiestocomparewith
+		multivalued:True
+		type:String
+		hidden:True
+		mandatory:True
+	}
+	
+	/* Variables here */
+	selectedRepository = Variable
+	selectedShare = Variable
+	identityperimeter = Variable {multivalued:True}
+	otheruid = Variable
+	
+	// 0: application
+	// 1: permission
+	// 2: account
+	// 3: group
+	// 4: share
+	// 5: folder
+	selectedTab = Variable {initial:Constant BWC_SELECTEDTAB_APPLICATION type:Integer}
+	
+	/* Datasets and records here */
+	identities = Dataset {
+		view:br_identity
+	}
+	
+	refidentity = Record {
+		view:br_identityDetail with uid to uid
+	}
+	refidentityorgs = Dataset {
+		view:bwc_identityorgs with uid to uid
+	}
+
+	otheridentity = Record {
+		view:br_identityDetail with otheruid to uid
+	}
+	otheridentityorgs = Dataset {
+		view:bwc_identityorgs with otheruid to uid
+	}
+
+	selectedIdentities = Dataset {
+		view:bwc_identities with uids to uids
+	}
+
+	// ---------------------------------------
+	// application
+	appref = Dataset {
+		view:bwc_identity_applications with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_APPLICATION then True }
+	}
+	
+	appother = Dataset {
+		view:bwc_identity_applications with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_APPLICATION then True }
+	}
+	
+	joinapps = Dataset {
+		join:Join {
+			primary-dataset:appref
+			secondary-dataset:appother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refapps = Dataset {
+		join:Join {
+			primary-dataset:appref
+			secondary-dataset:appother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherapps = Dataset {
+		join:Join {
+			primary-dataset:appother
+			secondary-dataset:appref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+
+	// ---------------------------------------
+	// permission
+
+	permref = Dataset {
+		view:bwc_identity_permissions with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_PERMISSION then True }
+	}
+	
+	permother = Dataset {
+		view:bwc_identity_permissions with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_PERMISSION then True }
+	}
+	
+	joinperms = Dataset {
+		join:Join {
+			primary-dataset:permref
+			secondary-dataset:permother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refperms = Dataset {
+		join:Join {
+			primary-dataset:permref
+			secondary-dataset:permother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherperms = Dataset {
+		join:Join {
+			primary-dataset:permother
+			secondary-dataset:permref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ---------------------------------------
+	// ACCOUNT
+
+	repref = Dataset {
+		view:bwc_identity_repositories with uid to uid
+		disabled:IntPredicate(selectedTab) { when !=  Constant BWC_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	repother = Dataset {
+		view:bwc_identity_repositories with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	joinrep = Dataset {
+		join:Join {
+			primary-dataset:repref
+			secondary-dataset:repother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refrep = Dataset {
+		join:Join {
+			primary-dataset:repref
+			secondary-dataset:repother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherrep = Dataset {
+		join:Join {
+			primary-dataset:repother
+			secondary-dataset:repref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+
+	// ---------------------------------------
+	// group
+
+	groups = Dataset {
+		view:bwc_repositorieswithgroups with identityperimeter to uids
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_GROUP then True }
+	}
+
+	groupref = Dataset {
+		view:bwc_identity_groups with uid to uid, selectedRepository to repositoryuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_GROUP then True }
+	}
+	
+	groupother = Dataset {
+		view:bwc_identity_groups with otheruid to uid, selectedRepository to repositoryuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_GROUP then True }
+	}
+	
+	joingroup = Dataset {
+		join:Join {
+			primary-dataset:groupref
+			secondary-dataset:groupother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refgroup = Dataset {
+		join:Join {
+			primary-dataset:groupref
+			secondary-dataset:groupother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	othergroup = Dataset {
+		join:Join {
+			primary-dataset:groupother
+			secondary-dataset:groupref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ---------------------------------------
+	// share
+
+	shareref = Dataset {
+		view:bwc_identity_shares with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_SHARE then True }
+	}
+	
+	shareother = Dataset {
+		view:bwc_identity_shares with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_SHARE then True }
+	}
+	
+	joinshares = Dataset {
+		join:Join {
+			primary-dataset:shareref
+			secondary-dataset:shareother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refshares = Dataset {
+		join:Join {
+			primary-dataset:shareref
+			secondary-dataset:shareother
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	othershares = Dataset {
+		join:Join {
+			primary-dataset:shareother
+			secondary-dataset:shareref
+			primary-column:uid
+			secondary-column:uid
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ---------------------------------------
+	// shared folder
+
+	sharesincommon = Dataset {
+		view:bwc_joinshares with identityperimeter to uids
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_FOLDER then True }
+	}
+
+	folderref = Dataset {
+		view:bwc_identity_sharedfolders with uid to uid, selectedShare to shareuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_FOLDER then True }
+	}
+	
+	folderother = Dataset {
+		view:bwc_identity_sharedfolders with otheruid to uid, selectedShare to shareuid
+		disabled:IntPredicate(selectedTab) { when != Constant BWC_SELECTEDTAB_FOLDER then True }
+	}
+	
+	joinfolders = Dataset {
+		join:Join {
+			primary-dataset:folderref
+			secondary-dataset:folderother
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	reffolders = Dataset {
+		join:Join {
+			primary-dataset:folderref
+			secondary-dataset:folderother
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current othercode) { when IsEmpty then False otherwise True }
+	}
+
+	otherfolders = Dataset {
+		join:Join {
+			primary-dataset:folderother
+			secondary-dataset:folderref
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refcode) { when IsEmpty then False otherwise True }
+	}
+
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// Page content
+	
+	SetNavigator {
+		data:selectedIdentities
+		column:uid
+		selection:otheruid
+		label:Current fullname
+		label-width:320
+		show-count:True
+		selection-changed-event:Set [] to identityperimeter, MultivaluedAdd uid to identityperimeter, MultivaluedAdd otheruid to identityperimeter
+		show-first:True
+		show-last:True
+		dropdown:Dropdown {
+			height:300
+			text:Current fullname
+		}
+		hidden:IntPredicate(Count selectedIdentities) { when <=1 then True }
+	}
+	
+	Grid {
+		columns:GridColumn{width:64 align:leading},GridColumn{width:grow group:a  align:leading},GridColumn{width:64},GridColumn{width:grow group:a}
+		layout:Layout {grab:horizontal True vertical False hint:height 120}
+		
+		GridRow {
+			GridCell {
+				Image {
+					image:"/various/photo.jpg"				
+				}
+			}
+			GridCell {
+				align:leading
+				Text {
+					value:refidentity.fullname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center hint:width 320}
+				}
+				Text {
+					value:refidentity.mail
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:Transform refidentity.internal using bwc_identity_status
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					iterate-on:refidentityorgs
+					value:$bwc_identity_comparisonNLS.identityorg(Current jobtitledisplayname, Current displayname)
+					compact:True
+					styling:detailsText
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+					align:Left
+				}
+			}
+			GridCell {
+				Image {
+					image:"/various/photo.jpg"				
+				}
+			}
+			GridCell {
+				Text {
+					value:otheridentity.fullname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center hint:width 320}
+				}
+				Text {
+					value:otheridentity.mail
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:Transform otheridentity.internal using bwc_identity_status
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					iterate-on:otheridentityorgs
+					value:$bwc_identity_comparisonNLS.identityorg(Current jobtitledisplayname, Current displayname)
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+			}
+		}
+	}
+
+	TabFolder {
+		TabItem {
+			text:$bwc_identity_comparisonNLS.applicationlevel
+			icon:"/16/audit/application_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_APPLICATION to selectedTab
+
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refapps(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refapps(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refapps
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinapps
+							compact:True
+						}
+						Table {
+							data:joinapps
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherapps(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherapps(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherapps
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.permissionlevel
+			icon:"/16/audit/permission_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_PERMISSION to selectedTab
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refperms(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refperms(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refperms
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								header:$permission.code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$permission.concept
+								width:100%
+							}
+							Column {
+								sortable:True
+								column:description
+								filterable:True
+								width:100%
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:applicationdisplayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinperms
+							compact:True
+						}
+						Table {
+							data:joinperms
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								header:$permission.code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$permission.concept
+								width:100%
+							}
+							Column {
+								sortable:True
+								column:description
+								filterable:True
+								width:100%
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:applicationdisplayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherperms(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherperms(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherperms
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								header:$permission.code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$permission.concept
+								width:100%
+							}
+							Column {
+								sortable:True
+								column:description
+								filterable:True
+								width:100%
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:applicationdisplayname
+								filterable:True
+								header:$application.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.accountlevel
+			icon:"/16/audit/account_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_ACCOUNT to selectedTab
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refreps(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refreps(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refrep
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$repository.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinreps
+							compact:True
+						}
+						Table {
+							data:joinrep
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$repository.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherreps(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherreps(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherrep
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$repository.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.grouplevel
+			icon:"/16/audit/group_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_GROUP to selectedTab
+		
+			Combo {
+				options:Dynamic {
+					data:groups
+					text:Current displayname
+					value:Current uid
+				}
+				variable:selectedRepository
+				label:$bwc_identity_comparisonNLS.selectedrepository
+				layout:Layout {grab:horizontal False vertical False hint: width 300}
+			}
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refgroup(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refgroup(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refgroup
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$group.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joingroup
+							compact:True
+						}
+						Table {
+							data:joingroup
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$group.concept
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.othergroup(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.othergroup(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:othergroup
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$group.concept
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.sharelevel
+			icon:"/16/audit/application_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_SHARE to selectedTab
+		
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.refshare(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.refshare(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:refshares
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinshare
+							compact:True
+						}
+						Table {
+							data:joinshares
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:100%
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.othershare(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.othershare(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:othershares
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								sortable:True
+								column:code
+								initially-masked:True
+							}
+							Column {
+								sortable:True
+								column:displayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:100%
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:$bwc_identity_comparisonNLS.folderlevel
+			icon:"/16/audit/folder_16.png"
+			activation-event:Set  Constant BWC_SELECTEDTAB_FOLDER to selectedTab
+		
+			Combo {
+				options:Dynamic {
+					data:sharesincommon
+					text:Current displayname
+					value:Current uid
+				}
+				variable:selectedShare
+				label:$bwc_identity_comparisonNLS.selectedshare
+				layout:Layout {grab:horizontal False vertical False hint: width 300}
+			}
+
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.reffolder(refidentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.reffolder(refidentity.fullname)
+							compact:True
+						}
+						Table {
+							data:reffolders
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:basic
+								header:$bwc_identity_comparisonNLS.rights
+								width:25%
+								sortable:True
+							}
+							Column {
+								column:code
+								filterable:True
+								header:$bwc_identity_comparisonNLS.folder
+								width:100%
+								sortable:True
+							}
+							Column {
+								column:applicationdisplayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:25%
+								sortable:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_identity_comparisonNLS.joinfolder
+							compact:True
+						}
+						Table {
+							data:joinfolders
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:basic
+								header:$bwc_identity_comparisonNLS.rights
+								width:25%
+								sortable:True
+							}
+							Column {
+								column:code
+								filterable:True
+								header:$bwc_identity_comparisonNLS.folder
+								width:100%
+								sortable:True
+							}
+							Column {
+								column:applicationdisplayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:25%
+								sortable:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_identity_comparisonNLS.otherfolder(otheridentity.fullname) to string, 30 to maxlength)
+							tooltip:$bwc_identity_comparisonNLS.otherfolder(otheridentity.fullname)
+							compact:True
+						}
+						Table {
+							data:otherfolders
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+						
+							Column {
+								column:basic
+								header:$bwc_identity_comparisonNLS.rights
+								width:25%
+								sortable:True
+							}
+							Column {
+								column:code
+								filterable:True
+								header:$bwc_identity_comparisonNLS.folder
+								width:100%
+								sortable:True
+							}
+							Column {
+								column:applicationdisplayname
+								filterable:True
+								header:$bwc_identity_comparisonNLS.share
+								width:25%
+								sortable:True
+							}
+						}
+					}				
+				}
+			}
+		}
+	}
+}

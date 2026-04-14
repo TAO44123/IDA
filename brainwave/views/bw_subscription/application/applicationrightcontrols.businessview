@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bws_applicationrightcontrols" displayname="applicationrightcontrols">
+	<Definition scriptfile="/views/bw_subscription/application/applicationrightcontrols.javascript" name="D1639070558372">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1639070558372" title="rights">
+			<InnerView name="bws_application_rights">
+				<Param name="F1639070595837" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1639070691329" type="trendview" x="630" y="173" w="300" h="50" title="detect new rights">
+			<Trend timeslot="-1" key="{dataset.key.get()}" comparing_column="val" trend_column_name="status" include_removed="false"/>
+			<ExcludeList>
+				<Exclude name="key"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1639070691418" source="C1639070558372" target="C1639070691329" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1639070816920" type="joinview" x="422" y="322" w="300" h="50" title="get controls flags">
+			<InnerView name="bws_application_rightcontrolscolumns" prefix="control_">
+				<Param name="F1639070856527" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.rightkey.get()}" key2="{dataset.control_rightkey.get()}"/>
+			<ExcludeList>
+			</ExcludeList>
+		</Component>
+		<Link name="L1640247094628" source="C1639070691329" target="C1639070816920" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1640339564209" type="joinview" x="439" y="442" w="300" h="50" title="get identity controls flags">
+			<InnerView name="bws_application_identitycontrolscolumns" prefix="control_">
+				<Param name="F1640339602462" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.identitykey.get()}" key2="{dataset.control_identitykey.get()}"/>
+			<ExcludeList>
+				<Exclude name="control_identitykey"/>
+				<Exclude name="control_rightkey"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1640339564456" source="C1639070816920" target="C1640339564209" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1640340466241" type="note" x="358" y="248" w="300" h="50" title="Account rights related controls"/>
+		<Component name="N1640340479824" type="note" x="359" y="354" w="300" h="50" title="Identity rights related controls (overallocation)"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1640339713630_1" data="SAP_ERP_1639568866319_33516"/>
+	</ViewParam>
+	<ViewParam name="RefTimeslot" displayname="RefTimeslot" defaultvalue="true" type="Boolean"/>
+	<ViewSort name="sort" attribute1="accountlogin" attribute2="permissiondisplayname" attribute3="perimeterdisplayname"/>
+</View>

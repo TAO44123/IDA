@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA identity Organization" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1727872569513_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1727872580293">
+		<Component name="C1727872580293" type="discoverysource" x="91" y="70" w="300" h="64" title="CA_Identity_Organization">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_Organization.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_Organizations.csv&apos;)}"/>
+		</Component>
+		<Component name="C1727872611658" type="group" x="91" y="362" w="300" h="64" title="CyberArk Organizations">
+			<Group code="id" error="true" event="GroupNullOrEmpty">
+				<Attribute name="displayname" attribute="name"/>
+				<Attribute name="custom3" attribute="path"/>
+				<Attribute name="grouptype" attribute="grouptype"/>
+				<Attribute name="manageraccount" attribute="owner_guid"/>
+			</Group>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepoNotFound"/>
+			<Content/>
+		</Component>
+		<Component name="C1728475202098" type="group" x="91" y="600" w="300" h="64" title="CyberArk Organizations Owners">
+			<Group code="owner_guid" error="true" event="GroupNotFound">
+				<Attribute name="displayname" attribute="owners_group_name"/>
+				<Attribute name="grouptype" attribute="owner_grouptype"/>
+			</Group>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepoNotFound"/>
+		</Component>
+		<Component name="C1728475237237" type="joinfilter" x="91" y="225" w="300" h="64" title="Join Organization with orgadmins">
+			<Cache active="true" join="orgid" main="id"/>
+			<Join source="C1728475246524"/>
+			<Attributes>
+				<Attribute name="A1728475361409" attribute="owner_guid" source="guid" multivalued="false" type="String" removeduplicates="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1728475246524" type="discoverysource" x="538" y="229" w="300" h="64" title="CA_Identity_OrgAdmins">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_OrgAdmins.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_OrgAdmin.csv&apos;)}"/>
+		</Component>
+		<Link name="L1728475257265" source="C1728475246524" target="C1728475237237" priority="1"/>
+		<Component name="C1728475570335" type="changefilter" x="91" y="485" w="300" h="64" title="owner_group">
+			<Actions>
+				<Action name="U1728475623136" action="add" attribute="owners_group_name" type="String" multivalued="false" newvalue="{dataset.name.get() + &quot;_owners&quot;}" errorexist="false"/>
+				<Action name="U1728476271148" action="update" attribute="owner_guid" newvalue="{dataset.id.get() + &quot;_o&quot;}" errorunknown="false" eventunknown="Join failed"/>
+				<Action name="U1728478539500" action="add" attribute="owner_grouptype" type="String" multivalued="false" newvalue="custom" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1728475666167" source="C1728475570335" target="C1728475202098" priority="1"/>
+		<Link name="L1728479521810" source="C1727872580293" target="C1728475237237" priority="1"/>
+		<Link name="L1728479522506" source="C1728475237237" target="C1727872611658" priority="1"/>
+		<Link name="L1728479523106" source="C1727872611658" target="C1728475570335" priority="1"/>
+		<Component name="N1733216298225" type="note" x="549" y="63" w="300" h="50" title="Create a group of every organization and a duplicate with a suffix that will contain administrators"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="10 roles acceprofiles link" scriptfile="/collectors/bw_sailpointidnow/10_roles_accessprofiles_link.javascript" name="P1752049493234_L9lmFaa20El7Y6ZiG3xg" startingpoint="C1752049508430">
+		<Component name="C1752049508430" type="discoverysource" x="475" y="55" w="300" h="64" title="idnow_roles">
+			<Discovery file="/discovery/bw_sailpointidnow/idnow_roles.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/roles.csv"/>
+		</Component>
+		<Component name="C1752049527787" type="scriptfilter" x="475" y="374" w="300" h="64" title="Get all accessprofiles in roles">
+			<Attributes>
+				<Attribute name="A1752052546674" attribute="accessprofile_type" type="String" multivalued="true"/>
+				<Attribute name="A1752052553874" attribute="accessprofile_name" type="String" multivalued="true"/>
+				<Attribute name="A1752052559292" attribute="accessprofile_id" type="String" multivalued="true"/>
+			</Attributes>
+			<Script onscriptwrite="get_access_profiles"/>
+		</Component>
+		<Link name="L1752052563976" source="C1752049508430" target="C1752826125670_2" priority="1"/>
+		<Component name="C1751457959516_3" type="changefilter" x="475" y="533" w="300" h="64" title="Get IdNow id">
+			<Actions>
+				<Action name="U1751458011379" action="add" attribute="_idnow_id" type="String" multivalued="false" newvalue="IdentityNow" errorexist="false"/>
+				<Action name="U1752072601423" action="add" attribute="_repotype" type="String" multivalued="false" newvalue="SailPoint IdentityNow" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1752053326781" source="C1752049527787" target="C1751457959516_3" priority="1"/>
+		<Component name="C1752053347607" type="joinfilter" x="475" y="862" w="300" h="64" title="Get source name">
+			<Join source="C1752053373831"/>
+			<Attributes>
+				<Attribute name="A1752053417482" attribute="_appid" source="_source_name" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="accessprofile_id" join="id"/>
+		</Component>
+		<Component name="C1752053373831" type="discoverysource" x="927" y="862" w="300" h="64" title="accessprofiles">
+			<Discovery file="/discovery/bw_sailpointidnow/accessprofiles.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/accessprofiles.csv"/>
+		</Component>
+		<Link name="L1752053384401" source="C1752053373831" target="C1752053347607" priority="1"/>
+		<Component name="C1752053438925" type="enumfilter" x="475" y="704" w="300" h="64" title="Enum accessprofiles">
+			<Multivalued>
+				<Value name="M1752053460489" attribute="accessprofile_id"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1752053447970" source="C1752053438925" target="C1752053347607" priority="1"/>
+		<Component name="C1752053491456" type="right" x="475" y="1015" w="300" h="64" title="Roles groups - accessprofiles perms">
+			<Domain isuniqueidentifier="true" repositorytype="_repotype"/>
+			<Right account="id" application="_appid" permission="accessprofile_id"/>
+		</Component>
+		<Link name="L1752053497105" source="C1752053347607" target="C1752053491456" priority="1"/>
+		<Link name="L1752826666299" source="C1751457959516_3" target="C1752053438925" priority="1"/>
+		<Component name="C1752826158885_2" type="discoverysource" x="927" y="221" w="300" h="64" title="repositories_apps">
+			<Discovery file="/discovery/bw_sailpointidnow/repositories_apps.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/accounts.csv"/>
+		</Component>
+		<Component name="C1752826125670_2" type="joinfilter" x="475" y="221" w="300" h="64" title="Filter with filtered sources">
+			<Join source="C1752826158885_2" zeroerror="true" zeroevent="_APP_FILTERED_" zerotechnical="true"/>
+			<Cache active="true" main="_source_name" join="sourcename"/>
+		</Component>
+		<Link name="L1752826229127_2" source="C1752826158885_2" target="C1752826125670_2" priority="1"/>
+		<Link name="L1752826983143" source="C1752826125670_2" target="C1752049527787" priority="1" expression="(! dataset.hasEvent(&apos;_APP_FILTERED_&apos;))"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

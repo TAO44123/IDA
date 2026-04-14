@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwsodd_identities_risklevel_bv" displayname="identities risklevel bv">
+	<Definition scriptfile="/views/bw_sodanalysis/dashboard/identities/dashboard_count.javascript" name="D1764320537127">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1764320537125" title="Identities risklevel">
+			<InnerView name="bwsodd_identities_risklevel">
+				<Param name="F1764320609568" viewparam="labelvalue" viewparamvalue="{param.labelvalue}"/>
+				<Param name="F1764320624387" viewparam="sodmatrix" viewparamvalue="{param.sodmatrix.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1764320627408" type="joinview" x="232" y="201" w="300" h="50" title="Exclude exceptions">
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.exception_key.get()}"/>
+			<InnerView name="bwsodd_identities_risklevel_exceptions" prefix="exception_">
+				<Param name="F1764320878435" viewparam="sodmatrix" viewparamvalue="{param.sodmatrix.get()}"/>
+			</InnerView>
+			<ViewComputedAttribute name="nb" displayname="nb" type="String" expression="dataset.uid.get()+&quot;$$&quot;+dataset.risklevel.get()"/>
+			<FilterList>
+				<Filter name="F1764321014078" expression="dataset.exception_key.get()!=null" type="Exclude"/>
+				<Filter name="F1764321027817" expression="param.dedup.get()?dataset.nb.get():dataset.key.get()" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Link name="L1764320627574" source="C1764320537125" target="C1764320627408" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1764321036179" type="scriptview" x="249" y="370" w="300" h="50" title="Count ">
+			<Script onscriptinit="ini_risklevel" onscriptread="read_risklevel"/>
+		</Component>
+		<Link name="L1764321036466" source="C1764320627408" target="C1764321036179" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="labelvalue" displayname="labelvalue">
+		<Value name="V1764321696510_1" data="0"/>
+		<Value name="V1764321698781_2" data="1"/>
+		<Value name="V1764321700864_3" data="2"/>
+		<Value name="V1764321702618_4" data="3"/>
+		<Value name="V1764321705917_5" data="4"/>
+	</ViewParam>
+	<ViewParam name="sodmatrix" displayname="sodmatrix"/>
+	<ViewParam name="dedup" displayname="dedup" type="Boolean" defaultvalue="true">
+		<Value name="V1764322705759_1" data="false"/>
+	</ViewParam>
+	<ViewSort name="sort" attribute1="risklevel" direction1="ASC"/>
+</View>

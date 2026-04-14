@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="020 CA REST ENTRAID safemembers" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1730382122782_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617040499341_1">
+		<Component name="C1728307764030_2" type="discoverysource" x="516" y="173" w="300" h="64" title="CA_Identity_DSUsers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.cyberark_path}{config.identity_repo}_DSUsers.csv"/>
+		</Component>
+		<Component name="C1617040499341_1" type="discoverysource" x="53" y="51" w="300" h="64" title="CA_safe_members">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_safe_members.discovery" datafile="{config.siloIteratedFileFullname.replace(&quot;_export-mode.csv&quot;,&quot;_safemembers.csv&quot;)}"/>
+		</Component>
+		<Component name="C1728307758977_2" type="joinfilter" x="51" y="171" w="300" h="64" title="Join safe members with identity users">
+			<Join source="C1728307764030_2"/>
+			<Cache active="true" main="memberid" join="internalname"/>
+			<Attributes>
+				<Attribute name="A1728307962537" attribute="user_guid" source="internalname" type="String" multivalued="false" removeduplicates="false"/>
+				<Attribute name="A1729684643722" attribute="serviceinstance" source="serviceinstance" type="String" multivalued="false"/>
+				<Attribute name="A1729780596568" attribute="users_directoryservice" source="directoryserviceuuid" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1728307818919_2" source="C1728307764030_2" target="C1728307758977_2" priority="1"/>
+		<Link name="L1730281104856_1" source="C1617040499341_1" target="C1728307758977_2" priority="1"/>
+		<Component name="C1618241629328_2" type="changefilter" x="51" y="288" w="300" h="64" title="safe member id and repo">
+			<Actions>
+				<Action name="U1618241684453" action="add" attribute="object_id" type="String" multivalued="false" errorexist="false" newvalue="{dataset.memberid.get()}" description="if safe memeber is LDAP User or Group get the DN"/>
+				<Action name="U1625848933956" action="update" attribute="safename" newvalue="{&apos;SAFE_&apos;+dataset.safenumber.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1730382204431" source="C1728307758977_2" target="C1618241629328_2" priority="1"/>
+		<Component name="C1729775782725_2" type="csvsource" x="520" y="516" w="300" h="64" title="external_repository.csv">
+			<Source file="{config.cyberark_path}external_repository.csv" separator=";" encoding="ISO-8859-1" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A2944895084315283822" attribute="directoryserviceuuid" column="directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A3889298526688855439" attribute="entraid_reponame" column="entraid_reponame" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1617040697402_2" type="right" x="57" y="760" w="300" h="64" title="safe members entraID">
+			<Domain repository="entraid_reponame" repoerror="true" repoevent="repositoryNotFound" isuniqueidentifier="false"/>
+			<Right account="entra_accountid" application="safename" error="true" event="accountOrGroupNotFound" permerror="true" permevent="permissionNotFound" apperror="true" appevent="applicationNotFound" permission="roles">
+				<Attribute name="action" attribute="rolePermissions"/>
+				<Attribute name="context" attribute="roleContext"/>
+			</Right>
+		</Component>
+		<Component name="C1729678505641_1" type="discoverysource" x="523" y="412" w="300" h="64" title="aad_users">
+			<Discovery file="/discovery/bw_ad_azure/aad_users.discovery" datafile="{config.inputfilename}"/>
+		</Component>
+		<Component name="C1729678473632_1" type="joinfilter" x="53" y="411" w="300" h="64" title="join safe members aad users">
+			<Join source="C1729678505641_1"/>
+			<Cache active="true" main="membername" join="userprincipalname"/>
+			<Attributes>
+				<Attribute name="A1729684109469" attribute="entra_accountid" source="id" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1729775599692_2" type="joinfilter" x="57" y="520" w="300" h="64" title="repository mapping">
+			<Cache active="true" main="users_directoryservice" join="directoryserviceuuid"/>
+			<Attributes>
+				<Attribute name="A1729775922319" attribute="entraid_reponame" source="entraid_reponame" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1729775782725_2"/>
+		</Component>
+		<Link name="L1729844493915_1" source="C1729678473632_1" target="C1729775599692_2" priority="1"/>
+		<Link name="L1729775816538_2" source="C1729775782725_2" target="C1729775599692_2" priority="1"/>
+		<Link name="L1729681305012_1" source="C1729678505641_1" target="C1729678473632_1" priority="1"/>
+		<Link name="L1730382412814" source="C1618241629328_2" target="C1729678473632_1" priority="1"/>
+		<Component name="C1617217653791_3" type="enumfilter" x="56" y="645" w="300" h="64" title="Enumerate roles">
+			<Multivalued>
+				<Value name="M1661523787999" attribute="roles"/>
+				<Value name="M1662111121244" attribute="rolePermissions"/>
+				<Value name="M1662111129942" attribute="roleContext"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1730382720355" source="C1729775599692_2" target="C1617217653791_3" priority="1"/>
+		<Link name="L1730382721099" source="C1617217653791_3" target="C1617040697402_2" priority="1"/>
+		<Component name="N1733217985621" type="note" x="510" y="23" w="300" h="132" title="Add EntraID users in safes&#xA;Join 1 : join safe members with Identity users to get the directory service uuid&#xA;Join 2 : join safe members with EntraID users to get the EntraID internal name&#xA;Join 3 : join the directory service uuid in Join 1 to get the repository name of the user"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="inputfilename"/>
+			<Variable name="cyberark_path"/>
+			<Variable name="identity_repo"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

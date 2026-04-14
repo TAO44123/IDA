@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="access360r_identitygroupsincommon" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="groupsincommon" notes="" begindate="" enddate="">
+	<ViewParam name="totalnbidentities" displayname="totalnbidentities" type="Integer"/>
+	<ViewParam name="lowthreshold" displayname="lowthreshold" type="Integer"/>
+	<ViewParam name="lowvalue" displayname="lowvalue" type="Integer" defaultvalue="{1+(param.totalnbidentities.get()*param.lowthreshold.get())/100}"/>
+	<ViewParam name="repositories" displayname="repositories"/>
+	<ViewParam name="directonly" displayname="directonly" type="Boolean"/>
+	<ViewComputedAttribute name="nbexcludedaccounts" displayname="nbexcludedaccounts" type="Integer" expression="param.totalnbidentities.get()-dataset.nbidentity.get()"/>
+	<ViewComputedAttribute name="percent" displayname="percent" type="Integer" expression="(dataset.nbidentity.get()*100)/param.totalnbidentities.get()"/>
+	<ViewComputedAttribute name="empty" displayname="empty" type="String" expression="&apos;&apos;"/>
+	<ViewSort name="sort" attribute1="1651483356026_845" direction1="DESC"/>
+	<ViewJoin name="J1617468681756_1930" prefix="group" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.directonly.get()" join="group">
+		<ViewJoin name="J1617468694926_1931" prefix="grouprepository" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+			<ViewAttribute name="A1617469379739_1977" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1617469380362_1978" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1617469381159_1979" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewAttribute name="1617469328441_1972" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1617469328442_1973" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1617469328442_1974" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1617469328443_1975" attribute="bwa_groupmetadata_descr" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="1617469328443_1976" attribute="bwa_groupmetadata_sensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+	</ViewJoin>
+	<ViewJoin name="J1617557943595_2169" prefix="group" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="!param.directonly.get()" join="upgroup">
+		<ViewAttribute name="1617557990970_2179" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1617557990971_2180" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1617557990971_2181" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1617557990972_2182" attribute="bwa_groupmetadata_descr" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="1617557990973_2183" attribute="bwa_groupmetadata_sensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewJoin name="J1617468694926_1931" prefix="grouprepository" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+			<ViewAttribute name="1617557990974_2185" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1617557990974_2186" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1617726338390_1565" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1617616727781_2411" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1617616729857_0" operation="isNull" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1617616732017_1" operation="isFalse" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1617617159975_2486" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="true" join="identityreconciliation">
+		<ViewAttribute name="1651483356026_845" attribute="recorduid" alias="nbidentity" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1617710123588_0" reference="lowvalue" operation="ge" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1617726489816_1605" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+		<ViewAttribute name="1617726494160_1607" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1617726316965_0" reference="repositories" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+</View>

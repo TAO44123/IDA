@@ -1,0 +1,238 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/fragments.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Display decision history for the given application
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbdecision </b>nb of decisions</li>
+ * <li><b>outdecisionrecorduid </b>optional, selected decision</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationDecisionHistory = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:False 
+				// read once when disabled to avoid side effects when filtering
+				changed-event:IntCase(outnbdecision) { when =-1 then [ Set Count data to outnbdecision ] 
+				}
+	}
+
+	outdecisionrecorduid = Variable
+	outnbdecision = Variable { initial:-1 multivalued:False type: Integer }
+
+	statusToFilter  = Variable { type: String multivalued:True private:True }
+	
+	/* Dataset here */
+	data = Dataset {
+		view: bwf_applicationrightdecisionhistory with
+			inuid to uid,
+			statusToFilter to statusToFilter
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	IncludeFragment {
+		layout: Layout { grab: horizontal True vertical False }
+		fragment: bw_fragments_review_status_selector with
+			statusToFilter binds-to statusToFilter
+	}
+	ConditionalGroup {
+		IntCondition(outnbdecision) {
+			when <=0 then [
+				Header {
+					value:$fragmentDecisionHistoryNLS.empty
+					styling:bigTitleStyle
+				}
+			]
+			otherwise [
+				Table {
+					data: data
+					layout: Layout { grab: horizontal True vertical True }
+					configurable: True
+					show-filter: True
+					show-count: True
+					persist-configuration: True
+					persist-configuration-key: "fragmentApplicationDecisionHistory"
+					Column {
+						column:recorduid
+						selection:outdecisionrecorduid
+						hidden:True
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						width:160px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:accountusername
+						header:$paccount.username
+						width:160px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:repositorydisplayname
+						header:$repository.concept
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissioncode
+						header:$ppermission.code
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:permissiondisplayname
+						header:$ppermission.displayname
+						width:160px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:permissionpermissiontype
+						header:$ppermission.permissiontype
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:status
+						text:Transform Current status using bwf_defaultreviewstatus
+						header:$fragmentDecisionHistoryNLS.status
+						width:130px
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:actiondate
+						header:$fragmentDecisionHistoryNLS.date
+						width:100%
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:accountablefullname
+						header:$fragmentDecisionHistoryNLS.by
+						width:100%
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:comment
+						tooltip:Current comment
+						header:$fragmentDecisionHistoryNLS.comment
+						width:100%
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:validfromdate
+						header:$fragmentDecisionHistoryNLS.valid_from
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:validtodate
+						header:$fragmentDecisionHistoryNLS.valid_to
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:remediationstatus
+						header:$fragmentDecisionHistoryNLS.remediation_status
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:remediationsubmissiondate
+						header:$fragmentDecisionHistoryNLS.remediation_submitted_on
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:remediationclosedate
+						header:$fragmentDecisionHistoryNLS.remediation_closed_on
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:remediationexternalreference
+						header:$fragmentDecisionHistoryNLS.remediation_ref
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:campaigninstancetitle
+						header:$fragmentDecisionHistoryNLS.campaign_instance
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:campaigninstancestatus
+						header:$fragmentDecisionHistoryNLS.campaign_status
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:campaigninstanceclosedate
+						header:$fragmentDecisionHistoryNLS.campaign_close_date
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					Column {
+						column:campaigntitle
+						header:$fragmentDecisionHistoryNLS.campaign
+						width:100%
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+				}	
+			 ]
+		 }
+	 }
+}

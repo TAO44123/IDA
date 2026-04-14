@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_groups_distribution_indirect_history" displayname="groups distribution indirect history">
+	<Definition scriptfile="views/bw_cyberark_model/reports/group/analytics/groups_distribution.javascript" name="D1627327028350">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1627327028350" title="Direct history">
+			<InnerView name="bwpam_direct_groups_history"/>
+		</Component>
+		<Component name="C1627327038153" type="unionview" x="710" y="206" w="300" h="50" title="Indirect history">
+			<InnerView name="bwpam_indirect_groups_history"/>
+			<Union primary_discriminator="cyberark" secondary_discriminator="ldapdirect" discriminatorcolumn="disc1"/>
+			<ExcludeList>
+				<Exclude name="disc1"/>
+			</ExcludeList>
+			<ViewComputedAttribute name="group_type_nls" displayname="group_type_nls" type="String" expression="dataset.group_type.get()==&apos;Indirect&apos;?param.indirect_nls.get():dataset.group_type.get()==&apos;Direct&apos;?param.direct_nls.get():dataset.group_type.get()"/>
+		</Component>
+		<Link name="L1627327038269" source="C1627327028350" target="C1627327038153" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewSort name="sort" attribute1="timeslotcommitday"/>
+	<ViewParam name="direct_nls" displayname="direct_nls" defaultvalue="Direct" type="String"/>
+	<ViewParam name="indirect_nls" displayname="indirect_nls" type="String" defaultvalue="Indirect"/>
+</View>

@@ -1,0 +1,531 @@
+import "/webportal/pages/resources/details_nls.page"
+
+import "/webportal/pages/bw_fragments/identity/details.page"
+import "/webportal/pages/bw_fragments/identity/accounts.page"
+import "/webportal/pages/bw_fragments/identity/rights.page"
+import "/webportal/pages/bw_fragments/identity/cyberarkrights.page"
+import "/webportal/pages/bw_fragments/identity/serverrights.page"
+import "/webportal/pages/bw_fragments/identity/data.page"
+import "/webportal/pages/bw_fragments/identity/usages.page"
+import "/webportal/pages/bw_fragments/identity/analytics.page"
+import "/webportal/pages/bw_fragments/identity/controls.page"
+import "/webportal/pages/bw_fragments/identity/decisionhistory.page"
+import "/webportal/pages/bw_fragments/identity/colleagues.page"
+import "/webportal/pages/bw_fragments/identity/organisationtree.page"
+import "/webportal/pages/bw_fragments/identity/team.page"
+import "/webportal/pages/bw_fragments/identity/managedresources.page"
+import "/webportal/pages/bw_fragments/identity/managedorganisations.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/identity/businessactivities.page"
+import "/webportal/pages/bw_fragments/identity/rolemodel.page"
+import "/webportal/pages/bw_fragments/custom/identityExtendedDetails.page"
+import "/webportal/pages/bw_fragments/identity/identitylifecycle.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+identityDetailsNLS = NLS {
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	identity [en "Identity" fr "Identité"]
+	position [en "Position" fr "Position"]
+	colleagues [en "Colleagues" fr "Collègues"]
+	team [en "Team" fr "Equipe"]
+	managedorganisations [en "Managed organisations" fr "Organisations gérées"]
+	managedresources [en "Managed resources" fr "Resources gérées"]
+	infrastructure [en "Servers" fr "Serveurs"]
+	access [en "Access" fr "Accès"]
+	accounts [en "Accounts" fr "Comptes"]
+	usages [en "Usages" fr "Usages"]
+	selectaccount [en "Select an account to display its groups" fr "Choisir un compte pour afficher ses groupes"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	showaccountgroups [en "Display groups" fr "Afficher les groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	rolemodel [en "Roles" fr "Rôles"]
+	lifecycle [en "Lifecycle" fr "Cycle de vie"]
+	cyberark.vault [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	cyberark.safe [en "CyberArk Safes" fr "Safes CyberArk"]
+	cyberark.graph [en "CyberArk Graph" fr "Graphe CyberArk"]
+
+	notexists [
+		en "This identity does not exist in the current timeslot, you should select a different timeslot"
+		fr "Cette identité n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+avoidEmptyMapping = StringMapping {
+	when IsEmpty then ''
+	otherwise current prefix '' suffix ' '
+}
+
+identityDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (identity)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Identity Detail with identityUid.uid to paramIdentityUid }
+	feature: identitydetails_access
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Identity
+		mandatory: True
+	}
+	
+	identityUid = Record {
+		view: br_identityDetail_uid with recorduid to recorduid
+	}
+}
+
+identityDetailsParkingPage = Page {
+	title: $identityDetails.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( identity.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page identityDetailsPage with-current-parameters
+		}
+	
+	paramIdentityUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	identity = Record {
+		view: bwf_identityDetail with paramIdentityUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$identityDetailsNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+identityDetailsPage = Page {
+	title: $identityDetails.title
+	dynamic-title:$identityDetails.dynamictitle(identity.fullname)
+	icon: %concept.identity
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( identity.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page identityDetailsParkingPage with-current-parameters
+			}
+	enter-event:
+		IntCase(identity.bwa_identityanalytics_nbusage) { when >0 then [ Set True to hasusages ]},
+		IntCase(identity.bwa_identityanalytics_nbbusinessactivity) { when >0 then [ Set True to hasbusinessactivity ]},
+		IntCase(identity.bwa_identityanalytics_nbtheoretical) { when >0 then [ Set True to hastheoreticalrights ]},
+		IntCase(identity.bwa_identityanalytics_nbinfrastructure) { when >0 then [ Set True to hasinfrastructure ]},
+		Set identity.bwa_identityanalytics_nbapplication to nbapplications,
+		Set identity.bwa_identityanalytics_nbshare to nbshares,
+		Set nbControls._total to nbdefects,
+		IntCase(nbiamapplications) { when >0 then [ Set True to hasrolemodel ]}
+	
+	// Parameters Here
+	paramIdentityUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Variables Here
+	selectedIdentityUid = Variable {
+		type: String
+		initial: paramIdentityUid
+	}
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+
+	nbdefects = Variable 
+	nboverallocated = Variable 
+	nbmanagedorganisations = Variable 
+	nbresources = Variable 
+	hasbusinessactivity = Variable
+	hastheoreticalrights = Variable
+	hasinfrastructure = Variable
+	nbapplications = Variable
+	nbshares = Variable
+	nbdecision = Variable
+	hasusages = Variable { initial:False }
+	orgteam_count = Variable
+	team_count = Variable
+	nbcavaults = Variable
+	nbcasafes = Variable
+	nbiamapplications = Variable 
+	nblifecycleevents = Variable
+	hasrolemodel = Variable { initial:False }
+	
+	showextended = Variable { initial:False }
+
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_model = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_identity = Variable { initial:False multivalued:False type:Boolean }
+	active_position = Variable { initial:False multivalued:False type:Boolean }
+	active_lifecycle = Variable { initial:False multivalued:False type:Boolean }
+	active_colleagues = Variable { initial:False multivalued:False type:Boolean }
+	active_team = Variable { initial:False multivalued:False type:Boolean }
+	active_managedorganisations = Variable { initial:False multivalued:False type:Boolean }
+	active_managedresources = Variable { initial:False multivalued:False type:Boolean }
+	active_businessactivities = Variable { initial:False multivalued:False type:Boolean }
+	active_rolemodel = Variable { initial:False multivalued:False type:Boolean }
+	active_theoreticalrights = Variable { initial:False multivalued:False type:Boolean }
+	active_overallocatedrights = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_servers = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_cavaults = Variable { initial:False multivalued:False type:Boolean }
+	active_casafes = Variable { initial:False multivalued:False type:Boolean }
+	active_cagraph = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Dataset for Reports
+	identity_list_manager = Dataset {
+		view: br_identityDetail with selectedIdentityUid to uid
+	}
+	
+	// Record for concept details
+	identity = Record {
+		view: bwf_identityDetail with selectedIdentityUid to uid
+	}
+	
+	// Number of control defects for current application (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_identityallcontroldefects_nb with selectedIdentityUid to uid
+	}
+	
+	Grid {
+		columns: GridColumn { width: grow }							
+		layout: Layout { grab: horizontal True vertical True }
+
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					TabItem {
+						text:$identityDetailsNLS.details
+						activation-event:Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text: $identityDetailsNLS.identity
+								activation-event:
+									Set True to active_identity
+								IncludeFragment {
+									fragment: fragmentIdentityFullDetails with
+										value-of selectedIdentityUid to inuid,
+										value-of True to inshowrisks,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_identity.get()" to inenabled,
+										value-of True to incanupdatemanagers
+								}
+							}
+							TabItem  {
+								text:$identityDetailsNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentIdentityExtendedDetails with value-of selectedIdentityUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$identityDetailsNLS.position
+								activation-event:Set True to active_position
+								
+							
+								IncludeFragment {
+									fragment:fragmentIdentityOrgHierarchy
+									with value-of selectedIdentityUid to inuid, value-of True to inshowsuborganisationtree, value-of Eval "active_detail.get() && active_position.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$identityDetailsNLS.lifecycle
+								activation-event: Set True to active_lifecycle
+								hidden: IntPredicate(nblifecycleevents) { when >1 then False otherwise True } // shown only if more than 1 events are available (at least one move)
+								
+								IncludeFragment (fragmentIdentityLifecycle with value-of selectedIdentityUid to inuid,  value-of active_lifecycle to inenabled, nblifecycleevents binds-to outnblifecycleevents )
+							}
+							TabItem {
+								text:$identityDetailsNLS.colleagues
+								activation-event:Set True to active_colleagues
+							
+								IncludeFragment {
+									fragment:fragmentIdentityColleaguesSelection
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_detail.get() && active_colleagues.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.team
+								activation-event:Set True to active_team
+								hidden: Eval "orgteam_count.get()==0 && team_count.get()==0"
+							
+								IncludeFragment {
+									fragment:fragmentIdentityTeamSelection
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of True to inenabled, orgteam_count binds-to orgteam_count, team_count binds-to team_count
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.managedorganisations
+								activation-event:Set True to active_managedorganisations
+								hidden:IntPredicate(nbmanagedorganisations) { when >0 then False otherwise True }
+							
+								IncludeFragment {
+									fragment:fragmentIdentityManagedOrganisations
+									with value-of selectedIdentityUid to inuid, nbmanagedorganisations binds-to outnbmanagedorganisations, value-of True to inenabled, value-of True to incanshowdetails
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.managedresources
+								activation-event:Set True to active_managedresources
+								hidden:IntPredicate(nbresources) { when >0 then False otherwise True }
+							
+								IncludeFragment {
+									fragment:fragmentIdentityManagedResources
+									with value-of selectedIdentityUid to inuid, nbresources binds-to outnbresources, value-of True to inenabled, value-of True to incanshowdetails
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$identityDetailsNLS.model
+						activation-event:Set True to active_model
+						feature:Any(sod_license, iam_license)
+						hidden: AndPredicate {
+								Not BooleanPredicate(hasbusinessactivity)
+								Not BooleanPredicate(hastheoreticalrights)
+								IntPredicate(nboverallocated) { when >0 then False otherwise True }
+						}
+					
+						TabFolder {
+							border:False
+							layout:Layout { indent: horizontal 0 vertical 6 }
+							TabItem {
+								text:$identityDetailsNLS.businessactivities
+								feature:sod_license
+								hidden:Not BooleanPredicate(hasbusinessactivity)
+								activation-event:Set True to active_businessactivities
+
+								IncludeFragment {
+									fragment:fragmentIdentityBusinessActivities
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_model.get() && active_businessactivities.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.rolemodel
+								feature:iam_license
+								hidden:Not BooleanPredicate(hasrolemodel)
+								activation-event:Set True to active_rolemodel
+							
+								IncludeFragment {
+									fragment:fragmentIdentityRoleModel
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, nbiamapplications binds-to nbiamapplications, value-of Eval "active_model.get() && active_rolemodel.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.theoretical
+								feature:iam_license
+								hidden:Not BooleanPredicate(hastheoreticalrights)
+								activation-event:Set True to active_theoreticalrights
+							
+								IncludeFragment {
+									fragment:fragmentIdentityTheoreticalRightsList
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_model.get() && active_theoreticalrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.overallocated
+								feature:iam_license
+								activation-event:Set True to active_overallocatedrights
+								hidden:IntPredicate(nboverallocated) { when >0 then False otherwise True }
+								badge: Eval "nboverallocated.get()>0?nboverallocated.get():''"
+
+								IncludeFragment {
+									fragment:fragmentIdentityOverAllocationsList
+									with value-of selectedIdentityUid to inuid, value-of Eval "active_model.get() && active_overallocatedrights.get()" to inenabled, nboverallocated binds-to outnbproblems
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$identityDetailsNLS.access
+						activation-event:Set True to active_access
+					
+						TabFolder {
+							border:False
+							TabItem {
+								text:$identityDetailsNLS.accounts
+								activation-event:Set True to active_accounts
+
+								IncludeFragment {
+									fragment:fragmentIdentityAccounts360
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile,  value-of Eval "active_access.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.infrastructure
+								hidden:Not BooleanPredicate(hasinfrastructure)
+								activation-event:Set True to active_servers
+								feature: All(pam_license, Any(governance_license, compliance_license))
+
+								IncludeFragment {
+									fragment:fragmentIdentityServerRightsList
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_servers.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.applications
+								hidden:
+									OrPredicate {
+										IntPredicate(nbapplications) { when >0 then False otherwise True }
+										StringPredicate (nbapplications) { when IsEmpty then True }
+									} 
+								activation-event:Set True to active_applications
+							
+								IncludeFragment {
+									fragment:fragmentIdentityRights360
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_applications.get()" to inenabled
+								}
+							}
+							TabItem {
+								text: $identityDetailsNLS.cyberark.vault
+								activation-event:Set True to active_cavaults
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									OrPredicate {
+										IntPredicate(nbcavaults) { when >0 then False otherwise True }
+										StringPredicate (nbcavaults) { when IsEmpty then True }
+									}
+								IncludeFragment {
+									fragment:fragmentIdentityCAVaultsRights360
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_cavaults.get()" to inenabled,
+									nbcavaults binds-to nbvaults
+								}
+							}
+							TabItem {
+								text: $identityDetailsNLS.cyberark.safe
+								activation-event:Set True to active_casafes
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									OrPredicate {
+										IntPredicate(nbcasafes) { when >0 then False otherwise True }
+										StringPredicate (nbcasafes) { when IsEmpty then True }
+									}
+								IncludeFragment {
+									fragment:fragmentIdentityCASafesRights360
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_casafes.get()" to inenabled,
+									nbcasafes binds-to nbsafes
+								}
+							}
+							TabItem {
+								text: $identityDetailsNLS.cyberark.graph
+								activation-event:Set True to active_cagraph
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								hidden:
+									AndPredicate {
+										OrPredicate {
+											IntPredicate(nbcavaults) { when >0 then False otherwise True }
+											StringPredicate (nbcavaults) { when IsEmpty then True }
+										}
+										OrPredicate {
+											IntPredicate(nbcasafes) { when >0 then False otherwise True }
+											StringPredicate (nbcasafes) { when IsEmpty then True }
+										}
+									}
+									
+									
+								IncludeFragment {
+									fragment:fragmentIdentityCAGraphRights360
+									with value-of selectedIdentityUid to inuid, value-of nbcasafes to innbsafes, value-of Eval "active_access.get() && active_cagraph.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.shares
+								hidden:
+									OrPredicate {
+										IntPredicate(nbshares) { when >0 then False otherwise True }
+										StringPredicate (nbshares) { when IsEmpty then True }
+									} 
+								
+								feature:unstructureddata_license
+								activation-event:Set True to active_shares
+
+								IncludeFragment {
+									fragment:fragmentIdentityData360
+									with value-of selectedIdentityUid to inuid, value-of True to incanchangedepth, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_shares.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$identityDetailsNLS.usages
+								hidden:Not BooleanPredicate(hasusages)
+								activation-event:Set True to active_usages
+
+								IncludeFragment {
+									fragment:fragmentIdentityUsages
+									with value-of selectedIdentityUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_usages.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text: $identityDetailsNLS.controls
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						activation-event:
+							Set True to active_control
+						IncludeFragment {
+							fragment: fragmentIdentityAllControlDefectsList with
+								value-of selectedIdentityUid to inuid,
+								value-of active_control to inenabled,
+								value-of True to incanshowdetails
+						}
+					}
+					TabItem {
+						text:$identityDetailsNLS.analytics
+						activation-event:Set True to active_analytics
+					
+						IncludeFragment {
+							fragment:fragmentIdentityAnalytics
+							with value-of selectedIdentityUid to inuid, value-of active_analytics to inenabled
+						}
+					}
+					TabItem {
+						text:$identityDetailsNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decision
+					
+						IncludeFragment {
+							fragment:fragmentIdentityAllDecisionHistory
+							with value-of selectedIdentityUid to inuid, nbdecision binds-to outnbdecision, value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="selected_safes_groupcontrols_list" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="metadata" displayname="selected safes groupcontrols list" notes="" begindate="" enddate="">
+	<ViewParam name="SubscriptionUID" displayname="SubscriptionUID"/>
+	<ViewComputedAttribute name="EntityType" displayname="Entity Type" type="String" expression="&quot;Group&quot;"/>
+	<ViewComputedAttribute name="controllabel" displayname="controllabel" type="String" expression="dataset.controldisplayname.get()==&quot;Active user accounts for which the owner has departed and have access to a safe&quot;?&quot;Remaining Active Users&quot;:dataset.controldisplayname.get()==&quot;CyberArk credentials for which automatic password rotation is disabled&quot;?&quot;New Credentials without CPM&quot;:dataset.controldisplayname.get()==&quot;Orphaned accounts with access to a safe&quot;?&quot;Orphaned Users&quot;:dataset.controldisplayname.get()==&quot;Users that have at least one direct permission to a safe&quot;?&quot;Users with Direct Authorization to my Safes&quot;:dataset.controldisplayname.get()==&quot;Users that can both manage the safe and use its contents&quot;?&quot;Users that Can Manage my Safes and Use Their Credentials&quot;:dataset.controldisplayname.get()==&quot;Users with both access to the vault and access to a safe inside the vault&quot;?&quot;Users that Can Access to the Vault and my Safes&quot;:dataset.controldisplayname.get()==&quot;Contractors with no expiration date that can manage a safe&quot;?&quot;Contractors who Can Manage my Safes without Expiration&quot;:dataset.controldisplayname.get()==&quot;Contractors without an expiration date that can access a safe&quot;?&quot;Contractors who Can Use my Credentials without Expiration&quot;:dataset.controldisplayname.get()==&quot;Unused user accounts giving access to a safe&quot;?&quot;Dormant Active Users&quot;:dataset.controldisplayname.get()==&quot;Disabled user accounts giving access to a safe&quot;?&quot;Disabled Users&quot;:dataset.controldisplayname.get()==&quot;Empty groups giving access to a safe&quot;?&quot;Empty Groups Giving Access to my Credentials&quot;:dataset.controldisplayname.get()==&quot;Groups with only disabled accounts giving access to a safe&quot;?&quot;Groups with Only Disabled Members&quot;:dataset.controldisplayname.get()==&quot;The safe is empty&quot;?&quot;My Empty Safes&quot;:dataset.controldisplayname.get()==&quot;Safe accounts and groups giving no access&quot;?&quot;My Safes without Access&quot;:dataset.controldisplayname.get()"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.controlcode.get()+dataset.EntityId.get()+dataset.safe_code.get()"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1661852025667_1118" attribute="key" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1661782216360_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="bwpam_notification_safes"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="A1661852030710_1119" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1661852047700_0" reference="SubscriptionUID" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1661782337893_1181" prefix="safe_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="valueApplication">
+		<ViewAttribute name="1661852066879_1139" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false"/>
+		<ViewAttribute name="1661852066879_1140" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1661852066879_1141" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1661852143037_1152" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+			<ViewJoin name="J1661852205948_1155" prefix="group_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="downgroups">
+				<ViewAttribute name="A1661852221268_1156" attribute="code" alias="EntityId" displayname="EntityId" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1661852223958_1157" attribute="displayname" alias="EntityName" displayname="EntityName" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1661852228952_1158" attribute="comment" alias="EntityDesc" displayname="EntityDesc" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewJoin name="J1661852331425_1162" prefix="repo_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+					<ViewAttribute name="A1661852347181_1163" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				</ViewJoin>
+				<ViewJoin name="J1661852358551_1164" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controldiscrepancy">
+					<ViewJoin name="J1661852378211_1165" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controllog">
+						<ViewAttribute name="1661852403206_1176" attribute="controlresulttype" operator="or" removedfromprojection="true" globalfilter="false">
+							<ViewAttributeFilter name="F1589470658366_0" operation="eq" ignoreifempty="false">
+								<Value name="0" data="1"/>
+							</ViewAttributeFilter>
+						</ViewAttribute>
+						<ViewAttribute name="1661852403206_1177" attribute="controldisplayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1661852403206_1178" attribute="controlnotes" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1661852403206_1179" attribute="risklevel" alias="controlrisklevel" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1661852403206_1180" attribute="riskinfo" alias="controlriskinfo" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1661852403206_1181" attribute="suggestedmitigation" alias="controlsuggestedmitogation" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1661852403206_1182" attribute="controltagtype" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1661852403221_1183" attribute="controltagscope" operator="or" removedfromprojection="true" globalfilter="false">
+							<ViewAttributeFilter name="F1660124890287_0" operation="eq" ignoreifempty="false">
+								<Value name="0" data="safe"/>
+							</ViewAttributeFilter>
+						</ViewAttribute>
+						<ViewAttribute name="1661852403221_1184" attribute="controltagfamily" operator="or" removedfromprojection="true" globalfilter="false">
+							<ViewAttributeFilter name="F1660065746190_0" operation="eq" ignoreifempty="false">
+								<Value name="0" data="pam"/>
+							</ViewAttributeFilter>
+						</ViewAttribute>
+						<ViewAttribute name="1661852403221_1185" attribute="controlcode" operator="or" removedfromprojection="false" globalfilter="false"/>
+					</ViewJoin>
+				</ViewJoin>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1664971936797_931" prefix="vault_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+			<ViewAttribute name="1664972191605_1182" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+</View>

@@ -1,0 +1,227 @@
+/* Import other pages here */
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/mappings.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_cloud_pam/resources/styles.page"
+import "/webportal/pages/bw_cloud_pam/resources/mapping.page"
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_accounts_details.page"
+import "/webportal/pages/bw_cloud_pam/pampgm/fragments/accountriskfragment.page"
+import "/webportal/pages/bw_cloud_pam/pampgm/fragments/toprisksfragment.page"
+
+/* Nationalized labels here */
+bwcpam_pgm_risk_NLS = NLS {
+	title [
+		en "Risk Linked to Privileged User Accounts not Managed by CyberArk"
+		fr "Risques liés aux comptes à privilèges non gérés par CyberArk"
+	]
+	subtitle [
+		en "Security Policy Rules"
+		fr "Politiques de sécurité"
+	]
+	risk.button.true [
+		fr "Actualisation..."
+		en "Refreshing"
+	]
+	risk.button.false [
+		fr "Actualiser"
+		en "Refresh"
+	]
+	flash.check.refresh [
+		fr "Actualisation des données effectuées"
+		en "Data refresh complete"
+	]
+	flash.do.resfresh [
+		fr "Début d'actualisation des résultats de contrôle"
+		en "Start of the control result refresh"
+	]
+}
+
+
+PGM_RISK_REFRESH = UserVariable { type: Boolean initial: False }
+
+
+bwcpam_pgm_risk_button_text_mapping = BooleanMapping {
+	when True then $bwcpam_pgm_risk_NLS.risk.button.true
+	when False then $bwcpam_pgm_risk_NLS.risk.button.false
+}
+bwcpam_pgm_risk = Page {
+	title: $bwcpam_pgm_risk_NLS.title
+	mixins: dashboardMixin
+	
+	periodic-actions:
+		PeriodicAction {
+			actions: ExecuteNamedAction doCheckRefresh
+			disabled: Not BooleanPredicate ( UserVariable PGM_RISK_REFRESH )
+			period: 5
+		}
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	runningProcessesCount = Variable { type: Integer }
+	
+	task = TaskRecord ( create "refresh_pamprogram_data" )
+	
+	/* Datasets and records here */
+	
+	allcontrols = Dataset {
+		view: pampgm_risk_count
+	}
+	
+	allcontrols_discrepancies = Dataset {
+		view: pampgm_risk_count_discrepancies
+		trend: Trend {
+			exclude-new: False
+			exclude-same: False 
+			include-removed: True
+			join-column: controlidentifier
+			value-column: nbdiscrepancies
+			other-column-name: prev_nbdiscrepancies
+			timeslot: FromPage(-1)
+		}
+	}
+	allcontrols_display = Dataset {
+		join: Join {
+			primary-dataset: allcontrols
+			primary-column: controlid
+			primary-optional: False
+			secondary-dataset: allcontrols_discrepancies
+			secondary-column: controlidentifier
+			secondary-cardinality: optional
+			secondary-prefix: count_
+		}
+	}
+	
+	refreshProcesses = Dataset {
+		processes: ProcessFilter {
+			show-completed: False
+			definition: "refresh_pamprogram_data"
+			show-technical:  True
+		}
+		count-variable: runningProcessesCount
+	}
+	
+	doRefresh = NamedAction (
+		Set True to UserVariable PGM_RISK_REFRESH,
+		TaskComplete task
+	)
+	
+	doCheckRefresh = NamedAction (
+		ReloadData ( refreshProcesses ) , 
+		IntCase ( runningProcessesCount ) {
+			when = 0 then [
+				Set False to UserVariable PGM_RISK_REFRESH,
+				ReloadData ( allcontrols_discrepancies ),
+				ReloadData ( allcontrols_display ),
+				ExecuteFragmentNamedAction riskdistributionfragment.refresh,
+				ExecuteFragmentNamedAction highrisk.refresh,
+				Flash $bwcpam_pgm_risk_NLS.flash.check.refresh
+			]
+		}
+	)
+	
+	/* Page content */
+	
+	
+	
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		styling: cssPageDashboard
+		
+		Grid {
+			columns: GridColumn { width: 530px },  GridColumn { width: 530px } , GridColumn { width: grow }, GridColumn { width: 5px }
+			gap: 0
+			insets: 0
+			GridRow {
+				height: grow
+				
+				GridCell {
+					Grid {
+						columns: GridColumn {}
+						layout: Layout { grab: horizontal True vertical True }
+						gap: 0
+						insets: 0
+						GridRow {
+							height: grow
+							
+							GridCell {
+								// Accounts in high risk
+								highrisk = IncludeFragment ( pampgm_risk_toprisksfragment 
+									with value-of UserVariable PGM_RISK_REFRESH to loading )
+							}
+							
+							
+						}
+						GridRow {
+							
+							height: 320 
+							
+							GridCell {
+								// Account risks
+								riskdistributionfragment = IncludeFragment ( pampgm_risk_accountriskfragment 
+									with value-of UserVariable PGM_RISK_REFRESH to loading )
+							}
+							
+						}
+					}
+				}
+				GridCell {
+					span: 2
+					Group {
+						mixins: homeLinksPanelMixin
+						Header { value:  $bwcpam_pgm_risk_NLS.subtitle }
+						
+						Grid {
+							columns: GridColumn{ width: grow}, GridColumn{ },GridColumn{ width: 50}
+							layout: Layout { indent: horizontal 40 vertical 30 }
+							GridRowGroup {
+								iterate-on: allcontrols_display
+								GridRow{
+									height: 50px
+									GridCell {
+										Text { value: Transform Current controlid using controls_displayname_mapping styling: indLabelStyle }
+									}
+									GridCell {
+										Text { value: Eval "current.count_nbdiscrepancies ? current.count_nbdiscrepancies: 0 " styling: indCountSmallStyle align: Right}
+									}	
+									GridCell {
+										Image { image: TemplateImageSelection( Transform Difference ( Current count_nbdiscrepancies, Current count_prev_nbdiscrepancies) using nullToZeroMapping ) using bwcdrm_trend_16 }
+									}
+									GridCell {
+										Button {
+											image: %cmd_24.next
+											mixins: linkButtonMixin
+											actions: GoTo Page bwcpam_accounts_discrepancies_details with 
+												Current controlid to controlid
+											disabled: IntPredicate ( Current count_nbdiscrepancies ) { when >0 then False otherwise True }
+										}
+									}  							      							      
+								}
+							}
+							GridRow {
+								GridCell {
+									span: 3
+									align: trailing
+									gap: 8
+									Button {
+										actions: ExecuteNamedAction doRefresh, Flash $bwcpam_pgm_risk_NLS.flash.do.resfresh
+										layout: Layout { hint: width 200 align: horizontal End vertical Beginning indent: horizontal 0 vertical 20 }
+										align: Center
+										text: Transform UserVariable PGM_RISK_REFRESH using bwcpam_pgm_risk_button_text_mapping
+										styling: cssButtonSquare
+										disabled: BooleanPredicate ( UserVariable PGM_RISK_REFRESH )
+									}
+								}
+							}
+							GridRow { height: grow }
+						}
+					}
+				}
+			}
+			GridRow {
+				height: 10
+			}
+		}
+	}
+}

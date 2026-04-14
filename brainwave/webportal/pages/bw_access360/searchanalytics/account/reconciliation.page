@@ -1,0 +1,1180 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/resources/reconciliation_dialogs.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+
+/* Nationalized labels here */
+access360analytics_account_reconciliationNLS = NLS {
+	title [en "Accounts Reconciliation Management" fr "Gestion de la réconciliation des comptes"]
+	dyntitle [en "{0} Accounts Reconciliation Management" fr "Gestion de la réconciliation des comptes {0}"]
+	emptyorphan [en "This repository does not contain any orphaned account." fr "Ce référentiel ne contient pas de compte orphelin"]
+	emptyrecon [en "This repository does not contain any reconciled account." fr "Ce référentiel ne contient pas de compte réconcilié"]
+	
+	personal [en "User" fr "Personnel"]
+	personal.tooltip [en "Click to associate this account with its owner" fr "Cliquez pour associer ce compte à son propriétaire"]
+	leave [en "Leaver" fr "Résiduel"]
+	leave.tooltip [en "Click to indicate that the owner of this account has left the company." fr "Cliquez pour indiquer que le propriétaire de ce compte à quitté l'entreprise"]
+	tech [en "Technical" fr "Technique"]
+	tech.tooltip [en "Click to mark this account as a technical account." fr "Cliquez pour marquer ce compte comme compte technique."]
+
+	detail.tooltip [en "Click to access account details" fr "Cliquez pour accéder au détail du compte"]
+
+	tab1 [en "Reconciliation synthesis" fr "Synthèse de la réconciliation"]
+	tab2 [en "Orphans accounts list" fr "Liste des comptes orphelins"]
+	tab3 [en "Reconciled accounts list" fr "Liste des comptes réconciliés"]
+
+	kpi1 [en "Orphaned Accounts" fr "Comptes orphelins"]
+	kpi2 [en "State of Reconciliation" fr "Etat de la réconciliation"]
+	kpi3 [en "Types of technical accounts" fr "Types de comptes techniques"]
+	kpi4 [en "Reconciliation ratio evolution" fr "Evolution du taux de réconciliation"]
+	kpi5 [en "Reconciliation rules" fr "Règles de réconciliation"]
+	kpi6 [en "Reconciliations per reliablility level" fr "Réconciliations par niveau de confiance"]
+	
+	description [
+		en "This report presents the orphaned accounts. Only active accounts are taken into account. A summary table shows the reconciliation status and the trend. A detail page allows you to process orphaned accounts. It is possible to reconcile the accounts one by one either by associating them with their owner, by indicating that their owner is no longer part of the company, or by marking them as service accounts."
+		fr "Ce rapport présente les comptes orphelins. Seuls les comptes actifs sont pris en compte. Un tableau de synthèse montre l'état de la réconciliation ainsi que la tendance. Une page de détail permet de traiter les comptes orphelins. Il est possible de réconcilier les comptes un à un soit en les associant à leur propriétaire, en indiquant que leur propriétaire ne fait plus partie de l'entreprise, ou en les marquants comme comptes de service."
+		]
+
+	bulk.leaver [en "Bulk Leaver" fr "Résiduel en masse"]
+	bulk.leaver.tooltip [en "Mark all selected accounts as Leaver" fr "Marquer tous les comptes sélectionnés comme résiduels"]
+	bulk.leaver.done [en "Please refresh your screen" fr "Veuillez rafraichir votre écran"]
+
+	bulk.technical [en "Bulk Technical" fr "Technique en masse"]
+	bulk.technical.tooltip [en "Mark all selected accounts as Technical" fr "Marquer tous les comptes sélectionnés comme techniques"]
+	bulk.technical.done [en "Please refresh your screen" fr "Veuillez rafraichir votre écran"]
+
+	bulk.personal [en "Bulk Personal" fr "Réconciliation en masse"]
+	bulk.personal.tooltip [en "Reconcile all selected accounts" fr "Réconcilier tous les comptes sélectionnés"]
+	bulk.personal.done [en "Please refresh your screen" fr "Veuillez rafraîchir votre écran"]
+	
+	limit1000 [en "Limited to 1000 entries, use filtering option" fr "Limité à 1000 entrées, utilisez les fonctions de filtrage"]
+}
+
+headerStyle = Style {
+	background:Color darkgrayNG
+	image-color:whiteNG
+	foreground:whiteNG
+}
+
+bluecolorStyle = Style {
+	image-color: RGB(22, 114, 193)
+}
+
+access360analytics_account_reconciliation = Page {
+	title: $access360analytics_account_reconciliationNLS.title
+	description: $access360analytics_account_reconciliationNLS.description
+	tags: "account", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwsa_accountreconciliation
+	mixins: simpleReport	
+	header:PageHeader {
+		Button {
+			layout: Layout { indent:vertical 6 horizontal 0 }
+			image:%browsing_16.information
+			presentation:Link
+			styling:bluecolorStyle
+			actions:Message $access360analytics_account_reconciliationNLS.description
+			hidden:StringPredicate($access360analytics_account_reconciliationNLS.description) { when IsEmpty then True otherwise False }
+		}
+	}
+	
+	
+
+	/* Parameters here */
+	search = SearchDefinition {
+		entity: Account
+		simple-mode-rule: br_account_simple_search
+	}
+	
+	/* Variables here */
+	selectedAccountUid = Variable
+	selectedAccountRecorduid = Variable
+	selectedAccountLogin = Variable
+	selectedUsername = Variable
+	nborphan = Variable
+	
+	nbtaborphan= Variable
+
+	nbaccounts = Variable
+	
+	selectedorphanuids = Variable { multivalued:True }
+	
+	/* Datasets and records here */
+	// statistics
+	accounts = Dataset {
+		search:Search {
+			view:bwaccess360r_account_accountlist
+			definition:search
+		}
+		count-variable:nbaccounts
+	}
+	
+	nbaccountbyrecontype = Dataset {
+		search:Search {
+			view:bwa360_repository_nbaccounts
+			definition:search			
+		}
+	}
+	nborphan = Dataset {
+		search:Search {
+			view:bwa360_repository_orphanaccounts
+			definition:search
+		}
+		count-variable:nborphan
+	}
+	nbtechaccountpertype = Dataset {
+		search:Search {
+			view:bwa360_repository_nbnoowneraccountspertype
+			definition:search			
+		}
+	}
+	nbreconevol = Dataset {
+		search:Search {
+			view:bwa360_repository_reconnbevol
+			definition:search			
+		}
+	}
+	nbreconrule = Dataset {
+		search:Search {
+			view:bwa360_repository_nbreconrule
+			definition:search			
+		}
+	}
+	nbreliability = Dataset {
+		search:Search {
+			view:bwa360_repository_nbperconfidencelevel
+			definition:search			
+		}
+	}
+	
+	
+	// details
+	orphanaccounts_count = Dataset {
+		search:Search {
+			view:bwa360_repositoryorphanaccounts
+			definition:search			
+		}
+		count-variable:nbtaborphan
+	}
+
+	orphanaccounts = Dataset {
+		search:Search {
+			view:bwa360_repositoryorphanaccountslimited
+			definition:search			
+		}
+	}
+
+	reconciledaccounts = Dataset {
+		search:Search {
+			view:bwa360_repositoryreconciledaccounts
+			definition:search			
+		}
+	}
+
+	goDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(
+					selectedAccountUid to inuid,
+					True to incanreconcile,
+					True to inshowapplications,
+					True to inshowcontrols,
+					True to inshowdecisionhistory,
+					True to inshowgroups,
+					True to inshowowner,
+					True to inshowshares,
+					True to inshowusages
+				)
+	)
+	
+	reloadAll = NamedAction (
+		ReloadData (nbaccountbyrecontype),
+		ReloadData (nborphan),
+		ReloadData (nbtechaccountpertype),
+		ReloadData (nbreconevol),
+		ReloadData (nbreconrule),
+		ReloadData (nbreliability),
+		ReloadData (orphanaccounts),
+		ReloadData (reconciledaccounts)
+	)
+
+	/* Page content */
+	TabFolder {
+		layout:Layout { indent: horizontal 0 vertical 6 }
+		TabItem {
+			text:$access360analytics_account_reconciliationNLS.tab1			
+			activation-event:ExecuteNamedAction reloadAll, IntCase(nborphan) { when InvalidInteger then [ Set 0 to nborphan ] }
+
+
+			Grid {
+				columns:GridColumn { group:a }, GridColumn { group:a }, GridColumn { group:a }
+				fill:Both
+				GridRow {
+					height:250px
+					GridCell {
+						Header {
+							value:$access360analytics_account_reconciliationNLS.kpi1
+							styling:bigTitleStyle
+						}
+						Separator {
+							color:blueNG
+						}
+
+						IncludeHTMLWidget {
+							layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+							template: mashupGaugeIndicator
+							bindings:
+								value-of "radial" to mode, // radial, numeric, row
+								value-of True to hasThresholds,
+								value-of Eval "nbaccounts/20" to warningThreshold, // 5% of total active accounts
+								value-of Eval "nbaccounts/10" to criticalThreshold, // 10% of total active accounts
+								value-of nborphan to count,
+								value-of nbaccounts to maxValue
+						}
+					}
+					GridCell {
+						Header {
+							value:$access360analytics_account_reconciliationNLS.kpi2
+							styling:bigTitleStyle
+						}
+						Separator {
+							color:blueNG
+						}
+
+						IncludeHTMLWidget {
+							layout: Layout { hint: height 200 width 330 align: horizontal Center vertical Center }
+							template: doughnutChart
+							datasets: nbaccountbyrecontype ( label, uid, nb ) to chartdata ( label, code , count )
+							bindings: 
+								value-of True to tooltipShowPercent,
+								value-of True to showLegend,
+								value-of "right" to legendPosition,
+								value-of Constant contrastedPalette to customColors
+						}
+					}
+					GridCell {
+						Header {
+							value:$access360analytics_account_reconciliationNLS.kpi3
+							styling:bigTitleStyle
+						}
+						Separator {
+							color:blueNG
+						}
+
+						IncludeHTMLWidget {
+							layout: Layout { hint: height 200 width 330 align: horizontal Center vertical Center }
+							template: doughnutChart
+							datasets: nbtechaccountpertype ( noownercode, noownercode, nb ) to chartdata ( label, code , count )
+							bindings: 
+								value-of True to tooltipShowPercent,
+								value-of True to showLegend,
+								value-of "right" to legendPosition,
+								value-of Constant contrastedPalette to customColors
+						}
+					}
+				}
+				GridRow {
+					height:grow
+					GridCell {
+						Header {
+							value:$access360analytics_account_reconciliationNLS.kpi5
+							styling:bigTitleStyle
+						}
+						Separator {
+							color:blueNG
+						}
+
+						IncludeHTMLWidget {
+							//layout: Layout { hint: height 200 width 300 align: horizontal Center vertical Center }
+							layout: Layout { grab: horizontal True vertical True }
+							template: barChart
+							datasets: nbreconrule ( label, label, nb ) to chartdata ( label, code , count )
+							bindings: 
+								value-of True to beginAtZero,
+								value-of True to isHorizontal,
+								value-of True to isLabelInside,
+								value-of True to tooltipShowPercent,
+								value-of Constant contrastedPalette to customColors
+						}
+					}
+					GridCell {
+						Header {
+							value:$access360analytics_account_reconciliationNLS.kpi6
+							styling:bigTitleStyle
+						}
+						Separator {
+							color:blueNG
+						}
+
+						IncludeHTMLWidget {
+							//layout: Layout { hint: height 200 width 300 align: horizontal Center vertical Center }
+							layout: Layout { grab: horizontal True vertical True }
+							template: barChart
+							datasets: nbreliability ( label, label, nb ) to chartdata ( label, code , count )
+							bindings: 
+								value-of True to beginAtZero,
+								value-of True to isHorizontal,
+								value-of True to isLabelInside,
+								value-of True to tooltipShowPercent,
+								value-of Constant contrastedPalette to customColors
+						}
+					}
+					GridCell {
+						Header {
+							value:$access360analytics_account_reconciliationNLS.kpi4
+							styling:bigTitleStyle
+						}
+						Separator {
+							color:blueNG
+						}
+						
+						IncludeHTMLWidget {
+							//layout: Layout { hint: height 200 width 300 align: horizontal Center vertical Center }
+							layout: Layout { grab: horizontal True vertical True }
+							template: multilineChart
+							datasets: nbreconevol ( timeslotuid, timeslotdisplayname, label, label, nb ) to chartdata ( code, label, categorycode , category, count )
+							bindings: 
+								value-of "start" to fill,
+								value-of 1 to pointRadius,
+								value-of True to isStacked,
+								value-of False to showLegend,
+								value-of True to stacked100
+						}
+					}
+				}
+			}
+		}
+		TabItem {
+			text:$access360analytics_account_reconciliationNLS.tab3				
+
+			ConditionalGroup {
+				IntCondition(Count reconciledaccounts) {
+					when >0 then [
+						PaginatedTable {
+							data:reconciledaccounts
+							configurable:True
+							persist-configuration:True
+							layout:Layout { grab:horizontal True vertical True }
+							show-filter:True
+							show-count-button:True
+							
+							Column {
+								column: uid
+								hidden: True
+								selection: selectedAccountUid
+							}
+							Column {
+								column: recorduid
+								hidden: True
+								selection: selectedAccountRecorduid
+								preserve-selection:True
+							}
+							Column {
+								column: login
+								header: $account.login
+								sortable:True
+								filterable:True
+								width: 100%
+								selection: selectedAccountLogin
+								
+								initially-masked: False
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: username
+								header: $account.username
+								sortable:True
+								filterable:True
+								width: 100%
+								
+								initially-masked: False
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: lastlogindate
+								header: $account.lastlogindate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+								actions: ExecuteNamedAction goDetails
+							}
+							Column {
+								column: repositorydisplayname
+								header: $prepository.displayname
+								width: 100%
+								
+								initially-masked: True
+							}
+							Column {
+								column: identifier
+								header: $account.identifier
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: profile
+								header: $account.profile
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: givenname
+								header: $account.givenname
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: surname
+								header: $account.surname
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: employeenumber
+								header: $account.employeenumber
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: mail
+								header: $account.mail
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: managerdata
+								header: $account.managerdata
+								width: 100%
+								
+								initially-masked: True
+							}
+							Column {
+								column: creationdate
+								header: $account.creationdate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordlastsetdate
+								header: $account.passwordlastsetdate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: expiredate
+								header: $account.expiredate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: nextpwdchangedate
+								header: $account.nextpwdchangedate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: service
+								header: $account.service
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: disabled
+								header: $account.disabled
+								width: 100%
+								
+								initially-masked: True
+							}
+							Column {
+								column: locked
+								header: $account.locked
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: logincount
+								header: $account.logincount
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: badpasswordcount
+								header: $account.badpasswordcount
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordnotrequired
+								header: $account.passwordnotrequired
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordcantchange
+								header: $account.passwordcantchange
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: privilegedaccount
+								header: $account.privilegedaccount
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: dontexpirepassword
+								header: $account.dontexpirepassword
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordexpired
+								header: $account.passwordexpired
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: smartcardrequired
+								header: $account.smartcardrequired
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: groupchanged
+								header: $account.groupchanged
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: permissionchanged
+								header: $account.permissionchanged
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+		
+							Column {
+								column:bwa_accountanalytics_nbdirectgroup
+								text:Transform Current bwa_accountanalytics_nbdirectgroup using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbdirectgroup
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+							Column {
+								column:bwa_accountanalytics_nbdirectright
+								text:Transform Current bwa_accountanalytics_nbdirectright using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbdirectright
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+							Column {
+								column:bwa_accountanalytics_nbperimeter
+								text:Transform Current bwa_accountanalytics_nbperimeter using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbperimeter
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+							Column {
+								column:bwa_accountanalytics_nbdirectfsright
+								feature:unstructureddata_license
+								text:Transform Current bwa_accountanalytics_nbdirectfsright using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbdirectfsright
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+		
+							Column {
+								column:bwa_accountanalytics_riskrank
+								sortable:True
+								header:$bwf_accountNLS.riskrank
+								align:Left
+								fixed-width:True
+								width:120px
+								initially-masked:True
+							}
+							Column {
+								column:bwa_accountanalytics_maxrisklevel
+								sortable:True
+								header:$bwf_accountNLS.maxrisk
+								width:120px
+								initially-masked:True
+							}
+							Column {
+								column:bwa_accountanalytics_nbrisks
+								sortable:True
+								header:$bwf_accountNLS.nbrisk
+								initially-masked:True
+								align:Left
+								fixed-width:True
+								width:120px
+							}
+
+
+							Column {
+								column:identityhrcode
+								sortable:True
+								filterable:True
+								header:$pidentity.hrcode
+								width:120px
+								initially-masked:True
+							}
+							Column {
+								column:identityfullname
+								sortable:True
+								filterable:True
+								header:$pidentity.fullname
+								width:160px
+							}
+							Column {
+								column:identitymail
+								sortable:True
+								filterable:True
+								header:$pidentity.mail
+								width:120px
+								initially-masked:True
+							}
+
+							Column {
+								column:reconnoownercode
+								sortable:True
+								filterable:True
+								header:$preconciliationmulti.noownercode
+								width:120px
+							}
+							Column {
+								column:reconreconciliationdate
+								sortable:True
+								header:$preconciliationmulti.reconciliationdate
+								width:130px
+							}
+							Column {
+								column:reconreliability
+								sortable:True
+								header:$preconciliationmulti.reliability
+								width:96px
+							}
+							Column {
+								column:recondescription
+								text:NonEmpty(Current recondescription, "Manual reconciliation")
+								sortable:True
+								filterable:True
+								header:$preconciliationmulti.rulename
+								width:160px
+							}
+							Column {
+								column:reconcomment
+								sortable:True
+								filterable:True
+								initially-masked:True
+								header:$preconciliationmulti.comment
+								width:300px
+							}
+						}
+					]		
+					otherwise [
+						Header {
+							value:$access360analytics_account_reconciliationNLS.emptyrecon 
+						}			
+					]
+				} 
+			}
+		}
+		TabItem {
+			text:$access360analytics_account_reconciliationNLS.tab2		
+			badge:Eval "(nbtaborphan>0)?nbtaborphan:''"
+
+			ConditionalGroup {
+				IntCondition(nbtaborphan) {
+					when >0 then [
+						Header {
+							value:$access360analytics_account_reconciliationNLS.limit1000
+							styling:warningFieldStyle
+							hidden:IntPredicate(nbtaborphan) { when >1000 then False otherwise True }
+						}
+						ButtonGroup {
+							Button {
+								text:$access360analytics_account_reconciliationNLS.bulk.personal
+								tooltip:$access360analytics_account_reconciliationNLS.bulk.personal.tooltip
+								image:%collection_16.user_enable
+								actions:
+									Dialog reconciliationIdentityAllDialog (selectedorphanuids to inAccountUids), Flash $access360analytics_account_reconciliationNLS.bulk.personal.done, ExecuteNamedAction reloadAll
+								disabled:
+									OrPredicate {
+										StringPredicate(selectedorphanuids) { when IsEmpty then True otherwise False }
+										FeaturePredicate auditor
+									}
+							}
+							Button {
+								text:$access360analytics_account_reconciliationNLS.bulk.leaver
+								tooltip:$access360analytics_account_reconciliationNLS.bulk.leaver.tooltip
+								image:%collection_16.user_disable
+								actions:
+									Dialog reconciliationLeaveAllDialog (selectedorphanuids to inAccountUIDs), Flash $access360analytics_account_reconciliationNLS.bulk.leaver.done, ExecuteNamedAction reloadAll
+								disabled:
+									OrPredicate {
+										StringPredicate(selectedorphanuids) { when IsEmpty then True otherwise False }
+										FeaturePredicate auditor
+									}
+							}
+							Button {
+								image:%concept_16.techaccount
+								text:$access360analytics_account_reconciliationNLS.bulk.technical
+								tooltip:$access360analytics_account_reconciliationNLS.bulk.technical.tooltip
+								actions:
+									Dialog reconciliationNoOwnerAllDialog (selectedorphanuids to inAccountUIDs), Flash $access360analytics_account_reconciliationNLS.bulk.technical.done, ExecuteNamedAction reloadAll
+								disabled:
+									OrPredicate {
+										StringPredicate(selectedorphanuids) { when IsEmpty then True otherwise False }
+										FeaturePredicate auditor
+									}
+							}
+						}
+					
+						Table {
+							data:orphanaccounts
+							configurable:True
+							persist-configuration:True
+							layout:Layout { grab:horizontal True vertical True }
+							show-count:True
+							show-filter:True
+							checkboxes:uid to selectedorphanuids
+							
+							Column {
+								column:uid
+								header:''
+								text:$access360analytics_account_reconciliationNLS.personal
+								fixed-width:True
+								image:%collection_16.user_enable
+								tooltip:$access360analytics_account_reconciliationNLS.personal.tooltip
+								styling:headerStyle
+								actions:Dialog reconciliationIdentityDialog (selectedAccountLogin to inAccountLogin, selectedAccountRecorduid to inAccountRecordUid), ExecuteNamedAction reloadAll
+								actions-disabled:FeaturePredicate auditor
+								width:120px
+							}
+							Column {
+								column:uid
+								header:''
+								text:$access360analytics_account_reconciliationNLS.leave
+								fixed-width:True
+								image:%collection_16.user_disable
+								tooltip:$access360analytics_account_reconciliationNLS.leave.tooltip
+								styling:headerStyle
+								actions:Dialog reconciliationLeaveDialog (selectedAccountUid to inAccountUID, selectedAccountLogin to inAccountLogin, selectedAccountRecorduid to inAccountRecordUid, selectedUsername to identityFullname), ExecuteNamedAction reloadAll
+								actions-disabled:FeaturePredicate auditor
+							}
+							Column {
+								column:uid
+								header:''
+								text:$access360analytics_account_reconciliationNLS.tech
+								fixed-width:True
+								image:%concept_16.techaccount
+								tooltip:$access360analytics_account_reconciliationNLS.tech.tooltip
+								styling:headerStyle
+								actions:Dialog reconciliationNoOwnerDialog (selectedAccountUid to inAccountUID, selectedAccountLogin to inAccountLogin, selectedAccountRecorduid to inAccountRecordUid), ExecuteNamedAction reloadAll
+								actions-disabled:FeaturePredicate auditor
+							}
+							Column {
+								column: uid
+								hidden: True
+								selection: selectedAccountUid
+							}
+							Column {
+								column: recorduid
+								hidden: True
+								selection: selectedAccountRecorduid
+								preserve-selection:True
+							}
+							Column {
+								column: login
+								header: $account.login
+								sortable:True
+								filterable:True
+								width: 100%
+								selection: selectedAccountLogin
+								
+								initially-masked: False
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: username
+								header: $account.username
+								sortable:True
+								filterable:True
+								width: 100%
+								selection: selectedUsername
+								
+								initially-masked: False
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: lastlogindate
+								header: $account.lastlogindate
+								width: 100%
+								sortable:True
+								
+								initially-masked: False
+								actions: ExecuteNamedAction goDetails
+							}
+							Column {
+								column: repositorydisplayname
+								header: $prepository.displayname
+								width: 100%
+								
+								initially-masked: True
+							}
+							Column {
+								column: identifier
+								header: $account.identifier
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: profile
+								header: $account.profile
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: givenname
+								header: $account.givenname
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: surname
+								header: $account.surname
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: employeenumber
+								header: $account.employeenumber
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: mail
+								header: $account.mail
+								width: 100%
+								sortable:True
+								filterable:True
+								
+								initially-masked: True
+								actions: ExecuteNamedAction goDetails
+								tooltip:$access360analytics_account_reconciliationNLS.detail.tooltip
+							}
+							Column {
+								column: managerdata
+								header: $account.managerdata
+								width: 100%
+								
+								initially-masked: True
+							}
+							Column {
+								column: creationdate
+								header: $account.creationdate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordlastsetdate
+								header: $account.passwordlastsetdate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: expiredate
+								header: $account.expiredate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: nextpwdchangedate
+								header: $account.nextpwdchangedate
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: service
+								header: $account.service
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: disabled
+								header: $account.disabled
+								width: 100%
+								
+								initially-masked: True
+							}
+							Column {
+								column: locked
+								header: $account.locked
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: logincount
+								header: $account.logincount
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: badpasswordcount
+								header: $account.badpasswordcount
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordnotrequired
+								header: $account.passwordnotrequired
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordcantchange
+								header: $account.passwordcantchange
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: privilegedaccount
+								header: $account.privilegedaccount
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: dontexpirepassword
+								header: $account.dontexpirepassword
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: passwordexpired
+								header: $account.passwordexpired
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: smartcardrequired
+								header: $account.smartcardrequired
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: groupchanged
+								header: $account.groupchanged
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+							Column {
+								column: permissionchanged
+								header: $account.permissionchanged
+								width: 100%
+								sortable:True
+								
+								initially-masked: True
+							}
+		
+							Column {
+								column:bwa_accountanalytics_nbdirectgroup
+								text:Transform Current bwa_accountanalytics_nbdirectgroup using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbdirectgroup
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+							Column {
+								column:bwa_accountanalytics_nbdirectright
+								text:Transform Current bwa_accountanalytics_nbdirectright using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbdirectright
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+							Column {
+								column:bwa_accountanalytics_nbperimeter
+								text:Transform Current bwa_accountanalytics_nbperimeter using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbperimeter
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+							Column {
+								column:bwa_accountanalytics_nbdirectfsright
+								feature:unstructureddata_license
+								text:Transform Current bwa_accountanalytics_nbdirectfsright using bwf_defaultsTo0
+								initially-masked: True
+								sortable:True
+								header:$search.account.nbdirectfsright
+								align:Left
+								fixed-width:True
+								width:100px
+							}
+		
+							Column {
+								column:bwa_accountanalytics_riskrank
+								sortable:True
+								header:$bwf_accountNLS.riskrank
+								align:Left
+								fixed-width:True
+								width:120px
+							}
+							Column {
+								column:bwa_accountanalytics_maxrisklevel
+								sortable:True
+								header:$bwf_accountNLS.maxrisk
+								width:120px
+							}
+							Column {
+								column:bwa_accountanalytics_nbrisks
+								sortable:True
+								header:$bwf_accountNLS.nbrisk
+								initially-masked:True
+								align:Left
+								fixed-width:True
+								width:120px
+							}
+						}
+					]		
+					otherwise [
+						Header {
+							value:$access360analytics_account_reconciliationNLS.emptyorphan 
+						}			
+					]
+				} 
+			}
+		}
+	}
+}

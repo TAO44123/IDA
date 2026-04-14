@@ -1,0 +1,97 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/reports/allreports.page"
+
+/* Nationalized labels here */
+bw_adschema_AccountsOutOfScopeReportNLS = NLS {
+	title [en "Accounts or Groups Out of Scope" ]
+	dyntitle [en "{0}" fr "{0}"]
+}
+
+bw_adschema_AccountsOutOfScopeReport = Page {
+	title: $bw_adschema_AccountsOutOfScopeReportNLS.title
+	dynamic-title:$bw_adschema_AccountsOutOfScopeReportNLS.dyntitle(title)
+	
+	tags: "ADreports"		
+	/* Parameters here */
+	title = Parameter {type:String hidden:True mandatory:False}
+	domainuid = Parameter {type:String hidden:True mandatory:False multivalued:True}
+	
+	disabled = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.disabled}
+	locked = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.locked}
+	dontexpirepassword = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.dontexpirepassword}
+	notnormalaccount = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.notnormalaccount}
+	passwordcantchange = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordcantchange}
+	passwordexpired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordexpired}
+	passwordnotrequired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordnotrequired}
+	smartcardrequired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.smartcardrequired}
+	groupchanged = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.groupchanged}
+	noexpirationdate = Parameter {type:Boolean hidden:True mandatory:False}
+	internal = Parameter {type:Boolean hidden:True mandatory:False}
+	logincount = Parameter {type:Integer hidden:True mandatory:False}
+	badpasswordcount = Parameter {type:Integer hidden:True mandatory:False}
+	importaction = Parameter {type:String hidden:True mandatory:False}
+	deletedaction = Parameter {type:String hidden:True mandatory:False}
+	groupsid = Parameter {type:String hidden:True mandatory:False}
+	terminated = Parameter {type:Boolean hidden:True mandatory:False}
+
+	recontype = Parameter {type:String hidden:True mandatory:False}
+	
+	lastlogin = Parameter {type:Integer hidden:True mandatory:False}
+	passwordlastchanged = Parameter {type:Integer hidden:True mandatory:False}
+	expirationdate = Parameter {type:Integer hidden:True mandatory:False}
+
+		/* Variables here */
+	vtitle = Variable {type:String initial:$bw_adschema_AccountsOutOfScopeReportNLS.title}
+	selectedAccount = Variable
+	
+	/* Datasets and records here */
+	accounts = Dataset {
+		view:ad_acl_id_notfound
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:False
+			join-column:uid
+			value-column:^value
+			status-column-name:status	
+			timeslot:FromPage(-1)
+		}
+	}
+	
+	/* Page content */
+	
+	Grid {
+		columns: GridColumn { width: grow }, GridColumn { width: 50px }
+		GridRow {
+			GridCell {
+				Table {
+					data:accounts
+					layout:Layout {grab:horizontal True vertical True}
+					show-filter:True
+					show-count:True
+					configurable:True
+					
+					Column {
+						column:status header:"New" text:"" sortable:True width:32px image:StringImageSelection(Current status) {when "New" then "16/famfamfam_silk_icons_v013/add.png"}
+					}
+					
+					Column {
+						column: repository_code header: $repository.concept width: 20% 
+					}
+					Column {
+						column:domain header: $domain.code sortable: True width: 20% 
+						text: Transform Current domain using optionStringMapping
+					}
+			
+					Column {
+						column:identifier header:$account.identifier sortable:True filterable:True width: 100%
+					}
+				}	
+			}
+		}
+	}
+}

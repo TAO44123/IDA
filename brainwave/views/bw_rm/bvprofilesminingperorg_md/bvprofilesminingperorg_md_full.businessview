@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bvprofilesminingperorg_md_full" displayname="bvprofilesminingperorg md">
+	<Definition scriptfile="/views/bw_rm/bv.javascript" name="D1582206712892" description="Main businessview for crosstab role mining">
+		<Component type="innerview" x="30" y="10" w="364" h="64" name="C1582206712891" title="rights with perm &amp; identities">
+			<InnerView prefix="right_" name="bwpm_rights_id_perm_perorg_fullmd">
+				<Param name="F1582207550378" viewparam="uid" viewparamvalue="{param.organisation.get()}"/>
+				<Param name="F1582207560748" viewparam="nbdays" viewparamvalue="{param.nbdays.get()}"/>
+				<Param name="F1582207569459" viewparam="permRules" viewparamvalue="{param.permRules.get()}"/>
+				<Param name="F1582207652788" viewparam="directOnly" viewparamvalue="{param.directOnly.get()}"/>
+				<Param name="F1584978122969" viewparam="subkey" viewparamvalue="{param.processIdentifier.get()}"/>
+				<Param name="F1609929053414" viewparam="lang" viewparamvalue="{param.lang.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1521821419309_2" type="joinview" x="49" y="86" w="421" h="114" title="locaglobal roles with perm &amp; identities ">
+			<InnerView name="iroleall_id_perm_perorg_1">
+				<Param name="F1521821485963" viewparam="organisation" viewparamvalue="{param.organisation.get()}"/>
+				<Param name="F1585242476956" viewparam="scopeId" viewparamvalue="{param.processIdentifier.get()}"/>
+				<Param name="F1612734988643" viewparam="lang" viewparamvalue="{param.lang.get()}"/>
+			</InnerView>
+			<Join jointype="full" key1="{dataset.right_key.get()}" key2="{dataset.role_key.get()}"/>
+			<ViewComputedAttribute name="identityuid" displayname="identityuid" type="String" expression="!dataset.isEmpty(&quot;right_identityuid&quot;) ?dataset.right_identityuid.get(): dataset.role_identityuid.get()"/>
+			<ViewComputedAttribute name="identityjobtitledisplayname" type="String" expression="!dataset.isEmpty(&quot;right_jobtitledisplayname&quot;) ?dataset.right_jobtitledisplayname.get(): dataset.role_jobtitledisplayname.get()"/>			
+			<ViewComputedAttribute name="identityfullname" type="String" expression="!dataset.isEmpty(&quot;right_identityfullname&quot;) ?dataset.right_identityfullname.get(): dataset.role_identityfullname.get()"/>
+			<ViewComputedAttribute name="identityhrcode" displayname="identity hrcode" type="String" expression="!dataset.isEmpty(&quot;right_identityhrcode&quot;) ?dataset.right_identityhrcode.get(): dataset.role_identityhrcode.get()"/>
+			<ViewComputedAttribute name="identityinterncontractor" type="String" expression="!dataset.isEmpty(&quot;right_interncontractor&quot;) ?dataset.right_interncontractor.get(): dataset.role_interncontractor.get()" displayname="interncontractor"/>
+			<ViewComputedAttribute name="organisationuid" type="String" expression="!dataset.isEmpty(&quot;right_organisationuid&quot;) ?dataset.right_organisationuid.get(): dataset.role_organisationuid.get()"/>
+			<ViewComputedAttribute name="organisationdisplayname" type="String" expression="!dataset.isEmpty(&quot;right_organisationdisplayname&quot;) ?dataset.right_organisationdisplayname.get(): dataset.role_organisationdisplayname.get()"/>
+			<ViewComputedAttribute name="organisationshortname" type="String" expression="!dataset.isEmpty(&quot;right_organisationshortname&quot;) ?dataset.right_organisationshortname.get(): dataset.role_organisationshortname.get()"/>
+			<ViewComputedAttribute name="permissionuid" displayname="permissionuid" type="String" expression="!dataset.isEmpty(&quot;right_permissionuid&quot;) ?dataset.right_permissionuid.get(): dataset.role_permissionuid.get()"/>
+			<ViewComputedAttribute name="permissiondisplayname" displayname="permission displayname" type="String" expression="(!dataset.isEmpty(&quot;right_permissiondisplayname&quot;) ?dataset.right_permissiondisplayname.get(): dataset.role_permissiondisplayname.get())"/>
+			<ViewComputedAttribute name="applicationuid" displayname="applicationuid" type="String" expression="!dataset.isEmpty(&quot;right_applicationuid&quot;) ?dataset.right_applicationuid.get(): dataset.role_applicationuid.get()"/>
+			<ViewComputedAttribute name="applicationdisplayname" displayname="applicationdisplayname" type="String" expression="!dataset.isEmpty(&quot;right_applicationdisplayname&quot;) ?dataset.right_applicationdisplayname.get(): dataset.role_applicationdisplayname.get()"/>
+			<ViewComputedAttribute name="nb_ratio" displayname="ratio" type="Integer" expression="dataset.right_bwrm_idpermorg_nbidentities.get() * 100 / dataset.right_bwrm_idperm_nbidentities.get()"/>
+			<ViewComputedAttribute name="cellcontent" displayname="cellcontent" type="String" expression="!dataset.isEmpty(&apos;role_code&apos;)?dataset.role_name.get():dataset.right_accountusage.get()"/>
+			<ViewComputedAttribute name="cellcolor" displayname="cellcolor" type="String" expression="!dataset.isEmpty(&quot;role_colorstr&quot;)? ( dataset.role_colorstr.get()+ (dataset.role_scope.get() == &apos;global&apos;? &quot;g&quot;:&quot;&quot;)+(  !dataset.isEmpty(&quot;right_accountusage&quot;)? &quot;&quot;: &quot;+&quot; )) : (dataset.right_hasComments.get() == &apos;1&apos; ? &quot;C&quot;: dataset.right_accountusage.get())"/>
+			<ViewComputedAttribute name="cellcompact" displayname="cell compact content" type="String" expression="!dataset.isEmpty(&quot;right_accountusage&quot;)? dataset.right_accountusage.get(): &quot;+&quot;"/>
+			<ViewComputedAttribute name="permissiondisplaynameext" displayname="perm display name with ratio" type="String" expression="dataset.permissiondisplayname.get() +(dataset.right_hasComments.get()?&quot;*&quot;:&quot;&quot;) +  ( !dataset.isEmpty(&quot;nb_ratio&quot;) ?&quot; (&quot;+ dataset.nb_ratio.get()+&quot;%)&quot;: &quot;&quot;)"/>
+			<FilterList>
+				<Filter name="F1582903612106" expression="param.showGlobal.get() == &apos;1&apos; || dataset.role_scope.get() != &apos;global&apos;" type="Include"/>
+				<Filter name="F1582903638881" expression="param.roleOnly.get()  == &apos;0&apos;  ?  true : ( !dataset.isEmpty(&apos;role_code&apos;) &amp;&amp; !dataset.isEmpty(&apos;right_accountusage&apos;)) || (dataset.right_hasComments.get() == &apos;1&apos;)" comment="a un role mais pas en overallocation ou bien permission annotée" type="Include"/>
+				<Filter name="F1582903686345" expression="dataset.isEmpty(&apos;right_bwrm_idperm_nbidentities&apos;) || (  dataset.right_bwrm_idperm_nbidentities.get() &gt;= param.lowthreshold.get() &amp;&amp; dataset.right_bwrm_idperm_nbidentities.get() &lt;= param.highthreshold.get())" comment="supprimer les cellules dont la permission n&apos;a pas assez ou trop d&apos;identités" type="Include"/>
+				<Filter name="F1582903974955" expression="dataset.isEmpty(&apos;nb_ratio&apos;) || dataset.nb_ratio.get() &gt;= param.minLocal.get()" type="Include"/>
+			</FilterList>
+		</Component>
+		<Component name="C1584954041919" type="joinview" x="939" y="228" w="300" h="50" title="add kpis">
+			<InnerView name="bwpm_rights_id_perm_perorg_kpis" prefix="right_">
+				<Param name="F1585211564273" viewparam="processIdentifier" viewparamvalue="{param.processIdentifier.get()}"/>
+				<Param name="F1585212584430" viewparam="uid" viewparamvalue="{param.organisation.get()}"/>
+			</InnerView>
+			<Join jointype="inner" key1="{dataset.right_permissionuid.get()}" key2="{dataset.right_perm_uid.get()}"/>
+		</Component>
+		<Link name="L1584954042230" source="C1582206712891" target="C1584954041919" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1584954042457" source="C1584954041919" target="C1521821419309_2" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="organisation" displayname="organisation" type="String">
+		<Value name="V1584727846843_1" data="DFIN_1608805967047_74"/>
+	</ViewParam>
+	<ViewParam name="nbdays" displayname="nbdays" type="Integer" defaultvalue="181"/>	
+	<ViewParam name="showGlobal" displayname="showGlobal" type="String" defaultvalue="1">
+	</ViewParam>
+	<ViewParam name="minLocal" displayname="min local prc" defaultvalue="0" type="Integer">
+	</ViewParam>
+	<ViewParam name="roleOnly" displayname="role only" type="String" defaultvalue="0">
+	</ViewParam>
+	<ViewParam name="lowthreshold" displayname="lowthreshold" defaultvalue="0" type="Integer">
+	</ViewParam>
+	<ViewParam name="highthreshold" displayname="highthreshold" defaultvalue="10000" type="Integer"/>
+	<ViewParam name="directOnly" displayname="directOnly" defaultvalue="1">
+	</ViewParam>
+	<ViewParam name="permRules" displayname="perm rules">
+		<Value name="V1612733567565_1" data="DYN:992386523d284bf2b058704534089a25"/>
+	</ViewParam>
+	
+	<ViewParam name="processIdentifier" displayname="processIdentifier"/>
+	<ViewParam name="lang" displayname="lang">
+		<Value name="V1612733596540_2" data="fr"/>
+	</ViewParam>
+</View>

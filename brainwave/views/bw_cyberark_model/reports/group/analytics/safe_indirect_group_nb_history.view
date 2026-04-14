@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpam_safe_indirect_group_nb_history" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="application" displayname="number of safes accessible through nested groups history" notes="">
+	<ViewComputedAttribute name="timeslot_date" displayname="timeslot_date" type="String" expression="dataset.timeslotcommitdate.get().toLDAPString().substring(0,4) + &apos;-&apos; + dataset.timeslotcommitdate.get().toLDAPString().substring(4,6) + &apos;-&apos; + dataset.timeslotcommitdate.get().toLDAPString().substring(6,8)"/>
+	<ViewComputedAttribute name="group_type" displayname="group_type" type="String" expression="&apos;Indirect&apos;"/>
+	<ViewSort name="sort" attribute1="A1633077809903_834"/>
+	<ViewJoin name="J1562080868561_1754" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+		<ViewJoin name="J1624980187448_1251" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermdirectgroups">
+			<ViewJoin name="J1631983677307_602" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+				<ViewAttribute name="A1631983688689_603" attribute="repositorytype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1631983691671_0" operation="in" ignoreifempty="false">
+						<Value name="0" data="AD"/>
+						<Value name="1" data="ca_vault"/>
+						<Value name="2" data="ca_safe"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+			</ViewJoin>
+			<ViewJoin name="J1631985819447_694" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="downgroup">
+				<ViewAttribute name="A1633008583258_431" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false"/>
+				<ViewJoin name="J1639128168776_417" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+					<ViewJoin name="J1639128174666_418" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+						<ViewAttribute name="1639476944746_12880" attribute="uid" alias="appuid" operator="or" removedfromprojection="true" globalfilter="false">
+							<ViewAttributeFilter name="F1639128196700_0" aliasreference="A1639476901517_12871" operation="eq" ignoreifempty="false"/>
+						</ViewAttribute>
+					</ViewJoin>
+				</ViewJoin>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1633077805635_833" attribute="timeslotuid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1633077809903_834" attribute="timeslotcommitdate" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1633077811146_835" attribute="timeslotcommitday" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1639476901517_12871" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false"/>
+	<ViewAttribute name="A1639476921020_12872" attribute="recorduid" alias="nb_safe" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1639476952854_12882" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1639128103177_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="ca_safe"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+</View>

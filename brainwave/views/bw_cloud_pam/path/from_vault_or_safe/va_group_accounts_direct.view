@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwcpam_va_group_accounts_direct" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="application" displayname="va vault groups" notes="" begindate="" enddate="">
+	<ViewParam name="vault_uid" displayname="vault_uid"/>
+	<ViewParam name="secrets_only" displayname="secrets_only"/>
+	<ViewParam name="showpredefined" displayname="showpredefined" type="Boolean"/>
+	<ViewComputedAttribute name="target_family" displayname="target_family" type="String" expression="&apos;ACCOUNT&apos;"/>
+	<ViewComputedAttribute name="node" displayname="node" type="String" expression="&quot;{&apos;shape&apos;: &apos;account&apos;,&apos;color&apos;:{&apos;background&apos;:&apos;#6A7BA6&apos;,&apos;highlight&apos;:&apos;#6A7BA6&apos;,&apos;hover&apos;:&apos;#6A7BA6&apos;},&apos;font&apos;:{&apos;color&apos;:&apos;#000000&apos;}}&quot;"/>
+	<ViewComputedAttribute name="edge" displayname="edge" type="String" expression="&quot;{&apos;color&apos;:{ &apos;color&apos;:&apos;#C0C0C0&apos;,&apos;highlight&apos;:&apos;#A0A0A0&apos;,&apos;hover&apos;:&apos;#A0A0A0&apos; }}&quot;"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1624818674380_4378" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1624818025790_0" reference="vault_uid" operation="eq" ignoreifempty="true"/>
+	</ViewAttribute>
+	<ViewAttribute name="1624818674381_4380" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1624818062688_0" operation="in" ignoreifempty="false">
+			<Value name="0" data="ca_vault"/>
+			<Value name="1" data="ca_safe"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1624818696407_4381" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+		<ViewAttribute name="1624879464063_843" attribute="code" operator="or" removedfromprojection="true" globalfilter="false" enabled="(! param.isEmpty(&apos;secrets_only&apos;)) &amp;&amp; param.secrets_only.get()">
+			<ViewAttributeFilter name="F1624863418088_0" operation="in" ignoreifempty="false">
+				<Value name="0" data="useAccounts"/>
+				<Value name="1" data="retrieveAccounts"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewJoin name="J1625085159081_446" prefix="source_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermdirectgroups">
+			<ViewAttribute name="A1625085177094_447" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1625085179779_448" attribute="displayname" alias="source_code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1624819141648_4420" prefix="target_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+				<ViewAttribute name="1625085194153_454" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1625085194154_455" attribute="login" alias="target_code" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1625085194154_456" attribute="identifier" alias="target_tooltip" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1635514041336_629" attribute="bw_pam_user_predefined_predifined" operator="or" removedfromprojection="false" globalfilter="true" enabled="param.isEmpty(&apos;showpredefined&apos;)||param.showpredefined.get()==false">
+					<ViewAttributeFilter name="F1635512374184_0" operation="isNull" ignoreifempty="false"/>
+					<ViewAttributeFilter name="F1635512402127_1" operation="isFalse" ignoreifempty="false"/>
+				</ViewAttribute>
+				<ViewAttribute name="1639149337786_1937" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1627324085441_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="0"/>
+					</ViewAttributeFilter>
+					<ViewAttributeFilter name="F1627324112839_1" operation="isNull" ignoreifempty="false"/>
+					<ViewAttributeFilter name="F1757005273746_2" operation="isFalse" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+			<ViewJoin name="J1639128168776_417" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+				<ViewJoin name="J1639128174666_418" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+					<ViewAttribute name="1639142981392_750" attribute="uid" alias="appuid" operator="or" removedfromprojection="true" globalfilter="false">
+						<ViewAttributeFilter name="F1639128196700_0" aliasreference="1624818674380_4378" operation="eq" ignoreifempty="false"/>
+					</ViewAttribute>
+				</ViewJoin>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

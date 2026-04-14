@@ -1,0 +1,113 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+fragmentPermissionPerOrgNLS = NLS {
+	perorg [en "Organisations with the permission" fr "Organisations avec la permission"]
+	innertooltip [en "{0} identities from this organisation,\n{1} identities in total with the permission" fr "{0} personnes de cette organisation\nsur un total de {1} personnes qui disposent de cette permission"]
+
+	tooltip [en "This tile presents the organisations where identities mostly have access to this permission\nthis tile is used to understand the meaning of a given permission, who is actually using it from an organisation perspective"
+			 fr "Cette tuile présente les organisations dont les identités ont le plus accès à cette permission\ncette tuile est utilisée pour comprendre l'utilité d'une permission donnée, quelles sont les organisations qui l'utilisent"
+			]
+	top20 [en "Top 30" fr "Top 30"]
+
+	axe_nbpeople [en "People with the permission" fr "Personnes avec la permission"]
+	axe_organisations [en "Organisations" fr "Organisations"] 
+
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the origin organisation of the identities with the permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate details</li>
+ * </ul>
+ * </span>
+ */
+fragmentPermissionPerOrg = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	perorg = Dataset {
+		view: bwf_permissionnbidentityperorg with inuid to uid, total.totalidentities to total
+		limit:30
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				IntPredicate(total.totalidentities) {
+					when >0 then False
+					otherwise True
+				}
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	total = Record {
+		view: bwf_permissionnbtotalidentity with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	Header {
+		value:$fragmentPermissionPerOrgNLS.perorg
+		styling:bigTitleStyle
+		tooltip:$fragmentPermissionPerOrgNLS.top20
+	}
+
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: barChart
+		datasets: perorg ( shortname, uid, nbidentity, label ) to chartdata ( label, code , count , description)
+		bindings: 
+			value-of $fragmentPermissionPerOrgNLS.axe_nbpeople to xlabel,
+			value-of $fragmentPermissionPerOrgNLS.axe_organisations to ylabel,
+			value-of True to showxAxesGrid,
+			value-of True to showyAxesGrid,
+			value-of True to isHorizontal,
+			value-of True to isLabelInside,
+			value-of True to beginAtZero,
+			value-of False to maintainAspectRatio,
+			value-of Constant shadesofbluePalette to customColors
+		widget-events: {
+			when onclick then [
+				BooleanCase(incanshowdetails) {
+					when True then [
+						Dialog bwf_organisationDetailsDialog(Current code to inuid
+															,True to inshowteam
+															,True to inshowsuborganisationtree
+															,inuid to infilterteambypermission
+						)
+					]
+					when False then [
+					]
+				}
+			]
+		}
+	}
+
+	/*
+	Text {
+		iterate-on:perorg
+		value:Current displayname
+		compact:True
+		decorator:Decorator{width:200 after:Bar{max-value:total.totalidentities  value:Current nbidentity width:200 higher-is-better:True tooltip:$fragmentPermissionPerOrgNLS.innertooltip(Current nbidentity,total.totalidentities) }  }
+		label:Label{break:True}
+	}
+	*/
+}

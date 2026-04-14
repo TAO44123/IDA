@@ -1,0 +1,666 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+import "/webportal/pages/bw_fragments/permission/resources.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/bw_iasreview/fragments.page"
+import "/webportal/pages/bw_iasreview/nls.page"
+import "/webportal/pages/resources/constants.page"
+import "/webportal/pages/bw_iasreview/lib/dialogs.page"
+import "/webportal/pages/bw_iasreview/lib/nls.page"
+
+// Roles Content review, management page, explicit approval tab (aka sign off)
+bwaccess360_roleContentReviewmanagementExplicitApprovalTable = PageFragment {
+	campaignid = Variable { type: String }
+	// Filter labels
+	accountableuid = Variable { type: String }
+	accountablename = Variable { type: String }
+	iamapplicationname = Variable { type: String }
+	applicationname = Variable { type: String }
+	permissionname = Variable { type: String }
+	rolename = Variable { type: String }
+	
+	incanshowdetails = Variable { type: Boolean initial: True }	
+	incanfilterbystatus = Variable { type: Boolean initial: False }	
+	incanfilterbyapplication = Variable { type: Boolean initial: True }
+	incanfilterbypermission = Variable { type: Boolean initial: True }
+	incanfilterbyaccount = Variable { type: Boolean initial:True }	
+	inenabled = Variable { type: Boolean initial: False }	
+	inrevieweruid = Variable { type: String }
+	inreviewername = Variable { type: String }
+	// Filters
+	infilterbyreviewstatus = Variable { type: String multivalued: True }
+	infilterbyiamapplications = Variable { type: String multivalued: True }
+	infilterbyroles = Variable { type: String multivalued: True }
+	infilterbyapplications = Variable { type: String multivalued: True }
+	infilterbypermissions = Variable { type: String multivalued: True }
+	intimestamp = Variable { type: String }
+	inreviewtype = Variable { type: String }
+	// Selection
+	iamAppUid = Variable { type: String }
+	appUid = Variable { type: String }
+	parentRoleUid = Variable { type: String }
+	childPermUid = Variable { type: String }
+
+	outapplicationuid = Variable { type: String }
+	outpermissionuid = Variable { type: String }
+	outidentityuid = Variable { type: String }
+	outaccountuid = Variable { type: String }
+	
+	filteredentries = Variable { type: String multivalued: True }
+	selectedentries = Variable { type: String multivalued: True }
+	
+	explicitfilter = Variable { type: String initial: "1" }
+	explicitfilter_mv = Variable { type: String initial: ["1"] multivalued: True }
+	
+	selectedrevieweruid = Variable { type: String }
+	
+	reviewcount = Variable { type: String }
+	
+	editablereview = Dataset {
+		view: bwaccess360_rolesContentForcampaign_portal with
+			campaignid to campaignid unless-empty,
+			infilterbyreviewstatus to filterbyreviewstatus unless-empty,
+			inrevieweruid to revieweruid unless-empty,
+			accountableuid to accountableuid unless-empty,
+			infilterbyiamapplications to filterbyiamapplications unless-empty,
+			infilterbyroles to filterbyroles unless-empty, 
+			infilterbyapplications to filterbyapplications unless-empty,
+			infilterbypermissions to filterbypermissions unless-empty,
+			$bwaccess360_accessreviewmanagementNLS.onbehalfof to delegationtext,
+			$bwaccess360_review.reviewerAbsent to reviewergonetext,
+			explicitfilter_mv to includeexplicitstatus,
+			intimestamp to dummy
+		// Limit should match bwReview_display_thresold_warning
+		limit: 10000
+		disabled:
+			Not BooleanPredicate(inenabled)
+	}
+	
+	countreview = Dataset {
+		view: bwaccess360_rolesContentCampaign_count with
+			campaignid to campaignid unless-empty,
+			explicitfilter to includeexplicitstatus,
+			intimestamp to dummy
+		disabled:
+			Not BooleanPredicate ( inenabled )
+		count-variable: reviewcount
+	}
+
+	refreshStatuses = NamedAction (
+		ExecuteFragmentNamedAction reviewStatusFilter.refreshStatuses
+	)
+
+	goReviewerDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				StringCase ( selectedrevieweruid ) {
+					when IsEmpty then []
+					otherwise [
+						Dialog bwf_identityDetailsDialog(
+							selectedrevieweruid to inuid
+						)
+					]
+				}
+			] when False then [ ]
+		}
+	)
+	
+	// Open the IAM application details
+	goIamApplicationDetails = NamedAction (
+		Set iamAppUid to outapplicationuid,
+		ExecuteNamedAction goApplicationDetailsDyn
+	)
+	
+	// Open the child perm application details
+	goApplicationDetails = NamedAction (
+		Set appUid to outapplicationuid,
+		ExecuteNamedAction goApplicationDetailsDyn
+	)
+	
+	// Open application details (dynamic: iam app or child app)
+	goApplicationDetailsDyn = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(
+					outapplicationuid to inuid,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			] when False then [ ]
+		}
+	)
+	
+	// Child permission details
+	goRoleDetails = NamedAction (
+		Set parentRoleUid to outpermissionuid,
+		ExecuteNamedAction goPermissionDetailsDyn
+	)
+	
+	// Child permission details
+	goPermissionDetails = NamedAction (
+		Set childPermUid to outpermissionuid,
+		ExecuteNamedAction goPermissionDetailsDyn
+	)
+	
+	// Dynamic permission details (parent role or child perm)
+	goPermissionDetailsDyn = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(
+					outpermissionuid to inuid,
+					True to inshowaccounts,
+					True to inshowperjob,
+					True to inshowdecisionhistory,
+					True to inshowperorg
+				)
+			] when False then [ ]
+		}
+	)
+	
+	setExplicitFilterToBoth = NamedAction (
+		Set '3' to explicitfilter,
+		ExecuteNamedAction applyExplicitiFilter
+	)
+	
+	applyExplicitiFilter = NamedAction (
+		Unset selectedentries,
+		Unset explicitfilter_mv,
+		StringCase ( explicitfilter ) {
+			when '1' then [
+				Set '1' to explicitfilter_mv
+			] when '2' then [
+				Set '2' to explicitfilter_mv
+			] when '3' then [
+				Set [ '1', '2' ] to explicitfilter_mv
+			]
+		}
+	)
+
+	Group {
+		styling: cssPageDashboard
+		layout: Layout {  grab: horizontal True vertical True}
+		Header {
+			value: $bwaccess360_accessreviewmanagementPerimeterTable.thresholdwarning( Constant bwReview_display_thresold_warning )
+			styling: warningFieldStyle
+			hidden:
+				IntPredicate( reviewcount ) {
+					when > Constant bwReview_display_thresold_warning then False
+					otherwise True
+				}
+		}
+		IncludeFragment {
+			layout: Layout { grab: horizontal True vertical False }
+			fragment: bw_iasreview_ExplicitApprovalTable_bulkActionButtons with
+						value-of campaignid to incampaignid,
+						value-of explicitfilter to inexplicitfilter,
+						value-of inenabled to inenabled,
+						selectedentries binds-to inselectedentries,
+						value-of filteredentries to infilteredentries,
+						value-of inreviewtype to inreviewtype
+			fragment-events:
+			{
+				when "TransferEditableReviewRecordUidToEntries" then [
+					TransferData editablereview(reviewrecorduid) to (filteredentries)
+				]
+				when "ReloadTable" then [
+					ReloadData (editablereview)
+				]
+			}
+		}	
+		Group {
+			styling: cssRound
+			Grid {
+				columns:
+					GridColumn,
+					GridColumn,
+					GridColumn,
+					GridColumn,
+					GridColumn { width: grow }
+				layout: Layout { grab: horizontal True vertical False hint: height 64 }
+				GridRow {
+					GridCell {
+						Text {
+							label: $bwaccess360_accessreviewmanagementPerimeterTable.reviewer
+							layout: Layout { hint: width 220 }
+							value: inreviewername
+							tooltip: inreviewername
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_accessreviewmanagementPickReviewer(
+												campaignid to incampaignid,
+												inrevieweruid from outidentityuid,
+												inreviewername from outidentityname
+											)
+										icon: %concept_16.identity
+									}
+									Command {
+										actions:
+											Unset inreviewername,
+											Unset inrevieweruid
+										icon: %collection_16.delete
+									}
+								}
+						}
+						Text {
+							label: $bwaccess360_accessreviewmanagementPerimeterTable.accountable
+							layout: Layout { hint: width 220 }
+							value: accountablename
+							tooltip: accountablename
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_accessreviewmanagementPickAccountable(
+												campaignid to incampaignid,
+												accountableuid from outidentityuid,
+												accountablename from outidentityname
+											)
+										icon: %concept_16.identity
+									}
+									Command {
+										actions:
+											Unset accountablename,
+											Unset accountableuid
+										icon: %collection_16.delete
+									}
+								}
+						}
+						Combo {
+							variable: explicitfilter
+							label: $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.option.text
+							modify-event:
+								ExecuteNamedAction applyExplicitiFilter
+							options:
+								Static {
+									Option {
+										text: $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.option.pending
+										value: '1'
+									}
+									Option {
+										text: $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.option.processed
+										value: '2'
+									}
+									Option {
+										text: $bwaccess360_accessreviewmanagementExplicitApprovalTable.reviewsignof.option.al
+										value: '3'
+									}
+								}
+						}
+					}		
+					// Parent iam app & role
+					GridCell {
+						Text {
+							label: $bw_rolesContentReview.iamapp.short
+							layout: Layout { hint: width 220 }
+							value: iamapplicationname
+							tooltip: iamapplicationname
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_rolesContentFilterIAMApplications(
+												campaignid to incampaignid,
+												explicitfilter_mv to explicitstatus,
+												infilterbyiamapplications to inoutapplicationuid,
+												infilterbyiamapplications from inoutapplicationuid,
+												iamapplicationname from outapplicationsstring
+											)
+										icon: %concept_16.application
+									}
+									Command {
+										actions:
+											Unset infilterbyiamapplications,
+											Unset iamapplicationname
+										icon: %collection_16.delete
+									}
+								}
+						}
+						Text {
+							label: $bw_rolesContentReview.role
+							layout: Layout { hint: width 220 }
+							value: rolename
+							tooltip: rolename
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_rolesContentFilterRoles(
+												campaignid to incampaignid,
+												explicitfilter_mv to explicitstatus,
+												infilterbyapplications to inappfilter,
+												infilterbyroles to inoutpermissionuid,
+												infilterbyroles from inoutpermissionuid,
+												rolename from outpermissionsstring
+											)
+										icon: %concept_16.permission
+									}
+									Command {
+										actions:
+											Unset infilterbyroles,
+											Unset rolename
+										icon: %collection_16.delete
+									}
+								}
+						}
+					} 
+					// Child app & perm
+					GridCell {
+						Text {
+							label: $bwaccess360_accessreviewmanagementPerimeterTable.application
+							layout: Layout { hint: width 220 }
+							value: applicationname
+							tooltip: applicationname
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_rolesContentFilterApplications(
+												campaignid to incampaignid,
+												explicitfilter_mv to explicitstatus,
+												infilterbyapplications to inoutapplicationuid,
+												infilterbyapplications from inoutapplicationuid,
+												applicationname from outapplicationsstring
+											)
+										icon: %concept_16.application
+									}
+									Command {
+										actions:
+											Unset infilterbyapplications,
+											Unset applicationname
+										icon: %collection_16.delete
+									}
+								}
+						}
+						Text {
+							label: $bwaccess360_accessreviewmanagementPerimeterTable.permission
+							layout: Layout { hint: width 220 }
+							value: permissionname
+							tooltip: permissionname
+							commands:
+								Commands {
+									position: After
+									orientation: Horizontal
+									Command {
+										actions:
+											Dialog bwaccess360_rolesContentFilterPermissions(
+												campaignid to incampaignid,
+												explicitfilter_mv to explicitstatus,
+												infilterbyapplications to inappfilter,
+												infilterbypermissions to inoutpermissionuid,
+												infilterbypermissions from inoutpermissionuid,
+												permissionname from outpermissionsstring
+											)
+										icon: %concept_16.permission
+									}
+									Command {
+										actions:
+											Unset infilterbypermissions,
+											Unset permissionname
+										icon: %collection_16.delete
+									}
+								}
+						}
+					}
+					GridCell {
+						reviewStatusFilter = IncludeFragment {
+							fragment: bw_iasreview_reviewStatusFilter with
+								value-of campaignid to campaignid,
+								value-of incanfilterbystatus to canFilterByStatus,
+								selectedentries binds-to selectedEntries,
+								infilterbyreviewstatus binds-to filterByReviewStatus
+						}
+					}
+					GridCell {
+					}
+				}
+			}
+			Spacer {
+				height: 16
+			}
+			Table {
+				data: editablereview
+				layout: Layout { grab:horizontal True vertical True }
+				show-count: True
+				configurable: True
+				persist-configuration: True
+				label: Label { break:True }
+				checkboxes:
+					reviewrecorduid to selectedentries
+				Column {
+					column: reviewerlabel
+					header: $bwaccess360_accessreviewmanagementNLS.lmfullname
+					tooltip: Current reviewertooltip
+					styling:
+						StringStyling (Current reviewerfullname) {
+							when IsEmpty then errorStyle
+						}
+					width: 100%
+					sortable: True
+					filterable: True
+					image: TemplateImageSelection (Current reviewerdelegated) using review_delegated
+					actions:
+						Set Current revieweruid to selectedrevieweruid,
+						ExecuteNamedAction goReviewerDetails
+				}
+				Column {
+					column: reviewerhrcode
+					header: $bwaccess360_accessreviewmanagementNLS.lmhrcode
+					initially-masked: True
+					styling: StringStyling (Current reviewerhrcode) { when IsEmpty then errorStyle }
+					sortable: True
+					filterable: True
+					width: 100%
+				}
+				Column {
+					column: reviewermail
+					header: $bwaccess360_accessreviewmanagementNLS.lmmail
+					tooltip: Current reviewermail
+					styling: StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+					initially-masked: True
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: reviewerorigin
+					text: Transform Current reviewerorigin using revieweroriginmapping
+					header: $bwaccess360_accessreviewmanagementNLS.lmorigin
+					tooltip: Transform Current reviewerorigin using revieweroriginmapping
+					styling: StringStyling (Current reviewermail) { when IsEmpty then errorStyle }
+					initially-masked: True
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: accountablefullname
+					header: $bwaccess360_accessreviewmanagementNLS.acfullname
+					initially-masked: True
+					tooltip: Current accountablefullname
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: accountablehrcode
+					header: $bwaccess360_accessreviewmanagementNLS.achrcode
+					initially-masked: True
+					sortable: True
+					filterable: True
+					width: 100%
+				}
+				Column {
+					column: accountablemail
+					header: $bwaccess360_accessreviewmanagementNLS.acmail
+					tooltip: Current accountablemail
+					initially-masked: True
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: iamapp_uid
+					selection: iamAppUid
+					hidden: True
+				}
+				Column {
+					column: app_uid
+					selection: appUid
+					hidden: True
+				}
+				Column {
+					column: parent_uid
+					selection: parentRoleUid
+					hidden: True
+				}
+				Column {
+					column: child_uid
+					selection: childPermUid
+					hidden: True
+				}
+				Column {
+					column: iamapp_displayname
+					header:  $bw_rolesContentReview.iamapp
+					tooltip: Current iamapp_code
+					actions: ExecuteNamedAction goIamApplicationDetails
+					sortable: True
+					filterable: True
+					width: 100%
+				}
+				Column {
+					column: iamapp_code
+					header: $bw_rolesContentReview.iamapp.code
+					tooltip: Current iamapp_code
+					actions: ExecuteNamedAction goIamApplicationDetails
+					sortable: True
+					filterable: True
+					width: 100%
+					initially-masked: True
+				}
+				Column {
+					column: parent_code
+					header: $bw_rolesContentReview.role.code
+					tooltip: Current parent_code
+					actions: ExecuteNamedAction goRoleDetails
+					initially-masked: True
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: parent_displayname
+					header: $bw_rolesContentReview.role
+					tooltip: Current parent_displayname
+					actions: ExecuteNamedAction goRoleDetails
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: child_code
+					header: $ppermission.code
+					tooltip: Current child_code
+					actions: ExecuteNamedAction goPermissionDetails
+					initially-masked: True
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: child_displayname
+					header: $permission.concept
+					tooltip: Current child_displayname
+					actions: ExecuteNamedAction goPermissionDetails
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: app_displayname
+					header: $application.concept
+					actions: ExecuteNamedAction goApplicationDetails
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: reviewstatus
+					text: Transform Current reviewstatus using bwf_defaultreviewstatus
+					header: $bwaccess360_accessreviewmanagementNLS.lrstatus
+					width: 100%
+					sortable: True
+					filterable: True
+					image: TemplateImageSelection(Current reviewstatus) using review_icons
+				}
+				Column {
+					column: reviewactorfullname
+					tooltip: Current reviewactorfullname
+					header: $bwaccess360_accessreviewmanagementNLS.lrby
+					initially-masked: True
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: reviewactiondate
+					text: SubString(10) Current reviewactiondate
+					tooltip: Current reviewactiondate
+					header: $bwaccess360_accessreviewmanagementNLS.lrdate
+					initially-masked: True
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: reviewcomment
+					tooltip: Current reviewcomment
+					header: $bwaccess360_accessreviewmanagementNLS.lrcomment
+					width: 100%
+					sortable: True
+					filterable: True
+				}
+				Column {
+					column: reviewsignoffby
+					tooltip: Current reviewsignoffby
+					header: $bwaccess360_accessreviewmanagementActionsTable.reviewsignofby
+					width: 100%
+					sortable: True
+					filterable: True
+					initially-masked: True
+				}
+				Column {
+					column: reviewsignoffon
+					text: DateLDAP(Current reviewsignoffon).value
+					tooltip: Current reviewsignoffon
+					header: $bwaccess360_accessreviewmanagementActionsTable.reviewsignofon
+					width: 100%
+					sortable: True
+					filterable: True
+					initially-masked: True
+				}
+			}
+		}	
+	}
+}

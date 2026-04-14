@@ -1,0 +1,262 @@
+/* Connector descriptor */
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+ds_genericapp_sql_NLS = NLS {
+  title [ en "Generic App - SQL" fr "Application Générique - SQL"]
+  description [
+   en "retrieves permissions for users for a given application through an SQL query"
+   fr "Extrait les permissions des utilisateurs pour une application donnée via une requête SQL "]
+   cfg.label_app_code [ en "Application code" fr "Clé de l'application"]
+   cfg.label_app_label  [ en "Application label" fr "Nom de l'application"]
+   cfg.connection [ en "Connection" fr "Connexion"]
+   cfg.driver [ en "Driver" fr "Driver"]
+   cfg.server [ en "Server" fr "Serveur"]
+   cfg.server.tooltip [ 
+     en "Database server IP Address\nfollowed by :port_number if necessary" 
+     fr "Adresse IP du serveur de base de données\nsuivie de :numéro_de_port si besoin"]
+   cfg.database [ en "Database" fr "Base de données"]
+   cfg.user [ en "User" fr "Utilisateur"]
+   cfg.password [ en "Password" fr "Mot de passe"]
+   cfg.query [ en "SQL Query" fr "Requête SQL"]  
+   cfg.application [ en "Application" fr "Application"]
+}
+
+ds_genericapp_sql = Page {
+	title: $ds_genericapp_sql_NLS.title
+	tags: "bwds_connector" , "sql", "live"
+	description: $ds_genericapp_sql_NLS.description
+	icon: "bw_dsm/L/bw_genericapp.png"
+	large-icon: "bw_dsm/XL/bw_genericapp.png"
+	metadata: (  
+	 category -> "application", 
+	 collector -> "bwdsm_generic_app",
+	 action ->"sqlodbc",
+	 destPathVar -> "bwdsm_genericapp_sourceFolder",
+	 filePattern -> "*.csv",
+	 multiFile -> False  ,
+	 hasMapping -> True,
+    imodelcolumns -> "identifier;login;givenname;surname;username;employeenumber;mail;manager;creationdate;lastlogindate;passwordlastsetdate;nextpasswordchangedate;expiredate;service;disabled;locked;logincount;badpasswordcount;passwordnotrequired;passwordcantchange;notnormalaccount;dontexpirepassword;passwordexpired;smartcardrequired;profile;lastmodificationdate;lastmodificationby;creationby;permissionid;permissionname;permissiondescription;actiongranted;limit;perimetercode;perimeterlabel;externalaccount;externalrepositoryid",
+    imodelcolumnsmandatory ->"True;True;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;True;True;False;False;False;False;False;False;False",
+	 imodelcolumnsdescription -> "Account identifier;Account login;First name;Last name;Full name;Employee number;Email address;Manager identifier;Account creation date;Last connection date;Last password modification date;Next password modification date;Password expiration date;Service/technical account? (0/1);Deactivated account? (0/1);Locked account? (0/1);Number of connections with this account;Number of incorrect passwords;Optional password? (0/1);Password can ’t change? (0/1);Privileged account? (0/1);Password never expires? (0/1);Password is expired? (0/1);Smart card required? (0/1);Main profile;Date of last modification;Last modification done by;Account created by;Permission identifier;Permission name;Permission description;Action allowed with this permission;Permission limit;Permission Perimeter code;Permission Perimeter description;Account is from another repository;External repository which contains the account",
+	 imodelcolumnsexample -> "acme01;acme01;john;doe;DOE John;134654;john.doe@acme.com;acme02;20201015000000;20201020000000;20201020000000;20201220000000;20201015000000;0;1;0;11;0;0;0;0;0;0;0;User account;20201015000000;Admin;Amdni;PERM1;PERM1;Admin rights;All;NA;Z1;Zone1;1;ACME",
+	 imodelcolumnstype -> "String;String;String;String;String;String;String;String;Date;Date;Date;Date;Date;Boolean;Boolean;Boolean;Number;Boolean;Boolean;Boolean;Boolean;Boolean;Boolean;Boolean;String;Date;String;String;String;String;String;String;String;String;String;Boolean;String"
+   )	
+}
+
+
+/* config dynamic fragment */
+genericapp_sql_params = Constant { value: "_code,_label,_category,_sensitivitylevel,_sensitivityreason,_description,driver,server,database,user,password,queriesstring"}
+
+deserializeOptions_genericapp_sql = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant genericapp_sql_params }
+  options = Input
+  _code = Output 
+  _label = Output
+  _category = Output { }
+  _sensitivitylevel = Output { }
+  _sensitivityreason = Output { } 
+  _description = Output
+  driver=Output
+  server=Output
+  database=Output
+  user=Output
+  password=Output
+  queriesstring=Output
+    
+}
+
+serializeOptions_genericapp_sql = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant genericapp_sql_params }
+  secretnames = Input { default: "password"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/  
+  _code = Input
+  _label = Input
+  _category = Input { }
+  _sensitivitylevel = Input { }
+  _sensitivityreason = Input { }
+  _description = Input
+  driver=Input
+  server=Input
+  database=Input
+  user=Input
+  password=Input
+  queriesstring=Input       
+}
+
+//TODO validation des options
+
+ds_genericapp_sql_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  outValid = Variable { type: Boolean initial: False } 
+ 
+  code = Variable
+  label = Variable
+  category = Variable
+  sensitivitylevel = Variable
+  sensitivityreason = Variable
+  description = Variable
+  driver=Variable
+  server=Variable
+  database=Variable
+  user=Variable
+  password=Variable
+  queriesstring=Variable
+  
+  
+  // state vars 
+	codeisvalid = Variable
+	nameisvalid = Variable
+	reasonisvalid = Variable
+	descriptionisvalid = Variable
+
+   doInit = NamedAction(
+     Call deserializeOptions_genericapp_sql ( options to options, category from _category, code from _code, label from _label,
+      sensitivitylevel from _sensitivitylevel, sensitivityreason from _sensitivityreason, description from _description,
+      driver from driver, server from server, database from database , user from user, password from password, queriesstring from queriesstring
+       ),
+     ExecuteNamedAction doUpdateValid   
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_genericapp_sql (dsname to secretdsname, 
+      code to _code, label to _label, category to _category, 
+      sensitivitylevel to _sensitivitylevel, sensitivityreason to _sensitivityreason, description to _description,
+      driver to driver, server to server, database to database, user to user, password to password, queriesstring to queriesstring
+       ) to options
+   )
+   
+   doUpdateValid = NamedAction (
+     Set Eval "codeisvalid.get() && nameisvalid.get()" to outValid
+   )
+      
+   
+   TabFolder { 
+     layout: Layout { grab: horizontal True vertical True }
+     TabItem {
+        text: $ds_genericapp_sql_NLS.cfg.connection
+       
+        Combo {
+		    variable: driver
+		    label: $ds_genericapp_sql_NLS.cfg.driver
+		    allow-none: False		    
+		    options: Static {
+		      //Option { text: "SQL Server" value: "sqlserver" } 
+		      //Option { text: "Oracle" value: "oracle"}    
+		      Option { text: "PostgreSQL" value: "postgresql"}   
+		      //Option { text: "MariaDB/MySQL" value: "mysql"}   
+		    }	    	    
+		   }
+	  	   
+	  	   Edit {
+		    variable: server
+		    label: $ds_genericapp_sql_NLS.cfg.server
+		    tooltip: $ds_genericapp_sql_NLS.cfg.server.tooltip
+		    not-empty: True
+		  }
+		  Edit {
+		    variable: database
+		    label: $ds_genericapp_sql_NLS.cfg.database
+		    not-empty: True
+		  }
+		  Edit {
+		    variable: user
+		    label: $ds_genericapp_sql_NLS.cfg.user
+		    not-empty: True
+		  }
+		  Edit {
+		   variable: password
+		   label: $ds_genericapp_sql_NLS.cfg.password
+		   password-mode: True
+		   not-empty: True
+		  }
+		  Edit {
+			 variable: queriesstring
+			 label: $ds_genericapp_sql_NLS.cfg.query
+			 multi-lines: True
+			 layout: Layout { hint: height 60 }
+			 not-empty: True
+		  }
+     }  
+   
+      TabItem {
+        text: $ds_genericapp_sql_NLS.cfg.application
+        Edit {
+			   variable: code 
+			   label: $ds_genericapp_sql_NLS.cfg.label_app_code
+			   match:"[0-9a-zA-Z_]+"
+			   not-empty: True
+			   validity: codeisvalid
+			   modify-event: ExecuteNamedAction doUpdateValid
+			 }
+		  	 Edit {
+			   variable: label 
+			   label: $ds_genericapp_sql_NLS.cfg.label_app_label
+			   not-empty: True
+			   validity: nameisvalid
+			   modify-event: ExecuteNamedAction doUpdateValid			   
+			 }
+		  
+			Edit {
+				variable:category
+				label:$bwfApplicationDetailsMetadata_Dialog_NLS.category //TONLS
+			}
+			Combo {
+				variable:sensitivitylevel
+				label:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivitylevel
+				modify-event:IntCase(sensitivitylevel) { when =0 then [ Set '-' to sensitivityreason] }
+				options:Static {
+					Option {
+						text:Transform "0" using bwfApplicationSensitivityLevelMapping
+						value:0
+					}
+					Option {
+						text:Transform "1" using bwfApplicationSensitivityLevelMapping
+						value:1
+					}
+					Option {
+						text:Transform "2" using bwfApplicationSensitivityLevelMapping
+						value:2
+					}
+					Option {
+						text:Transform "3" using bwfApplicationSensitivityLevelMapping
+						value:3
+					}
+					Option {
+						text:Transform "4" using bwfApplicationSensitivityLevelMapping
+						value:4
+					}
+				}
+			}
+			Edit {
+				variable:sensitivityreason
+				label:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivityreason
+				not-empty:True
+				match:'[0-9a-zA-z].+'
+				error-tooltip:$bwfApplicationDetailsMetadata_Dialog_NLS.sensitivityreasonvalid
+				hidden:IntPredicate(sensitivitylevel) { when =0 then True otherwise False }
+				limit:255
+				validity:reasonisvalid
+				
+			}
+			Edit {
+				variable: description
+				label:$bwfApplicationDetailsMetadata_Dialog_NLS.descriptionlabel
+				multi-lines:True
+				layout:Layout{grab: horizontal True vertical False hint:height 64}
+				limit:1000
+				validity:descriptionisvalid
+			}
+      }
+  }
+	  
+}
+
+

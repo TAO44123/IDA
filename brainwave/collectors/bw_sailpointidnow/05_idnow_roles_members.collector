@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="05 idnow roles members" scriptfile="/collectors/bw_sailpointidnow/EMPTY.javascript" name="P1751457805086_L9lmFaa20El7Y6ZiG3xg" startingpoint="C1751457888752">
+		<Component name="C1751457888752" type="discoverysource" x="453" y="98" w="300" h="64" title="roles_members">
+			<Discovery file="/discovery/bw_sailpointidnow/roles_members.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/roles_members.csv"/>
+		</Component>
+		<Component name="C1751457959516_2" type="changefilter" x="453" y="247" w="300" h="64" title="Get IdNow id">
+			<Actions>
+				<Action name="U1751458011379" action="add" attribute="_idnow_id" type="String" multivalued="false" newvalue="IdentityNow" errorexist="false"/>
+				<Action name="U1752067211691" action="add" attribute="_repotype" type="String" multivalued="false" newvalue="SailPoint IdentityNow" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1751458152620" source="C1751457888752" target="C1751457959516_2" priority="1"/>
+		<Component name="C1751470270419" type="joinfilter" x="453" y="546" w="300" h="64" title="Get all accounts for this identity">
+			<Join source="C1751470342088" zeroerror="true" zeroevent="_NO_ACCOUTN_FOR_ID_" zerotechnical="true" severalaction="all"/>
+			<Attributes>
+				<Attribute name="A1751470399263" attribute="_account_id" source="id" type="String" multivalued="false"/>
+				<Attribute name="A1752049112924" attribute="_source_id" source="sourceid" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="id" join="identityid"/>
+		</Component>
+		<Component name="C1751470342088" type="discoverysource" x="894" y="546" w="300" h="64" title="accounts">
+			<Discovery file="/discovery/bw_sailpointidnow/accounts.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/accounts.csv"/>
+		</Component>
+		<Link name="L1751470350647" source="C1751470342088" target="C1751470270419" priority="1"/>
+		<Component name="C1752048825567" type="groupmembers" x="453" y="682" w="300" h="64" title="IdNow role membership">
+			<Media code="_idnow_id"/>
+			<Group code="roleid"/>
+			<Content members="_account_id"/>
+			<Domain isuniqueidentifier="true" repositorytype="_repotype"/>
+		</Component>
+		<Link name="L1752048833298" source="C1751470270419" target="C1752048825567" priority="2"/>
+		<Link name="L1752824518291" source="C1751457959516_2" target="C1751470270419" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

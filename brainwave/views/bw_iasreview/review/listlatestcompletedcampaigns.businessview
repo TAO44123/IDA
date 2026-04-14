@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwiasr_listlatestcompletedcampaigns" displayname="listlatestcompletedcampaigns">
+	<Definition scriptfile="/views/bw_iasreview/review/listlatestcompletedcampaigns.javascript" name="D1666521457620">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1666521457619" title="list completed campaigns">
+			<InnerView name="bwiasr_listcompletedcampaigns">
+				<Param name="F1666540174461" viewparam="filterpartialcampaigns" viewparamvalue="{param.filterpartialcampaigns}"/>
+				<Param name="F1666540183225" viewparam="reviewtype" viewparamvalue="{param.reviewtype}"/>
+			</InnerView>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Component name="C1666544515319" type="joinview" x="347" y="151" w="300" h="50" title="get additionnal infos &amp; filter for closed campaigns only">
+			<InnerView name="bwr_getcampaigninstanceadditionalinfos" prefix="infos_"/>
+			<Join jointype="left" key1="{dataset.recorduid.get()}" key2="{dataset.infos_subkey.get()}"/>
+			<FilterList>
+				<Filter name="F1666544660339" expression="dataset.isEmpty(&apos;infos_currentstatus&apos;) || !dataset.infos_currentstatus.get().equalsIgnoreCase(&apos;closed&apos;)" comment="only closed campaigns" type="Exclude"/>
+				<Filter name="F1666544701321" expression="&apos;&apos;+dataset.recorduid.get()" type="Deduplicate" comment="keep only the latest campaign"/>
+			</FilterList>
+		</Component>
+		<Link name="L1666544515471" source="C1666521457619" target="C1666544515319" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1666544859945" type="note" x="425" y="60" w="300" h="50" title="Filter to keep only &quot;closed&quot; campaigns"/>
+	</Definition>
+	<ViewParam name="filterpartialcampaigns" displayname="filter partial campaigns (not reviewed &gt; 0)" type="Boolean"/>
+	<ViewParam name="reviewtype" displayname="review type" type="String">
+	</ViewParam>
+</View>

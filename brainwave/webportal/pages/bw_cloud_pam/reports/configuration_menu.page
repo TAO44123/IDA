@@ -1,0 +1,576 @@
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_pam/resources/icons.page"
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_home.page"
+import "/webportal/pages/bw_cloud_pam/reports/roi/license.page"
+import "/webportal/pages/bw_cloud_pam/reports/resource/resources.page"
+import "/webportal/pages/bw_cloud_pam/reports/credential/credentials.page"
+import "/webportal/pages/bw_cloud_pam/reports/groups/groups.page"
+import "/webportal/pages/bw_cloud_pam/reports/safe/safes.page"
+import "/webportal/pages/bw_cloud_pam/inventory_menu.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/scope_nls.page"
+
+bwpam_ca_homeNLS = NLS {
+	
+	title [en "CyberArk Configuration" fr "Configuration CyberArk"]
+	
+	users_in_license.name [en "Users" fr "Utilisateurs"]
+	users_in_license.title [en "License Usage" fr "Utilisation de la licence"]
+	users_in_license.description [
+		en "This report presents the analysis of CyberArk license usage.\nThe analysis is focused on the number of current users,\nthe distribution by type and the projection in the\ncoming months and years by keeping the same pace of\nadding or removing users."
+		fr "Ce rapport présente l'analyse de l'utilisation de la licence\nCyberArk. L'analyse est centrée sur le nombre d'utilisateurs\nactuels, la répartition par type et la projection\ndans les mois et années à venir en restant sur le même\nrythme d'ajout ou de retrait des utilisateurs."
+	]
+	epvusers [en "Users (EPV)" fr "Utilisateurs (EPV)"]
+	aimusers [en "Applications (AIM)" fr "Applications (AIM)"]
+	caidservice [en "CA Identity Service" fr "CA Identity Service"]
+	resources.name [en "Resources" fr "Ressources"]
+	platforms.name [en "Platforms" fr "plateformes"]
+	resources_and_platforms.title [en "Resources and Platforms" fr "Ressources et plateformes"]
+	resources_and_platforms.description [
+		en "This report presents the analysis of resources and platforms\nregarding the credentials present in CyberArk. The analysis\nfocuses on the distribution on different criteria."
+		fr "Ce rapport présente l'analyse des ressources et des plateformes\nconcernant les secrets présents dans CyberArk. L'analyse\nest centrée sur la répartition sur différents critères."
+	]
+	safe.name [en "Safes" fr "Safes"]
+	safe.title [en "Safe Synthesis" fr "Synthèse des safes"]
+	safe.description [
+		en "This report presents the analysis of CyberArk safes.\nThe different tabs show the current situation (KPI,\nstatistics) as well as the impact (identities, contractors)."
+		fr "Ce rapport présente l'analyse des safes CyberArk. Les\ndifférents onglets montrent la situation actuelle\n(KPI, statistiques) ainsi que l'impact (identités, prestataires)."
+	]
+	credentials.name [en "Credentials (Accounts)" fr "Secrets (Comptes)"]
+	credentials.title [en "Credential Synthesis" fr "Synthèse des secrets"]
+	credentials.description [
+		en "This report presents the analysis of credentials stored in\nCyberArk safes. The analysis identifies duplicate login@resource."
+		fr "Ce rapport présente l'analyse des secrets présents dans les\nsafes CyberArk. L'analyse recense les login@ressource dupliqués."
+	]
+	groups.name [en "Groups" fr "Groupes"]
+	groups.title [en "Group Analysis" fr "Analyse des groupes"]
+	groups.description [
+		en "This report presents the analysis of CyberArk and LDAP group\nusage. The analysis is focused on the nested\ngroups that give access to safes and vaults."
+		fr "Ce rapport présente l'analyse de l'utilisation des groupes\nCyberArk et LDAP. L'analyse est centrée sur les\ngroupes imbriqués qui donnent accès aux safes et vaults."
+	]
+}
+
+adm_home = ImageMap {
+	license ["bw_cloud_pam/home_page/2-GOV-Licence.svg" width:56px height:56px color:whiteNG]
+	platform ["bw_cloud_pam/SVG/platform_resources.svg" width:48px height:48px color:darkgrayNG]
+	safe ["bw_cloud_pam/SVG/safe.svg" width:48px height:48px color:darkgrayNG]
+	secret ["bw_cloud_pam/SVG/compte_ref_dans_cyberark.svg" width: 48px height:48px color:darkgrayNG ]
+}
+
+darkGrayStyle = Style {
+  foreground: darkgrayNG
+  image-color: darkgrayNG
+}
+
+bwpam_cyberark_configuration_menu = Page {
+	title: $bwpam_ca_homeNLS.title
+	mixins: dashboardMixin
+	icon: %steps_32.home
+	large-icon: %steps_48.home
+
+	caidentity = Record {
+		view: bwpam_vault_CDS		
+		disabled: False
+	}
+	
+	nb_epvusers = Record {
+		view: bwpam_epv_users
+	}
+
+	nb_caidservice = Record {
+		view: bwpam_caidservice_users
+	}
+	
+	nb_aimusers = Record {
+		view: bwpam_application_users
+	}
+
+	nb_resources = Record {
+		view: bwpam_nb_resources
+	}
+
+	nb_platforms = Record {
+		view: bwpam_nb_platforms
+	}
+
+	nb_safes = Record {
+		view: bwpam_nb_safes
+	}
+
+	nb_secrets = Record {
+		view: bwpam_nb_secrets
+	}
+
+	total_groups = Record {
+		view: bwpam_groups_total_safevault 
+	}
+
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		styling: cssPageDashboard
+		compact: True
+
+		Grid {
+			columns: GridColumn { width: grow },  GridColumn { width: grow },  GridColumn { width: grow },  GridColumn { width: 30 },  GridColumn { width: grow }, GridColumn { width: 5px }
+			layout: Layout { grab: horizontal True vertical False }
+			gap: 0
+			insets: 0
+			GridRow {
+				height: grow
+				GridCell {
+					// Left margin
+				}
+				GridCell {
+					// First Column
+					Group {
+						mixins: homeLinksPanelMixin
+						Spacer { height: 12 }
+						Button {
+							actions: GoTo Page bwpam_license
+							align: Center
+							presentation: Link
+							layout: Layout { hint: height 56 }
+							styling: mediumText,baseLink
+							image:%adm_home.license
+							tooltip: $bwpam_ca_homeNLS.users_in_license.description
+						}
+						Button {
+							text: $bwpam_ca_homeNLS.users_in_license.title
+							actions: GoTo Page bwpam_license
+							align: Center
+							presentation: Link
+							layout: Layout { hint: height 30 }
+							styling: mediumText,baseLink
+							tooltip: $bwpam_ca_homeNLS.users_in_license.description
+						}
+						Spacer { height: 24 }
+						Grid {
+							columns: GridColumn { width: grow },  GridColumn { width: grow }
+							layout: Layout { grab: horizontal True vertical False }
+							gap: 0
+							insets: 0
+							GridRow {
+								height: grow
+								GridCell {
+									// Left column
+									IncludeHTMLWidget {
+										layout: Layout { hint: height 110 width 200 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.epvusers to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(nb_epvusers.nb_users, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_license
+											]
+										}
+									}
+								}
+								GridCell {
+									// Center column
+									IncludeHTMLWidget {
+										layout: Layout { hint: height 110 width 200 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.aimusers to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(nb_aimusers.nb_users, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_license
+											]
+										}
+									}
+								}
+								GridCell {
+									// Right column
+									IncludeHTMLWidget {
+										hidden: StringPredicate ( caidentity.repositorytype ) { when "CDS" then False otherwise True }
+										layout: Layout { hint: height 110 width 200 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.caidservice to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(nb_caidservice.nb_users, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_license
+											]
+										}
+									}
+								}
+							}
+						}
+					}
+					Group {
+						mixins: homeLinksPanelMixin
+						Spacer { height: 12 }
+						Button {
+							actions: GoTo Page bwpam_resource
+							align: Center
+							presentation: Link
+							layout: Layout { hint: height 48 }
+							styling: mediumText,baseLink
+							image:%adm_home.platform
+							tooltip: $bwpam_ca_homeNLS.resources_and_platforms.description
+						}
+						Button {
+							text: $bwpam_ca_homeNLS.resources_and_platforms.title
+							actions: GoTo Page bwpam_resource
+							align: Center
+							presentation: Link
+							layout: Layout { hint: height 30 }
+							styling: mediumText,baseLink
+							tooltip: $bwpam_ca_homeNLS.resources_and_platforms.description
+						}
+						Spacer { height: 24 }
+						Grid {
+							columns: GridColumn { width: grow },  GridColumn { width: grow }
+							layout: Layout { grab: horizontal True vertical False }
+							gap: 0
+							insets: 0
+							GridRow {
+								height: grow
+								GridCell {
+									// Left column
+									IncludeHTMLWidget {
+										layout: Layout { hint: height 110 width 200 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.resources.name to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(nb_resources.nb_resources, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_resource
+											]
+										}
+									}
+								}
+								GridCell {
+									// Right column
+									IncludeHTMLWidget {
+										layout: Layout { hint: height 110 width 200 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.platforms.name to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(nb_platforms.nb_platforms, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_resource
+											]
+										}
+									}
+								}
+							}
+						}
+					}
+					Spacer { height: 3 }
+				}
+				GridCell {
+					// Second Column
+					Group {
+						mixins: homeLinksPanelMixin
+						Spacer { height: 12 }
+						Grid {
+							columns: GridColumn { width: grow },  GridColumn { width: grow }
+							gap: 0
+							insets: 0
+							GridRow {
+								height: grow
+								GridCell {
+									Spacer { height: 6 }
+									Button {
+										actions: GoTo Page bwpam_safes
+										align: Center
+										presentation: Link
+										layout: Layout { hint: height 48 }
+										styling: mediumText,baseLink
+										image:%adm_home.safe
+										tooltip: $bwpam_ca_homeNLS.safe.description
+									}
+									Button {
+										text: $bwpam_ca_homeNLS.safe.title
+										actions: GoTo Page bwpam_safes
+										align: Center
+										presentation: Link
+										layout: Layout { hint: height 30 }
+										styling: mediumText,baseLink
+										tooltip: $bwpam_ca_homeNLS.safe.description
+									}
+								}
+								GridCell {
+									IncludeHTMLWidget {
+										layout: Layout { hint: height 110 width 220 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.safe.name to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(nb_safes.nb_safes, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_safes
+											]
+										}
+									}
+								}
+							}
+						}
+					}
+					Group {
+						mixins: homeLinksPanelMixin
+						Spacer { height: 12 }
+						Grid {
+							columns: GridColumn { width: grow },  GridColumn { width: grow }
+							gap: 0
+							insets: 0
+							GridRow {
+								height: grow
+								GridCell {
+									Spacer { height: 6 }
+									Button {
+										actions: GoTo Page bwpam_secret
+										align: Center
+										presentation: Link
+										layout: Layout { hint: height 48 }
+										styling: mediumText,baseLink
+										image:%adm_home.secret
+										tooltip: $bwpam_ca_homeNLS.credentials.description
+									}
+									Button {
+										text: $bwpam_ca_homeNLS.credentials.title
+										actions: GoTo Page bwpam_secret
+										align: Center
+										presentation: Link
+										layout: Layout { hint: height 30 }
+										styling: mediumText,baseLink
+										tooltip: $bwpam_ca_homeNLS.credentials.description
+									}
+								}
+								GridCell {
+									IncludeHTMLWidget {
+										layout: Layout { hint: height 110 width 220 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.credentials.name to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(nb_secrets.nb_secrets, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_secret
+											]
+										}
+									}
+								}
+							}
+						}
+					}
+					Group {
+						mixins: homeLinksPanelMixin
+						Spacer { height: 12 }
+						Grid {
+							columns: GridColumn { width: grow },  GridColumn { width: grow }
+							gap: 0
+							insets: 0
+							GridRow {
+								height: grow
+								GridCell {
+									Spacer { height: 6 }
+									Button {
+										actions: GoTo Page bwpam_groups
+										align: Center
+										presentation: Link
+										layout: Layout { hint: height 48 }
+										styling: mediumText,baseLink,darkGrayStyle
+										image:%concept_48.group
+										tooltip: $bwpam_ca_homeNLS.groups.description
+									}
+									Button {
+										text: $bwpam_ca_homeNLS.groups.title
+										actions: GoTo Page bwpam_groups
+										align: Center
+										presentation: Link
+										layout: Layout { hint: height 30 }
+										styling: mediumText,baseLink
+										tooltip: $bwpam_ca_homeNLS.groups.description
+									}
+								}
+								GridCell {
+									IncludeHTMLWidget {
+										layout: Layout { hint: height 110 width 220 align: horizontal Center vertical Center }
+										template: mashupGaugeIndicator
+										bindings:
+											value-of $bwpam_ca_homeNLS.groups.name to title, 
+											value-of "numeric" to mode, // radial, numeric, row
+											value-of True to hasLink,
+											value-of False to hasThresholds,
+											value-of NonEmpty(total_groups.nb_group, 0) to count,
+											value-of "#9400D3" to gaugeColor
+										widget-events: {
+											when onclick then [
+												GoTo Page bwpam_groups
+											]
+										}
+									}
+								}
+							}
+						}
+					}
+					Spacer { height: 3 }
+				}
+				GridCell {
+					// Search Column
+					Group {
+						mixins: homeLinksPanelMixin
+						Header { value:   $home_pageNLS.title.search}
+						
+						
+						Button {
+							actions: GoTo Activity CASafe Search
+							image: %pam_cyberark_concepts_32.safe
+							presentation: Link
+							layout: Layout { indent: horizontal 0 vertical 10 }
+							styling: grayStyle
+						}
+						Button {
+							actions: GoTo Activity CASafe Search
+							presentation: Link
+							text: $home_pageNLS.searchbar.safe
+							styling: smallText
+							layout: Layout { indent: horizontal 0 vertical 0 hint: height 16 }
+						}
+						Spacer { height: 4 }
+						
+						Button {
+							actions: GoTo Activity CAVault Search
+							image: %pam_cyberark_concepts_32.vault
+							presentation: Link 
+							layout: Layout { indent: horizontal 0 vertical 5 }
+							styling: grayStyle
+						}
+						Button {
+							actions: GoTo Activity CAVault Search
+							presentation: Link
+							text: $home_pageNLS.searchbar.vault
+							styling: smallText
+							layout: Layout { indent: horizontal 0 vertical 0 hint: height 16 }
+						}
+						Spacer { height: 4 }
+						
+						Button {
+							actions: GoTo Activity CACredential Search
+							image: %pam_cyberark_concepts_32.secret
+							presentation: Link 
+							layout: Layout { indent: horizontal 0 vertical 5 }
+							styling: grayStyle
+						}
+						Button {
+							actions: GoTo Activity CACredential Search
+							presentation: Link
+							text: $home_pageNLS.searchbar.secret
+							styling: smallText
+							layout: Layout { indent: horizontal 0 vertical 0 hint: height 16 }
+						}
+						Spacer { height: 4 }
+						
+						Button {
+							actions: GoTo Activity Repository ( Server ) Search
+							image: %concept_32.server
+							presentation: Link 
+							layout: Layout { indent: horizontal 0 vertical 5 }
+							styling: grayStyle
+							hidden: StringPredicate(ConfigurationVariable "SHOW_ALL_ONBOARDING") { when 'true' then False otherwise True }
+						}
+						Button {
+							actions: GoTo Activity Repository ( Server ) Search
+							presentation: Link
+							text: $home_pageNLS.searchbar.server
+							styling: smallText
+							layout: Layout { indent: horizontal 0 vertical 0 hint: height 16 }
+							hidden: StringPredicate(ConfigurationVariable "SHOW_ALL_ONBOARDING") { when 'true' then False otherwise True }
+						}
+						Spacer { height: 4 }
+						
+						Button {
+							actions: GoTo Activity Identity Search
+							image: %concept_32.identity
+							presentation: Link 
+							layout: Layout { indent: horizontal 0 vertical 5 }
+							styling: grayStyle
+						}
+						Button {
+							actions: GoTo Activity Identity Search
+							presentation: Link
+							text: $home_pageNLS.searchbar.identity
+							styling: smallText
+							layout: Layout { indent: horizontal 0 vertical 0 hint: height 16 }
+						}
+						Spacer { height: 4 }
+						
+						Button {
+							actions: GoTo Activity Group Search
+							image: %concept_32.group
+							presentation: Link 
+							layout: Layout { indent: horizontal 0 vertical 5 }
+							styling: grayStyle
+						}
+						Button {
+							actions: GoTo Activity Group Search
+							presentation: Link
+							text: $home_pageNLS.searchbar.group
+							styling: smallText
+							layout: Layout { indent: horizontal 0 vertical 0 hint: height 16 }
+						}
+						Spacer { height: 4 }
+						
+						Button {
+							actions: GoTo Activity Account (CAusers) Search
+							image: %concept_32.account
+							presentation: Link 
+							layout: Layout { indent: horizontal 0 vertical 5 }
+							styling: grayStyle
+						}
+						Button {
+							actions: GoTo Activity Account (CAusers) Search
+							presentation: Link
+							text: $home_pageNLS.searchbar.account
+							styling: smallText
+							layout: Layout { indent: horizontal 0 vertical 0 hint: height 32 }
+						}
+						Spacer { height: 4 }
+					}
+					Spacer { height: 3 }
+				}
+				GridCell {
+					// Right margin
+				}
+			}
+		}
+	}
+}

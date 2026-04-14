@@ -1,0 +1,640 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/identity/resources.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_comparison/identity_comparison.page"
+
+fragmentOrganisationTeamNLS = NLS {
+	directonly [en "only this organisation" fr "seulement cette organisation"]
+	includeinactive [en "include inactive" fr "inclure les identités désactivées"]
+	hierarchy [en "organisation hierarchy" fr "hiérarchie des organisations"]
+	employeetype [en "Employee type" fr "Type de contrat"]
+	header.active [en "Active" fr "Active"]
+
+	comparewith [en "compare {0} with ..." fr "comparer {0} avec ..."]
+
+	filterinfo [en "Filtered on {0}" fr "Filtré sur {0}"]
+}
+
+fragmentOrganisationTeamError = Style {
+	background:Color red
+	foreground:white
+	bold:True
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation team
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incancompare</b> optional, boolean value, true to enable comparison button (false by default)</li>
+ * <li><b>infilterteambypermission </b>optional, filter team list to show only the ones with the given permission</li>
+ * <li><b>infilterteambyapplication </b>optional, filter team list to show only the ones with the given application</li>
+ * <li><b>infilterteambygroup </b>optional, filter team list to show only the ones with the given group</li>
+ * <li><b>infilterteambyrepository </b>optional, filter team list to show only the ones with the given repository</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationTeam = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inonlydirectselection = Variable { type:Boolean multivalued:False initial:False }
+	inincludeinactive = Variable { type:Boolean multivalued:False initial:False }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	infilterteambypermission = Variable { multivalued:False type:String }
+	infilterteambyapplication = Variable { multivalued:False type:String }
+	infilterteambygroup = Variable { multivalued:False type:String }
+	infilterteambyrepository = Variable { multivalued:False type:String }
+	incancompare = Variable { type:Boolean initial:False }
+	outidentityuid = Variable
+
+	selectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+	
+	/* Datasets and records here */
+	members = Dataset {
+		view: bwf_org_team with
+			inuid to uid unless-empty,
+			inonlydirectselection to directonly,
+			inincludeinactive to includeinactive,
+			infilterteambypermission to filterbypermission unless-empty,
+			infilterteambygroup to filterteambygroup unless-empty,
+			infilterteambyrepository to filterteambyrepository unless-empty,
+			infilterteambyapplication to filterbyapplication unless-empty
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	repository = Record {
+		view:br_repositoryDetail with infilterteambyrepository to uid
+		disabled:StringPredicate(infilterteambyrepository) { when IsEmpty then True }
+	}
+
+	group = Record {
+		view:br_groupDetail with infilterteambygroup to uid
+		disabled:StringPredicate(infilterteambygroup) { when IsEmpty then True }
+	}
+	
+	permission = Record {
+		view:br_permissionDetail with infilterteambypermission to uid
+		disabled:StringPredicate(infilterteambypermission) { when IsEmpty then True }
+	}
+
+	application = Record {
+		view:br_applicationDetail with infilterteambyapplication to uid
+		disabled:StringPredicate(infilterteambyapplication) { when IsEmpty then True }
+	}
+	
+	comparisonIdentity = Record {
+		view: br_identityDetail with compareFrom to uid
+		disabled:
+			StringPredicate(compareFrom) { when IsEmpty then True }
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid,
+												True to inshowaccounts,
+												True to inshowapplications,
+												True to inshowbusinessactivities,
+												True to inshowcontrols,
+												True to inshowusages,
+												True to inshowdecisionhistory,
+												True to inshowoverallocated,
+												True to inshowposition,
+												True to inshowshares,
+												True to inshowtheoretical
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Header {
+		value:$fragmentOrganisationTeamNLS.filterinfo(NonEmpty(permission.displayname, application.displayname, group.displayname, repository.displayname))
+		hidden:
+			AndPredicate {
+				StringPredicate(infilterteambyrepository) { when IsEmpty then True otherwise False }
+				StringPredicate(infilterteambygroup) { when IsEmpty then True otherwise False }
+				StringPredicate(infilterteambypermission) { when IsEmpty then True otherwise False }
+				StringPredicate(infilterteambyapplication) { when IsEmpty then True otherwise False }
+			}
+	}
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				Grid {
+					columns:GridColumn { width:300 }, GridColumn, GridColumn, GridColumn { width:grow }
+					layout:Layout { grab:horizontal True vertical False }
+					GridRow {
+						GridCell {
+							Button {
+								actions:
+									Set ElementAt 1 of selectedUids to compareFrom,
+									Set selectedUids to compareTo,
+									MultivaluedRemove compareFrom from compareTo,
+									GoTo Page bwc_readonly_identity_comparison with compareFrom to uid, compareTo to uids  save-state 
+								text:$fragmentOrganisationTeamNLS.comparewith(NonEmpty(comparisonIdentity.fullname,' '))
+								disabled:IntPredicate(SizeOf selectedUids) { when <2 then True otherwise False }
+								presentation:Button
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:inonlydirectselection
+								text:$fragmentOrganisationTeamNLS.directonly
+								tooltip:$bwfOrganisation.directonlytooltip
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:inincludeinactive
+								text:$fragmentOrganisationTeamNLS.includeinactive
+								tooltip:$bwfOrganisation.includeinactivetooltip
+							}
+						}
+						GridCell {
+						}
+					}
+				}
+			
+				
+				Table {
+					data: members
+					layout: Layout { grab: horizontal True vertical True }
+					show-filter: True 
+					show-count: True
+					configurable: True
+					persist-configuration: True
+					disabled:Not BooleanPredicate(incancompare)
+					double-click: ExecuteNamedAction goDetails
+					checkboxes:uid to selectedUids
+					checkboxes-changed-event:Set ElementAt 1 of selectedUids to compareFrom
+					
+					Column {
+						column:uid
+						hidden:True
+						selection: outidentityuid
+					}
+					
+					Column {
+						column:hrcode
+						sortable:True
+						filterable:True
+						header:$identity.hrcode
+						width:128px
+						
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column: active
+						sortable:True
+						filterable:True
+						header:$fragmentOrganisationTeamNLS.header.active
+						text: Transform  Current active using booleanDisplayMapping
+						styling:StringStyling(Current active) { when "false" then fragmentOrganisationTeamError }
+					}
+					
+					Column {
+						column: employeetypedisplayname
+						sortable:True
+						filterable:True
+						header: $fragmentOrganisationTeamNLS.employeetype
+						initially-masked:True
+					}
+					
+					Column {
+						column:givenname
+						sortable:True
+						filterable:True
+						header:$identity.givenname
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:surname
+						sortable:True
+						filterable:True
+						header:$identity.surname
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:fullname
+						sortable:True
+						filterable:True
+						header:$identity.fullname
+						width:160px
+						
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:mail
+						sortable:True
+						filterable:True
+						header:$identity.mail
+						initially-masked:True
+						width:160px
+					}
+					
+					Column {
+						column:phone
+						sortable:True
+						filterable:True
+						header:$identity.phone
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:mobile
+						sortable:True
+						filterable:True
+						header:$identity.mobile
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:internal
+						text:Transform Current internal using booleanDisplayMapping
+						sortable:True
+						filterable:True
+						header:$identity.internal
+						width:96px
+					}
+					
+					Column {
+						column:arrivaldate
+						sortable:True
+						filterable:True
+						header:$identity.arrivaldate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:departuredate
+						sortable:True
+						filterable:True
+						header:$identity.departuredate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitlecode
+						sortable:True
+						filterable:True
+						header:$identity.jobtitlecode
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitledisplayname
+						sortable:True
+						filterable:True
+						header:$identity.jobtitledisplayname
+						width:160px
+					}
+			
+					Column {
+						column:orgshortname
+						sortable:True
+						filterable:True
+						header:$porganisation.shortname
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						column:orgdisplayname
+						sortable:True
+						filterable:True
+						header:$organisation.concept
+						width:100%
+					}
+			
+					Column {
+						column:bwa_identityanalytics_aggriskrank
+						sortable:True
+						header:$bwf_identityNLS.riskrank
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggmaxrisklevel
+						sortable:True
+						header:$bwf_identityNLS.maxrisk
+						image:TemplateImageSelection(Current bwa_identityanalytics_aggmaxrisklevel) using bwf_identityriskimage
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggnbrisks
+						sortable:True
+						header:$bwf_identityNLS.nbrisk
+						width:120px
+						initially-masked:True
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}
+				}
+			]
+			when False then [
+				Grid {
+					columns:GridColumn, GridColumn, GridColumn { width:grow }
+					layout:Layout { grab:horizontal True vertical False }
+					GridRow {
+						GridCell {
+							Checkbox {
+								variable:inonlydirectselection
+								text:$fragmentOrganisationTeamNLS.directonly
+								tooltip:$bwfOrganisation.directonlytooltip
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:inincludeinactive
+								text:$fragmentOrganisationTeamNLS.includeinactive
+								tooltip:$bwfOrganisation.includeinactivetooltip
+							}
+						}
+						GridCell {
+						}
+					}
+				}
+			
+				
+				Table {
+					data: members
+					layout: Layout { grab: horizontal True vertical True }
+					show-filter: True 
+					show-count: True
+					configurable: True
+					disabled:BooleanPredicate(incancompare)
+					double-click: ExecuteNamedAction goDetails
+					
+					commands: Commands {
+								position:After
+								presentation:Icon
+								Command {
+									actions:Message "nop"
+									icon:""
+									disabled:True
+								}
+								Command {
+									actions:ExecuteNamedAction goDetails
+									icon:%browsing_16.zoom
+									disabled:
+										OrPredicate {
+											Not BooleanPredicate(incanshowdetails)
+											StringPredicate(outidentityuid) { when IsEmpty then True otherwise False }
+										}
+								}
+							}
+					
+					Column {
+						column:uid
+						hidden:True
+						selection: outidentityuid
+					}
+					
+					Column {
+						column:hrcode
+						sortable:True
+						filterable:True
+						header:$identity.hrcode
+						width:128px
+						
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column: active
+						sortable:True
+						text: Transform  Current active using booleanDisplayMapping
+						styling:StringStyling(Current active) { when "false" then fragmentOrganisationTeamError }
+					}
+					
+					Column {
+						column: employeetypedisplayname
+						header: $fragmentOrganisationTeamNLS.employeetype
+						initially-masked:True
+						sortable:True
+						filterable:True
+					}
+					
+					Column {
+						column:givenname
+						sortable:True
+						filterable:True
+						header:$identity.givenname
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:surname
+						sortable:True
+						filterable:True
+						header:$identity.surname
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:fullname
+						sortable:True
+						filterable:True
+						header:$identity.fullname
+						width:160px
+						
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:mail
+						sortable:True
+						filterable:True
+						header:$identity.mail
+						initially-masked:True
+						width:160px
+					}
+					
+					Column {
+						column:phone
+						sortable:True
+						filterable:True
+						header:$identity.phone
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:mobile
+						sortable:True
+						filterable:True
+						header:$identity.mobile
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:internal
+						text:Transform Current internal using booleanDisplayMapping
+						sortable:True
+						filterable:True
+						header:$identity.internal
+						width:96px
+					}
+					
+					Column {
+						column:arrivaldate
+						sortable:True
+						filterable:True
+						header:$identity.arrivaldate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:departuredate
+						sortable:True
+						filterable:True
+						header:$identity.departuredate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitlecode
+						sortable:True
+						filterable:True
+						header:$identity.jobtitlecode
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitledisplayname
+						sortable:True
+						filterable:True
+						header:$identity.jobtitledisplayname
+						width:160px
+					}
+			
+					Column {
+						column:orgshortname
+						sortable:True
+						filterable:True
+						header:$porganisation.shortname
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						column:orgdisplayname
+						sortable:True
+						filterable:True
+						header:$organisation.concept
+						width:100%
+					}
+			
+					Column {
+						column:bwa_identityanalytics_aggriskrank
+						sortable:True
+						header:$bwf_identityNLS.riskrank
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggmaxrisklevel
+						sortable:True
+						header:$bwf_identityNLS.maxrisk
+						image:TemplateImageSelection(Current bwa_identityanalytics_aggmaxrisklevel) using bwf_identityriskimage
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggnbrisks
+						sortable:True
+						header:$bwf_identityNLS.nbrisk
+						width:120px
+						initially-masked:True
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}
+				}
+			]
+		}
+	}				
+}

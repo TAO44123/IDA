@@ -1,0 +1,188 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control exceptions for groups
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>hasExceptions</b> (out) a integer holding the number of root causes for the control</li>
+ * <li><b>selectedGroupUid</b> (out) the selected group UID</li>
+ * <li><b>selectedGroupUids</b> (out) the selected groups UIDs</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_group_exceptions = PageFragment {
+	
+	/* Variables here */
+	controlCode = Variable { type: String }
+	nbExceptions = Variable { type: Integer }
+	selectedGroupUid = Variable { type: String }
+	selectedGroupUids = Variable { type: String multivalued: True }
+	
+	/* Datasets and records here */
+	exceptions = Dataset {
+		view: bw_control_browser_group_exceptions with
+			controlCode to controlcode
+		count-variable: nbExceptions
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	goDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog (
+			selectedGroupUid to inuid,
+			True to inshowaccounts,
+			True to inshowaccountsfororganisation,
+			True to inshowapplications,
+			True to inorganisationuid, 
+			True to inshowcontrols,
+			True to inshowshares
+		)
+	)
+	
+	reload = NamedAction (
+		ReloadData ( exceptions )
+	)
+	
+	/* Page content */
+	Table {
+		data: exceptions
+		show-filter: True
+		show-count: True
+		hide-header: False
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		configurable: True
+		persist-configuration: True
+		persist-configuration-key: "bw_control_browser_group_exceptions"
+		checkboxes:
+			uid to selectedGroupUids
+		Column {
+			column: displayname
+			header: $group.displayname
+			width: 100%
+			sortable: True
+			filterable: True
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: code
+			header: $group.code
+			width: 100%
+			sortable: True
+			filterable: True
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: repo_displayname
+			header: $prepository.displayname
+			width: 50%
+			sortable: True
+			filterable: True
+			initially-masked: False
+		}
+		Column {
+			column: repo_code
+			header: $prepository.code
+			width: 50%
+			sortable: True
+			filterable: True
+			initially-masked: True
+		}
+		Column {
+			column: comment
+			header: $group.comment
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: grouptype
+			header: $group.grouptype
+			width: 100%
+			initially-masked: True
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: dynamic
+			header: $group.dynamic
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: filter
+			header: $group.filter
+			width: 100%
+			initially-masked: True
+			filterable: True
+		}
+		Column {
+			column: sid
+			header: $group.sid
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: guid
+			header: $group.guid
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: creationdate
+			header: $group.creationdate
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: modificationdate
+			header: $group.modificationdate
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: lastmodifiedby
+			header: $group.lastmodifiedby
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: ctrl_validfromdate
+			header: $controlexception.fromdate
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: ctrl_validuntildate
+			header: $controlexception.untildate
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: ctrl_reason
+			header: $controlexception.^reason
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+	}
+}

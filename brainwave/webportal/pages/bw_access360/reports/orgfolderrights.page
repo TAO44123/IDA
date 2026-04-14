@@ -1,0 +1,554 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+/* Nationalized labels here */
+organisationfolderrights360NLS = NLS {
+	title [en "Managed Organizations Folders Rights List" fr "Liste des droits d'accès aux données des organisations gérées"]
+	dyntitle [en "Managed Organizations Folders Rights List for {0}" fr "Liste des droits d''accès aux données des organisations gérées par {0}"]
+	_description [
+		en "This report lists the folder rights related to the managed organizations. Only active accounts are taken into account. It is possible to choose direct members only or all members. It is possible to display only the differences since a given date. It is possible to modify the columns or export the results by right clicking on the table."
+		fr "Ce rapport liste les droits d'accès aux données relatifs aux organisations gérées. Seuls les comptes actifs sont pris en compte. Il est possible de choisir les membres directs uniquement ou l'ensemble des membres. Il est possible de n'afficher que les différences depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats à l'aide d'un clic droit sur le tableau."
+	]
+
+	detailtitle [en "Managed Organizations Data Rights Details" fr "Détails des droits d'accès aux données des organisations gérées"]
+	detaildyntitle [en "Managed Organizations Data Rights Details for {0}" fr "Détails des droits d''accès aux données des organisations gérées pour {0}"]
+	folder [en "Folder" fr "répertoire"]
+	foldername [en "Folder Name" fr "nom répertoire"]
+	description [en "Description" fr "description"]
+	share [en "Share" fr "partage"]
+	department [en "Department" fr "département"]
+	back [en "Back to Managed Organizations Data Access Rights List" fr "Retour à la liste des droits d''accès aux données des organisations gérées"]
+}
+
+tfrtimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tfrtimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tfrtimeline_highlightmodified360 = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+tfrmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+
+organisationfolderrights360d = Page {
+	title: $organisationfolderrights360NLS.title
+	description: $organisationfolderrights360NLS._description
+	tags: "identityext" priority 200, "byuid" , "browsing", "organisationmanager"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:All(unstructureddata_license, bwa360_orgaccessrights)
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page organisationfolderrights360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+organisationfolderrights360hp = Page {
+	title: $organisationfolderrights360NLS.title
+	description: $organisationfolderrights360NLS._description
+	tags: "myorg_access360" priority 1
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:All(unstructureddata_license, bwa360_orgaccessrights)
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page organisationfolderrights360 with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+organisationfolderrights360 = Page {
+	title: $organisationfolderrights360NLS.title
+	dynamic-title: $organisationfolderrights360NLS.dyntitle(identity.fullname)
+	description: $organisationfolderrights360NLS._description
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:All(unstructureddata_license, bwa360_orgaccessrights)
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedFolderUid = Variable
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	teamrights = Dataset {
+		view:enduser360_orgmanagerfolderrights with uid to uid, UserVariable session_indirectTeam360 to indirectteam,
+									UserVariable session_folderDepth to depth,
+									UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_indirectTeam360
+					label:$session_indirectTeam360NLS.label
+					tooltip:$session_indirectTeam360NLS.tooltip
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+				Combo {
+					variable:UserVariable session_folderDepth
+					tooltip:$session_folderDepthNLS.tooltip
+					label:$session_folderDepthNLS.label
+					layout:Layout {grab:horizontal False vertical False hint:width 96}
+					options:Static {
+						Option { text:'<=1' value:'<1' }
+						Option { text:'<=2' value:'<2' }
+						Option { text:'<=3' value:'<3' }
+						Option { text:'=1' value:'=1' }
+						Option { text:'=2' value:'=2' }
+						Option { text:'=3' value:'=3' }
+					}
+				}
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				Table {
+					data:teamrights
+					layout:Layout {grab: horizontal True vertical True }
+					show-count:True
+					show-filter:True
+					configurable:True
+					enable-markup:True
+					persist-configuration:True
+					persist-configuration-key:uid
+					
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tfrtimeline_highlightnew360 when 'Removed' then tfrtimeline_highlightremoved360 when 'Modified' then tfrtimeline_highlightmodified360 when 'Invalid' then tfrtimeline_highlightremoved360 } text:Transform Current status using tfrmapping360 }
+					Column {
+						sortable:True
+						filterable:True
+						column:hrcode
+						header:$identity.hrcode
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:fullname
+						header:$identity.fullname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:mail
+						header:$identity.mail
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:internal
+						header:$identity.internal
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:arrivaldate
+						header:$identity.arrivaldate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:departuredate
+						header:$identity.departuredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:orgdisplayname
+						header:$organisationfolderrights360NLS.department
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlogin
+						header:$account.login
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlastlogindate
+						header:$account.lastlogindate
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:repositorydisplayname
+						header:$repository.concept
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:rights
+						header:$right.concept
+					}
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:selectedFolderUid
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:permissioncode
+						header:$organisationfolderrights360NLS.folder
+						width:240px
+						link:Page organisationfolderrights360detail with uid to uid, org to org, Current permissionuid to folderuid
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:permissiondisplayname
+						header:$organisationfolderrights360NLS.foldername
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:permissiondescription
+						header:$organisationfolderrights360NLS.description
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:applicationdisplayname
+						header:$organisationfolderrights360NLS.share
+						width:160px
+					}
+				}
+			}
+		}
+	}
+}
+
+organisationfolderrights360detail = Page {
+	title: $organisationfolderrights360NLS.detailtitle
+	dynamic-title: $organisationfolderrights360NLS.detaildyntitle(detail.code)
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:unstructureddata_license
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+    
+    folderuid = Parameter { type: String hidden: True } 
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	detail = Record {
+		view:br_permissionDetail with folderuid to uid
+	}
+
+	teamrights = Dataset {
+		view:enduser360_orgmanagerfolderrightsdetails with  
+									folderuid to folderuid,
+									uid to uid, UserVariable session_indirectTeam360 to indirectteam,
+									UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_indirectTeam360
+					label:$session_indirectTeam360NLS.label
+					tooltip:$session_indirectTeam360NLS.tooltip
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				Table {
+					data:teamrights
+					layout:Layout {grab: horizontal True vertical True }
+					show-count:True
+					show-filter:True
+					configurable:True
+					persist-configuration:True
+					persist-configuration-key:uid
+					
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tfrtimeline_highlightnew360 when 'Removed' then tfrtimeline_highlightremoved360 when 'Modified' then tfrtimeline_highlightmodified360 when 'Invalid' then tfrtimeline_highlightremoved360 } text:Transform Current status using tfrmapping360 }
+					Column {
+						sortable:True
+						filterable:True
+						column:hrcode
+						header:$identity.hrcode
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:fullname
+						header:$identity.fullname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:mail
+						header:$identity.mail
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:internal
+						header:$identity.internal
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:arrivaldate
+						header:$identity.arrivaldate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:departuredate
+						header:$identity.departuredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:orgdisplayname
+						header:$organisationfolderrights360NLS.department
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlogin
+						header:$account.login
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlastlogindate
+						header:$account.lastlogindate
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:repositorydisplayname
+						header:$repository.concept
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:basic
+						header:$right.concept
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:permissioncode
+						header:$organisationfolderrights360NLS.folder
+						width:240px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:permissiondisplayname
+						header:$organisationfolderrights360NLS.foldername
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:permissiondescription
+						header:$organisationfolderrights360NLS.description
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:applicationdisplayname
+						header:$organisationfolderrights360NLS.share
+						width:160px
+					}
+				}
+				
+				ButtonGroup {
+					Button {
+						text:$organisationfolderrights360NLS.back
+						actions:GoTo BackInHistoryTruncate
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0400 applications" scriptfile="/collectors/bw_okta/0400 applications.javascript" name="P1741094664129" startingpoint="C1741094680759">
+		<Component name="C1741094680759" type="discoverysource" x="153" y="53" w="300" h="64" title="applications">
+			<Discovery file="/discovery/bw_okta/applications.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-10)}/applications.csv"/>
+		</Component>
+		<Component name="C1741094692908" type="changefilter" x="153" y="214" w="300" h="64" title="update">
+			<Actions>
+				<Action name="U1741287233346" action="siloname" newvalue="{config.paramSiloName}"/>
+				<Action name="U1741287701097" action="add" attribute="SILO" type="String" multivalued="false" newvalue="{config.paramSiloName}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1741094701302" type="application" x="153" y="384" w="300" h="64" title="okta applications">
+			<Application key="id" type="Profile">
+				<Attribute name="displayname" attribute="label"/>
+				<Attribute name="applicationfamily" attribute="FAMILY"/>
+			</Application>
+			<Media code="SILO"/>
+		</Component>
+		<Link name="L1741094709176" source="C1741094680759" target="C1741094692908" priority="1"/>
+		<Link name="L1741094710205" source="C1741094692908" target="C1741094701302" priority="1"/>
+		<Component name="C1741104517224" type="metadata" x="155" y="518" w="300" h="64" title="sign on mode in category">
+			<Metadata schema="bwa_applicationmetadata" key=" " application="id">
+				<Attribute name="value3string" attribute="signonmode"/>
+			</Metadata>
+		</Component>
+		<Link name="L1741104605264" source="C1741094701302" target="C1741104517224" priority="1" expression="(! dataset.isEmpty(&apos;signonmode&apos;))"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="paramSiloName" description="paramSiloName"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

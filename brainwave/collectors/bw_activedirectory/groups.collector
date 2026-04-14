@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition description="Active Directory groups additional attributes" label="AD groups attributes" scriptfile="/collectors/bw_activedirectory/AD.javascript" name="P1423133322710_6_pTsbz1IEBe4KPTb0YmOQ" startingpoint="C1423133333242">
+		<Component name="C1423133333242" type="discoverysource" x="117" y="16" w="329" h="64" title="AD_groups_ldifde">
+			<Discovery file="/discovery/bw_activedirectory/ad_groups.discovery" datafile="{config.siloIteratedFileFullname}"/>
+		</Component>
+		<Component name="C1423142620590_2" type="changefilter" x="117" y="115" w="329" h="64" title="add dynamic">
+			<Actions>
+				<Action name="U1423144627762" action="add" attribute="dynamic" type="Boolean" multivalued="false" newvalue="false" errorexist="false"/>
+			</Actions>
+			<Attributes>
+			</Attributes>
+		</Component>
+		<Component name="C1315310101758_1" type="group" x="117" y="226" w="329" h="64" title="AD group">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Group code="dn" error="true" event="unknownGroupDN">
+				<Attribute name="displayname" attribute="samaccountname"/>
+				<Attribute name="creationdate" attribute="createtimestamp"/>
+				<Attribute name="comment" attribute="description"/>
+				<Attribute name="grouptype" attribute="grouptype"/>
+				<Attribute name="manageraccount" attribute="managedby"/>
+				<Attribute name="modificationdate" attribute="modifytimestamp"/>
+				<Attribute name="dynamic" attribute="dynamic"/>
+				<Attribute name="guid" attribute="objectguid"/>
+				<Attribute name="sid" attribute="objectsid"/>
+				<Attribute name="custom8" attribute="actualdn"/>
+				<Attribute name="custom9" attribute="virtualdn"/>
+				<Attribute name="custom1" attribute="extensionattribute1"/>
+				<Attribute name="custom2" attribute="extensionattribute2"/>
+				<Attribute name="custom3" attribute="extensionattribute3"/>
+				<Attribute name="custom4" attribute="extensionattribute4"/>
+				<Attribute name="custom5" attribute="extensionattribute5"/>
+				<Attribute name="custom6" attribute="extensionattribute6"/>
+				<Attribute name="custom7" attribute="extensionattribute7"/>
+			</Group>
+			<Content error="false"/>
+			<Domain/>
+		</Component>
+		<Link name="L1423144722821" source="C1423133333242" target="C1423142620590_2" priority="1"/>
+		<Link name="L1503413894491" source="C1423142620590_2" target="C1315310101758_1" priority="1"/>
+		<Component name="C1618994390961" type="metadata" x="117" y="452" w="329" h="64" title="Privileged Groups in Active Directory">
+			<Metadata schema="bwa_groupmetadata" key=" " group1="dn" group1Repository="_REPOSITORY_CODE_">
+				<Attribute name="value1string" attribute="descr"/>
+				<Attribute name="value2string" attribute="sensitivityreason"/>
+				<Attribute name="value1integer" attribute="sensitivitylevel"/>
+			</Metadata>
+		</Component>
+		<Link name="L1618994401736" source="C1315310101758_1" target="C1619005111509" priority="1" expression="(dataset.equals(&apos;isPrivilegedGroups&apos;, &apos;true&apos;, false, true))"/>
+		<Component name="C1619005111509" type="changefilter" x="117" y="343" w="329" h="64" title="Sensitivity attributes">
+			<Actions>
+				<Action name="U1619005209400" action="add" attribute="sensitivityreason" type="String" multivalued="false" newvalue="Privileged Groups in Active Directory" errorexist="false"/>
+				<Action name="U1619005226820" action="add" attribute="sensitivitylevel" type="Number" multivalued="false" newvalue="4" errorexist="false"/>
+				<Action name="U1619005283209" action="add" attribute="descr" type="String" multivalued="false" newvalue="Privileged groups in Active Directory are those to which powerful rights, privileges, and permissions are granted that allow them to perform nearly any action in Active Directory and on domain-joined systems." errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1619005117183" source="C1619005111509" target="C1618994390961" priority="1"/>
+		<Component name="N1712141104287_1" type="note" x="559" y="203" w="300" h="84" title="in case of IDDM datasource&#xA;custom8: actualdn&#xA;custom9: virtualdn"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+		</Variables>
+	</Configuration>
+</Provisioning>

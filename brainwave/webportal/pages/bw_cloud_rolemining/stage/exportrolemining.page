@@ -1,0 +1,132 @@
+/* Import other pages here */
+import "/webportal/pages/bw_cloud_rolemining/resources/nls/stagechecks.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+
+
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/dashboard.page"
+import "/webportal/pages/bw_cloud_rolemining/resources/nls/stagechecks.page"
+
+import "/webportal/pages/bw_rm/export/importexport_fragment.page"
+
+mdToLabelMapping = StringMapping {
+  when "bwrm_role" then $rm_adminNLS.item.roles
+  when "bwrm_role_permissions" then $rm_adminNLS.item.permissions
+  when "bwrm_role_identities" then $rm_adminNLS.item.identities
+  otherwise current
+}
+
+bwcdrm_export_rolemining = Page {
+	title: $bwcdrm_exportroleminingNLS.title
+	description: $bwcdrm_exportroleminingNLS.help
+	icon: %steps_32.export
+	large-icon: %steps_48.export
+	
+	
+	language = Variable { type: String initial: $bwcdrm_mylang.currentnls}
+	
+	bwrm_adminoverview_v2 = Dataset {
+		view: bwrm_adminoverview_v2
+	}
+
+	/* Parameters here */
+	Group {
+		layout: Layout { grab:horizontal True vertical True  }
+		styling: cssPageDashboard  
+		Grid {
+			layout: Layout { grab:horizontal True vertical True  }
+			columns: GridColumn { width: 800px gap:20 } , GridColumn { width: grow }
+			GridRow {
+				// left panel
+				GridCell {
+					Group{
+						styling: cssRound
+						
+						layout: Layout { grab: horizontal True  vertical True }
+						
+						Text {
+							value: $rm_adminNLS.label.metadatalist styling: cssGroupTitle
+							compact: True
+						}
+						
+						Spacer {
+							height: 20
+						}
+						Table {
+							data: bwrm_adminoverview_v2 
+							layout: Layout { grab: horizontal True vertical False hint: height 300 }
+							Column {
+								header: $rm_adminNLS.column.metadatatype
+								column: type
+								text: Transform Current type using mdToLabelMapping
+								width: 100%
+							}
+							Column {
+								header: $rm_adminNLS.column.total
+								column: total
+							}
+							Column {
+								header: $rm_adminNLS.column.orgs
+								column: nborgs
+							}
+						}
+						
+						Button {
+							text: $rm_adminNLS.exportCfg.button
+							layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+							actions: 
+								ExportReport "/reports/bw_rm/roles_data_export_v2.rptdesign" format "xlsx" export-name Concat( "roles_config_" , SubString( 8) Date.valueLDAP )  no-cache 
+						}
+						
+						Button {
+							text: $rm_adminNLS.importCfg.button
+							layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+							actions: Dialog bw_rm_import_roles, ReloadData( bwrm_adminoverview_v2)
+						}
+						
+						//stateMgr = IncludeFragment {  fragment: bwcdrm_stagestate_manager }
+						
+						Button {
+						   actions: GoTo BackInHistory
+				           text: $bwcdrm_wizardsNLS.button.back
+				           mixins: secondaryButtonMixin
+				         }
+				
+					}  
+				}
+				// help
+				GridCell {
+					Group {
+						styling: cssRound
+						layout: 
+							Layout {
+								indent: horizontal 0 vertical 0
+								grab: horizontal True vertical True
+							}
+						Text {
+							value: $bwcdrm_stagedashboardNLS.dashboard.guide styling: cssGroupTitle
+							compact: True
+						}
+						ConditionalGroup {
+							StringCondition(language) {
+								when "fr" then [
+									Browser {
+										static: "static/bw_cloud_rolemining/guides/guide_roleexport_fr.html"
+										layout: Layout { grab: horizontal True vertical True }
+									}
+								]
+								otherwise [
+									Browser {
+										static: "static/bw_cloud_rolemining/guides/guide_roleexport_en.html"
+										layout: Layout { grab: horizontal True vertical True }
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

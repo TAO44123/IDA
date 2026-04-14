@@ -1,0 +1,210 @@
+/* Import other pages here */
+import "/webportal/pages/bw_iasreview/remediation/remediationstrategymanagement.page"
+
+/* Nationalized labels here */
+bwir_itsmsafeNLS = NLS {
+	title [en "Repository Remediation Strategy" fr "Repository Remediation Strategy"]
+	error [	en "You cannot configure a repository with open tickets\nPlease close all open tickets first" 
+			fr "Vous ne pouvez pas configurer une référentiel qui a des tickets ouverts\nVeuillez fermer vos tickets au préalable"]	
+	confirm [en "Are you sure?" fr "Etes-vous sûr?"]	
+	attach.short [en "Attach" fr "Associer"]
+	attach [en "Attach Remediation Strategy" fr "Associer une stratégie de remédiation"]
+	attachTt [en "Attach Remediation Strategy to selected safes" fr "Associer une stratégie de remédiation aux safes sélectionnés"]
+	reset.short [en "Reset" fr "Réinitialiser"]
+	reset [en "Reset Remediation Strategy" fr "Réinitialiser la stratégie de remédiation"]	
+	resetTt [en "Reset Remediation Strategy for selected safes" fr "Réinitialiser la stratégie de remédiation pour les safes sélectionnés"]
+	remove.short [en "Detach" fr "Retirer"]
+	remove [en "Detach Remediation Strategy" fr "Retirer la stratégie de remédiation"]	
+	removeTt [en "Detach Remediation Strategy for selected safes" fr "Retirer la stratégie de remédiation pour les safes sélectionnés"]
+	nbopren [en "Nb of \nopen tickets" fr "Nb de \ntickets ouverts"]
+	remediation.type [en "Remediation \nType" fr "Type de \nremédiation"]
+	remediation.instance [en "Remediation \nInstance" fr "Instance de \nremédiation"]
+	safecode [en "Safe Code" fr "Code du safe"]
+	safedisplayname [en "Safe Name" fr "Safe"]
+	safevault [en "Vault" fr "Vault"]
+	safedescription [en "Safe Description" fr "Description du safe"]
+}
+
+bwir_itsmsafe = PageFragment {
+//	title: $bwiasr_itsmrepositoryNLS.title
+//	tags:"admin"
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedsafes = Variable { type: String multivalued: True }
+	selectedremediationuid = Variable { type: String multivalued: True }
+
+	strategytype = Variable { type: String }
+	instancecode = Variable { type: String }
+	
+	/* Datasets and records here */
+	safes = Dataset {
+		view: bwir_safes
+	}
+	
+	safes_nbopentickets = Dataset {
+		view: bwir_safesnbopentickets
+	}
+	
+	allsafes = Dataset {
+		join: Join {
+			primary-dataset: safes
+			secondary-dataset: safes_nbopentickets
+			primary-column: safeuid
+			secondary-column: uid
+			primary-optional: False
+			secondary-cardinality: optional
+			secondary-prefix: open
+		}
+	}
+	
+	selectedsafeswithopentickets = Dataset {
+		view: bwir_safesnbopentickets
+		includes:
+			AndPredicate {
+				IntPredicate ( Current nb ) {
+					when >0 then True
+				}
+				MultivaluedPredicate ( selectedsafes contains Current uid )	
+			}
+	}
+	
+	safeselection = Dataset {
+		view: bwir_safes with
+			selectedsafes to uids
+	}
+	
+	additsm = TaskRecord ( create "bwr_attachremediationstrategy" )
+	deleteitsm = TaskRecord ( create "bwr_deleteremediationstrategy" )
+	
+	/* Page content */
+	ButtonGroup {
+		align: Left
+		uniform: True
+		Button {
+			text: $bwir_itsmsafeNLS.attach.short
+			tooltip: $bwir_itsmsafeNLS.attachTt
+			image: "16/famfamfam_silk_icons_v013/connect.png"
+			actions:
+				IntCase ( Count selectedsafeswithopentickets ) {
+					when >0 then [
+						Message $bwir_itsmsafeNLS.error
+					] otherwise [
+						Dialog bwiasr_remediationstrategymanagement_add(
+							False to inallowiddmtype,
+							additsm.remediationtype from strategytype,
+							additsm.remediationinstanceid from instancecode
+						),
+						StringCase ( additsm.remediationtype ) {
+							when "embedded" then [
+								Set "" to additsm.remediationinstanceid
+							]
+						},
+						Set selectedsafes to additsm.application,
+						TaskComplete additsm wait-end,
+						ReloadData ( allsafes ),
+						Unset selectedsafes						
+					]
+				}
+			disabled:
+				IntPredicate ( SizeOf selectedsafes ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+		Button {
+			text: $bwir_itsmsafeNLS.reset.short
+			tooltip: $bwir_itsmsafeNLS.resetTt
+			image: "16/famfamfam_silk_icons_v013/disconnect.png"
+			actions:	
+				IntCase ( Count selectedsafeswithopentickets ) {
+					when >0 then [
+						Message $bwir_itsmsafeNLS.error
+					] otherwise [
+						Confirm $bwir_itsmsafeNLS.confirm,
+						TransferData safeselection ( remediationuid ) to ( selectedremediationuid ),
+						Set selectedremediationuid to deleteitsm.metadatauid,
+						TaskComplete deleteitsm wait-end,
+						ReloadData ( safes ),
+						Unset selectedsafes
+					]
+				}
+			disabled:
+				IntPredicate ( SizeOf selectedsafes ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+	}
+	Table {
+		data: allsafes
+		label: Label { break: True }
+		layout: Layout { grab: horizontal True vertical True }
+		show-count: True
+		show-filter: True
+		configurable: True
+		persist-configuration: True
+		checkboxes:
+			safeuid to selectedsafes
+		Column {
+			column: safeuid
+			hidden: True
+		}
+		Column {
+			column: remediationuid
+			hidden: True
+		}
+		Column {
+			column: safecode
+			header: $bwir_itsmsafeNLS.safecode
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: safedisplayname
+			header: $bwir_itsmsafeNLS.safedisplayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: vaultdisplayname
+			header: $bwir_itsmsafeNLS.safevault
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: safedescription
+			header: $bwir_itsmsafeNLS.safedescription
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: remediationtype
+			header: $bwir_itsmsafeNLS.remediation.type
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: remediationinstancecode
+			header: $bwir_itsmsafeNLS.remediation.instance
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: opennb
+			text: Transform Current opennb using defaultsto0
+			header: $bwir_itsmsafeNLS.nbopren
+			sortable: True
+			filterable: True
+			width: 100%
+			align: Right
+		}
+	}
+}

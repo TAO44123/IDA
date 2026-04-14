@@ -1,0 +1,187 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/fragments/root_causes/root_cause_details_table.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_controls_browser/resources/picker.page"
+import "/webportal/pages/bw_controls_browser/fragments/accounts/account_exceptions.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_controls_browser/fragments/accounts/accountWithRights_details_table.page"
+import "/webportal/pages/bw_controls_browser/details_panel.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Template of detailed page for control on accounts
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlType</b> (in) the designed control type</li>
+ * <li><b>controlCode</b> (in) the designed control code</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_control_on_accountsWithRights = PageFragment {
+
+	/* Variables here */
+	filter = Variable { type: String }
+	controlCode = Variable { type: String }
+	controlType = Variable { type: String }
+	selectedAccUid = Variable { type: String }
+	selectedAccUids = Variable { type: String multivalued: True }
+	selectedExceptionAccUid = Variable { type: String }
+	selectedExceptionAccUids = Variable { type: String multivalued: True }
+	selectedRootCauseAccUid = Variable { type: String }
+	selectedAccRecorduid = Variable { type: String }
+	selectedExceptionAccRecorduid = Variable { type: String }
+	selectedRootCauseAccRecorduid = Variable { type: String }
+	includedAccUid= Variable { type: String multivalued: True }
+	includedPermUid = Variable { type: String multivalued: True }
+	hasRootCause = Variable { type: Boolean }
+	nbExceptions = Variable { type: Integer }
+	includedAccDisplayname = Variable { type: String multivalued: True }
+	includedRootcauseDisplayname = Variable { type: String multivalued: True }
+	updateRequired = Variable { type: Boolean }
+	useExceptions = Variable { type: Boolean }
+	// KPI information
+	selectedDiscrepancies = Variable { type: Integer }
+	selectedException = Variable { type: Integer }
+	selectedDiscrepanciesTrend = Variable { type: Integer }
+	selectedExceptionTrend = Variable { type: Integer }
+	// Active tabs
+	activeRightsTab = Variable { type: Boolean initial: False }
+	activeImpactsTab = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	control_info = Record {
+		view: bw_control_browser_get_control_from_code with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	control_root_cause = Dataset {
+		view: bw_control_browser_all_root_cause with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	resetPickerValue = NamedAction (
+		Unset includedAccUid,
+		Unset includedPermUid,
+		Unset includedAccDisplayname,
+		Unset includedRootcauseDisplayname
+	)
+	
+	reload = NamedAction (
+		ExecuteFragmentNamedAction exceptions.reload,
+		ExecuteFragmentNamedAction discrepancies.reload
+	)
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text: $detailpanel.control
+			IncludeFragment {
+				fragment: bw_control_browser_details_tab with
+					value-of controlCode to selectedControlCode,
+					value-of selectedDiscrepancies to selectedDiscrepancies,
+					value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					value-of selectedException to selectedException,
+					value-of selectedExceptionTrend to selectedExceptionTrend,
+					hasRootCause binds-to hasRootCause
+			}
+		}
+		TabItem {
+			text: $bw_control_browser.rights
+			activation-event:
+				BooleanCase ( activeRightsTab ) {
+					when False then [
+						Set True to activeRightsTab,
+						ExecuteFragmentNamedAction discrepancies.updateFilters
+					] when True then [
+						// Nothing to do			
+					]
+				}
+			discrepancies = IncludeFragment {
+				fragment: bw_control_browser_accountWithRights_details_table with 
+					value-of controlCode to controlCode,
+					value-of useExceptions to useExceptions,
+					selectedAccUid binds-to selectedAccUid,
+					selectedAccUids binds-to selectedAccUids,
+					selectedAccRecorduid binds-to selectedAccRecorduid,
+					updateRequired binds-to updateRequired,
+					value-of controlType to controlType,
+					value-of activeRightsTab to isActive
+			}
+		}
+		TabItem {
+			text: $detailspages.exception
+			badge: nbExceptions
+			feature: bw_control_browser_exceptions
+			hidden:
+				IntPredicate (nbExceptions) {
+					when =0 then True
+				}
+			ButtonGroup {
+				layout: Layout { align: horizontal End vertical End }
+				Button {
+					actions:
+						StringCase ( selectedExceptionAccUids ) {
+							when IsEmpty then [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionAccUid to targetuid,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							] otherwise [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionAccUids to targetuids,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							]
+						},
+						Set True to updateRequired,
+						ExecuteNamedAction reload,
+						Unset selectedAccUids
+					presentation: Button
+					text: $detailspages.removeexception
+					image: %collection_16.remove_user
+					disabled:
+						AndPredicate {
+							StringPredicate ( selectedExceptionAccUid ) {
+								when IsEmpty then True
+							}
+							StringPredicate ( selectedExceptionAccUids ) {
+								when IsEmpty then True
+							}
+						}
+				}
+			}
+			exceptions = IncludeFragment {
+				fragment: bw_control_browser_account_exceptions with
+					value-of controlCode to controlCode,
+					nbExceptions binds-to nbExceptions,
+					selectedExceptionAccUid binds-to selectedAccountUid,
+					selectedExceptionAccUids binds-to selectedAccountUids
+			}
+		}
+		TabItem {
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			text: $rootcause.concept
+			activation-event:
+				Set True to activeImpactsTab 
+			IncludeFragment {
+				fragment: bw_control_browser_root_cause with
+					value-of controlCode to controlCode,
+					value-of activeImpactsTab to isActive
+			}
+		}
+	}
+}

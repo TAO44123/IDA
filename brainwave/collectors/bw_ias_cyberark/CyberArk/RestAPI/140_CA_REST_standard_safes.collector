@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="260 CA REST standard safes" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1732106851621_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1732107014961">
+		<Component name="C1732107014961" type="discoverysource" x="123" y="78" w="300" h="64" title="CA_standard_safes">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_standard_safes.discovery" datafile="{config.projectPath}/discovery/bw_ias_cyberark/CyberArk/predefined_safes.csv"/>
+		</Component>
+		<Component name="C1617195444313_3" type="changefilter" x="124" y="182" w="300" h="64" title="Add type attribute">
+			<Actions>
+				<Action name="U1617195479883" action="add" attribute="type" type="String" multivalued="false" newvalue="ca_safe" errorexist="false"/>
+				<Action name="U1625471758621" action="add" attribute="safedisplayname" type="String" multivalued="false" newvalue="{dataset.safename.get()}" errorexist="false"/>
+				<Action name="U1624458360546" action="update" attribute="safename" newvalue="{dataset.safename.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1732107115922" source="C1732107014961" target="C1617195444313_3" priority="1"/>
+		<Component name="C1617039830090_2" type="application" x="122" y="287" w="300" h="64" title="CA safe application">
+			<Application key="safename" error="true" event="ApplicationNullOrEmpty">
+				<Attribute name="displayname" attribute="safedisplayname"/>
+				<Attribute name="applicationtype" attribute="type"/>
+			</Application>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepositoryNotFound"/>
+		</Component>
+		<Link name="L1732107136769" source="C1617195444313_3" target="C1617039830090_2" priority="1"/>
+		<Component name="C1659365465443_1" type="metadata" x="123" y="387" w="300" h="64" title="vault_safe_description">
+			<Metadata schema="bwa_applicationmetadata" key=" " application="safename" error="true" event="SafeDescriptionMetadata">
+				<Attribute name="value4string" attribute="description"/>
+			</Metadata>
+		</Component>
+		<Link name="L1732107173458" source="C1617039830090_2" target="C1659365465443_1" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

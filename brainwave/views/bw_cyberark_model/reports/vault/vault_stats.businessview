@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_vault_stats" displayname="vault stats">
+	<Definition scriptfile="/views/bw_cyberark_model/reports/vault/vault_stats.javascript" name="D1628676302411">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1628676302410" title="Secrets stats">
+			<InnerView name="bwpam_vault_stat_secrets"/>
+		</Component>
+		<Component name="C1628682167742" type="joinview" x="1183" y="248" w="300" h="50" title="CPM active">
+			<InnerView name="bwpam_vault_stat_cpm"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Component name="C1628682243093" type="joinview" x="937" y="304" w="300" h="50" title="No CPM active">
+			<InnerView name="bwpam_vault_stat_no_cpm"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Link name="L1628682243357" source="C1628682167742" target="C1628682243093" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1628682610226" type="joinview" x="1117" y="259" w="300" h="50" title="CPM failed">
+			<InnerView name="bwpam_vault_stat_cpm_failed"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Link name="L1628682610605" source="C1628682243093" target="C1628682610226" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1628685268889" type="joinview" x="958" y="324" w="300" h="50" title="Builtin users">
+			<InnerView name="bwpam_vault_stat_builtin_users"/>
+			<Join key1="{dataset.uid.get()}" key2="{dataset.uid.get()}" jointype="left"/>
+		</Component>
+		<Link name="L1628685269453" source="C1628682610226" target="C1628685268889" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1628685542839" type="joinview" x="956" y="294" w="300" h="50" title="Application users">
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<InnerView name="bwpam_vault_stat_app_users"/>
+		</Component>
+		<Link name="L1628685543077" source="C1628685268889" target="C1628685542839" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1628685784755" type="joinview" x="1107" y="308" w="300" h="50" title="EPV users">
+			<InnerView name="bwpam_vault_stat_epv_users"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Link name="L1628685784992" source="C1628685542839" target="C1628685784755" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1628697313062" type="joinview" x="1147" y="494" w="300" h="50" title="Other users (non EPV, non AIM)">
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<InnerView name="bwpam_vault_stat_other_users"/>
+			<ViewComputedAttribute name="nb_other_users" displayname="nb_other_users" type="Integer" expression="dataset.isEmpty(&apos;_nb_other_users&apos;) ? 0 : dataset._nb_other_users.get()"/>
+			<ExcludeList>
+				<Exclude name="_nb_other_users"/>
+			</ExcludeList>
+		</Component>
+		<Component name="C1628698365666" type="joinview" x="965" y="907" w="300" h="50" title="Identities">
+			<InnerView name="bwpam_vault_stat_identities"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<ViewComputedAttribute name="nb_identities" displayname="nb_identities" type="Integer" expression="dataset.isEmpty(&apos;_nb_identities&apos;) ? 0 : dataset._nb_identities.get()"/>
+			<ExcludeList>
+				<Exclude name="_nb_identities"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1628698368423" source="C1628697313062" target="C1628698365666" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1628700968069" type="joinview" x="1026" y="852" w="300" h="50" title="Contractors">
+			<InnerView name="bwpam_vault_stat_contractors"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<ViewComputedAttribute name="nb_contractors" displayname="nb_contractors" type="Integer" expression="dataset.isEmpty(&apos;_nb_contractors&apos;) ? 0 : dataset._nb_contractors.get()"/>
+			<ViewComputedAttribute name="nb_users" displayname="nb_users" type="Integer" expression="dataset.nb_app_users.get() + dataset.nb_builtin_users.get() + dataset.nb_epv_users.get() + dataset.nb_other_users.get()"/>
+			<ExcludeList>
+				<Exclude name="_nb_contractors"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1628700968569" source="C1628698365666" target="C1628700968069" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1631539290906" source="C1628685784755" target="C1628697313062" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1631539521042" type="joinview" x="814" y="836" w="300" h="50" title="Safes">
+			<InnerView name="bwpam_vault_stat_safes"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Link name="L1631539524231" source="C1628676302410" target="C1631539521042" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1631539527108" source="C1631539521042" target="C1628682167742" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1631547834242" type="joinview" x="641" y="983" w="300" h="50" title="Resources no CPM">
+			<InnerView name="bwpam_vault_stat_res_no_cpm"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Link name="L1631547837457" source="C1628700968069" target="C1631547834242" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1631548940863" type="joinview" x="769" y="1107" w="300" h="50" title="Safes no CPM">
+			<InnerView name="vault_stat_safe_no_cpm"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<ViewComputedAttribute name="nb_safes_no_cpm" displayname="nb_safes_no_cpm" type="Integer" expression="dataset.isEmpty(&apos;_nb_safes_no_cpm&apos;) ? 0 : dataset._nb_safes_no_cpm.get()"/>
+			<ExcludeList>
+				<Exclude name="_nb_safes_no_cpm"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1631548941391" source="C1631547834242" target="C1631548940863" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1631549879193" type="joinview" x="721" y="1184" w="300" h="50" title="Users with get/retrieve credentials">
+			<ViewComputedAttribute name="nb_users_get_credentials" displayname="nb_users_get_credentials" type="Integer" expression="dataset.isEmpty(&apos;_nb_users_get_credentials&apos;) ? 0 : dataset._nb_users_get_credentials.get()"/>
+			<InnerView name="bwpam_vault_stat_secret_users"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<ExcludeList>
+				<Exclude name="_nb_users_get_credentials"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1631549883702" source="C1631548940863" target="C1631549879193" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1631550317496" type="joinview" x="814" y="1330" w="300" h="50" title="Users with admin rights">
+			<InnerView name="bwpam_vault_stat_admin_users"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<ViewComputedAttribute name="nb_admin_auditor" displayname="nb_admin_auditor" type="Integer" expression="dataset.isEmpty(&apos;_nb_admin_auditor&apos;) ? 0 : dataset._nb_admin_auditor.get()"/>
+			<ExcludeList>
+				<Exclude name="_nb_admin_auditor"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1631550322787" source="C1631549879193" target="C1631550317496" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1632060448021" type="joinview" x="863" y="1397" w="300" h="50" title="Organizations">
+			<InnerView name="bwpam_vault_stat_organizations"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<ViewComputedAttribute name="nb_organizations" displayname="nb_organizations" type="Integer" expression="dataset.isEmpty(&apos;_nb_organizations&apos;) ? 0 : dataset._nb_organizations.get()"/>
+			<ExcludeList>
+				<Exclude name="_nb_organizations"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1632060448745" source="C1631550317496" target="C1632060448021" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1632061039113" type="joinview" x="868" y="1564" w="300" h="50" title="Groups">
+			<InnerView name="bwpam_vault_stat_groups"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.uid.get()}"/>
+			<ViewComputedAttribute name="nb_groups" displayname="nb_groups" type="Integer" expression="dataset.isEmpty(&apos;_nb_groups&apos;) ? 0 : dataset._nb_groups.get()"/>
+			<ExcludeList>
+				<Exclude name="_nb_groups"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1632061045711" source="C1632060448021" target="C1632061039113" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+</View>

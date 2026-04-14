@@ -1,0 +1,63 @@
+import "/webportal/pages/bw_iasreview/nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+/**
+ * Display a warning if there are missing reviewers
+ * i.e. people with tickets assigned to them that are not in the latest timeslot
+ * Those tickets need to be reassigned 
+ */
+bw_ias_review_missingReviewers = Dialog {
+	title: $bw_ias_review_missingReviewers.title.accountables
+	width: 900
+	height: 600
+	
+	// Missing identities Uids
+	missingReviewers = Variable { type: String multivalued: True }
+	// Campaign timeslot
+	campaignTs = Variable { type: String }
+	// Selection
+	selectedIdentityUid = Variable { type: String }
+	
+	accountables = Dataset {
+		view: bwa_review_reviewersList with
+			missingReviewers to idt_uid
+		timeslot: campaignTs
+	}
+	
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: accountables
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			show-count: True
+			show-filter: True
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedIdentityUid
+			}
+			Column {
+				column: fullname
+				header: $identity.fullname
+				filterable: True
+				sortable: True
+				width: 100%
+			}
+			Column {
+				column: hrcode
+				header: $identity.hrcode
+				filterable: True
+				sortable: True
+				width: 100%
+			}
+			Column {
+				column: mail
+				header: $identity.mail
+				filterable: True
+				sortable: True
+				width: 100%
+			}
+		}
+	}
+}

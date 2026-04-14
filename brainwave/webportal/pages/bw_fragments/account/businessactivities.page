@@ -1,0 +1,177 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/businessactivity/details/businessActivityDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentAccountBusinessActivitiesNLS = NLS {
+	description [en "Description" fr "Description"]
+	trends [en "Changes" fr "Changements"]
+	empty [en "Identity doesn't have business activities" fr "Cette identité n'a pas d'activités métier"]
+	deleted [ en "Deleted" fr "Supprimé" ]
+	modified [ en "Modified" fr "Modifié" ]
+	new [ en "New" fr "Nouveau" ]
+	nochanged [ en "none" fr "non" ]
+	removed [en "Removed" fr "Supprimé"]
+	identical [en "Identical" fr "Identique"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the account business activities
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the account uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate business activity details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outactivityuid </b>selected business activity</li>
+ * <li><b>outactivitycode </b>selected business activity code</li>
+ * <li><b>outactivityname </b>selected business activity name</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountBusinessActivities = PageFragment {
+	feature:sod_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outactivityuid = Variable
+	outactivitycode = Variable
+	outactivityname = Variable
+	
+	/* Datasets here */
+	data = Dataset {
+		view: bwf_accountbusinessactivitieswprb with inuid to uid
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: trend
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_businessActivityDetailsDialog(outactivityuid to inuid,
+												False to inshowaccounts,
+												True to inshowperorg,
+												True to inshowperjob,
+												True to inshowsoddefects,
+												False to inshowcontrols,
+												False to inshowdecisionhistory,
+												inuid to inidentityuid
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(Count data) {
+			when =0 then [
+				Header {
+					value:$fragmentAccountBusinessActivitiesNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:data
+					layout:Layout {grab:horizontal True vertical True}
+					configurable:True
+					show-filter:True
+					show-count:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+				
+					Column {
+						column:uid
+						hidden:True
+						selection:outactivityuid
+					}
+					
+					Column {
+						column: hasproblem
+						text:''
+						header: ''
+						width: 28px
+						sortable: True
+						image:TemplateImageSelection(Current hasproblem) using bwf_warning		
+					}
+
+					Column {
+						column:code
+						sortable:True
+						filterable:True
+						initially-masked:True
+						header:$permission.code
+						selection:outactivitycode
+						width:260px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:displayname
+						sortable:True
+						filterable:True
+						header:$permission.displayname
+						selection:outactivityname
+						width:100%
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:description
+						sortable:True
+						filterable:True
+						initially-masked:True
+						header:$fragmentAccountBusinessActivitiesNLS.description
+						width:100%
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+						}																
+				}
+			]
+		}
+	}
+}

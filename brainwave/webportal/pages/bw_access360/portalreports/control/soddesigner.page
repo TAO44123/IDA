@@ -1,0 +1,848 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+
+import "/webportal/pages/bw_fragments/businessactivity/details/businessActivityDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/control/details/controlDetails.page"
+import "/webportal/pages/bw_fragments/application/permissions.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_access360/portalreports/control/sodmatrix.page"
+
+bwsod_designerNLS = NLS {
+	title [en "SoD Designer" fr "Designer SoD"]
+	
+	crosstable [ en "Crosstable" fr "Tableau croisé"]
+	crosstable_tooltip [en "Display the matrix as a crosstable" fr "Afficher la matrice en tableau croisé"]
+	loadmatrix [ en "Load matrix" fr "Charger une matrice" ]
+	loadmatrix_short [ en "Load" fr "Charger" ]
+	loadmatrix_long [en "Load an existing matrix" fr "Charger une matrice existante"]
+	importMatrix_short [en "Import" fr "Importer"]
+	importMatrix_long [en "Import matrix from xlsx file" fr "Importer une matrice depuis un xlsx"]
+	savematrix [ en "Save matrix" fr "Sauvegarder la matrice" ]
+	savematrix_short [en "Save" fr "Sauvegarder" ]
+	savematrix_text1 [en "The matrix " fr "La matrice "]
+	savematrix_text2 [en " will be saved in the database\n with " fr " sera sauvée en base\n avec "]
+	savematrix_text3 [en " toxic permission pairs." fr " paires de permissions toxiques."]
+	savematrix_message [en "The matrix is being created/update" fr "La matrice est en cours de création/sauvegarde"]
+	deletematrix [ en "Delete matrix" fr "Supprimer une matrice" ]
+	deletematrix_short [en "Delete" fr "Supprimer" ]
+	deletematrix_confirm1 [en "The matrix " fr "La matrice "]
+	deletematrix_confirm2 [en " will be deleted" fr " sera supprimée"]
+	exportmatrix [en "Export matrix" fr "Exporter la matrice"]
+	exportmatrix_short [en "Export" fr "Exporter"]
+	
+	permissions1 [en "Permissions 1" fr "Permissions 1"]
+	permissions2 [en "Permissions 2" fr "Permissions 2"]
+	applicationpicker [en "Select applications" fr "Sélectionner les applications"]
+	uncheckall [en "Uncheck" fr "Désélectionner"]
+	risklevel [en "Risk Level" fr "Niveau de risque"]
+	addpairs [en "Add pairs" fr "Ajouter les paires"]
+	removepairs [en "Remove pairs" fr "Retirer les paires"]
+	
+	matrix [en "Matrix" fr "Matrice"]
+	matrixname [en "Matrix name" fr "Nom de matrice"]
+	matrixenabled [en "Load the matrix in the future execution plans" fr "Charger la matrice dans les prochains plans d'exécution"]
+	toxicpairs [en "Toxic pairs" fr "Paires toxiques"] 
+	
+	fileuploaded [en "File uploaded" fr "Fichier importé"]
+	problemoccured [en "Problem occured" fr "Un problème est survenu"]
+}
+
+bwsod_designer_importfileService = EventService {
+	javascript-file:"/webportal/pages/bw_access360/portalreports/control/soddesigner.javascript"
+	javascript-method:parseFile
+	
+	filename = Input { mandatory: True }
+	matrixcode = Output{ type:String multivalued:True }
+	permission1 = Output{ type:String multivalued:True }
+	application1 = Output{ type:String multivalued:True }
+	permission2 = Output{ type:String multivalued:True }
+	application2 = Output{ type:String multivalued:True }
+	matrixenabled = Output { type:Boolean multivalued:True }
+	risklevels = Output{ type:String multivalued:True }
+}
+
+bwsod_designer_importfileFragment = PageFragment {
+	
+	importedmatrixcode = Variable { type:String multivalued:True }
+	permission1code = Variable { type:String multivalued:True }
+	application1code = Variable { type:String multivalued:True }
+	permission2code = Variable { type:String multivalued:True }
+	application2code = Variable { type:String multivalued:True }
+	importedmatrixenabled = Variable { type:Boolean multivalued:True }
+	importedrisklevels = Variable { type:Integer multivalued:True }
+	
+	perm1uid = Variable { type:String multivalued:True }
+	perm2uid = Variable { type:String multivalued:True }
+	
+	matrixCode = Variable { type:String multivalued:False }
+	matrixEnabled = Variable { type:Boolean multivalued:False }
+	toxicKeys = Variable { type:String multivalued:True }
+	riskLevels = Variable { type:Integer multivalued:True }
+	permissions = Variable { type:String multivalued:True }
+	applications = Variable { type:String multivalued:True }
+	applicationNames = Variable { type:String multivalued:True }
+	
+	uploadedFilename = Variable { type:String }
+	uploadStatus = Variable { type:String }
+	isUploadedMatrix = Variable { type:Boolean }
+	disableDataset = Variable { type:Boolean initial:True }
+	
+	upload_dataset = Dataset {
+		view: bwsod_designer_loaddataset with
+			importedmatrixcode to matrixcode, 
+			permission1code to permission1code, 
+			application1code to application1code, 
+			permission2code to permission2code, 
+			application2code to application2code,
+			importedmatrixenabled to matrixenabled,
+			importedrisklevels to risklevels
+		disabled: BooleanPredicate(disableDataset) 
+	}
+	
+		
+	applicationDetails = Dataset {
+		view: bwsod_designer_applicationdetails with 
+			application1code to applicationcode1 unless-empty,
+			application2code to applicationcode2 unless-empty
+		disabled: BooleanPredicate(disableDataset)
+	}
+	
+	FileUpload {
+		uploaded-filename: uploadedFilename
+		hide-filename: True
+		upload-status: uploadStatus
+		label: $bwsod_designerNLS.importMatrix_long
+		upload-complete-event:
+			Call bwsod_designer_importfileService(
+				uploadedFilename to filename,
+				importedmatrixcode from matrixcode,
+				permission1code from permission1,
+				application1code from application1,
+				permission2code from permission2,
+				application2code from application2,
+				importedmatrixenabled from matrixenabled,
+				importedrisklevels from risklevels
+			),
+			Flash $bwsod_designerNLS.fileuploaded,
+			Set False to disableDataset,
+			ReloadData(upload_dataset),
+			ReloadData(applicationDetails),
+			TransferData upload_dataset(toxicKeys, risklevels, perm1_permissionuid, perm2_permissionuid) to (toxicKeys, riskLevels, perm1uid, perm2uid),
+			MultivaluedAdd perm1uid to permissions,
+			MultivaluedAdd perm2uid to permissions,
+			MultivaluedDistinct permissions,
+			TransferData applicationDetails(uid, displayname) to (applications, applicationNames),
+			Set importedmatrixcode to matrixCode,
+			Set importedmatrixenabled to matrixEnabled,
+			Set True to isUploadedMatrix
+		upload-failed-event:
+			Flash $bwsod_designerNLS.problemoccured
+	}
+}
+
+bwsod_designer_crosstableDialog = Dialog {
+	title: $bwsod_designerNLS.crosstable
+	height: 900
+	width: 1200
+	
+	buttons: CancelButton
+	
+	toxicKeys = Variable { multivalued: True }
+	riskLevels = Variable { multivalued: True }
+	
+	toxicKeys = Dataset {
+		view: bwsod_designer_toxic_keys with toxicKeys to toxickeys, True to duplicatekeys, riskLevels to risklevels
+	}
+	
+	CrossTable {
+		data: toxicKeys
+		multi-selection:True		
+		cluster-sortable:True
+		layout:Layout { grab:horizontal True vertical True cell-height:24px cell-width:24px}
+		columns:
+			Dim {
+				value:perm1_applicationuid 
+				label:perm1_applicationdisplayname 
+				header:$application.concept 
+			}, 
+			Dim {
+				value:perm1_permissionuid 
+				label:perm1_permissiondisplayname
+				header:$bwa360_sodmatrixNLS.activity 
+			}
+		rows:
+			Dim {
+				value:perm2_applicationuid 
+				label:perm2_applicationdisplayname 
+				header:$application.concept 
+			}, 
+			Dim {
+				value:perm2_permissionuid 
+				label:perm2_permissiondisplayname
+				header:$bwa360_sodmatrixNLS.activity 
+			}
+		cell-content:
+			CellContent {
+				text: Current risklevels
+				align:Center 
+				styling:IntStyling(Current risklevels) {
+					when =1 then bwsod_sodmatrix_risklevel1 
+					when =2 then bwsod_sodmatrix_risklevel2 
+					when =3 then bwsod_sodmatrix_risklevel3 
+					when =4 then bwsod_sodmatrix_risklevel4 
+					when =5 then bwsod_sodmatrix_risklevel5 
+					when >5 then bwsod_sodmatrix_risklevel5 
+			  	}
+			}
+	}
+}
+
+bwsod_designer_loadmatrixDialog = Dialog {
+	title: $bwsod_designerNLS.loadmatrix
+	height: 200
+	width: 400
+	
+	buttons: [
+		ActionButton {
+			text: $bwsod_designerNLS.loadmatrix_short
+			actions: 
+				BooleanCase(isUploadedMatrix) {
+					when True then [
+					
+					]
+					when False then [
+						TransferData matrixApplications(app1uid, app2uid) to (app1uid, app2uid),
+						MultivaluedAdd app1uid to applications1,
+						MultivaluedAdd app2uid to applications2,
+						MultivaluedDistinct applications1,
+						MultivaluedDistinct applications2,
+						TransferData matrixFullDetails(toxicKeys, risklevels, permission1uid, permission2uid) to (toxicKeys, riskLevels, perm1uid, perm2uid),
+						MultivaluedAdd perm1uid to permissions,
+						MultivaluedAdd perm2uid to permissions,
+						MultivaluedDistinct permissions,
+						ReloadData(application1Details),
+						ReloadData(application2Details),
+						TransferData application1Details(displayname) to (application1Names),
+						TransferData application2Details(displayname) to (application2Names),
+						Set matrixDetails.matrix_enabled to matrixEnabled,
+						Set matrixDetails.matrix_code to matrixCode
+					]
+				}
+			close: True
+		}
+		CancelButton
+	]
+	
+	selectedMatrixCode = Variable {type: String}
+	
+	matrixCode = Variable {type: String}
+	matrixEnabled = Variable {type: Boolean}
+	
+	app1uid = Variable {type: String multivalued: True}
+	app2uid = Variable {type: String multivalued: True}
+	perm1uid = Variable {type: String multivalued: True}
+	perm2uid = Variable {type: String multivalued: True}
+	
+	applications = Variable {type: String multivalued: True}
+	applications1 = Variable {type: String multivalued: True}
+	applications2 = Variable {type: String multivalued: True}
+	applicationNames = Variable {type: String multivalued: True}
+	application1Names = Variable {type: String multivalued: True}
+	application2Names = Variable {type: String multivalued: True}
+	permissions = Variable {type: String multivalued: True}
+	toxicKeys = Variable {type: String multivalued: True}
+	riskLevels = Variable {type: String multivalued: True}
+	
+	isUploadedMatrix = Variable { type: Boolean }
+	
+	buildin_matrix = Dataset {
+		view: bwsod_designer_matrix
+	}
+	
+	matrixApplications = Dataset {
+		view: bwsod_designer_matrix_applications with selectedMatrixCode to matrix_code unless-empty
+		disabled: StringPredicate(selectedMatrixCode) { when IsEmpty then True otherwise False}
+	}
+	
+	matrixDetails = Record {
+		view: bwsod_designer_matrix with selectedMatrixCode to matrix_code unless-empty
+		disabled: StringPredicate(selectedMatrixCode) { when IsEmpty then True otherwise False}
+	}
+	
+	matrixFullDetails = Dataset {
+		view: bwsod_designer_matrix_fulldetails with selectedMatrixCode to matrix_code unless-empty
+		disabled: StringPredicate(selectedMatrixCode) { when IsEmpty then True otherwise False}
+	}
+	
+	application1Details = Dataset {
+		view: bwsod_designer_applicationdetails with applications1 to applicationuids unless-empty
+		disabled: StringPredicate(applications1){ when IsEmpty then True otherwise False }
+	}
+	
+	application2Details = Dataset {
+		view: bwsod_designer_applicationdetails with applications2 to applicationuids unless-empty
+		disabled: StringPredicate(applications2){ when IsEmpty then True otherwise False }
+	}
+	
+	Combo {
+		label: $bwsod_designerNLS.loadmatrix_long
+		variable: selectedMatrixCode
+		allow-none: True
+		disabled: BooleanPredicate(isUploadedMatrix)
+		options: Dynamic {
+			data: buildin_matrix
+			text: Current matrix_code
+			value: Current matrix_code
+			sort: matrix_code
+		}
+	}
+	
+	IncludeFragment {
+		fragment: bwsod_designer_importfileFragment with 
+			isUploadedMatrix binds-to isUploadedMatrix,
+			matrixCode binds-to matrixCode,
+			matrixEnabled binds-to matrixEnabled,
+			riskLevels binds-to riskLevels,
+			toxicKeys binds-to toxicKeys,
+			permissions binds-to permissions,
+			applications binds-to applications,
+			applicationNames binds-to applicationNames
+	}
+}
+
+bwsod_designer_savematrixDialog = Dialog {
+	title: $bwsod_designerNLS.savematrix
+	height: 200
+	width: 400
+	
+	buttons: [
+		ActionButton {
+			actions:
+				Set toxicKeys to savereport.permission1,
+				Set toxicKeys to savereport.permission2,
+				Set toxicKeys to savereport.toxicKeys_multi,
+				Set matrixCode to savereport.matrixname,
+				Set matrixEnabled to savereport.matrixenabled,
+				Set riskLevels to savereport.riskLevels,
+				TaskComplete savereport,
+				Message $bwsod_designerNLS.savematrix_message
+			text: $bwsod_designerNLS.savematrix_short
+			close: True
+			disabled: StringPredicate(matrixCode) { when IsEmpty then True otherwise False}
+		}
+		CancelButton
+	]
+	
+	applications = Variable { multivalued: True }
+	toxicKeys = Variable { multivalued: True }
+	riskLevels = Variable { multivalued: True }
+	matrixCode = Variable { type: String }
+	matrixEnabled = Variable { type: Boolean }
+	
+	savereport = TaskRecord(create "bwsod_designer_savematrix")
+	
+	Text {
+		value: Concat(
+			$bwsod_designerNLS.savematrix_text1, matrixCode, 
+			$bwsod_designerNLS.savematrix_text2, SizeOf toxicKeys, 
+			$bwsod_designerNLS.savematrix_text3)
+		compact: True
+	}
+}
+
+bwsod_designer_exportmatrixDialog= Dialog {
+	title: $bwsod_designerNLS.exportmatrix
+	height: 100
+	width: 400
+	
+	buttons: [
+		ActionButton {
+			actions: 
+				ExportReport "reports/bw_sod/sodmatrix.rptdesign" 
+						with selectedMatrix to matrixcode format "xlsx"
+			text: $bwsod_designerNLS.exportmatrix_short
+		}
+		CancelButton
+	]
+	
+	selectedMatrix = Variable { type: String }
+	
+	buildin_matrix = Dataset {
+		view: bwsod_designer_matrix
+	}
+	
+	Combo {
+		label: $bwsod_designerNLS.matrix
+		variable: selectedMatrix
+		layout: Layout {grab: horizontal False vertical False}
+		options: Dynamic {
+			data: buildin_matrix
+			text: Current matrix_name
+			value: Current matrix_code
+		}
+	}
+}
+
+bwsod_designer_deletematrixDialog = Dialog {
+	title: $bwsod_designerNLS.deletematrix
+	height: 100
+	width: 400
+	
+	buttons: [
+		ActionButton {
+			actions: 
+				Set selectedMatrix to task.matrixcode,
+				Confirm Concat(
+					$bwsod_designerNLS.deletematrix_confirm1, selectedMatrix, 
+					$bwsod_designerNLS.deletematrix_confirm2),
+				TaskComplete task wait-end
+			text: $bwsod_designerNLS.deletematrix_short
+		}
+		CancelButton
+	]
+	
+	selectedMatrix = Variable { type: String }
+	
+	task = TaskRecord(create "bwsod_designer_deletematrix")
+	
+	buildin_matrix = Dataset {
+		view: bwsod_designer_matrix
+	}
+	
+	Combo {
+		label: $bwsod_designerNLS.matrix
+		variable: selectedMatrix
+		layout: Layout {grab: horizontal False vertical False}
+		options: Dynamic {
+			data: buildin_matrix
+			text: Current matrix_name
+			value: Current matrix_code
+		}
+	}
+}
+
+bwsod_designer = Page {
+	title: $bwsod_designerNLS.title
+	feature:All(sod_license, bwa_controlsodmatrix)
+
+	// Filter on application/permission via picker
+	pickedApplications1 = Variable { type: String multivalued: True}
+	pickedApplications2 = Variable { type: String multivalued: True}
+	pickedApplicationsDisplayname1 = Variable { type: String multivalued: True}
+	pickedApplicationsDisplayname2 = Variable { type: String multivalued: True}
+	pickedApplicationContent1 = Variable { type: String }
+	pickedApplicationContent2 = Variable { type: String }
+	pickedPermissions1 = Variable { type: String multivalued: True}
+	pickedPermissions2 = Variable { type: String multivalued: True}
+	
+	// Selected values in the page
+	selectedPermissions1 =  Variable { type: String multivalued: True }
+	selectedPermissions2 =  Variable { type: String multivalued: True }
+	selectedRiskLevel =  Variable { type: Integer multivalued: False initial: 1 }
+	selectedToxicKeys = Variable { type: String multivalued: True }
+	matrixCode = Variable { type: String }
+	matrixEnabled = Variable { type: Boolean }
+	
+	// Pair of variables representing the matrix
+	toxicKeys = Variable { type: String multivalued: True } // Permission1 + "$$$" + Permission2
+	riskLevels = Variable { type: String multivalued: True }
+	
+	permissions = Variable { type: String multivalued: True }
+	iteratedPermission = Variable { type: String } // Used in the multivaluedIterate as an intermediate
+	
+	permissions1 = Dataset {
+		view: bwsod_designer_pair_permissions with
+			pickedApplications1 to applicationuids unless-empty, 
+			pickedPermissions1 to permissionuids unless-empty
+		disabled: StringPredicate(pickedApplications1) { when IsEmpty then True otherwise False }
+	}
+	
+	permissions2 = Dataset {
+		view: bwsod_designer_pair_permissions with
+			pickedApplications2 to applicationuids unless-empty, 
+			pickedPermissions2 to permissionuids unless-empty
+		disabled: StringPredicate(pickedApplications2) { when IsEmpty then True otherwise False }
+	}
+	
+	toxicKeys = Dataset {
+		view: bwsod_designer_toxic_keys with toxicKeys to toxickeys, riskLevels to risklevels, False to duplicatekeys, permissions to permissions
+		disabled: StringPredicate(toxicKeys) { when IsEmpty then True otherwise False }
+	}
+	
+	addToxicPair = NamedAction(
+		MultivaluedAdd selectedPermissions1 to permissions,
+		MultivaluedAdd selectedPermissions2 to permissions,
+		MultivaluedDistinct permissions,
+		MultivaluedIterate(selectedPermissions1 as permission1) [
+			Set Current permission1 to iteratedPermission,
+			MultivaluedIterate (selectedPermissions2 as permission2) [
+				BooleanCase using SameValuePredicate(Current permission2, iteratedPermission) in {
+					when True then [
+					
+					]
+					when False then [
+//						Remove the toxic pair if it exists to replace it
+						MultivaluedRemove all Concat(Current permission2, "$$$", iteratedPermission) from toxicKeys and (riskLevels),
+						MultivaluedRemove all Concat(iteratedPermission, "$$$", Current permission2) from toxicKeys and (riskLevels),
+//						Add the key in the list, as well as the risklevel
+						MultivaluedAdd Concat(iteratedPermission, "$$$", Current permission2) to toxicKeys,
+						MultivaluedAdd selectedRiskLevel to riskLevels
+					]
+				}
+			]
+		],
+		ReloadData(toxicKeys)
+	)
+	
+	removeToxicPair = NamedAction(
+		MultivaluedRemove all selectedToxicKeys from toxicKeys and (riskLevels),
+		Unset selectedToxicKeys,
+		ReloadData(toxicKeys)
+	)
+	
+	Splitter {
+		disposition: Horizontal
+		size: 50%
+		Group {
+			Grid {
+				columns: GridColumn { width: grow }, GridColumn { width: grow }
+				layout: Layout { grab: horizontal True vertical True }
+				GridRow {
+					height: grow
+					GridCell {
+						Group {
+							title: $bwsod_designerNLS.permissions1
+							Group {
+								layout: Layout { grab: horizontal True vertical False }
+								Text {
+									value: pickedApplicationContent1
+									label: $bwsod_designerNLS.applicationpicker
+									tooltip: pickedApplicationContent1
+									layout: Layout { grab: horizontal True vertical False }
+									compact: False
+									commands:
+										Commands {
+											Command {
+												actions:
+													Dialog applicationMultiPickerWithPermission( 
+														pickedApplications1 to outUid unless-empty,
+														pickedApplicationsDisplayname1 to outDisplayname unless-empty, 
+														pickedPermissions1 to outUidPermission unless-empty,
+														pickedApplications1 from outUid, 
+														pickedApplicationsDisplayname1 from outDisplayname, 
+														pickedPermissions1 from outUidPermission),
+													Set Join pickedApplicationsDisplayname1 using ", " to pickedApplicationContent1,
+													ReloadData(permissions1)
+												icon:%concept_16.application
+											}
+											Command {
+												actions:
+													Unset pickedApplications1,
+													Unset pickedApplicationsDisplayname1,
+													Unset pickedApplicationContent1
+												icon:%collection_16.delete
+											}										
+										}
+								}
+							}
+							Table {
+								data: permissions1
+								layout: Layout { grab: horizontal True vertical True }
+								checkboxes: permissionuid to selectedPermissions1
+								configurable: True
+								show-filter: True
+								show-count: True
+								commands: Commands {
+									orientation: Horizontal
+									position: Above
+									presentation: Link
+									Command {
+										actions: Unset selectedPermissions1
+										text: $bwsod_designerNLS.uncheckall
+										icon: %collection_16.refresh_round
+									}
+								}
+								Column {
+									column: permissionuid
+									hidden: True
+								}
+								Column {
+									column: permissioncode
+									header: $permission.concept
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: applicationcode
+									header: $application.concept
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: nbaccount
+									header: $fragmentApplicationPermissionsNLS.nbaccount
+									sortable: True
+									filterable: True
+									width: 100%
+									initially-masked: True
+								}
+							}
+						}
+					}
+					GridCell {
+						Group {
+							title: $bwsod_designerNLS.permissions2
+							Group {
+								layout: Layout { grab: horizontal True vertical False }
+								Text {
+									value: pickedApplicationContent2
+									label: $bwsod_designerNLS.applicationpicker
+									tooltip: pickedApplicationContent2
+									layout: Layout { grab: horizontal True vertical False }
+									compact: False
+									commands:
+										Commands {
+											Command {
+												actions:
+													Dialog applicationMultiPickerWithPermission( 
+														pickedApplications2 to outUid unless-empty,
+														pickedApplicationsDisplayname2 to outDisplayname unless-empty, 
+														pickedPermissions2 to outUidPermission unless-empty,
+														pickedApplications2 from outUid, 
+														pickedApplicationsDisplayname2 from outDisplayname, 
+														pickedPermissions2 from outUidPermission),
+													Set Join pickedApplicationsDisplayname2 using ", " to pickedApplicationContent2,
+													ReloadData(permissions2)
+												icon:%concept_16.application
+											}
+											Command {
+												actions:
+													Unset pickedApplications2,
+													Unset pickedApplicationsDisplayname2,
+													Unset pickedApplicationContent2
+												icon:%collection_16.delete
+											}										
+										}
+								}
+							}
+							Table {
+								data: permissions2
+								layout: Layout { grab: horizontal True vertical True }
+								checkboxes: permissionuid to selectedPermissions2
+								configurable: True
+								show-filter: True
+								show-count: True
+								commands: Commands {
+									orientation: Horizontal
+									position: Above
+									presentation: Link
+									Command {
+										actions: Unset selectedPermissions2
+										text: $bwsod_designerNLS.uncheckall
+										icon: %collection_16.refresh_round
+									}
+								}
+								Column {
+									column: permissionuid
+									hidden: True
+								}
+								Column {
+									column: permissioncode
+									header: $permission.concept
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: applicationcode
+									header: $application.concept
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: nbaccount
+									header: $fragmentApplicationPermissionsNLS.nbaccount
+									sortable: True
+									filterable: True
+									width: 100%
+									initially-masked: True
+								}
+							}
+						}
+					}
+				}
+				GridRow {
+					GridCell {
+						span: 2
+						Combo {
+							variable: selectedRiskLevel
+							label: $bwsod_designerNLS.risklevel
+							options: Static {
+								Option { text: $bwf_ControlLevel_NLS._1 value: 1 }
+								Option { text: $bwf_ControlLevel_NLS._2 value: 2 }
+								Option { text: $bwf_ControlLevel_NLS._3 value: 3 }
+								Option { text: $bwf_ControlLevel_NLS._4 value: 4 }
+							}
+						}
+						Button {
+							actions: ExecuteNamedAction addToxicPair
+							text: $bwsod_designerNLS.addpairs
+							image: %collection_16.plus
+						}
+					}
+				}
+			}
+		}
+		Group {
+			Grid {
+				columns: GridColumn { width: grow }
+				layout: Layout { grab: horizontal True vertical True }
+				GridRow {
+					GridCell {
+						Edit {
+							label: $bwsod_designerNLS.matrixname
+							variable: matrixCode
+							not-empty: True
+						}
+						Checkbox {
+							label: $bwsod_designerNLS.matrixenabled
+							variable: matrixEnabled
+						}
+					}
+				}
+				GridRow {
+					height: grow
+					GridCell {
+						Group {
+							title: $bwsod_designerNLS.toxicpairs
+							Table {
+								data: toxicKeys
+								layout: Layout { grab: horizontal True vertical True }
+								checkboxes: toxicKey to selectedToxicKeys
+								configurable: True
+								show-filter: False
+								show-count: True
+								Column {
+									column:risklevels
+									text:Transform Current risklevels using bwf_ControlLevelMapping
+									header: $bwsod_designerNLS.risklevel
+									width: 100%
+									sortable:True
+									filterable:True
+									image:TemplateImageSelection(Current risklevels) using bwf_controllevel
+								}
+								Column {
+									column: perm1_permissioncode
+									header: Concat($permission.concept, " 1")
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: perm2_permissioncode
+									header: Concat($permission.concept, " 2")
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: perm1_applicationcode
+									header: Concat($application.concept, " 1")
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: perm2_applicationcode
+									header: Concat($application.concept, " 2")
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+								Column {
+									column: toxicKey
+									initially-masked: True
+									sortable: True
+									filterable: True
+									width: 100%
+								}
+							}
+						}
+					}
+				}
+				GridRow {
+					GridCell {
+						Button {
+							actions: ExecuteNamedAction removeToxicPair
+							text: $bwsod_designerNLS.removepairs
+							image: %collection_16.minus
+						}
+					}
+				}
+			}
+		}
+	}
+	ButtonGroup {
+		layout: Layout { grab: horizontal True vertical False }
+		align: Right
+		uniform: True
+		Button {
+			text: $bwsod_designerNLS.crosstable
+			tooltip: $bwsod_designerNLS.crosstable_tooltip
+			image: %report_16.pivot_table
+			actions: Dialog bwsod_designer_crosstableDialog(
+				toxicKeys to toxicKeys,
+				riskLevels to riskLevels 
+			)
+		}
+		Button {
+			text: $bwsod_designerNLS.loadmatrix
+			image: %report_16.download
+			actions: Dialog bwsod_designer_loadmatrixDialog(
+				matrixCode from matrixCode,
+				matrixEnabled from matrixEnabled,
+				pickedApplications1 from applications1, 
+				pickedApplicationsDisplayname1 from application1Names,
+				pickedApplications2 from applications2, 
+				pickedApplicationsDisplayname2 from application2Names,
+				permissions from permissions,
+				toxicKeys from toxicKeys,
+				riskLevels from riskLevels),
+				Set Join pickedApplicationsDisplayname1 using ", " to pickedApplicationContent1,
+				Set Join pickedApplicationsDisplayname2 using ", " to pickedApplicationContent2
+		}
+		Button {
+			text: $bwsod_designerNLS.savematrix
+			image: %collection_16.checked
+			actions: Dialog bwsod_designer_savematrixDialog(
+				pickedApplications1 to applications,
+				toxicKeys to toxicKeys, 
+				riskLevels to riskLevels,
+				matrixCode to matrixCode, 
+				matrixEnabled to matrixEnabled)
+			disabled: StringPredicate(matrixCode) { when IsEmpty then True otherwise False }
+		}
+		Button {
+			text: $bwsod_designerNLS.exportmatrix
+			image: %report_16.upload
+			actions: Dialog bwsod_designer_exportmatrixDialog
+		}
+		Button {
+			text: $bwsod_designerNLS.deletematrix
+			image: %collection_16.delete
+			actions: Dialog bwsod_designer_deletematrixDialog
+		}
+	}
+}

@@ -1,0 +1,189 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+/* Nationalized labels here */
+access360r_application_filesourcesNLS = NLS {
+	title [en "Files used to fulfill the ledger" fr "Fichiers utilisés pour alimenter le Grand Livre"]
+	dyntitle [en "Files used to fulfill the ledger for {0}" fr "Fichiers utilisés pour alimenter le Grand Livre pour {0}"]
+	description [
+		en "This report lists the source files used to consolidate information about this application. Note that it is possible for internal technical configuration reasons that only some of the files used are listed here. In case of doubt, we invite you to contact the platform administrator who has the complete list and will be able to give you more information."
+		fr "Ce rapport liste les fichiers sources utilisés pour consolider les informations concernant cette application. Notez qu'il est possible pour des raisons de configuration technique interne que seule une partie des fichiers utilisés soient listés ici. En cas de doute, nous vous invitons à vous rapprocher de l'administrateur de la plate-forme qui dispose de la liste complète et pourra vous renseigner."
+	]
+
+	onlyafter [en "Only files \nafter" fr "Seulement les fichiers \naprès le"]
+	onlybefore [en "Only files \nbefore" fr "Seulement les fichiers \navant le"]
+
+	filter_silocode [en "Filter by silo code" fr "Filtrer par code silo"]
+	filter_silostaticcode [en "Filter by silo static code" fr "Filtrer par code statique silo"]
+	filter_silotype [en "Filter by silo type" fr "Filtrer par type silo"]
+	highlight_limit [en "Highlight files \nover X days" fr "Surligner les fichiers \nde plus de X jours"]
+	highlight_limit.tooltip [en "Difference computed against timeslot commit date: {0}" fr "Différence calculée avec la date de validation du timeslot: {0}"]
+
+	silo_code [en "silo code" fr "code silo"]
+	silo_static_code [en "silo \nstatic code" fr "code statique \nsilo"]
+	silo_name [en "silo name" fr "nom silo"]
+	silo_type [en "silo type" fr "type silo"]
+	silo_collect_date [en "silo \ncollect date" fr "date collecte \nsilo"]
+	code [en "file path" fr "chemin fichier"]
+	modified_date [en "last modification \ndate" fr "date de dernière \nmodification"]
+	length [en "length \n(bytes)" fr "taille \n(octets)"]
+
+	modified_date.tooltip [en "extracted within {0} days" fr "extrait sous {0} jours"]
+}
+
+// returns date1-date2 in nb days
+access360r_application_datediff = IntService {
+	javascript-file:"/webportal/pages/bw_portaluar_base/admin/filesources.javascript"
+	javascript-method:datediff
+	date1 = Input {
+		type:String
+		mandatory:True
+		multivalued:False
+	}
+	date2 = Input {
+		type:String
+		mandatory:True
+		multivalued:False
+	}
+}
+
+
+access360r_application_filesources = Page {
+	title: $access360r_application_filesourcesNLS.title
+	dynamic-title: $access360r_application_filesourcesNLS.dyntitle(application.displayname)
+	description:$access360r_application_filesourcesNLS.description
+	tags: "application" priority 100, "byuid" , "browsing"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature: bwa_applicationanalytics
+	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	filter_datebefore = Variable { initial:Date(PageTimeslot.CommitDate).offset(1 days).valueLDAP  }
+	filter_dateafter = Variable { initial:Date(PageTimeslot.CommitDate).offset(-1825 days).valueLDAP  }
+
+	highlight_limit = Variable { initial:7 type:Integer }
+		
+	/* Datasets and records here */
+	application = Record {
+		view:br_applicationDetail with uid to uid
+	}
+	
+	files = Dataset {
+		view:bwa360_applicationfilesources with 	
+									uid to uid,			
+									filter_dateafter to dateafter unless-empty, 
+									filter_datebefore to datebefore unless-empty,
+									highlight_limit to dummy
+	}
+
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn { width:120px },GridColumn { width:120px },GridColumn { width:120px },GridColumn { width:grow }
+		layout:Layout { grab: horizontal True vertical False hint:height 100 } 
+		GridRow {
+			height:80px
+			GridCell {
+				DateTime {
+					variable:filter_dateafter
+					label:Label { break:True value:$access360r_application_filesourcesNLS.onlyafter }
+					type:Date
+					format:"yyyyMMddhhmmss"
+				}
+			}		
+			GridCell {
+				DateTime {
+					variable:filter_datebefore
+					label:Label { break:True value:$access360r_application_filesourcesNLS.onlybefore }
+					type:Date
+					format:"yyyyMMddhhmmss"
+				}
+			}		
+			GridCell {
+				Spinner {
+					variable:highlight_limit
+					label:Label { break:True value:$access360r_application_filesourcesNLS.highlight_limit }
+					minimum:0
+					maximum:1000
+					increment:1
+					tooltip:$access360r_application_filesourcesNLS.highlight_limit.tooltip(PageTimeslot.CommitDate)
+				}
+			}		
+			GridCell {
+			}		
+		}
+	}
+
+	Table {
+		data:files
+		layout:Layout { grab:horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		persist-configuration:True
+		
+		Column {
+			column:silocode
+			initially-masked:True
+			header:$access360r_application_filesourcesNLS.silo_code
+			width:120px
+			sortable:True
+		}	
+		Column {
+			column:silostaticcode
+			initially-masked:True
+			header:$access360r_application_filesourcesNLS.silo_static_code
+			width:120px
+			sortable:True
+		}	
+		Column {
+			column:silodisplayname
+			initially-masked:True
+			header:$access360r_application_filesourcesNLS.silo_name
+			width:160px
+			sortable:True
+		}	
+		Column {
+			column:silotype
+			initially-masked:True
+			header:$access360r_application_filesourcesNLS.silo_type
+			width:120px
+			sortable:True
+		}	
+		Column {
+			column:silocollectdate
+			initially-masked:True
+			header:$access360r_application_filesourcesNLS.silo_collect_date
+			width:160px
+			sortable:True
+		}	
+		Column {
+			column:code
+			header:$access360r_application_filesourcesNLS.code
+			width:100%
+			sortable:True
+			filterable:True
+			styling:IntStyling(Difference(@access360r_application_datediff(Date(PageTimeslot.CommitDate).valueLDAP to date1, Date(Current modifieddate).valueLDAP to date2), highlight_limit)) { when >0 then errorStyle }
+		}	
+		Column {
+			column:modifieddate
+			tooltip: $access360r_application_filesourcesNLS.modified_date.tooltip(@access360r_application_datediff(Date(PageTimeslot.CommitDate).valueLDAP to date1, Date(Current modifieddate).valueLDAP to date2))
+			header:$access360r_application_filesourcesNLS.modified_date
+			width:160px
+			sortable:True
+			styling:IntStyling(Difference(@access360r_application_datediff(Date(PageTimeslot.CommitDate).valueLDAP to date1, Date(Current modifieddate).valueLDAP to date2), highlight_limit)) { when >0 then errorStyle }
+		}	
+		Column {
+			column:length
+			header:$access360r_application_filesourcesNLS.length
+			align:Right
+			sortable:True
+		}	
+		Column {
+			column:uid
+			hidden:True
+		}	
+	}
+}

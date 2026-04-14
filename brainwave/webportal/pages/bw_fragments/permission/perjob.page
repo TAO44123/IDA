@@ -1,0 +1,234 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+fragmentPermissionPerJobNLS = NLS {
+	perjob [en "Job with the permission" fr "Métiers avec la permission"]
+	innertooltip [en "{0} identities with this job,\n{1} identities in total with the permission" fr "{0} personnes avec ce métier\nsur un total de {1} personnes qui disposent de cette permission"]
+
+	tooltip [en "This tile presents the jobs where identities mostly have access to this permission\nthis tile is used to understand the meaning of a given permission, who is actually using it from a job perspective"
+			 fr "Cette tuile présente les métiers dont les identités ont le plus accès à cette permission\ncette tuile est utilisée pour comprendre l'utilité d'une permission donnée, quelles sont les métiers qui l'utilisent"
+			]
+	top20 [en "Top 30" fr "Top 30"]
+
+	axe_nbpeople [en "People with the permission" fr "Personnes avec la permission"]
+	axe_jobs [en "Jobs" fr "Métiers"] 
+
+	trends [en "Changes" fr "Changements"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the job of the identities with the permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate details</li>
+ * </ul>
+ * </span>
+ */
+fragmentPermissionPerJob = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	perjob = Dataset {
+		view: bwf_permissionnbidentityperjob with inuid to uid, total.totalidentities to total
+		limit:30
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				IntPredicate(total.totalidentities) {
+					when >0 then False
+					otherwise True
+				}
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	total = Record {
+		view: bwf_permissionnbtotalidentity with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	Header {
+		value:$fragmentPermissionPerJobNLS.perjob
+		styling:bigTitleStyle
+		tooltip:$fragmentPermissionPerJobNLS.top20
+	}
+
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: barChart
+		datasets: perjob ( jobtitledisplayname, jobtitleuid, nbidentity, label ) to chartdata ( label, code , count , description)
+		bindings: 
+			value-of $fragmentPermissionPerJobNLS.axe_nbpeople to xlabel,
+			value-of $fragmentPermissionPerJobNLS.axe_jobs to ylabel,
+			value-of True to showxAxesGrid,
+			value-of True to showyAxesGrid,
+			value-of True to isHorizontal,
+			value-of True to isLabelInside,
+			value-of True to beginAtZero,
+			value-of False to maintainAspectRatio,
+			value-of Constant shadesofbluePalette to customColors
+		widget-events: {
+			when onclick then [
+				BooleanCase(incanshowdetails) {
+					when True then [
+						Dialog fragmentPermissionPerJobDetailDialog(Current code to injobuid
+															,inuid to inpermissionuid
+						)
+					]
+					when False then [
+					]
+				}
+			]
+		}
+	}
+	/*
+	Text {
+		iterate-on:perjob
+		value:Current jobtitledisplayname
+		compact:True
+		decorator:Decorator{width:200 after:Bar{max-value:total.totalidentities  value:Current nbidentity width:200 higher-is-better:True tooltip:$fragmentPermissionPerJobNLS.innertooltip(Current nbidentity,total.totalidentities) }  }
+		label:Label{break:True}
+	}
+	*/
+}
+
+fragmentPermissionPerJobDetailDialog = Dialog {
+	title:"Details"
+	width:1366
+	height:600
+	buttons:OkButton
+
+	inpermissionuid = Variable
+	injobuid = Variable
+
+	selectedidentity = Variable
+
+	perjob = Dataset {
+		view: bwf_permissionidentityperjob with inpermissionuid to permissionuid, injobuid to jobuid 
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+	}
+
+	showDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(selectedidentity to inuid, True to inshowposition)
+	)
+
+	Table {
+		data:perjob
+		layout:Layout { grab:horizontal True vertical True }
+		show-filter:True
+		show-count:True
+		configurable:True
+		
+		Column {
+			column:uid
+			selection:selectedidentity
+			hidden:True
+		}
+		
+		Column {
+			column:hrcode
+			header:$identity.hrcode
+			sortable:True
+			filterable:True
+			actions:ExecuteNamedAction showDetails
+		}
+
+		Column {
+			column:fullname
+			header:$identity.fullname
+			sortable:True
+			filterable:True
+			width:100%
+			actions:ExecuteNamedAction showDetails
+		}
+
+		Column {
+			column:internal
+			text:Transform Current internal using booleanDisplayMapping
+			header:$identity.internal
+			sortable:True
+			filterable:True
+		}
+
+
+		Column {
+			column:mail
+			header:$identity.mail
+			sortable:True
+			filterable:True
+			width:160px
+		}
+
+		Column {
+			column:jobtitledisplayname
+			header:$identity.jobtitledisplayname
+			sortable:True
+			filterable:True
+			width:160px
+		}
+
+		Column {
+			column:organisationshortname
+			header:$porganisation.shortname
+			sortable:True
+			filterable:True
+			width:160px
+		}
+
+		Column {
+			column:organisationdisplayname
+			header:$organisation.concept
+			sortable:True
+			filterable:True
+			width:100%
+		}
+
+		Column {
+			column:organisationorganisationtypedisplayname
+			header:$organisation.organisationtypedisplayname
+			initially-masked:True
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+	}
+}

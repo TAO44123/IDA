@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<script src="bw_pages.js"></script>
+	<script src="echarts.min.js"></script>
+	<title>Digital Counter Indicator</title>
+	<style>
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+		}
+
+		#gauge {
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="gauge"></div>
+	<script>
+		document.documentElement.style.overflow = 'hidden';
+		document.body.scroll = "no";
+
+		var chart;
+		var dirty = true;
+		var myTimeout = null;
+
+		// Configuration variables
+		var identifier = null;
+		var incount = 0;
+		var inminValue = 0;
+		var inmaxValue = 100;
+		var displayPercent = true;
+
+		// Customization variables
+		var mainColor = "#178BCA";
+		var textColor = "#045681";
+		var subtextColor = "#999999";
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "identifier") {
+				identifier = initialValue;
+			}
+			if (varName == "count") {
+				incount = initialValue;
+			}
+			if (varName == "minValue") {
+				inminValue = initialValue;
+			}
+			if (varName == "maxValue") {
+				inmaxValue = initialValue;
+			}
+			if (varName == "displayPercent") {
+				displayPercent = initialValue;
+			}
+			if (varName == "mainColor") {
+				mainColor = initialValue;
+			}
+			if (varName == "textColor") {
+				textColor = initialValue;
+				mainColor = textColor;
+			}
+		});
+
+		function computeMinMaxVal() {
+			if (dirty) {
+				if (displayPercent) {
+					var range = inmaxValue - inminValue;
+					if (range == 0)
+						range = 1;
+					minValue = 0;
+					maxValue = 100;
+					count = incount;
+
+					count = count * 100 / range;
+
+					count = Math.round(count * 10) / 10;
+				}
+				else {
+					minValue = inminValue;
+					maxValue = inmaxValue;
+					count = incount;
+				}
+			}
+			dirty = false;
+		}
+
+		function updateGauge() {
+			computeMinMaxVal();
+			createGauge(count, minValue, maxValue);
+			myTimeout = null
+		}
+
+		function createGauge() {
+			var container = document.getElementById('gauge');
+			chart = echarts.init(container);
+
+			mainColor = textColor;
+
+			var value = incount;
+			var displayedValue = value;
+
+			if (displayPercent) {
+				var range = inmaxValue - inminValue;
+				if (range === 0) range = 1;
+				displayedValue = Math.round((value - inminValue) * 100 / range * 10) / 10 + '%';
+			}
+
+			var fontSize = Math.min(container.clientWidth * 0.2, 60);
+
+			var option = {
+				tooltip: {
+					show: false
+				},
+				graphic: {
+					elements: [
+						{
+							type: 'text',
+							left: 'center',
+							top: 'middle',
+							style: {
+								text: displayedValue,
+								font: 'bold ' + fontSize + 'px sans-serif',
+								fill: textColor
+							},
+							tooltip: {
+								show: true,
+								formatter: function () {
+									return incount + ' / ' + inmaxValue;
+								},
+								backgroundColor: 'rgba(50,50,50,0.7)',
+								textStyle: {
+									color: '#fff'
+								},
+								position: 'bottom',
+								trigger: 'item',     // tooltip on the item
+								confine: true
+							},
+							cursor: 'pointer'
+						}
+					]
+				},
+				series: [{
+					type: 'pie',
+					radius: ['94%', '100%'],
+					hoverAnimation: false,
+					label: {
+						show: false
+					},
+					tooltip: {
+						show: false  // no tooltip on the gauge
+					},
+					emphasis: {
+						disabled: true
+					},
+					data: [
+						{
+							value: (value == 0 && inmaxValue == 0) ? 0 : value,
+							itemStyle: {
+								color: mainColor
+							},
+							tooltip: {
+								show: false
+							}
+						},
+						{
+							value: (value == 0 && inmaxValue == 0) ? 1 : inmaxValue - value,
+							itemStyle: {
+								color: '#f0f0f0'
+							},
+							tooltip: {
+								show: false
+							}
+						}
+					],
+					animation: true
+				}]
+			};
+
+			chart.setOption(option);
+
+			// Click event
+			chart.on('click', function () {
+				Pages.sendEvent('onclick', {
+					identifier: identifier,
+					minValue: inminValue,
+					maxValue: inmaxValue,
+					count: incount
+				});
+			});
+		}
+		Pages.listenInitDone(function () {
+			createGauge();
+			Pages.listenTo("count", function (newValue) {
+				incount = newValue;
+				dirty = true;
+				if (myTimeout != null) {
+					clearTimeout(myTimeout);
+					myTimeout = setTimeout(updateGauge, 200);
+				}
+				myTimeout = setTimeout(updateGauge, 200);
+			});
+			Pages.listenTo("minValue", function (newValue) {
+				inminValue = newValue;
+				dirty = true;
+				if (myTimeout != null) {
+					clearTimeout(myTimeout);
+					myTimeout = setTimeout(updateGauge, 200);
+				}
+				myTimeout = setTimeout(updateGauge, 200);
+			});
+			Pages.listenTo("maxValue", function (newValue) {
+				inmaxValue = newValue;
+				dirty = true;
+				if (myTimeout != null) {
+					clearTimeout(myTimeout);
+					myTimeout = setTimeout(updateGauge, 200);
+				}
+				myTimeout = setTimeout(updateGauge, 200);
+			});
+		});
+	</script>
+</body>
+
+</html>

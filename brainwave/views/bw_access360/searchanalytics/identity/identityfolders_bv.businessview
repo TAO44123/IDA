@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="access360r_identityfolders_bv" displayname="identityfolders_bv bv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/identity/identityrights_bv.javascript" name="D1609939955419">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1609939955417" title="identity folders">
+			<InnerView name="access360r_identityfolders">
+				<Param name="F1612723992957" viewparam="applications" viewparamvalue="{param.applications}"/>
+				<Param name="F1613843826799" viewparam="sharefamily" viewparamvalue="{param.sharefamily.get()}"/>
+				<Param name="F1613907944147" viewparam="maxdepth" viewparamvalue="{param.maxdepth.get()}"/>
+			</InnerView>
+			<ViewComputedAttribute name="val" displayname="val" type="Integer" expression="dataset.rights.get().indexOf(&apos;R-&apos;)!=-1?1:dataset.rights.get().indexOf(&apos;W&apos;)!=-1?2:dataset.rights.get().indexOf(&apos;C&apos;)!=-1?3:0"/>
+		</Component>
+		<Component name="C1609940829081" type="trendview" x="331" y="278" w="300" h="50" title="trend" enable="{!param.isEmpty(&apos;comparisontimeslot&apos;)}">
+			<Trend key="{dataset.key.get()}" comparing_column="val" trend_column_name="status" include_removed="true" timeslot="{param.comparisontimeslot.get()}"/>
+			<FilterList>
+				<Filter name="F1632469207337" expression="param.excluderemoved.get() &amp;&amp; &quot;Removed&quot;.equals(dataset.status.get())" comment="remove Removed" type="Exclude"/>
+				<Filter name="F1632469247757" expression="param.excludesimilar.get() &amp;&amp; &quot;Identical&quot;.equals(dataset.status.get())" comment="remove Similar" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1609940829371" source="C1609939955417" target="C1609940829081" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="applications" displayname="applications"/>
+	<ViewParam name="sharefamily" displayname="sharefamily"/>
+	<ViewParam name="maxdepth" displayname="maxdepth" type="Integer" defaultvalue="1"/>
+	<ViewParam name="comparisontimeslot" displayname="comparisontimeslot"/>
+	<ViewParam name="excluderemoved" displayname="exclude removed" type="Boolean"/>
+	<ViewParam name="excludesimilar" displayname="exclude similar" type="Boolean"/>
+</View>

@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>Multi Bar Chart</title>
+	<script src="bw_pages.js"></script>
+	<script src="chart.umd.min.js"></script>
+	<script src="chartjs-plugin-stacked100-1.7.0.js"></script>
+	<style>
+		html,
+		body,
+		#canvas-holder {
+			height: 100%;
+			width: 100%
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+
+	<div id="canvas-holder" style="width:100%">
+		<canvas id="chart-area"></canvas>
+	</div>
+
+	<script>
+		Chart.register(ChartjsPluginStacked100.default);
+		document.documentElement.style.overflow = 'hidden';
+		document.body.scroll = "no";
+
+		var tooltipSuffix = '';
+		var tooltipShowPercent = false;
+		var legendTitle = '';
+		var showTitle = false;
+		var stacked = false;
+		var stacked100 = false;
+		var titlePosition = 'top';
+		var titleFontSize = 12;
+		var showLegend = true;
+		var beginAtZero = false;
+		var legendPosition = 'right';
+		var bartype = 'bar';
+		var indexAxis = 'x';
+		var customColors = null;
+		var xlabel = null;
+		var ylabel = null;
+		var xAxesdisplay = true;
+		var yAxesdisplay = true;
+		var yAxesPosition = 'left';
+		var yAxesWidth = null;
+		var yAxesSuggestedMax = null;
+		var showxAxesGrid = true;
+		var showyAxesGrid = true;
+		var showTooltip = true;
+		var maintainAspectRatio = true;
+		var datasetMinSize = 0;
+		var backgroundcolor = '#FFFFFF';
+		var defaultColors = [
+			"#61bd6d",
+			"#54acd2",
+			"#9365b8",
+			"#553982",
+			"#eb6b56",
+			"#75706b",
+			"#f37934",
+			"#475577",
+			"#d1d5d8",
+			"#2969b0"
+		];
+
+		function createArray(length) {
+			var arr = new Array(length || 0),
+				i = length;
+
+			if (arguments.length > 1) {
+				var args = Array.prototype.slice.call(arguments, 1);
+				while (i--) arr[length - 1 - i] = createArray.apply(this, args);
+			}
+
+			return arr;
+		}
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "title") {
+				legendTitle = initialValue;
+				showTitle = true;
+			}
+			if (varName == "titlePosition") {
+				titlePosition = initialValue;
+			}
+			if (varName == "titleFontSize") {
+				titleFontSize = initialValue;
+			}
+			if (varName == "showLegend") {
+				showLegend = initialValue;
+			}
+			if (varName == "isStacked") {
+				stacked = initialValue;
+			}
+			if (varName == "stacked100") {
+				if (stacked)
+					stacked100 = initialValue;
+			}
+			if (varName == 'beginAtZero') {
+				beginAtZero = initialValue;
+			}
+			if (varName == "legendPosition") {
+				legendPosition = initialValue;
+			}
+			if (varName == "showTooltip") {
+				showTooltip = initialValue;
+			}
+			if (varName == "tooltipSuffix") {
+				tooltipSuffix = initialValue;
+			}
+			if (varName == "tooltipShowPercent") {
+				tooltipShowPercent = initialValue;
+			}
+			if (varName == "showxAxesGrid") {
+				showxAxesGrid = initialValue;
+			}
+			if (varName == "showyAxesGrid") {
+				showyAxesGrid = initialValue;
+			}
+			if (varName == "xAxesdisplay") {
+				xAxesdisplay = initialValue;
+			}
+			if (varName == "yAxesdisplay") {
+				yAxesdisplay = initialValue;
+			}
+			if (varName == "yAxesPosition") {
+				yAxesPosition = initialValue;
+			}
+			if (varName == "yAxesWidth") {
+				yAxesWidth = initialValue;
+			}
+			if (varName == "yAxesSuggestedMax") {
+				yAxesSuggestedMax = initialValue;
+			}
+			if (varName == "maintainAspectRatio") {
+				maintainAspectRatio = initialValue;
+			}
+			if (varName == "datasetMinSize") {
+				datasetMinSize = initialValue;
+			}
+			if (varName == "customColors") {
+				customColors = initialValue.split(',');
+				defaultColors = customColors.slice(0);
+			}
+			if (varName == 'isHorizontal') {
+				if (initialValue) {
+					bartype = 'bar';
+					indexAxis = 'y';
+				}
+			}
+			if (varName == "xlabel") {
+				xlabel = initialValue;
+			}
+			if (varName == "ylabel") {
+				ylabel = initialValue;
+			}
+			if (varName == "backgroundColor") {
+				backgroundcolor = initialValue;
+			}
+		});
+
+		var newLegendClickHandler = function (e, legendItem, legend) {
+			var index = legendItem.datasetIndex;
+			var chart = legend.chart;
+			var code = chart.data.datasets[index].categorycode;
+			var label = chart.data.datasets[index].label;
+			Pages.sendEvent('oncategoryclick', { category: label, categorycode: code });
+		};
+
+		createChart = function () {
+			var options = {
+				responsive: true,
+				maintainAspectRatio: maintainAspectRatio,
+				indexAxis: indexAxis,
+				onHover: function (e, activeElements) {
+					e.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
+				},
+				plugins: {
+					stacked100: {
+						enable: stacked100,
+						replaceTooltipLabel: false
+					},
+					legend: {
+						position: legendPosition,
+						onClick: newLegendClickHandler,
+						reverse: false,
+						display: showLegend,
+						onHover: function (event) {
+							event.native.target.style.cursor = 'pointer';
+						}
+					},
+					title: {
+						display: showTitle,
+						text: legendTitle,
+						position: titlePosition,
+						font: {
+							size: titleFontSize
+						}
+					},
+					tooltip: {
+						enabled: showTooltip,
+						callbacks: {
+							label: function (context) {
+								var dataset = context.dataset;
+								var datasetIndex = context.datasetIndex;
+								var index = context.dataIndex;
+								var category = dataset.label;
+								var description = dataset.categorydescription;
+								if (description != null) {
+									return description + '';
+								}
+								var pCurrent = Number(dataset.data[index]);
+								var pTotal = dataset.data.reduce(function (acum, current) {
+									return Number(acum) + Number(current);
+								}, 0);
+								var percentageText = '';
+								if (tooltipShowPercent && pTotal > 0) {
+									percentageText = " (" + ((pCurrent / pTotal) * 100).toFixed(2) + "%)";
+								}
+								return category + ': ' + pCurrent + ' ' + tooltipSuffix + percentageText;
+							}
+						}
+					}
+				},
+				animation: {
+					animateScale: true,
+					animateRotate: true
+				},
+				scales: {
+					x: {
+						display: xAxesdisplay,
+						stacked: stacked,
+						grid: {
+							display: showxAxesGrid
+						},
+						title: {
+							display: xlabel != null,
+							text: xlabel
+						},
+						ticks: {
+							beginAtZero: beginAtZero
+						}
+					},
+					y: {
+						display: yAxesdisplay,
+						stacked: stacked,
+						position: yAxesPosition,
+						grid: {
+							display: showyAxesGrid
+						},
+						title: {
+							display: ylabel != null,
+							text: ylabel
+						},
+						ticks: {
+							beginAtZero: beginAtZero
+						},
+						suggestedMax: yAxesSuggestedMax,
+						afterFit: function (scaleInstance) {
+							if (yAxesWidth != null) {
+								scaleInstance.width = yAxesWidth;
+							}
+						}
+					}
+				}
+			};
+
+			Pages.fetchDataset("chartdata", function (rows) {
+				// Step 1: retrieve all labels&codes in a Map (dedup the labels) and the categorie in a Map (dedup the categories)
+				var labelsmap = new Map();
+				var categoriesmap = new Map();
+				var categoriesdescriptionmap = new Map();
+				var valuesmap = new Map();
+				for (var index = 0; index < rows.length; index++) {
+					var code = rows[index]["code"];
+					var label = rows[index]["label"];
+					var category = rows[index]["category"];
+					var categorycode = rows[index]["categorycode"];
+					var categorydescription = rows[index]["categorydescription"];
+					var value = rows[index]["count"];
+					labelsmap.set(code, label);
+					categoriesmap.set(categorycode, category);
+					categoriesdescriptionmap.set(categorycode, categorydescription);
+					valuesmap.set(code + '$$' + categorycode, value);
+				}
+
+				// step 2 : build the data by iterating through the categories (a dataset per category) and iterating through the labels (one value per label, 0 by default)
+				var mylabels = [];
+				var mycodes = [];
+				labelsmap.forEach(function (value, key, map) {
+					mylabels.push(value);
+					mycodes.push(key);
+				});
+
+				var data = {
+					datasets: [],
+					labels: mylabels,
+					codes: mycodes
+				};
+
+				var i = 0;
+				var categoriesmapkeys = categoriesmap.keys();
+				for (const category of categoriesmapkeys) {
+					var categorylabel = categoriesmap.get(category);
+					data.datasets.push({});
+					data.datasets[i].label = categorylabel;
+					data.datasets[i].categorycode = category;
+					data.datasets[i].categorydescription = categoriesdescriptionmap.get(category);
+					data.datasets[i].backgroundColor = defaultColors[i % defaultColors.length];
+
+					var mydata = [];
+					var labelsmapkeys = labelsmap.keys();
+					for (const code of labelsmapkeys) {
+						var value = valuesmap.get(code + '$$' + category);
+						if (value == null)
+							value = 0;
+						mydata.push(value);
+					}
+					while (mydata.length < datasetMinSize) {
+						mydata.push(null);
+						mylabels.push("");
+					}
+					data.datasets[i].data = mydata;
+					i = i + 1;
+				}
+
+				var ctx = document.getElementById('chart-area').getContext('2d');
+				document.getElementById('loading').style.display = 'none';
+
+				// used to configure a background color in the canvas
+				var plugin = {
+					id: 'custom_canvas_background_color',
+					beforeDraw: (chart) => {
+						const ctx = chart.canvas.getContext('2d');
+						ctx.save();
+						ctx.globalCompositeOperation = 'destination-over';
+						ctx.fillStyle = backgroundcolor;
+						ctx.fillRect(0, 0, chart.width, chart.height);
+						ctx.restore();
+					}
+				};
+
+				var config = {
+					type: bartype,
+					data: data,
+					options: options,
+					plugins: [plugin]
+				};
+
+				window.myDoughnut = new Chart(ctx, config);
+
+				document.getElementById("chart-area").onclick = function (evt) {
+					var activePoints = window.myDoughnut.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+					if (activePoints.length > 0) {
+						var firstPoint = activePoints[0];
+						var label = window.myDoughnut.data.labels[firstPoint.index];
+						var value = window.myDoughnut.data.datasets[firstPoint.datasetIndex].data[firstPoint.index];
+						var category = window.myDoughnut.data.datasets[firstPoint.datasetIndex].label;
+						var categorycode = window.myDoughnut.data.datasets[firstPoint.datasetIndex].categorycode;
+						var code = window.myDoughnut.data.codes[firstPoint.index];
+						Pages.sendEvent('onclick', { code: code, category: category, categorycode: categorycode, label: label, count: value });
+					}
+				};
+			});
+		};
+
+		var myTimeout = null;
+
+		var fetchInvalidated = function () {
+			Pages.fetchDataset("chartdata", function (rows) {
+				// Step 1: retrieve all labels&codes in a Map (dedup the labels) and the categorie in a Map (dedup the categories)
+				var labelsmap = new Map();
+				var categoriesmap = new Map();
+				var categoriesdescriptionmap = new Map();
+				var valuesmap = new Map();
+				for (var index = 0; index < rows.length; index++) {
+					var code = rows[index]["code"];
+					var label = rows[index]["label"];
+					var category = rows[index]["category"];
+					var categorycode = rows[index]["categorycode"];
+					var categorydescription = rows[index]["categorydescription"];
+					var value = rows[index]["count"];
+					labelsmap.set(code, label);
+					categoriesmap.set(categorycode, category);
+					categoriesdescriptionmap.set(categorycode, categorydescription);
+					valuesmap.set(code + '$$' + categorycode, value);
+				}
+
+				// step 2 : build the data by iterating through the categories (a dataset per category) and iterating through the labels (one value per label, 0 by default)
+				var mylabels = [];
+				var mycodes = [];
+				labelsmap.forEach(function (value, key, map) {
+					mylabels.push(value);
+					mycodes.push(key);
+				});
+
+				var data = {
+					datasets: [],
+					labels: mylabels,
+					codes: mycodes
+				};
+
+				var i = 0;
+				var categoriesmapkeys = categoriesmap.keys();
+				for (const category of categoriesmapkeys) {
+					var categorylabel = categoriesmap.get(category);
+					data.datasets.push({});
+					data.datasets[i].label = categorylabel;
+					data.datasets[i].categorycode = category;
+					data.datasets[i].categorydescription = categoriesdescriptionmap.get(category);
+					data.datasets[i].backgroundColor = defaultColors[i % defaultColors.length];
+
+					var mydata = [];
+					var labelsmapkeys = labelsmap.keys();
+					for (const code of labelsmapkeys) {
+						var value = valuesmap.get(code + '$$' + category);
+						if (value == null)
+							value = 0;
+						mydata.push(value);
+					}
+					while (mydata.length < datasetMinSize) {
+						mydata.push(null);
+						mylabels.push("");
+					}
+					data.datasets[i].data = mydata;
+					i = i + 1;
+				}
+
+				window.myDoughnut.data = data;
+				window.myDoughnut.update();
+				myTimeout = null;
+			});
+		};
+
+		Pages.listenToDatasetInvalidation("chartdata", function () {
+			if (myTimeout != null) {
+				clearTimeout(myTimeout);
+				myTimeout = setTimeout(fetchInvalidated, 500);
+				return;
+			}
+			myTimeout = setTimeout(fetchInvalidated, 500);
+		});
+
+		Pages.listenInitDone(function () {
+			createChart();
+		});
+	</script>
+</body>
+
+</html>

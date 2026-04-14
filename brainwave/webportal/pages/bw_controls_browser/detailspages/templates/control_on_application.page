@@ -1,0 +1,281 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/fragments/application/application_details_table.page"
+import "/webportal/pages/bw_controls_browser/fragments/root_causes/root_cause_details_table.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_controls_browser/resources/picker.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_controls_browser/fragments/application/application_exceptions.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_controls_browser/details_panel.page"
+import "/webportal/pages/bw_controls_browser/resources/mappings.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Template of detailed page for control on applications
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlType</b> (in) the designed control type</li>
+ * <li><b>controlCode</b> (in) the designed control code</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_control_on_app = PageFragment {
+	
+	/* Variables here */
+	controlType = Variable { type: String }
+	controlCode = Variable { type: String }
+	selectedAppUid = Variable { type: String }
+	selectedAppUids = Variable { type: String multivalued: True }
+	selectedExceptionAppUid = Variable { type: String }
+	selectedExceptionAppUids = Variable { type: String multivalued: True }
+	selectedRootCauseAppUid = Variable { type: String }
+	selectedAppRecorduid = Variable { type: String }
+	selectedExceptionAppRecorduid = Variable { type: String }
+	selectedRootCauseAppRecorduid = Variable { type: String }
+	hasRootCause = Variable { type: Boolean initial: False }
+	nbExceptions = Variable { type: Integer }
+	includedApplicationUid = Variable { type: String }
+	includedRootcauseUid = Variable { type: String }
+	includedApplicationDisplayname = Variable { type: String multivalued: True }
+	includedRootcauseDisplayname = Variable { type: String multivalued: True }
+	updateRequired = Variable { type: Boolean }
+	useExceptions = Variable { type: Boolean }
+	// Type of entity (Account, Perm, ... or Right, Share, etc.)
+	type = Variable { type: String }
+	// KPI information
+	selectedDiscrepancies = Variable { type: Integer }
+	selectedException = Variable { type: Integer }
+	selectedDiscrepanciesTrend = Variable { type: Integer }
+	selectedExceptionTrend = Variable { type: Integer }
+	// Active tabs
+	activeApplicationsTab = Variable { type: Boolean initial: False }
+	activeImpactsTab = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	control_info = Record {
+		view: bw_control_browser_get_control_from_code with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	control_root_cause = Dataset {
+		view: bw_control_browser_all_root_cause with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	resetPickerValue = NamedAction (
+		Unset includedApplicationUid,
+		Unset includedRootcauseUid,
+		Unset includedApplicationDisplayname,
+		Unset includedRootcauseDisplayname
+	)
+	
+	reload = NamedAction (
+		ExecuteFragmentNamedAction exceptions.reload,
+		ExecuteFragmentNamedAction discrepancies.reload
+	)
+
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text: $detailpanel.control
+			IncludeFragment {
+				fragment: bw_control_browser_details_tab with
+					value-of controlCode to selectedControlCode,
+					value-of selectedDiscrepancies to selectedDiscrepancies,
+					value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					value-of selectedException to selectedException,
+					value-of selectedExceptionTrend to selectedExceptionTrend,
+					hasRootCause binds-to hasRootCause
+			}
+		}
+		TabItem {
+			text: Transform type using apps_type_mapping
+			activation-event:
+				BooleanCase ( activeApplicationsTab ) {
+					when False then [
+						Set True to activeApplicationsTab,
+						ExecuteFragmentNamedAction discrepancies.updateFilters
+					] when True then [
+						// Nothing to do	
+					]
+				}
+			Group {
+				discrepancies = IncludeFragment {
+					fragment: bw_control_browser_application_details_table with 
+						value-of controlCode to controlCode,
+						value-of useExceptions to useExceptions,
+						selectedAppUid binds-to selectedAppUid,
+						selectedAppUids binds-to selectedAppUids,
+						selectedAppRecorduid binds-to selectedAppRecorduid,
+						value-of controlType to controlType,
+						updateRequired binds-to updateRequired,
+						value-of activeApplicationsTab to isActive,
+						value-of type to type
+				}
+			}
+		}
+		TabItem {
+			text: $detailspages.exception
+			badge: nbExceptions
+			feature: bw_control_browser_exceptions
+			hidden:
+				IntPredicate ( nbExceptions ) {
+					when =0 then True
+				}
+			ButtonGroup {
+				layout: Layout { align: horizontal End vertical End }
+				Button {
+					actions:
+						StringCase ( selectedExceptionAppUids ) {
+							when IsEmpty then [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionAppUid to targetuids,
+									controlCode to controlcode,
+									Constant _Application to controlresulttype
+								)							
+							] otherwise [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionAppUids to targetuids,
+									controlCode to controlcode,
+									Constant _Application to controlresulttype
+								)
+							]
+						},
+						Set True to updateRequired,
+						ExecuteNamedAction reload,
+						Unset selectedExceptionAppUids
+					presentation: Button
+					text: $detailspages.removeexception
+					image: %collection_16.remove_user
+					disabled:
+						AndPredicate {
+							StringPredicate ( selectedExceptionAppUid ) {
+								when IsEmpty then True
+							}
+							StringPredicate ( selectedExceptionAppUids ) {
+								when IsEmpty then True
+							}
+						}
+				}
+			}
+			exceptions = IncludeFragment {
+				fragment: bw_control_browser_application_exceptions with
+					value-of controlCode to controlCode,
+					nbExceptions binds-to nbExceptions,
+					selectedExceptionAppUid binds-to selectedApplicationUid,
+					selectedExceptionAppUids binds-to selectedApplicationUids
+			}
+		}
+		TabItem {
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			text: $rootcause.concept
+			IncludeFragment {
+				fragment: bw_control_browser_root_cause with
+					value-of controlCode to controlCode
+			}
+		}
+		TabItem {
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			text: $detailspages.analytics
+			activation-event:
+				Set True to activeImpactsTab
+			Grid {
+				columns: GridColumn { width: grow 1 }, GridColumn {}, GridColumn {}
+				layout: Layout { grab: horizontal True vertical False }
+				GridRow {
+				 	GridCell {
+						Text {
+							label: $detailspages.filteron.application
+							value: Eval "includedApplicationDisplayname.toString().substring(1).slice(0, -1)"
+							tooltip: Eval "includedApplicationDisplayname.toString().substring(1).slice(0, -1)"
+							compact: True
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Dialog bw_control_browser_application_picker (
+									controlCode to controlCode,
+									includedApplicationUid to outUid,
+									includedApplicationUid from outUid, 
+									includedApplicationDisplayname from outDisplayname
+								)
+							image: %collection_16.plus
+							presentation: Link
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Unset includedApplicationUid,
+								Unset includedApplicationDisplayname
+							image: %collection_16.delete
+							presentation: Link
+							disabled:
+								StringPredicate ( includedApplicationUid ) {
+									when IsEmpty then True
+								}
+						}
+					}
+				}
+				GridRow {
+					GridCell {
+						Text {
+							label: $detailspages.filteron.rootcause
+							value: Eval "includedRootcauseDisplayname.toString().slice(1, -1)"
+							tooltip: Eval "includedRootcauseDisplayname.toString().slice(1, -1)"
+							compact: True
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Dialog bw_control_browser_rootcause_picker (
+									controlCode to controlCode,
+									includedRootcauseUid to outUid,
+									includedRootcauseUid from outUid,
+									includedRootcauseDisplayname from outDisplayname
+								)
+							image: %collection_16.plus
+							presentation: Link 
+						}
+					}
+					GridCell {
+						Button {
+							image: %collection_16.delete
+							actions:
+								Unset includedRootcauseUid,
+								Unset includedRootcauseDisplayname
+							presentation: Link
+							disabled:
+								StringPredicate ( includedRootcauseUid ) {
+									when IsEmpty then True
+								}		
+						}
+					}
+				}
+			}
+			IncludeFragment {
+				fragment: bw_control_browser_application_details_table_with_root_cause with 
+					value-of controlCode to controlCode, 
+					selectedRootCauseAppUid binds-to selectedAppUid, 
+					selectedRootCauseAppRecorduid binds-to selectedAppRecorduid,
+					includedApplicationUid binds-to includedApplicationUid, 
+					includedRootcauseUid binds-to includedRootcauseUid,
+					value-of activeImpactsTab to isActive
+			}
+		}
+	}
+}

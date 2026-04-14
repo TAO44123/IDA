@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="5200 Identities" scriptfile="collectors/bwdsm_generic_hr/generic_hr.javascript" name="P1622047181276_J5G6fgR29CvV1cfhEL1ZA" startingpoint="C1622047187799">
+		<Component name="C1622047187799" type="discoverysource" x="147" y="52" w="300" h="64" title="identity">
+			<Discovery file="/discovery/bwdsm_generic_hr/identity.discovery" datafile="{config.file}"/>
+		</Component>
+		<Component name="C1622047201699" type="identity" x="147" y="320" w="300" h="64" title="identity target">
+			<Mapping>
+				<Attribute name="givenname" attribute="givenname"/>
+				<Attribute name="sn" attribute="surname"/>
+				<Attribute name="internal" attribute="internal"/>
+				<Attribute name="fullname" attribute="fullname"/>
+				<Attribute name="title" attribute="titlecode"/>
+				<Attribute name="altname" attribute="altname"/>
+				<Attribute name="custom1" attribute="active"/>
+				<Attribute name="employeetype" attribute="employeetype"/>
+				<Attribute name="organization" attribute="organisationcode"/>
+				<Attribute name="jobtitle" attribute="jobtitlecode"/>
+				<Attribute name="mail" attribute="mail"/>
+				<Attribute name="phone" attribute="phone"/>
+				<Attribute name="mobile" attribute="mobile"/>
+				<Attribute name="arrivaldate" attribute="arrivaldate"/>
+				<Attribute name="departuredate" attribute="departuredate"/>
+			</Mapping>
+			<Media code="repositorycode"/>
+			<Identity code="hrcode" ignoreleave="true" errormany="true" eventmany="DuplicatedNamesFound"/>
+			<Manager error="false" event="LineManagerNotFound"/>
+			<Match>
+			</Match>
+		</Component>
+		<Link name="L1622047206841" source="C1622047187799" target="C1622047274232" priority="1"/>
+		<Component name="C1622047274232" type="changefilter" x="147" y="173" w="300" h="64" title="set local variable">
+			<Actions>
+				<Action name="U1622047302544" action="add" attribute="repositorycode" type="String" multivalued="false" newvalue="{config.repositorycode}" errorexist="false"/>
+				<Action name="U1627312698406" action="add" attribute="EXPERTISEDOMAIN" type="String" multivalued="false" newvalue="businessowner" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1622047310355" source="C1622047274232" target="C1622047201699" priority="1"/>
+		<Component name="C1627312619062" type="manager" x="147" y="456" w="300" h="64" title="computed op manager" managertarget="I">
+			<ManagedIdentity hrcode="hrcode" email="mail" error="true" event="IDNOTFOUND"/>
+			<Domain domain="EXPERTISEDOMAIN" action="create"/>
+			<Manager code="linemanagerhrcode"/>
+			<Match>
+				<Attribute name="fullname" attribute="linemanagerfullname"/>
+			</Match>
+		</Component>
+		<Link name="L1627312628790" source="C1622047201699" target="C1627312619062" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="repositorycode" description="repository code"/>
+			<Variable name="file" description="file"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

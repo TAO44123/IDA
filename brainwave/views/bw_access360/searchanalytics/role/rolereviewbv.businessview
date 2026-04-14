@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="access360r_rolereviewbv" displayname="Roles Content Review: items to review">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/role/rolereviewbv.javascript" name="D1763977348666" description="Roles Content Review: items to review">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1763977348666" title="root">
+			<InnerView name="bwaccess360_rolereview_root">
+				<Param name="F1763977784430" viewparam="apps" viewparamvalue="{param.apps}"/>
+				<Param name="F1763977793594" viewparam="permtags" viewparamvalue="{param.permtags}"/>
+				<Param name="F1763977809252" viewparam="roles" viewparamvalue="{param.roles}"/>
+				<Param name="F1763978086500" viewparam="rulename" viewparamvalue="{param.rulename.get()}"/>
+				<Param name="F1763978098778" viewparam="permsensitivity" viewparamvalue="{param.permsensitivity}"/>
+				<Param name="F1767801201877" viewparam="iamapptags" viewparamvalue="{param.iamapptags}"/>
+				<Param name="F1767801487002" viewparam="iamapps" viewparamvalue="{param.iamapps}"/>
+				<Param name="F1767859078583" viewparam="iampermtags" viewparamvalue="{param.iampermtags}"/>
+				<Param name="F1767609632845" viewparam="filteroutunclassifiedsensitivity" viewparamvalue="{param.filteroutunclassifiedsensitivity.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1625833211998_2" type="joinview" x="413" y="711" w="300" h="50" title="get default reviewer infos if needed">
+			<InnerView name="bw_access360r_applicationdefaultreviewer">
+				<Param name="F1625833335047" viewparam="uid" viewparamvalue="{param.defaultrevieweruid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key2="{dataset.defkey.get()}" key1="{dataset.defkey.get()}"/>
+			<ExcludeList>
+			</ExcludeList>
+		</Component>
+		<Link name="L1763978407919" source="C1763977348666" target="C1625833211998_2" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1764064027446" type="joinview" x="100" y="196" w="300" h="114" title="last review info">
+			<InnerView name="rolelastreview_bv">
+				<Param name="F1764064218293" viewparam="apps" viewparamvalue="{param.apps}"/>
+				<Param name="F1764064237218" viewparam="permtags" viewparamvalue="{param.permtags}"/>
+				<Param name="F1764064250628" viewparam="permsensitivity" viewparamvalue="{param.permsensitivity}"/>
+				<Param name="F1764064261886" viewparam="roles" viewparamvalue="{param.roles}"/>
+				<Param name="F1764064272351" viewparam="rulename" viewparamvalue="{param.rulename}"/>
+				<Param name="F1764064336302" viewparam="filterminimumreviewdate" viewparamvalue="{param.filterminimumreviewdate.get()}"/>
+				<Param name="F1767801679688" viewparam="iamapps" viewparamvalue="{param.iamapps}"/>
+				<Param name="F1767801688842" viewparam="iamapptags" viewparamvalue="{param.iamapptags}"/>
+				<Param name="F1767859141688" viewparam="iampermtags" viewparamvalue="{param.iampermtags}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+		</Component>
+		<Link name="L1764064081538" source="C1625833211998_2" target="C1764064027446" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1764064828686" type="scriptview" x="274" y="259" w="300" h="50" title="filter already reviewed" enable="{param.includelatestreviewstatus.get().equals(&apos;1&apos;) &amp;&amp; param.filterifalreadyreviewed.get().equals(&apos;1&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1764064960830" expression="!dataset.isEmpty(&apos;reviewstatus&apos;)" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1764064834711" source="C1764064027446" target="C1764064828686" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1764080708545" type="joinview" x="228" y="597" w="300" h="50" title="add role owner">
+			<Join jointype="left" key1="{dataset.role_uid.get()}" key2="{dataset.role_uid.get()}"/>
+			<InnerView name="bwaccess360r_roleContent_roleownerbv">
+				<Param name="F1764081544451" viewparam="roles" viewparamvalue="{param.roles}"/>
+				<Param name="F1767801833229" viewparam="iamapps" viewparamvalue="{param.iamapps}"/>
+				<Param name="F1767801840924" viewparam="iamapptags" viewparamvalue="{param.iamapptags}"/>
+				<Param name="F1767859322233" viewparam="iampermtags" viewparamvalue="{param.iampermtags}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1764083170596" type="joinview" x="460" y="285" w="300" h="50" title="add app owner">
+			<InnerView name="bwaccess360r_roleContent_appownerbv">
+				<Param name="F1764083201651" viewparam="apps" viewparamvalue="{param.apps}"/>
+				<Param name="F1764083212879" viewparam="permsensitivity" viewparamvalue="{param.permsensitivity}"/>
+				<Param name="F1764083230367" viewparam="permtags" viewparamvalue="{param.permtags}"/>
+				<Param name="F1764083239303" viewparam="roles" viewparamvalue="{param.roles}"/>
+				<Param name="F1767801972345" viewparam="iamapps" viewparamvalue="{param.iamapps}"/>
+				<Param name="F1767801980947" viewparam="iamapptags" viewparamvalue="{param.iamapptags}"/>
+				<Param name="F1767859413767" viewparam="iampermtags" viewparamvalue="{param.iampermtags}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.app_uid.get()}" key2="{dataset.app_uid.get()}"/>
+		</Component>
+		<Link name="L1764083171194" source="C1764080708545" target="C1764083170596" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1764083290439" source="C1764064828686" target="C1764080708545" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1763997748482_3" type="scriptview" x="403" y="397" w="300" h="50" title="set reviewer">
+			<ExcludeList>
+				<Exclude name="defaultreviewerfullname"/>
+				<Exclude name="defaultreviewerhrcode"/>
+				<Exclude name="defaultreviewermail"/>
+				<Exclude name="defaultrevieweruid"/>
+			</ExcludeList>
+			<Script onscriptread="setreviewer"/>
+		</Component>
+		<Component name="C1764083170596_1" type="joinview" x="468" y="293" w="300" h="50" title="add IAM app owner">
+			<InnerView name="bwaccess360r_roleContent_iamappownerbv">
+				<Param name="F1764083201651" viewparam="apps" viewparamvalue="{param.iamapps}"/>
+				<Param name="F1764083212879" viewparam="permsensitivity" viewparamvalue="{param.permsensitivity}"/>
+				<Param name="F1764083230367" viewparam="permtags" viewparamvalue="{param.permtags}"/>
+				<Param name="F1764083239303" viewparam="roles" viewparamvalue="{param.roles}"/>
+				<Param name="F1767802091694" viewparam="iamapptags" viewparamvalue="{param.iamapptags}"/>
+				<Param name="F1767859512395" viewparam="iampermtags" viewparamvalue="{param.iampermtags}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.iamapp_uid.get()}" key2="{dataset.iamapp_uid.get()}"/>
+		</Component>
+		<Link name="L1767624670551" source="C1764083170596" target="C1764083170596_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1767624671702" source="C1764083170596_1" target="C1763997748482_3" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="apps" displayname="apps" type="String">
+	</ViewParam>
+	<ViewParam name="roles" displayname="roles" type="String">
+		<Value name="V1767178604758_1" data="DFIN_ACCOUNTING_1728640370163_73693"/>
+		<Value name="V1767178611363_2" data="DFIN_ACCOUNTING_1728640370176_73696"/>
+	</ViewParam>
+	<ViewParam name="permsensitivity" displayname="permsensitivity" type="String"/>
+	<ViewParam name="permtags" displayname="parmtags" type="String"/>
+	<ViewParam name="rulename" displayname="rulename" type="String"/>
+	<ViewParam name="defaultrevieweruid" displayname="defaultrevieweruid" type="String">
+		<Value name="V1763981899663_2" data="BOUCHEZ_ABDEL_1728640319194_56267"/>
+	</ViewParam>
+	<ViewParam name="forceapplicationowner" displayname="forceapplicationowner" defaultvalue="0" type="String">
+		<Value name="V1769094403787_3" data="1"/>
+	</ViewParam>
+	<ViewParam name="filterminimumreviewdate" displayname="filterminimumreviewdate" type="String">
+		<Value name="V1764083709448_6" data="20251024"/>
+	</ViewParam>
+	<ViewParam name="filterifalreadyreviewed" displayname="filterifalreadyreviewed" defaultvalue="0" type="String"/>
+	<ViewParam name="includelatestreviewstatus" displayname="includelatestreviewstatus" defaultvalue="0" type="String">
+		<Value name="V1769094391055_1" data="1"/>
+	</ViewParam>
+	<ViewParam name="forcepermissionowner" displayname="forcepermissionowner" defaultvalue="0" type="String">
+		<Value name="V1769094400386_2" data="1"/>
+	</ViewParam>
+	<ViewSort name="sort" attribute1="reviewerfullname" attribute2="role_displayname" attribute3="app_displayname" attribute4="perimeterdisplayname" attribute5="perm_displayname"/>
+	<ViewParam name="iamapptags" displayname="IAM Application Tags" type="String"/>
+	<ViewParam name="iamapps" displayname="IAM Applications" type="String"/>
+	<ViewParam name="iampermtags" displayname="IAM Permission Tags" type="String"/>
+	<ViewParam name="filteroutunclassifiedsensitivity" displayname="filter out unclassified sensitivity" type="String">
+		<Value name="V1769094417632_4" data="0"/>
+	</ViewParam>
+</View>

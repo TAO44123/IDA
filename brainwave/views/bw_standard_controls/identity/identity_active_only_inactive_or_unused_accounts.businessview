@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="identity_active_only_inactive_or_unused_accounts" displayname="active identity with only inactive or unused accounts">
+	<Definition scriptfile="/views/bw_standard_controls/identity/identity_active_only_inactive_or_unused_accounts.javascript" name="D1601970597158">
+		<Component type="innerview" x="30" y="10" w="316" h="64" name="C1601970597157" title="id with only inactive accounts">
+			<InnerView name="identity_active_accounts">
+				<Param name="F1629807599391" viewparam="idt_uid" viewparamvalue="{param.idt_uid.get()}"/>
+			</InnerView>
+			<ExcludeList>
+			</ExcludeList>
+		</Component>
+		<Component name="C1601971384371" type="joinview" x="30" y="70" w="366" h="114" title="id with nb unused accounts">
+			<InnerView name="identity_active_unused_accounts">
+				<Param name="F1601971635131" viewparam="datelimit" viewparamvalue="{ new Date( new Date().getTime() - ( 90* (24*60*60*1000) ) ).toLDAPString() }"/>
+				<Param name="F1629807608644" viewparam="idt_uid" viewparamvalue="{param.idt_uid.get()}"/>
+			</InnerView>
+			<Join jointype="full" key1="{dataset.recorduid.get()}" key2="{dataset.recorduid.get()}"/>
+			<FilterList>
+				<Filter name="F1632314648080" expression="dataset.nbactive.get()==0 || (!dataset.isEmpty(&apos;nbunused&apos;) &amp;&amp; dataset.nbactive.get()==dataset.nbunused.get())" comment="Keep only identities with accounts and identity with 100% inactive accounts" type="Include"/>
+			</FilterList>
+			<ExcludeList>
+				<Exclude name="nbactive"/>
+				<Exclude name="nbunused"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1601971384416" source="C1601970597157" target="C1601971384371" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="idt_uid" displayname="Identity Uid (debug)" type="String">
+	</ViewParam>
+</View>

@@ -1,0 +1,70 @@
+import "/webportal/pages/bw_cloud_base/widgets/protips/protipsfragments.page"
+
+
+notificationsFragment_icons = ImageMap {
+	notification_bell 		["bw_fragments/collection/notification_bell.svg" width: 20px height: 20px ]
+}
+
+notificationsFragment_NLS = NLS {
+	label.buttonhide [
+		en "HIDE"
+		fr "MASQUER"
+	]
+	label.protip.dontshow [
+		en "Delete this message"
+		fr "Supprimer ce message"
+	]
+	label.simplerisk.confirm [
+		en "Confirm this risk"
+		fr "Confirmer ce risque"
+	]
+	label.simplerisk.discard [
+		en "This is not an issue"
+		fr "Ce n'est pas un problème"
+	]
+	label.link.showmore [
+		en "Additional details"
+		fr "Plus de détails"
+	]
+}
+
+notificationsFragment = PageFragment {
+	// variable to show or not
+	showAssitant = Variable { initial: False }
+	
+	rawnotificiations = Dataset {
+		pages: Pages { tags: "notification" }
+	}
+	
+	Grid {
+		columns: GridColumn {}, GridColumn {}
+		gap: 4
+		insets: 0
+		GridRow {
+			GridCell {
+				
+				Button {
+					actions: Set True to showAssitant
+					presentation: Link
+					image: %notificationsFragment_icons.notification_bell
+					layout: Layout { indent: horizontal 0 vertical 4 }
+					badge: "3"
+				}
+			}
+		}
+	}
+	
+	IncludeHTMLWidget {
+		template: protipsassistant
+		bindings: 	showAssitant binds-to showassistant,
+					value-of $notificationsFragment_NLS.label.buttonhide to label_hide,
+					value-of $notificationsFragment_NLS.label.link.showmore to label_showmore,
+					value-of $notificationsFragment_NLS.label.protip.dontshow to label_protip_discard,
+					value-of $notificationsFragment_NLS.label.simplerisk.confirm to label_simplerisk_notok,
+					value-of $notificationsFragment_NLS.label.simplerisk.discard to label_simplerisk_ok
+					
+		datasets: 	rawnotificiations( name , title, description ) 
+					to itemstodisplay ( code, title, description )
+		hidden: True
+	}
+}

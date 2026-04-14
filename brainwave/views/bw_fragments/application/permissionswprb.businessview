@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_applicationpermissionswprb" displayname="permissions with SoD prb">
+	<Definition scriptfile="/views/bw_fragments/application/permissionswprb.javascript" name="D1602228882242">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1602228882240" title="permissions">
+			<InnerView name="bwf_applicationpermissions">
+				<Param name="F1602228997661" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1602229006144" viewparam="permissiontype" viewparamvalue="{param.permissiontype.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1602229048066" type="trendview" x="16" y="108" w="300" h="50" title="compute trends">
+			<Trend timeslot="-1" key="{dataset.permissionuid.get()}" comparing_column="nbaccounts" trend_column_name="trends" include_removed="true"/>
+		</Component>
+		<Link name="L1602229048218" source="C1602228882240" target="C1602229048066" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1602229282219" type="joinview" x="288" y="202" w="300" h="50" title="highlight core model prb" enable="{param.highlightSoDproblems.get()}">
+			<InnerView name="bwf_applicationpermissionwithcoremodelsoddefects" prefix="sod_">
+				<Param name="F1602229450318" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1602229459307" viewparam="permissiontype" viewparamvalue="{param.permissiontype.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.permissionuid.get()}" key2="{dataset.sod_uid.get()}"/>
+		</Component>
+		<Link name="L1602229282382" source="C1602229048066" target="C1602229282219" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid">
+		<Value name="V1602229488008_1" data="SAP_1601563226337_36120"/>
+	</ViewParam>
+	<ViewParam name="permissiontype" displayname="permissiontype"/>
+	<ViewSort name="sort" attribute1="permissiondisplayname"/>
+	<ViewParam name="highlightSoDproblems" displayname="highlightSoDproblems" type="Boolean"/>
+</View>

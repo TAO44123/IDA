@@ -1,0 +1,316 @@
+
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/services/dynamicrule_services.page"
+
+/* Nationalized labels here */
+rm_adminNLS = NLS {
+	title [en "Role Mining Administration" fr "Administration du Role Mining"]
+	label.ticketlist [ en "List of tickets" fr "Liste de tickets"]
+	label.schemav1 [en "Rolemining role schema v1" fr "Schéma role mining v1"]
+	label.metadatalist [ en "Roles Configuration" fr "Configuration des rôles"]
+	label.schemav2 [en "Rolemining role schema v2" fr "Schéma role mining v2" ]
+	column.tickettype [ en "Ticket type" fr "Type de ticket"]
+	column.metadatatype [ en "Configuration items" fr "Elements de configuration"]
+	column.total [ en "Total" fr "Total"]
+	column.orgs [ en "Organizations" fr "Organisations"]
+	item.roles [ en "Roles" fr "Rôles"]
+	item.permissions [ en "Permissions in roles" fr "Permissions dans des rôles"]
+	item.identities [ en "Identities in roles" fr "Identités dans des rôles"]
+	exportCfg.button [ en "Export Configuration" fr "Exporter la configuration"]
+	importCfg.button [ en "Import Configuration" fr "Importer la configuration"] 
+	importRoleDlg.title [ en "Import roles and annotations" fr "Importer les roles et les annotations"]
+	importRoleDlg.selectFile [ en "Select roles_config.xlsx file" fr "Selectionner le fichier roles_config.xlsx"]
+	importRoleDlg.importBtn [ en "Import" fr "Importer"]
+	importRoleDlg.checkBtn [ en "Check" fr "Vérifier"]
+	importRoleDlg.hasErrors [ en "Some errors were found in import file. Click Cancel to abort import and correct the import file.\n\n" 
+	    fr "Il y a des erreurs dans le fichier d'import. Cliquez sur annuler pour abandonner l'import et corriger le fichier.\n\n"]	
+	importRoleDlg.noErrors [ en "Import file data is valid. Click import to proceed" fr "Les données du fichier d'import sont valides. Cliquez Importer pour continuer"]
+	importRoleDlg.notValid [en "This file is not a roles configuration valid file." fr "Ce fichier n'est pas  un fichier de configuration valide."]
+	wipeRolesDlg.button [ en "Delete roles"]
+	wipeRolesDlg.done [ en "Roles deletion - Done"]
+	wipeRolesDlg.titlev1 [ en "Wipe roles information v1"]
+	wipeRolesDlg.confirm [ en "This action will delete all role information. It cannot be undone. Are you sure you want to do this?"]
+	wipeRolesDlg.message [ en "This will destroy role information stored in the database. Please make sure you have a backup before proceeding"]
+	wipeRolesDlg.understandmessage [ en "I understand, and I want to continue" fr "Je comprends, et je souhaite continuer" ]
+	wipeRolesDlg.askconfirmationcode [ en "Please enter the following confirmation code {0}: " fr "Veuillez entrer le code de confirmation suivant {0} : " ]
+}
+
+
+checkImportAndGetRules = EventService {
+	javascript-file: "/webportal/pages/bw_rm/export/check_roles.javascript"
+	javascript-method: checkErrorsAndGetRules
+	in_importFile = Input { mandatory: True type: String }
+	out_errors = Output { type: String }
+	out_ruleIds = Output { type: String multivalued: True}
+	out_ruleSerializedSearches = Output { type: String multivalued: True }
+	out_ruleTitles = Output { type: String multivalued: True }
+}
+
+generateConfirmationCode = StringService {
+	javascript-file: "/webportal/pages/bw_rm/export/check_roles.javascript"
+    javascript-method: generateConfirmationCode
+}
+
+bw_rm_wipe_roles_v1 = Dialog {
+	title: $rm_adminNLS.wipeRolesDlg.titlev1
+	enter-event: Set @generateConfirmationCode to confirmationCode
+	buttons: [
+		
+		ActionButton {
+			disabled: Not SameValuePredicate (codeInput, confirmationCode)
+			text: $rm_adminNLS.wipeRolesDlg.button
+			actions: TaskComplete deleterolesv1 wait-end, Message $rm_adminNLS.wipeRolesDlg.done, CloseDialog Cancel
+		}
+		CancelButton
+	]
+	
+	confirmationCode = Variable { type: String }
+	codeInput = Variable { type:  String }
+	show = Variable { type: Boolean }
+	changed = Variable { type: Boolean }
+	
+	
+	deleterolesv1 = TaskRecord ( create "bwrm_delete_roles_tickets"  ) 
+	
+	Group {
+	
+		Text {
+			value: $rm_adminNLS.wipeRolesDlg.message
+			lines: 2
+			layout: Layout { hint: height 60 }
+			compact: True
+		}
+		
+		Checkbox {
+			variable: show
+			text: $rm_adminNLS.wipeRolesDlg.understandmessage
+			modify-event: Set True to changed
+			disabled: BooleanPredicate ( changed )
+		}
+		Group {
+			hidden: Not BooleanPredicate ( show )
+			layout: Layout { grab: horizontal True vertical True }
+			
+			Spacer {
+				height: 5
+			}
+			
+			Edit {
+				variable: codeInput
+				layout: Layout { hint: width 100}
+				label: $rm_adminNLS.wipeRolesDlg.askconfirmationcode ( Concat(" ",confirmationCode) )
+			}
+		}
+	}
+}
+
+bw_rm_import_roles = Dialog {
+	title:  $rm_adminNLS.importRoleDlg.title
+	height: 400
+	buttons: [
+		CancelButton
+		ActionButton {
+			text:  $rm_adminNLS.importRoleDlg.importBtn
+			disabled: Eval "!checked.get()"    
+			actions: 
+				// create identity dynamic rules
+				MultivaluedIterate ruleIds as ruleId index-as i [
+					StringCase ( ElementAt Current i of ruleSerializedSearches ) {
+						when Not IsEmpty then [
+							Set Current ruleId to tmp1,
+							Set ElementAt Current i of ruleSerializedSearches to tmp2,
+							Set ElementAt Current i of ruleTitles to tmp3,
+							Call saveRule (
+								Eval "tmp1.get().substr(4)" to uid, 
+								Eval "tmp2.get().substr(1)" to content, 
+								Eval "tmp3 != null && tmp3.get() != null && tmp3.get() != '' ? tmp3.get(): null " to title,
+								"RoleMining" to family, 
+								"Role" to scope,
+								error from error
+							)
+						]
+					}
+				],
+				Set importFile to importTask.in_importFile,
+				TaskComplete importTask wait-end timeout-seconds 30
+		close: True
+		}
+	]
+	
+	importFile = Variable { }
+	checked = Variable { type: Boolean initial: False }
+	msg = Variable { }
+	
+	ruleIds = Variable { multivalued: True }
+	ruleSerializedSearches = Variable { multivalued: True }
+	ruleTitles = Variable { multivalued: True }
+	error = Variable
+	tmp1 = Variable
+	tmp2 = Variable
+	tmp3 = Variable
+	
+	importTask = TaskRecord ( create "bwrm_import_roles_main"  ) 
+	
+	FileUpload {
+		uploaded-filename: importFile  
+		
+		text: $rm_adminNLS.importRoleDlg.selectFile 
+	}
+	Button {	
+		text: $rm_adminNLS.importRoleDlg.checkBtn 
+		disabled: Eval "importFile.isEmpty()"
+		actions:
+			Call checkImportAndGetRules (importFile to in_importFile, msg from out_errors, ruleIds from out_ruleIds, ruleSerializedSearches from out_ruleSerializedSearches, ruleTitles from out_ruleTitles),
+		StringCase(msg) { 
+			when "OK" then [ Set  $rm_adminNLS.importRoleDlg.noErrors to msg, Set True to checked ] 
+			when IsEmpty then [ Set $rm_adminNLS.importRoleDlg.notValid to msg,  Set False to checked ]
+			otherwise [ Set Concat($rm_adminNLS.importRoleDlg.hasErrors, msg ) to msg,  Set False to checked ]}  		
+	}
+	Text {
+		value: msg
+		lines: 5
+		layout: Layout { grab: horizontal True vertical True }
+	}
+}
+
+importExportFragmentV1 = PageFragment {
+
+	bwrm_adminoverview_v1 = Dataset {
+		view: bwrm_adminoverview_v1
+	}
+	
+	Group {
+		layout: Layout { grab: horizontal True  vertical True }
+		title: $rm_adminNLS.label.schemav1
+		
+		Spacer {
+			height: 20
+		}
+		Text {
+			value: $rm_adminNLS.label.ticketlist
+			compact: True
+			styling: detailsLabel
+		}
+		
+		Spacer {
+			height: 20
+		}
+		Table {
+			data: bwrm_adminoverview_v1 
+			layout: Layout { grab: horizontal True vertical False hint: height 150 }
+			Column {
+				header: $rm_adminNLS.column.tickettype
+				column: status
+				width: 100%
+			}
+			Column {
+				header: $rm_adminNLS.column.total
+				column: total
+			}
+			Column {
+				header: $rm_adminNLS.column.orgs
+				column: nborgs
+			}
+		}
+		
+		Button {
+			text: $rm_adminNLS.exportCfg.button
+			layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+			actions: 
+				ExportReport "/reports/bw_rm/roles_data_export.rptdesign" format "xlsx" export-name "roles_config" no-cache 
+		}
+		
+		Button {
+			text: $rm_adminNLS.wipeRolesDlg.button
+			layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+			actions: 
+				Confirm $rm_adminNLS.wipeRolesDlg.confirm, Dialog bw_rm_wipe_roles_v1
+		}
+		
+		Button {
+			text: $rm_adminNLS.importCfg.button
+			layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+			disabled: True
+			actions: Flash "Role import using v1 schema is deprecated"
+		}
+	}
+
+}
+
+importExportFragmentV2 = PageFragment {
+	bwrm_adminoverview_v2 = Dataset {
+		view: bwrm_adminoverview_v2
+	}
+	
+	Group {
+		layout: Layout { grab: horizontal True  vertical True }
+		title: $rm_adminNLS.label.schemav2
+		
+		Spacer {
+			height: 20
+		}
+		Text {
+			value: $rm_adminNLS.label.metadatalist
+			compact: True
+			styling: detailsLabel
+		}
+		
+		Spacer {
+			height: 20
+		}
+		Table {
+			data: bwrm_adminoverview_v2 
+			layout: Layout { grab: horizontal True vertical False hint: height 150 }
+			Column {
+				header: $rm_adminNLS.column.metadatatype
+				column: type
+				width: 100%
+			}
+			Column {
+				header: $rm_adminNLS.column.total
+				column: total
+			}
+			Column {
+				header: $rm_adminNLS.column.orgs
+				column: nborgs
+			}
+		}
+		
+		Button {
+			text: $rm_adminNLS.exportCfg.button
+			layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+			actions: 
+				ExportReport "/reports/bw_rm/roles_data_export_v2.rptdesign" format "xlsx" export-name "roles_config" no-cache 
+		}
+		
+		Button {
+			text: $rm_adminNLS.importCfg.button
+			layout: Layout { grab: horizontal False vertical False align: horizontal End vertical Beginning hint: width 200 }
+			actions: Dialog bw_rm_import_roles, ReloadData ( bwrm_adminoverview_v2 )
+		}
+	}
+
+}
+
+importExportFragment = PageFragment {
+	
+	bwrm_adminoverview_v1 = Dataset {
+		view: bwrm_adminoverview_v1
+	}
+
+	ConditionalGroup {
+		IntCondition( Count bwrm_adminoverview_v1 ) {
+			when = 0 then [
+				IncludeFragment ( importExportFragmentV2 )
+			] otherwise [
+				Flow {
+					layout: Layout { grab: horizontal True vertical True }
+					disposition: Horizontal
+					IncludeFragment ( importExportFragmentV1 )
+					IncludeFragment ( importExportFragmentV2 )
+				}	
+			]
+		}
+	}
+}
+

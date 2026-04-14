@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA safe access" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617040552877_1_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617200331074">
+		<Component name="C1617040561799" type="discoverysource" x="486" y="281" w="300" h="64" title="CA_standard_safe_permissions">
+			<Discovery datafile="{config.projectPath}/discovery/bw_ias_cyberark/CyberArk/safe_standard_permissions.csv" file="/discovery/bw_ias_cyberark/CyberArk/CA_standard_safe_permissions.discovery"/>
+		</Component>
+		<Component name="C1617040578248" type="permission" x="68" y="511" w="300" h="64" title=" safe permissions">
+			<Permission code="safepermission" application="EVD_safename" apperror="true" appevent="AppNotFound" error="true" event="PermissionNullOrEmpty">
+				<Attribute name="displayname" attribute="safepermission"/>
+				<Attribute name="permissiontype" attribute="type"/>
+			</Permission>
+		</Component>
+		<Link name="L1617040585749" source="C1617040561799" target="C1617199962811" priority="1"/>
+		<Component name="C1617199962811" type="joinfilter" x="64" y="281" w="300" h="64" title="Join with permissions">
+			<Join source="C1617040561799" severalaction="all"/>
+			<Attributes>
+				<Attribute name="A1617200384104" attribute="safepermission" source="safepermission" type="String" multivalued="true"/>
+				<Attribute name="A1617200391457" attribute="safepermissiondesc" source="safepermissiondesc" type="String" multivalued="true"/>
+			</Attributes>
+		</Component>
+		<Component name="C1617200331074" type="discoverysource" x="64" y="28" w="300" h="64" title="CA_safes">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_SafesList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-SafesList.csv&apos;)}"/>
+		</Component>
+		<Link name="L1617200341485" source="C1617200331074" target="C1617195444313_3" priority="1"/>
+		<Link name="L1617200348262" source="C1617199962811" target="C1617217653791" priority="1"/>
+		<Component name="C1617195444313_3" type="changefilter" x="64" y="160" w="300" h="64" title="Add type attribute">
+			<Actions>
+				<Action name="U1617195479883" action="add" attribute="type" type="String" multivalued="false" newvalue="ca_safe" errorexist="false"/>
+				<Action name="U1624458016836" action="update" attribute="EVD_safename" newvalue="{&apos;SAFE_&apos;+dataset.EVD_safeid.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1617200448147" source="C1617195444313_3" target="C1617199962811" priority="1"/>
+		<Component name="C1617217653791" type="enumfilter" x="65" y="402" w="300" h="64" title="Enumerate permissions">
+			<Multivalued>
+				<Value name="M1617217688952" attribute="safepermission"/>
+				<Value name="M1617217692996" attribute="safepermissiondesc"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1617217680683" source="C1617217653791" target="C1617040578248" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

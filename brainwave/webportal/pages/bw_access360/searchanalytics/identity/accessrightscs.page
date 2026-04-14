@@ -1,0 +1,215 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ""
+	otherwise current
+}
+
+/* Nationalized labels here */
+access360analytics_identity_accessrightscs360NLS = NLS {
+	title [en "Access rights analysis" fr "Analyse des droits d'accès"]
+	directrightsonly [en "only direct rights" fr "seulement les droits directs"]
+	description [
+		en "This report lists the identities access rights in the form of a pivot table. Only active accounts are taken into account. Only the rights directly associated with individuals are taken into account. Only the rights of type 'Application profile' are taken into account. It is possible to identify only changes that have occurred since a given date. It is possible to modify the columns or to export the results."
+		fr "Ce rapport liste les droits d'accès des identités sous la forme d'un tableau croisé dynamique. Seuls les comptes actifs sont pris en compte. Seuls les droits directement associés aux personnes sont pris en comptes. Seuls les droits de type 'Profil applicatif' sont pris en compte. Il est possible d'identifier uniquement les changements survenus depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats"
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+}
+
+access360analytics_identity_accessrights360cs = Page {
+	title: $access360analytics_identity_accessrightscs360NLS.title
+	description: $access360analytics_identity_accessrightscs360NLS.description
+	tags: "identity", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwsa_identityaccessrightscs
+	mixins: simpleReport	
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_resourcesNLS.localfiltertitle
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	comparisontimeslot inline,		
+						exclRemoved inline,
+						exclSimilar inline,
+						applications inline
+		}
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_identity_FilterEdition(SerializeSearch search to identitySearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Identity Search with SerializeSearch search to identitySearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	comparisontimeslot = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:String
+		label:$session_comparisonTimeslotTeam360NLS.label
+		tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+		constraint:Lookup {
+			data:session_comparisontimeslots
+			text:Current commitdate
+			value:Current uid
+		}
+	}
+	exclRemoved = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:True
+		label:$session_exclRemovedNLS.label
+		tooltip:$session_exclRemovedNLS.tooltip
+	}
+	exclSimilar = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:False
+		label:$session_exclSimilarNLS.label
+		tooltip:$session_exclSimilarNLS.tooltip
+	}
+	applications = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:True
+		label:$application.concept
+		tooltip:$access360analytics_identity_accessrightscs360NLS.multicombotooltip
+		type:String
+		constraint:Lookup {
+			data:applicationlist
+			text:Current applicationdisplayname
+			value:Current applicationuid
+		}		
+	}
+	search = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+	
+	/* Variables here */
+	incanshowdetails = Variable { initial:True type:Boolean }	
+
+	outidentityuid = Variable
+	outpermissionuid = Variable
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	applicationlist = Dataset {
+		search: Search {
+			view:access360r_identityrightsapplications
+			definition:search
+		}
+	}
+
+	teamrights = Dataset {
+		search: Search {
+			view:access360r_identityrights_bv with applications to applications unless-empty, comparisontimeslot to comparisontimeslot unless-empty, exclRemoved to excluderemoved, exclSimilar to excludesimilar
+			definition:search
+		}
+
+		excludes:BooleanPredicate(False) /* Contournement de bug */
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid, True to inshowaccounts, True to inshowapplications)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid, True to inshowperjob, True to inshowperorg)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+			
+				CrossTable {
+					data:teamrights
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:32px  grab: horizontal True vertical True}
+					columns:Dim {value:applicationdisplayname header:$application.concept},Dim {value:uid label:displayname header:$permission.concept header-click:outpermissionuid} 
+					rows:	Dim {value:orgcode label:orgdisplayname header:$organisation.concept width:160px},
+							Dim {value:jobtitledisplayname label:jobtitledisplayname header:$identity.jobtitledisplayname width:160px tooltip:jobtitledisplayname initially-masked:True},
+							Dim {value:identityinternal label:identityinternal header:$identity.internal width:100px initially-masked:True},
+							Dim {value:identityuid label:identityfullname header:$identity.fullname tooltip:identityfullname width:160px header-click:outidentityuid} 
+					cell-content:CellContent {text: 'X' cluster-value:'X' align:Center tooltip:Current accountlogin styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 }}
+					row-header-click:ExecuteNamedAction goIdentityDetails
+					column-header-click:ExecuteNamedAction goPermissionDetails
+				}
+			}
+		}
+	}
+}

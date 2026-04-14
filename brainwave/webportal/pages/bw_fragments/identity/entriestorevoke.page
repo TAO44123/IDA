@@ -1,0 +1,556 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/identity/applicationrightstobereviewed.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_iasreview/resources.page"
+import "/webportal/pages/bw_fragments/lib/constants.page"
+
+fragmentIdentityEntriesToRevokeNLS = NLS {
+	comment.title [en "Comment" fr "Commentaire"]
+	comment.subtitle [en "Remediation Comment" fr "Commentaire de remédiation"]
+	update.flash [en "{0} entries updated" fr "{0} entrées mises à jour"]
+	
+	inprogress [en "Bulk In Progress" fr "Marquer comme En cours"]
+	done [en "Bulk Done" fr "Marquer comme Fait"]
+	wontfix [en "Bulk Won't Fix" fr "Marquer comme Annulé"]
+
+	inprogressbutton [en "In Progress" fr "En cours"]
+	donebutton [en "Done" fr "Fait"]
+	wontfixbutton [en "Won't Fix" fr "Annulé"]
+
+	table.action [en "Action Requested" fr "Action demandée"]
+	table.comment [en "Request Comment" fr "Commentaire de \nla demande"]
+	table.requestby [en "Requested By" fr "Demandé par"]
+	table.requeston [en "Requested On" fr "Demandé le"]
+	table.remaction [en "Remediation \nStatus" fr "Statut de \nla remédiation"]
+	table.remcomment [en "Remediation \nComment" fr "Commentaire de \nla remédiation"]
+	table.resource [en "Resource" fr "Ressource"]
+	table.target [en "Target" fr "Cible"]
+	
+}
+
+fragmentIdentityEntriesToRevokeComment = Dialog {
+	title: $fragmentIdentityEntriesToRevokeNLS.comment.title
+	height: 200
+	buttons:
+		[
+			OkButton
+			CancelButton
+		]
+	
+	comment = Variable { type: String }
+	
+	Header {
+		value: $fragmentIdentityEntriesToRevokeNLS.comment.subtitle
+		styling: bigTitleStyle
+	}
+	Separator {
+		width: 1
+		color: blue
+	}
+	Edit {
+		variable: comment
+		limit: 4000
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the entries to revoke for a given identity as a technical owner
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbentriestorevoke </b>the nb of entries to revoke </li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityEntriesToRevoke = PageFragment {
+	feature: iasreview_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { multivalued: False type: Boolean initial: True }
+	incanshowdetails = Variable { initial: True type: String }	
+
+	outapplicationuid = Variable { type: String }
+	outpermissionuid = Variable { type: String }
+	outidentityuid = Variable { type: String }
+	outaccountuid = Variable { type: String }
+
+	outnbentriestorevoke = Variable { type: Integer }
+
+	selectedentries = Variable { multivalued:True }
+	selectedentry = Variable { type: String }
+
+	statustowrite = Variable { type: String }
+	commenttowrite = Variable { type: String }
+	statusisclosed = Variable { type: String }
+
+	revocationlist = Dataset {
+		view: bwf_identityentriestorevoke with
+			inuid to uid,
+			'0' to remediationclosed
+		limit: 1000 // display limited to 1000 for perf purposes
+		timeslot: ValidatedTimeslot.UID
+		count-variable: outnbentriestorevoke
+	}
+
+	task = TaskRecord ( create "bwaccess360_writeRemediationTickets" in-timeslot ValidatedTimeslot.UID )
+
+	goApplicationDetails = NamedAction (
+		BooleanCase ( incanshowdetails ) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog (
+					outapplicationuid to inuid,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			] when False then [ ]
+		}
+	)
+	
+	goPermissionDetails = NamedAction (
+		BooleanCase ( incanshowdetails ) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog (
+					outpermissionuid to inuid,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			] when False then [ ]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase ( incanshowdetails ) {
+			when True then [
+				Dialog bwf_identityDetailsDialog (
+					outidentityuid to inuid
+				)
+			] when False then [ ]
+		}
+	)
+
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog (
+					outaccountuid to inuid, 
+					True to inshowowner,
+					True to inshowcontrols
+				)
+			] when False then [ ]
+		}
+	)
+	
+	updateTicket = NamedAction (
+		Set selectedentry to selectedentries,
+		ExecuteNamedAction updateTickets
+	)
+
+	updateTickets = NamedAction (
+		Dialog fragmentIdentityEntriesToRevokeComment ( commenttowrite from comment ),
+		Set selectedentries to task.remediationticketrecorduid,
+		Set [statustowrite repeat SizeOf task.remediationticketrecorduid] to task.status,
+		Set [commenttowrite repeat SizeOf task.remediationticketrecorduid] to task.comment,
+		Set [statusisclosed repeat SizeOf task.remediationticketrecorduid] to task.ticketclosed,
+		Set [Date.valueLDAP repeat SizeOf task.remediationticketrecorduid] to task.actiondate,
+		TaskComplete task wait-end timeout-seconds 120,
+		Flash $fragmentIdentityEntriesToRevokeNLS.update.flash(SizeOf selectedentries),
+		Unset selectedentries,
+		ReloadData (revocationlist)
+	)
+	
+	okAction = NamedAction (
+		Set Constant bw_reviewStatusLabel_inProgress to statustowrite,
+		Set Constant bw_reviewStatusId_inProgress to statusisclosed
+	)
+	
+	doneAction = NamedAction (
+		Set Constant bw_reviewStatusLabel_done to statustowrite,
+		Set Constant bw_reviewStatusId_done to statusisclosed
+	)
+	
+	wontFixAction = NamedAction (
+		Set Constant bw_reviewStatusLabel_wontFix to statustowrite,
+		Set Constant bw_reviewStatusId_wontFix to statusisclosed
+	)
+
+	ButtonGroup {
+		Button {
+			actions: 
+				ExecuteNamedAction okAction,
+				ExecuteNamedAction updateTickets
+			image: "16/famfamfam_silk_icons_v013/basket_add.png"
+			text: $fragmentIdentityEntriesToRevokeNLS.inprogress
+			disabled:
+				IntPredicate ( SizeOf selectedentries ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+		Button {
+			actions: 
+				ExecuteNamedAction doneAction,
+				ExecuteNamedAction updateTickets
+			image: "16/famfamfam_silk_icons_v013/accept.png"
+			text: $fragmentIdentityEntriesToRevokeNLS.done
+			disabled:
+				IntPredicate ( SizeOf selectedentries ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+		Button {
+			actions: 
+				ExecuteNamedAction wontFixAction,
+				ExecuteNamedAction updateTickets
+			image: "16/famfamfam_silk_icons_v013/cancel.png"
+			text: $fragmentIdentityEntriesToRevokeNLS.wontfix
+			disabled:
+				IntPredicate ( SizeOf selectedentries ) {
+					when >0 then False
+					otherwise True
+				}
+		}
+	}	
+	Table {
+		data: revocationlist
+		layout: Layout { grab: horizontal True vertical True }
+		show-count: True
+		show-filter: True
+		configurable: True
+		persist-configuration: True
+		label: Label { break:True }
+		checkboxes:
+			remediationrecorduid to selectedentries
+		Column {
+			column: remediationrecorduid
+			text: $fragmentIdentityEntriesToRevokeNLS.inprogressbutton
+			header: ""
+			width: 120px
+			image: "16/famfamfam_silk_icons_v013/basket_add.png"
+			styling: headerStyle
+			selection: selectedentry
+			actions:
+				ExecuteNamedAction okAction,
+				ExecuteNamedAction updateTicket
+		}		
+		Column {
+			column: remediationrecorduid
+			text: $fragmentIdentityEntriesToRevokeNLS.donebutton
+			header: ""
+			image: "16/famfamfam_silk_icons_v013/accept.png"
+			styling: headerStyle
+			selection: selectedentry
+			actions:
+				ExecuteNamedAction doneAction,
+				ExecuteNamedAction updateTicket
+		}
+		Column {
+			column: remediationrecorduid
+			text: $fragmentIdentityEntriesToRevokeNLS.wontfixbutton
+			header: ""
+			image: "16/famfamfam_silk_icons_v013/cancel.png"
+			styling: headerStyle
+			actions: 
+				ExecuteNamedAction wontFixAction,
+				ExecuteNamedAction updateTicket
+		}		
+		Column {
+			column: reviewstatus
+			text: Transform Current reviewstatus using bwf_defaultreviewstatus
+			header: $fragmentIdentityEntriesToRevokeNLS.table.action
+			width: 120px
+			sortable: True
+			filterable: True
+			image: TemplateImageSelection ( Current reviewstatus ) using review_icons
+		}
+		Column {
+			column: reviewcomment
+			tooltip: Current reviewcomment
+			header: $fragmentIdentityEntriesToRevokeNLS.table.comment
+			width: 100%
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: reviewerfullname
+			header: $fragmentIdentityEntriesToRevokeNLS.table.requestby
+			width: 160px
+			sortable: True
+			filterable: True
+			initially-masked: True
+		}
+		Column {
+			column: reviewactiondate
+			text: SubString(10) Current reviewactiondate
+			header: $fragmentIdentityEntriesToRevokeNLS.table.requeston
+			width: 120px
+			sortable: True
+			filterable: True
+			initially-masked: True
+		}
+		Column {
+			column: reviewtype
+			header: $fragmentIdentityEntriesToRevokeNLS.table.target
+			sortable: True
+			filterable: True
+			width: 160px
+		}
+		Column {
+			column: reviewdisplayname
+			header: $fragmentIdentityEntriesToRevokeNLS.table.resource
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: accountlogin
+			header: $account.login
+			tooltip: Current accountlogin
+			actions: ExecuteNamedAction goAccountDetails
+			initially-masked: True
+			sortable: True
+			filterable: True
+			width: 160px
+		}
+		Column {
+			column: reconnoownercode
+			header: $fragmentIdentityApplicationRightsToBeReviewedNLS.noowner
+			tooltip: Current reconnoownercode
+			initially-masked: True
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: identityfullname
+			header: $identity.fullname
+			tooltip: Current identityfullname
+			actions: ExecuteNamedAction goIdentityDetails
+			initially-masked: True
+			width: 160px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: permissioncode
+			header: $ppermission.code
+			tooltip: Current permissioncode
+			actions: ExecuteNamedAction goPermissionDetails
+			initially-masked: True
+			width: 120px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: permissiondisplayname
+			header: $permission.concept
+			tooltip: Current permissiondisplayname
+			actions: ExecuteNamedAction goPermissionDetails
+			initially-masked: True
+			width: 200px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: rightperimetercode
+			header: $right.perimetercode
+			tooltip: Current rightperimetercode
+			initially-masked: True
+			width: 100px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: rightperimeterdisplayname
+			header: $right.perimeterdisplayname
+			tooltip: Current rightperimeterdisplayname
+			initially-masked: True
+			width: 100px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: rightaction
+			header: $pright.action
+			tooltip: Current rightaction
+			initially-masked: True
+			width: 200px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: rightlimit
+			header: $pright.limit
+			tooltip: Current rightlimit
+			initially-masked: True
+			width: 200px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: applicationdisplayname
+			header: $application.concept
+			actions: ExecuteNamedAction goApplicationDetails
+			initially-masked: True
+			width: 120px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: accountidentifier
+			header: $account.identifier
+			tooltip: Current accountidentifier
+			actions: ExecuteNamedAction goAccountDetails
+			initially-masked: True
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: accountusername
+			header: $account.useraccount
+			tooltip: Current accountusername
+			actions: ExecuteNamedAction goAccountDetails
+			initially-masked: True
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: accountlastlogindate
+			header: $account.lastlogindate
+			initially-masked: True
+			width: 160px
+			sortable: True
+		}
+		Column {
+			column: accountuid
+			selection: outaccountuid
+			hidden: True
+		}
+		Column {
+			column: repositorydisplayname
+			header: $repository.concept
+			initially-masked: True
+			width: 120px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: reconleavedate
+			header: $reconciliation.leavedate
+			tooltip: Current reconleavedate
+			initially-masked: True
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: reconcomment
+			header: $preconciliation.comment
+			tooltip: Current reconcomment
+			initially-masked: True
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: identityuid
+			selection: outidentityuid
+			hidden: True
+		}
+		Column {
+			column: identityhrcode
+			header: $identity.hrcode
+			actions: ExecuteNamedAction goIdentityDetails
+			initially-masked: True
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: identitymail
+			header: $identity.mail
+			tooltip: Current identitymail
+			initially-masked: True
+			width: 160px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: identityinternal
+			header: $identity.internal
+			initially-masked: True
+			text: Transform Current identityinternal using booleanDisplayMapping
+			sortable: True
+		}
+		Column {
+			column: identityactive
+			header: $identity.active
+			text: Transform Current identityactive using booleanDisplayMapping
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: identityarrivaldate
+			header: $identity.arrivaldate
+			text: SubString (10) Current identityarrivaldate 
+			initially-masked: True
+			width: 120px
+			sortable: True
+		}
+		Column {
+			column: identitydeparturedate
+			header: $identity.departuredate
+			text: SubString (10) Current identitydeparturedate 
+			initially-masked: True
+			width: 120px
+			sortable: True
+		}
+		Column {
+			column: identityjoborg
+			header: $identity.joborg
+			tooltip: Current identityjoborg
+			initially-masked: True
+			width: 160px
+			sortable: True
+			filterable: True
+		}
+		Column {
+			column: remediationstatus
+			text: Transform Current remediationstatus using remediationStatusMapping
+			tooltip: Current remediationstatus
+			header: $fragmentIdentityEntriesToRevokeNLS.table.remaction
+			width: 120px
+			sortable: True
+			filterable: True
+			image: TemplateImageSelection ( Current remediationstatus ) using remediationStatusImage
+		}
+		Column {
+			column: remediationcomment
+			tooltip: Current remediationcomment
+			header: $fragmentIdentityEntriesToRevokeNLS.table.remcomment
+			width: 120px
+			sortable: True
+			filterable: True
+			initially-masked: True
+		}
+		Column {
+			column: permissionuid
+			selection: outpermissionuid
+			hidden: True
+		}
+		Column {
+			column: applicationuid
+			selection: outapplicationuid
+			hidden: True
+		}
+	}	
+}

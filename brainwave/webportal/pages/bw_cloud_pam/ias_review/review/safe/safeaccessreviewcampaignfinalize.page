@@ -1,0 +1,266 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+bwir_safeaccessreviewcampaignfinalizeNLS = NLS {
+	title [en "Finalize the review" fr "Terminer la revue"]
+	confirm [en "Are your sure? \nOnce finalized you won't be able to update the review status anymore \nThe remediation will be automatically launched once the campaign is finalized \nthis background operation can take some time" fr "Vous êtes sûr ? \nUne fois terminée, vous n'aurez plus la possibilité de mettre à jour les statuts de revue \nLa remediation sera automatiquement lancée une fois la campagne finalisée \ncette opération en tache de fond peut prendre un certain temps"]
+	defaultcomment [en "Entry finalized by the campaign owner" fr "Entrée cloturée par le responsable de la campagne"]
+	header [en "Finalize the review campaign" fr "Terminer la revue"]
+	nbtext [en " entries are still not reviewed" fr " entrées non revues"]
+	text [en "Finalize" fr "Clôturer"]
+	tooltip [en "Finalize the review and \ngenerate a compliance report" fr "Terminer la revue et \ngénérer le rapport de conformité"]
+	defaultlabel [en "Status to assign to 'not reviewed' entries" fr "Statut à renseigner pour les entrées 'non revues'"]
+	defaultcommentlabel [en "Review comment for 'not reviewed' entries" fr "Commentaire de revue pour les entrées 'non revues'"]
+	onbehalfof [en " on behalf of " fr " en tant que "]
+	
+	generalComment.label [	en "General end-of-review remarks" 
+							fr "Remarques générales de fin de campagne"
+						]
+	generalComment.tooltip [	en "General end-of-review remarks, associated to the campaign and included in the compliance report" 
+								fr "Remarques générales de fin de campagne incluses dans le rapport de conformité"
+							]
+	lang [en "en" fr "fr"]
+}
+
+mediumTitleStyle = Style {
+	size: 24px
+}
+
+bwir_safeaccessreviewcampaignfinalize = Page {
+	title:$bwir_safeaccessreviewcampaignfinalizeNLS.title
+	enter-event:TransferData notrevieweddataset(reviewrecorduid) to (notreviewedreviewrecorduid)
+	
+	campaignid = Parameter { hidden: True mandatory:True }
+	currentprogress = Parameter { hidden:True }
+	
+	defaultStatus = Variable { initial:"not reviewed" }
+	defaultComment = Variable { initial:$bwir_safeaccessreviewcampaignfinalizeNLS.defaultcomment }
+	generalComment = Variable { }
+	notreviewedreviewrecorduid = Variable { multivalued:True}
+
+	campaign = Record {
+		view:bwaccess360_accessreviewcampaigns with campaignid to campaignid
+	}
+
+	notrevieweddataset = Dataset {
+		view:bwir_safeaccessrightsforcampaign with 	campaignid to campaignid,
+																	['to be reviewed', 'reassign'] to filterbyreviewstatus
+	}
+
+	removedduringcampaign = Dataset {
+		view:bwaccess360_applicationaccessrightsremovedforcampaign with campaignid to campaignid
+		
+	}
+	reviewtickets = Dataset {
+		view:bwaccess360_accessreviewcampaignsentries with campaignid to campaignid, ['revoke', 'update'] to status,
+			True to filterprocessed
+	}
+
+	forceticketstatus = TaskRecord(create "bwaccess360_writeAccessRightsReviewTickets")
+	markEntryExplicitelyReviewed = TaskRecord( create "bwaccess360_markEntryExplicitelyReviewed")
+	finalize = TaskRecord(create "bwaccess360_finalizeAccessRightsReview")
+	initremediationtickets = TaskRecord(create "bwaccess360_createRemediationTickets")
+	reassigntask = TaskRecord( create "bwaccess360_reassignAccessRightsReviewTickets")
+	updatecampaigninfos = TaskRecord (create "bwr_updatecampaigninfos")
+	markAllEntryExplicitelyProcessed = TaskRecord ( create "bwaccess360_markAllEntryExplicitelyProcessed")
+	
+	Header {
+		value:campaign.title
+		styling:mediumTitleStyle	
+	}
+	Flow {
+		disposition:Horizontal
+		Group {
+			Text {
+				value:campaign.ticketnumber
+				label:$bwaccess360_accessreviewmanagementNLS.cticketnumber
+				compact:True
+			}
+			Text {
+				value:campaign.description
+				label:$bwaccess360_accessreviewmanagementNLS.cdescription
+				compact:True
+			}
+			Text {
+				value:campaign.prioritylevel
+				label:$bwaccess360_accessreviewmanagementNLS.cprioritylevel
+				compact:True
+			}
+			Text {
+				value:SubString(10) campaign.submissiondate
+				label:$bwaccess360_accessreviewmanagementNLS.csubmissiondate
+				compact:True
+			}
+			Text {
+				value:SubString(10) campaign.duedate
+				label:$bwaccess360_accessreviewmanagementNLS.cduedate
+				compact:True
+			}
+			Text {
+				value:campaign.nbdayssince
+				label:$bwaccess360_accessreviewmanagementNLS.cnbdaysince
+				compact:True
+			}
+			Text {
+				value:campaign.nbdaysleft
+				label:$bwaccess360_accessreviewmanagementNLS.cnbdaysleft
+				compact:True
+			}
+		}
+		Group {
+			Text {
+				value:campaign.reviewtype
+				label:$bwaccess360_accessreviewmanagementNLS.creviewtype
+				compact:True
+			}
+			Text {
+				value:Concat(NonEmpty(currentprogress,0) , '/', campaign.nbtotal) 
+				label:$bwaccess360_accessreviewmanagementNLS.cprogress
+				compact:True
+			}
+			Text {
+				value:campaign.launchedbyhrcode
+				label:$bwaccess360_accessreviewmanagementNLS.claunchedbyhrcode
+				compact:True
+			}
+			Text {
+				value:campaign.launchedbyfullname
+				label:$bwaccess360_accessreviewmanagementNLS.claunchedbyfullname
+				compact:True
+			}
+			Text {
+				value:campaign.launchedbymail
+				label:$bwaccess360_accessreviewmanagementNLS.claunchedbymail
+				compact:True
+			}
+		}
+	}
+	
+	Group {
+		hidden:IntPredicate(SizeOf notreviewedreviewrecorduid) { when >0 then False otherwise True }
+		
+		Separator {
+			width:1
+			color:blue
+		}
+		
+		Text {
+			value:Concat(SizeOf notreviewedreviewrecorduid, $bwir_safeaccessreviewcampaignfinalizeNLS.nbtext)
+				styling:warningFieldStyle
+			compact:True
+			label:Label { break:True }
+			hidden:IntPredicate(SizeOf notreviewedreviewrecorduid) { when >0 then False otherwise True }
+		}
+		Combo {
+			variable:defaultStatus
+			label:$bwir_safeaccessreviewcampaignfinalizeNLS.defaultlabel
+			disabled:IntPredicate(SizeOf notreviewedreviewrecorduid) { when >0 then False otherwise True }
+			hidden:IntPredicate(SizeOf notreviewedreviewrecorduid) { when >0 then False otherwise True }
+			layout: Layout { grab: horizontal False vertical False hint:width 300}
+			options:Static {
+				Option{ value:"revoke" text:$bwaccess360_accessreviewmanagementNLS.revoke}
+				Option{ value:"ok" text:$bwaccess360_accessreviewmanagementNLS.ok }
+				Option{ value:"not reviewed" text:$bwaccess360_accessreviewmanagementNLS.notreviewed }
+			}
+		}
+		Edit {
+			variable:defaultComment
+			disabled:IntPredicate(SizeOf notreviewedreviewrecorduid) { when >0 then False otherwise True }
+			hidden:IntPredicate(SizeOf notreviewedreviewrecorduid) { when >0 then False otherwise True }
+			limit:4000
+			label:Label { break:True value:$bwir_safeaccessreviewcampaignfinalizeNLS.defaultcommentlabel }
+		}	
+	}
+
+	Spacer {
+		height:Fill
+	}
+
+	Edit {
+		variable:generalComment
+		multi-lines:True
+		not-empty:True
+		limit:4000
+		label:Label { break:True value:$bwir_safeaccessreviewcampaignfinalizeNLS.generalComment.label }
+		layout: Layout { grab: horizontal True vertical False hint:height 64 }
+		tooltip:$bwir_safeaccessreviewcampaignfinalizeNLS.generalComment.tooltip
+	}	
+	
+	
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:"Back"
+		}
+		
+		Button {
+			text:$bwaccess360_accessreviewmanagementNLS.accessreviewmanagementFinalize.text
+			tooltip:$bwaccess360_accessreviewmanagementNLS.accessreviewmanagementFinalize.tooltip
+			disabled:StringPredicate(generalComment) { when IsEmpty then True otherwise False }
+			image:%status_16.check
+			actions:
+				Confirm $bwir_safeaccessreviewcampaignfinalizeNLS.confirm,
+				// update campagin current status
+				Set campaignid to updatecampaigninfos.campaignid,
+				Set "finalizing" to updatecampaigninfos.currentstatus,
+				TaskComplete updatecampaigninfos, 
+				// force review tickets
+				Set notreviewedreviewrecorduid to forceticketstatus.ticketreviewrecorduid,
+				Set [defaultStatus repeat SizeOf notreviewedreviewrecorduid] to forceticketstatus.status,
+				Set [defaultComment repeat SizeOf notreviewedreviewrecorduid] to forceticketstatus.comment,
+				Set [Date.valueLDAP repeat SizeOf notreviewedreviewrecorduid] to forceticketstatus.actiondate,
+				TaskComplete forceticketstatus wait-end timeout-seconds 300, 
+	
+				//reassign not reviewed entries to the campaign manager when we force the status (implicit delegation)
+				StringCase(defaultStatus) {
+					when Not "not reviewed" then [
+						Set notreviewedreviewrecorduid to reassigntask.ticketreviewrecorduids,
+						Set Principal.uid to reassigntask.reviewer,
+						TaskComplete reassigntask wait-end timeout-seconds 300
+					]
+				},
+	
+				// force "not reviewed" review tickets which corresponds to access rights which have been removed during the campaign to "revoke"
+				TransferData removedduringcampaign(recorduid) to (notreviewedreviewrecorduid),
+				Set notreviewedreviewrecorduid to forceticketstatus.ticketreviewrecorduid,
+				Set ['revoke' repeat SizeOf notreviewedreviewrecorduid] to forceticketstatus.status,
+				Set ['Access right removed during the campaign' repeat SizeOf notreviewedreviewrecorduid] to forceticketstatus.comment,
+				Set [Date.valueLDAP repeat SizeOf notreviewedreviewrecorduid] to forceticketstatus.actiondate,
+				TaskComplete forceticketstatus wait-end timeout-seconds 300, 
+	
+				// force signoff with the campaign owner for all entries without any signoff
+				Set campaignid to markEntryExplicitelyReviewed.campaignid,
+				Set True to markEntryExplicitelyReviewed.forcemarkentry,
+				Set Principal.uid to markEntryExplicitelyReviewed.currentreviewer,
+				TaskComplete markEntryExplicitelyReviewed  wait-end timeout-seconds 300,
+
+				// create a compliance report (async)
+				Set campaignid to finalize.campaignid,
+				Set generalComment to finalize.generalComment,
+				Set $bwir_safeaccessreviewcampaignfinalizeNLS.onbehalfof to finalize.delegationtext,
+				Set $bwir_safeaccessreviewcampaignfinalizeNLS.lang to finalize.lang,
+				TaskComplete finalize wait, 
+	
+				// initialize remediation tickets for revoke and update status (async)
+				Set campaignid to initremediationtickets.campaignid,
+				TransferData reviewtickets	(recorduid, remediationstatus, remediationclosed, remediationcomment, label, remediationtype) to 
+											(initremediationtickets.ticketreviewrecorduid, initremediationtickets.status, initremediationtickets.ticketclosed, initremediationtickets.comment, initremediationtickets.ticketlabel, initremediationtickets.tickettype),
+				Set [Date.valueLDAP repeat SizeOf initremediationtickets.ticketreviewrecorduid] to initremediationtickets.actiondate,
+				Set ['' repeat SizeOf initremediationtickets.ticketreviewrecorduid] to initremediationtickets.accountableuid,
+				TaskComplete initremediationtickets,
+
+				// mark all (remaining) entries as explicitely approved
+				Set campaignid to markAllEntryExplicitelyProcessed.campaignid,
+				TaskComplete markAllEntryExplicitelyProcessed wait-end timeout-seconds 300,
+
+				GoTo BackInHistoryTruncate
+		}
+	}
+}
+
+
+

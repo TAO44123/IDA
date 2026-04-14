@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0105 CIs Managers" scriptfile="/collectors/bw_servicenowci/100 CIs.javascript" name="P1702472617874_1" startingpoint="C1702472625011">
+		<Component name="C1702472625011" type="discoverysource" x="112" y="47" w="300" h="64" title="CI">
+			<Discovery file="/discovery/bw_servicenowci/CI.discovery" datafile="{config.siloIteratedFileFullname}"/>
+		</Component>
+		<Link name="L1702472655919" source="C1702472625011" target="C1704900956252" priority="1"/>
+		<Component name="C1704900719539" type="joinfilter" x="437" y="392" w="300" h="64" title="get biz manager infos">
+			<Join source="C1704900693719_2" severalaction="first"/>
+			<Cache active="true" main="owned_by" join="sys_id"/>
+			<Attributes>
+				<Attribute name="A1704900864157" attribute="bizowner_email" source="email" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1704900956252" type="changefilter" x="112" y="208" w="300" h="64" title="owner">
+			<Actions>
+				<Action name="U1704900985605" action="add" attribute="MANAGERTYPE" type="String" multivalued="false" newvalue="technicalowner" errorexist="false"/>
+				<Action name="U1704901046691" action="add" attribute="MANAGERRULE" type="String" multivalued="false" newvalue="byemail" errorexist="false"/>
+				<Action name="U1711115123540" action="add" attribute="BIZMANAGERTYPE" type="String" multivalued="false" newvalue="businessowner" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1711114648378" type="manager" x="438" y="538" w="300" h="64" title="business owner" managertarget="F">
+			<ConfItem code="sys_id" error="true" event="CI_NOT_FOUND"/>
+			<Domain domain="BIZMANAGERTYPE" action="create"/>
+			<Match>
+				<Attribute name="ruletype" attribute="MANAGERRULE"/>
+				<Attribute name="mail" attribute="bizowner_email"/>
+			</Match>
+		</Component>
+		<Link name="L1711114693962" source="C1704900719539" target="C1711114648378" priority="1" labelcustom="true" label="Manager found" expression="(! dataset.isEmpty(&apos;bizowner_email&apos;))"/>
+		<Link name="L1711114916864" source="C1704900956252" target="C1704900719539_1" priority="1" expression="(! dataset.isEmpty(&apos;managed_by&apos;))" labelcustom="true" label="Manager configured"/>
+		<Component name="N1711114931431" type="note" x="655" y="332" w="300" h="50" title="business&#xA; owner"/>
+		<Component name="N1711114931431_1" type="note" x="-376" y="337" w="300" h="50" title="technical owner"/>
+		<Component name="C1711114648378_1" type="manager" x="-202" y="543" w="300" h="64" title="tech owner" managertarget="F">
+			<ConfItem code="sys_id" error="true" event="CI_NOT_FOUND"/>
+			<Domain domain="MANAGERTYPE" action="create"/>
+			<Match>
+				<Attribute name="ruletype" attribute="MANAGERRULE"/>
+				<Attribute name="mail" attribute="techowner_email"/>
+			</Match>
+		</Component>
+		<Component name="C1704900693719_1" type="discoverysource" x="117" y="397" w="300" h="64" title="sys_user 1">
+			<Discovery file="/discovery/bw_servicenowci/sys_user.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/users.csv"/>
+		</Component>
+		<Component name="C1704900719539_1" type="joinfilter" x="-203" y="397" w="300" h="64" title="get tech manager infos">
+			<Join source="C1704900693719_1" severalaction="first"/>
+			<Cache active="true" main="managed_by" join="sys_id"/>
+			<Attributes>
+				<Attribute name="A1704900864157" attribute="techowner_email" source="email" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1711114693962_1" source="C1704900719539_1" target="C1711114648378_1" priority="1" labelcustom="true" label="Manager found" expression="(! dataset.isEmpty(&apos;techowner_email&apos;))"/>
+		<Link name="L1704900731555_1" source="C1704900693719_1" target="C1704900719539_1" priority="1"/>
+		<Link name="L1711114974591" source="C1704900956252" target="C1704900719539" priority="2" expression="(! dataset.isEmpty(&apos;owned_by&apos;))" labelcustom="true" label="Manager configured"/>
+		<Component name="C1704900693719_2" type="discoverysource" x="784" y="395" w="300" h="64" title="sys_user 2">
+			<Discovery file="/discovery/bw_servicenowci/sys_user.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-7)}/users.csv"/>
+		</Component>
+		<Link name="L1711707754718" source="C1704900693719_2" target="C1704900719539" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

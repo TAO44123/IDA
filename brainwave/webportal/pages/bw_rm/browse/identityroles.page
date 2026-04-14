@@ -1,0 +1,160 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_rm/fragments.page"
+import "/webportal/pages/bw_rm/orgprofiles.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+reportDetails = NLS {
+	browsing_identity_detailroles.pagetitle [ en "Assigned roles candidates" fr "Rôles candidats affectés"]
+	browsing_identity_detailroles.pagedesc [
+	 en "This report lists the possible roles that would be assigned to this identity, with regards to the Role Mining campaigns conducted within this portal.
+     After a click on one of the roles listed, it is possible to see the list of permissions embedded in the role, and the list of identities to which this role could be assigned as a role candidate."
+	 fr "Ce rapport présente la liste des rôles qui pourraient être affectés à cette identité, suite aux campagnes de Role Mining effectuées au sein de ce portail.
+En cliquant sur un des rôles, il est possible de visualiser les permissions qui en font partie ainsi que l'ensemble des personnes candidates à l'affectation de ces rôles."
+	]
+	browsing_identity_detailroles.title [ en "List of assigned roles candidates" fr "Liste des rôles candidats affectés"]
+	browsing_identity_detailroles.subtitle [ en "Roles candidates assigned to <<{0}>>" fr "Rôles candidats affectés à <<{0}>>"]
+	browsing_identity_detailroles.columns.role_code [ en "Role code" fr "Code du rôle"]
+	browsing_identity_detailroles.columns.role_name [ en "Role name" fr "Nom du rôle"]
+	browsing_identity_detailroles.columns.org_shortname [ en "Organisation short name" fr "Nom court de l'organisation"]
+	browsing_identity_detailroles.columns.org_displayname [ en "Organisation name" fr "Nom de l'organisation"]
+}
+
+browsing_identity_detailroles = Page {
+
+	title: $reportDetails.browsing_identity_detailroles.pagetitle
+	description: $reportDetails.browsing_identity_detailroles.pagedesc
+	tags: "identity" priority 200, "byuid" , "browsing"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature: All(bwpm_browsingreports, Any(governance_license, compliance_license))
+	enter-event: BooleanCase (paramSearchMode) { when False then [ Set uid to nonEmptyUid] when True then []}
+	
+	mixins: simpleReport
+	
+	uid = Parameter {
+		label:"Concept Uid"
+		type:String
+	}
+
+	// Related to Search Navigator
+	paramSearchMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: False
+	}
+	// Related to Search Navigator	
+	identitySearch = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+	
+	// Related to Search Navigator
+	currentIdentity = Variable {
+		type: String
+		initial: uid
+	}
+	
+	selectedRoleCode = Variable {
+		type: String
+	}
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	// Related to Search Navigator	
+	identityList = Dataset {
+		search: Search {
+			definition: identitySearch
+			view: br_identity_searchpoint with nonEmptyUid to uid
+		}
+	}
+	
+	conceptData = Record {
+		view: br_identityDetail with currentIdentity to uid
+	}
+	
+	dataToReport = Dataset {
+		view: bwrm_browse_rolesbyidentity with currentIdentity to identityuid
+	}
+
+	Splitter {
+		disposition: Horizontal
+		size: 70%
+		Group {
+			layout: Layout { grab: horizontal True vertical True }
+			Group {
+				layout: Layout { grab: horizontal True vertical False align: horizontal Center vertical Beginning }
+				Spacer {
+					height: 11
+					hidden: Not BooleanPredicate(paramSearchMode)
+				}
+				SetNavigator {
+					data: identityList
+					column: uid
+					selection: currentIdentity
+					back-link: Activity Identity Detail with currentIdentity to paramIdentityUid , SerializeSearch identitySearch to identitySearch, paramSearchMode to paramSearchMode
+					initial: uid
+					show-count: True
+					show-first: True
+					show-last: True
+					count-width: 150
+					hidden: Not BooleanPredicate(paramSearchMode)
+				}
+			}
+			Group {
+				layout: Layout {grab: horizontal True vertical True }
+				Text {
+					value: $reportDetails.browsing_identity_detailroles.title	
+				}		
+				Text {
+					value: $reportDetails.browsing_identity_detailroles.subtitle( conceptData.fullname )
+					styling: reportSubtitle
+					align: Left
+				}
+				Table {
+					layout: Layout { grab: horizontal True vertical True }
+					data: dataToReport
+					show-filter: True
+					show-count: True
+					Column {
+						column: rolecode
+						header: $reportDetails.browsing_identity_detailroles.columns.role_code
+						selection: selectedRoleCode
+						sortable: True
+						filterable: True
+						width:100%
+					}
+					Column {
+						column: rolename
+						header: $reportDetails.browsing_identity_detailroles.columns.role_name
+						sortable: True
+						filterable: True
+						width:100%
+					}
+					Column {
+						column: displayname
+						header: $reportDetails.browsing_identity_detailroles.columns.org_displayname
+						sortable: True
+						filterable: True
+						width:100%
+					}
+					Column {
+						column: shortname
+						header: $reportDetails.browsing_identity_detailroles.columns.org_shortname
+						sortable: True
+						filterable: True
+						width:100%
+					}
+				}
+			}
+		}
+		Group {
+			layout: Layout { grab: horizontal True vertical True }
+			title: $role.concept
+			hidden: Eval "selectedRoleCode.isEmpty()"
+			IncludeFragment (rm_role_detail with selectedRoleCode binds-to rolecode_in ) 				
+		}
+	}
+}

@@ -1,0 +1,1481 @@
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_dsm/cfg/ds_test.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+ 
+dsm_edit_mapping = Page {
+   title: $bw_entitydatamanagementNLS.title
+	dynamic-title: $bw_entitydatamanagementNLS.dynamictitle(pcode)
+	description:$bw_entitydatamanagementNLS.description
+	icon:%report_32.csv
+	large-icon:%report_48.csv
+
+    enter-event: ExecuteNamedAction doInit
+
+   //events
+   // changed :  mapping has changed 
+    pcode = Parameter  { type: String hidden: True mandatory: True } // unique name of datasource ,     
+    pconnector = Parameter { type: String hidden: True mandatory: True }
+	 
+   dateformat = Variable { initial:'yyyy/MM/dd' }
+	booleanformat = Variable { initial:'True,Yes,1;False,No,0' }
+	separator = Variable { initial:';' }
+	encoding = Variable { initial:'UTF-8' }
+	delimiter = Variable { initial:'"' }
+	minimumNbLine = Variable { initial:1 }
+
+	errornbdays = Variable { initial:30 }
+	warningnbdays = Variable { initial:20 }
+	checkfilevariation = Variable { initial:True type:Boolean }
+	filevariation = Variable { initial:20 }
+
+	hasConfig = Variable
+	selectedColumnName = Variable
+	selectedColumnType = Variable
+	selectedColumnFormat = Variable
+	selectedColumnFormatDescription = Variable
+	selectedColumnMandatory = Variable
+	selectedColumnMustBeUnique = Variable 
+	selectedColumnOrder = Variable
+	selectedColumnMinimumFillFactor = Variable
+
+	selectedComputedColumnName = Variable
+	selectedComputedColumnOrder = Variable
+	selectedComputedColumnExpression = Variable
+
+	columntomap = Variable
+	brainwaveattributetomap = Variable
+	brainwaveattributetypetomap = Variable
+
+	filediscovery = Variable
+		
+	// //////////////////////////////////////////////////////////////////////////////////
+	// columns for the mapping
+	modelcolumns = Variable {
+		multivalued:True
+		type:String
+	}
+	modelcolumnsorder = Variable {
+		multivalued:True
+		type:Integer
+	}
+	modelcolumnsmandatory = Variable {
+		multivalued:True
+		type:Boolean
+	}
+	modelmappedcolumn = Variable {
+		multivalued:True
+		type:String
+	}
+	modelcolumnsdescription = Variable {
+		multivalued:True
+		type:String
+	}
+	modelcolumnsexample = Variable {
+		multivalued:True
+		type:String
+	}
+	modelcolumnstype = Variable {
+		multivalued:True
+		type:String
+	}
+	// //////////////////////////////////////////////////////////////////////////////////
+	// default values
+	imodelcolumns = Variable {multivalued:True type:String	}
+	imodelcolumnsorder = Variable {	multivalued:True type:Integer	}
+	imodelcolumnsmandatory = Variable {	multivalued:True	type:Boolean	}
+	imodelmappedcolumn = Variable {multivalued:True type:String	}
+	imodelcolumnsdescription = Variable { multivalued:True type:String}
+	imodelcolumnsexample = Variable {multivalued:True type:String }
+	imodelcolumnstype = Variable {multivalued:True type:String }
+	// //////////////////////////////////////////////////////////////////////////////////
+
+	taskformat = TaskRecord(create "bw_setdatasourceformat")
+	taskremove = TaskRecord(create "bw_removedatasourcecolumn")
+	taskremoveconfig = TaskRecord(create "bw_removedatasourceformat")
+	taskmapping = TaskRecord(create "bw_savedatasourcemapping")
+	// Delete existing columns & mappings (if any) and discover from uploaded file
+	taskdiscover = TaskRecord(create "bw_dsmdiscovercolumns")
+	
+	connector_desc = Record {
+		  page: pconnector
+	 }
+	 
+	datasourceconfigDataset = Dataset {
+		view: bw_getdatasourceconfig with	pcode to code
+		count-variable: hasConfig
+	}
+	datasourceconfig = Record {
+		view: bw_getdatasourceconfig with	pcode to code
+	}
+
+	datasourcecolumns = Dataset {
+		view: bw_getdatasourcecolumns with	pcode to code
+	}
+	datasourcecomputedcolumns = Dataset {
+		view: bw_getdatasourcecomputedcolumns with	pcode to code
+	}
+
+	datasourcemapping = Dataset {
+		view: bw_getdatasourcemapping with	pcode to code
+	}
+	
+	modeltable = Dataset {
+		columns:
+			modelcolumns as column, 
+			modelcolumnsmandatory as ismandatory, 
+			modelmappedcolumn as mappedcolumn, 
+			modelcolumnsdescription as description,
+			modelcolumnsexample as example,
+			modelcolumnstype as type,
+			modelcolumnsorder as order
+	}
+
+	doInit = NamedAction (
+	  	IntCase(hasConfig) {
+			when >0 then [
+				Set datasourceconfig.bw_datasourceformat_warningifolderthan to warningnbdays,
+				Set datasourceconfig.bw_datasourceformat_errorifolderthan to errornbdays,
+				Set datasourceconfig.bw_datasourceformat_checkfilesizevariation to checkfilevariation,
+				Set datasourceconfig.bw_datasourceformat_filesizevariation to filevariation,
+				Set datasourceconfig.bw_datasourceformat_booleanformat to booleanformat,
+				Set datasourceconfig.bw_datasourceformat_dateformat to dateformat,
+				Set datasourceconfig.bw_datasourceformat_delimiter to delimiter,
+				Set datasourceconfig.bw_datasourceformat_encoding to encoding,
+				Set Sum(datasourceconfig.bw_datasourceformat_minimumnblines,0) to minimumNbLine,
+				Set datasourceconfig.bw_datasourceformat_separator to separator
+			]
+		},
+		IntCase(Count datasourcemapping) {
+			when >0 then [
+				TransferData datasourcemapping(name, type, order, column, ismandatory, description, example) to 
+											  (modelcolumns, modelcolumnstype, modelcolumnsorder, modelmappedcolumn, modelcolumnsmandatory, modelcolumnsdescription, modelcolumnsexample)
+			]
+			otherwise [
+				ExecuteNamedAction resetMapping
+			]
+	 },
+	  // init model columns default values from page descriptor
+	   Set Split connector_desc.imodelcolumns using ";" to imodelcolumns,
+		Set Split connector_desc.imodelcolumnsorder using ";" to imodelcolumnsorder,
+		Set Split connector_desc.imodelcolumnsmandatory using ";" to imodelcolumnsmandatory,
+		Set Split connector_desc.imodelcolumnsdescription using ";" to imodelcolumnsdescription,
+		Set Split connector_desc.imodelcolumnsexample using ";" to imodelcolumnsexample, 		
+		Set Split connector_desc.imodelcolumnstype using  ";" to  imodelcolumnstype ,
+		Call dsm_initColumns( imodelcolumns to columns, imodelcolumnsorder from columnsOrder, imodelmappedcolumn from mappedColumns)
+	) 
+	 
+
+	saveMappings = NamedAction (
+		// save mapping
+		Set pcode to taskmapping.code,
+		Set modelcolumns to taskmapping.name, 
+		Set modelcolumnsorder to taskmapping.order, 
+		Set modelcolumnstype to taskmapping.type, 
+		Set modelcolumnsmandatory to taskmapping.ismandatory, 
+		Set modelcolumnsdescription to taskmapping.description, 
+		Set modelcolumnsexample to taskmapping.example, 
+		Set modelmappedcolumn to taskmapping.column, 
+		TaskComplete taskmapping wait-end  timeout-seconds 240
+	)
+	
+	resetSelectColumn = NamedAction (
+		MultivaluedSet "" to modelmappedcolumn where modelcolumns is brainwaveattributetomap
+	)
+	
+	resetMapping = NamedAction (
+		Set imodelcolumns to modelcolumns,
+		Set imodelcolumnsdescription to modelcolumnsdescription,
+		Set imodelcolumnsexample to modelcolumnsexample,
+		Set imodelcolumnsmandatory to modelcolumnsmandatory,
+		Set imodelcolumnsorder to modelcolumnsorder,
+		Set imodelcolumnstype to modelcolumnstype,
+		Set imodelmappedcolumn to modelmappedcolumn
+	)
+	
+	saveConfiguration = NamedAction (
+	   //Flash Concat("Save Format configuration:", pcode),
+		// Save configuration
+		Set pcode to taskformat.code,
+		Set errornbdays to taskformat.errornbdays,
+		Set warningnbdays to taskformat.warningnbdays,		
+		Set booleanformat to taskformat.booleanformat,
+		Set dateformat to taskformat.dateformat,
+		Set delimiter to taskformat.delimiter,
+		Set encoding to taskformat.encoding,
+		Set minimumNbLine to taskformat.minimumnblines,
+		Set separator to taskformat.separator,
+		Set checkfilevariation to taskformat.checkfilesizevariation,
+		Set filevariation to taskformat.filesizevariation,
+		TaskComplete taskformat wait-end  timeout-seconds 240
+	)
+	
+	saveAll = NamedAction (
+		IntCase ( Count datasourcecolumns ) {
+			when > 0 then [
+				// Save
+				ExecuteNamedAction saveMappings
+			] otherwise [
+				// Nothing to do
+			]
+		},
+		ExecuteNamedAction saveConfiguration
+	)
+
+	
+	// Add/update column
+	entitydatamanagement_add = NamedAction (
+		Dialog bw_entitydatamanagement_add(
+            True to updatemode, 
+            pcode to code, 
+            selectedColumnOrder to corder, 
+            selectedColumnName to cname, 
+            selectedColumnType to ctype, 
+            selectedColumnFormat to cformat, 
+            selectedColumnFormatDescription to cformatps, 
+            selectedColumnMandatory to cmandatory,
+            selectedColumnMustBeUnique to cmustbeunique,
+            selectedColumnMinimumFillFactor to cfillfactor
+        ),
+        ReloadData (datasourcecolumns),
+        Flash $bw_entitydatamanagementNLS.updatecolumnflash
+	)
+	
+	// Add/update computed column
+	entitydatamanagement_addcomputed = NamedAction (
+		Dialog bw_entitydatamanagement_addcomputed(
+			False to updatemode, 
+			pcode to code
+		),
+		ReloadData (datasourcecomputedcolumns),
+		Flash $bw_entitydatamanagementNLS.updatecomputedcolumnflash
+	)
+	entitydatamanagement_updatecomputed = NamedAction (
+		Dialog bw_entitydatamanagement_addcomputed(
+			True to updatemode, 
+			pcode to code, 
+			selectedComputedColumnOrder to corder, 
+			selectedComputedColumnName to cname, 
+			selectedComputedColumnExpression to ccomputedexpression 
+		),
+		ReloadData (datasourcecomputedcolumns),
+		Flash $bw_entitydatamanagementNLS.updatecomputedcolumnflash
+	)
+	
+	// Select column
+	entitydatamanagement_selectcolumn = NamedAction (
+		Dialog bw_entitydatamanagement_selectcolumn(
+		    pcode to code,
+		    brainwaveattributetypetomap to brainwaveattributetypetomap,
+		    columntomap from selectedcolumn
+		), 
+		MultivaluedSet columntomap to modelmappedcolumn where modelcolumns is brainwaveattributetomap,
+		Flash $bw_entitydatamanagementNLS.setmappingflash(brainwaveattributetomap),
+		ReloadData (modeltable)
+	)
+	
+	//Text {
+	//  value: code label: "[DEBUG] code"
+	//}
+
+	TabFolder {
+		TabItem {
+			text:$bw_entitydatamanagementNLS.tab1
+			Header {
+				value:$bw_entitydatamanagementNLS.uploadconfiguration
+			}
+			Separator {
+				width:1
+			}
+			Flow {
+				disposition:Horizontal
+				layout:Layout { grab:horizontal True vertical False hint: height 40}		
+				Group {
+					Spinner {
+						variable:warningnbdays
+						label:$bw_entitydatamanagementNLS.warningolder
+						tooltip:$bw_entitydatamanagementNLS.warningoldertooltip
+						minimum:1
+						maximum:1000
+						layout:Layout { grab:horizontal False vertical False hint: width 100}		
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+				}
+				Group {
+					Spinner {
+						variable:errornbdays
+						label:$bw_entitydatamanagementNLS.errorolder
+						tooltip:$bw_entitydatamanagementNLS.erroroldertooltip
+						minimum:1
+						maximum:1000
+						layout:Layout { grab:horizontal False vertical False hint: width 100}		
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+				}
+				Group {
+					Checkbox {
+						variable:checkfilevariation
+						label:$bw_entitydatamanagementNLS.checkvariation
+						tooltip:$bw_entitydatamanagementNLS.checkvariationtooltip
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+					Spinner {
+						variable:filevariation
+						label:$bw_entitydatamanagementNLS.checkvariationpercent
+						minimum:0
+						maximum:99999
+						layout:Layout { grab:horizontal False vertical False hint: width 100}		
+						disabled:
+							OrPredicate {
+								Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+								Not BooleanPredicate(checkfilevariation)
+							}
+					}
+				}
+			}
+			Header {
+				value:$bw_entitydatamanagementNLS.fileformat
+			}
+			Separator {
+				width:1
+			}
+			Flow {
+				disposition:Horizontal
+				layout:Layout { grab:horizontal True vertical False hint: height 80}		
+				Group {
+					Edit {
+						variable:separator
+						label:$bw_entitydatamanagementNLS.separator
+						layout:Layout { grab:horizontal False vertical False hint: width 160}		
+						limit:1
+						not-empty:True
+						tooltip:$bw_entitydatamanagementNLS.separatortooltip
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+					Combo {
+						variable:encoding
+						label:$bw_entitydatamanagementNLS.fileencoding
+						allow-none:False
+						options:Static {
+							Option { text:'ascii' value:'ascii' }
+							Option { text:'windows-1252' value:'windows-1252' }
+							Option { text:'UTF-8' value:'UTF-8' }
+							/*Option { text:'ISO-2022-CN' value:'ISO-2022-CN' }
+							Option { text:'UTF-16BE' value:'UTF-16BE' }
+							Option { text:'UTF-16LE' value:'UTF-16LE' }*/
+						}		
+						layout:Layout { grab:horizontal False vertical False hint: width 160}		
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+				}
+				Group {
+					Edit {
+						variable:booleanformat
+						label:$bw_entitydatamanagementNLS.booleanformat
+						tooltip:$bw_entitydatamanagementNLS.booleanformattooltip	
+						limit:40
+						not-empty:True
+						layout:Layout { grab:horizontal False vertical False hint: width 160}		
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+					Edit {
+						variable:dateformat
+						label:$bw_entitydatamanagementNLS.dateformat
+						tooltip:$bw_entitydatamanagementNLS.dateformattooltip
+						limit:20
+						not-empty:True
+						layout:Layout { grab:horizontal False vertical False hint: width 160}		
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+				}
+				Group {
+					Edit {
+						variable:delimiter
+						label:$bw_entitydatamanagementNLS.fielddelimiter
+						tooltip:$bw_entitydatamanagementNLS.fielddelimitertooltip
+						limit:1
+						not-empty:True
+						layout:Layout { grab:horizontal False vertical False hint: width 160}
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+					Spinner {
+						variable:minimumNbLine
+						label:$bw_entitydatamanagementNLS.minimumnblines	
+						tooltip:$bw_entitydatamanagementNLS.minimumnblinestoolip	
+						minimum:0
+						maximum:10000000
+						layout:Layout { grab:horizontal False vertical False hint: width 160}		
+						disabled:
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					}
+				}
+			}
+			Header {
+				value:$bw_entitydatamanagementNLS.filecolumns
+			}
+			Separator {
+				width:1
+			}
+			ButtonGroup {
+				Button {
+					actions:
+						Dialog bw_entitydatamanagement_add(
+							pcode to code,
+							Sum(Count datasourcecolumns, 1) to corder
+						),
+						ReloadData (datasourcecolumns),
+						Flash $bw_entitydatamanagementNLS.addnewcolumnflash
+					text:$bw_entitydatamanagementNLS.addnewcolumn
+					image:%status_16.add
+					disabled:
+						Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+				}
+				Button {
+					actions:
+						ExecuteNamedAction entitydatamanagement_add
+					text:$bw_entitydatamanagementNLS.updatecolumn
+					image:%collection_16.refresh
+					disabled:
+						OrPredicate {
+							StringPredicate(selectedColumnName) { when IsEmpty then True }
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+						}
+				}
+				Button {
+					actions:
+						Set pcode to taskremove.code,
+						Set selectedColumnName to taskremove.name,
+						TaskComplete taskremove wait-end  timeout-seconds 240,
+						ReloadData (datasourcecolumns),
+						Flash $bw_entitydatamanagementNLS.removecolumnflash
+					text:$bw_entitydatamanagementNLS.removecolumn
+					image:%status_16.remove
+					disabled:
+						OrPredicate {
+							StringPredicate(selectedColumnName) { when IsEmpty then True }
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+						}
+				}
+				Button {
+					actions:
+						Confirm $bw_entitydatamanagementNLS.autodiscoverconfirm, 
+						Dialog bw_entitydatamanagement_autodiscover(filediscovery from file),
+						Set pcode to taskdiscover.code,
+						Set filediscovery to taskdiscover.file,
+						Set encoding to taskdiscover.encoding,
+						Set separator to taskdiscover.separator,
+						Set delimiter to taskdiscover.delimiter,
+						Set dateformat to taskdiscover.dateformat,
+						Set booleanformat to taskdiscover.booleanformat,
+						Set imodelcolumnsdescription to taskdiscover.mappingdescription,
+						Set imodelcolumnsexample to taskdiscover.mappingexample,
+						Set imodelcolumnsmandatory to taskdiscover.mappingmandatory,
+						Set imodelmappedcolumn to taskdiscover.mappingmapped,
+						Set imodelcolumns to taskdiscover.mappingname,
+						Set imodelcolumnsorder to taskdiscover.mappingorder,
+						Set imodelcolumnstype to taskdiscover.mappingtype,
+						TaskComplete taskdiscover wait-end  timeout-seconds 240,
+						Call fileDelete(filediscovery to filename),
+						ReloadData(datasourcecolumns),
+						TransferData datasourcemapping(name, type, order, column, ismandatory, description, example) to // reload data from the database 
+													  (modelcolumns, modelcolumnstype, modelcolumnsorder, modelmappedcolumn, modelcolumnsmandatory, modelcolumnsdescription, modelcolumnsexample),
+						ReloadData(modeltable)
+					text:$bw_entitydatamanagementNLS.autodiscover
+					tooltip:$bw_entitydatamanagementNLS.autodiscovertooltip
+					image:%collection_16.bulb
+				}
+			}
+			Table {
+				data:datasourcecolumns
+				layout: Layout { grab:horizontal True vertical True }
+				show-filter:True
+				configurable:True
+				persist-configuration:True
+				persist-configuration-key:pcode
+				Column {
+					header:$bw_entitydatamanagementNLS.corder
+					column:bw_datasourcecolumn_order
+					selection:selectedColumnOrder
+					width:60px
+					align:Right
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.cname
+					column:bw_datasourcecolumn_name
+					tooltip:Current bw_datasourcecolumn_name
+					image:TemplateImageSelection(Current bw_datasourcecolumn_type) using bw_entitymanagementColumnImageTemplate
+					selection:selectedColumnName
+					filterable:True
+					width:160px
+					actions-disabled:
+						Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					actions:
+						ExecuteNamedAction entitydatamanagement_add
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.ctype
+					column:bw_datasourcecolumn_type
+					text:Transform Current bw_datasourcecolumn_type using bw_entitymanagementColumnTypeMapping
+					selection:selectedColumnType
+					width:160px
+					align:Right
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.cformat
+					column:bw_datasourcecolumn_format
+					tooltip:Current bw_datasourcecolumn_format
+					selection:selectedColumnFormat
+					width:160px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.cformatdescription
+					column:bw_datasourcecolumn_formatprettystring
+					tooltip: Current bw_datasourcecolumn_formatprettystring
+					selection:selectedColumnFormatDescription
+					width:160px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.cmustbeunique
+					column:bw_datasourcecolumn_mustbeunique
+					text:Transform Current bw_datasourcecolumn_mustbeunique using bw_entitymanagementYesNoMapping 
+					selection:selectedColumnMustBeUnique
+					align:Right
+					width:110px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.cmandatory
+					column:bw_datasourcecolumn_mandatory
+					text:Transform Current bw_datasourcecolumn_mandatory using bw_entitymanagementYesNoMapping
+					selection:selectedColumnMandatory
+					align:Right
+					width:110px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.cminimumfillfactor
+					tooltip:$bw_entitydatamanagementNLS.cminimumfillfactortooltip
+					column:bw_datasourcecolumn_minimumfillfactor
+					text:Concat(Transform Current bw_datasourcecolumn_minimumfillfactor using bw_entitydatamanagement_addEmptybyDashMapping, ' %') 
+					selection:selectedColumnMinimumFillFactor
+					align:Right
+					width:90px
+				}
+			}
+		}
+		TabItem {
+			text:$bw_entitydatamanagementNLS.tab2
+			Header {
+				value:$bw_entitydatamanagementNLS.tab2subtitle
+			}
+			Separator {
+				width:1
+			}
+			ButtonGroup {
+				Button {
+					actions:
+						ExecuteNamedAction entitydatamanagement_addcomputed
+					text:$bw_entitydatamanagementNLS.addnewcomputedcolumn
+					image:%status_16.add
+					disabled:
+						Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+				}
+				Button {
+					actions:
+						ExecuteNamedAction entitydatamanagement_updatecomputed
+					text:$bw_entitydatamanagementNLS.updatecomputedcolumn
+					image:%collection_16.refresh
+					disabled:
+						OrPredicate {
+							StringPredicate(selectedComputedColumnName) { when IsEmpty then True }
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+						}
+				}
+				Button {
+					actions:
+						Set pcode to taskremove.code,
+						Set selectedComputedColumnName to taskremove.name,
+						TaskComplete taskremove wait-end  timeout-seconds 240,
+						ReloadData (datasourcecomputedcolumns),
+						Flash $bw_entitydatamanagementNLS.removecomputedcolumnflash
+					text:$bw_entitydatamanagementNLS.removecomputedcolumn
+					image:%status_16.remove
+					disabled:
+						OrPredicate {
+							StringPredicate(selectedComputedColumnName) { when IsEmpty then True }
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+						}
+				}
+			}
+			Table {
+				data:datasourcecomputedcolumns
+				layout: Layout { grab:horizontal True vertical True }
+				Column {
+					header:$bw_entitydatamanagementNLS.corder
+					column:bw_datasourcecolumn_order
+					selection:selectedComputedColumnOrder
+					width:60px
+					align:Right
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.cname
+					column:bw_datasourcecolumn_name
+					tooltip:Current bw_datasourcecolumn_name
+					image:%collection_16.gear
+					selection:selectedComputedColumnName
+					width:160px
+					actions-disabled:
+						Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+					actions:
+						ExecuteNamedAction entitydatamanagement_updatecomputed
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.ccomputedexpression
+					column:bw_datasourcecolumn_computedexpression
+					tooltip:Current bw_datasourcecolumn_computedexpression
+					selection:selectedComputedColumnExpression
+					width:100%
+				}
+			}
+		}
+		TabItem {
+			text:$bw_entitydatamanagementNLS.tab3
+			Header {
+				value:$bw_entitydatamanagementNLS.tab3subtitle
+			}
+			Separator {
+				width:1
+			}
+			ButtonGroup {
+				nb-inline:3
+				Button {
+					actions:
+						ExecuteNamedAction entitydatamanagement_selectcolumn
+					text:$bw_entitydatamanagementNLS.setmapping
+					image:%status_16.update
+					tooltip:$bw_entitydatamanagementNLS.setmappingtooltip
+					disabled:
+						OrPredicate {
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+							StringPredicate(brainwaveattributetomap) { when IsEmpty then True }
+						}
+				}
+				Button {
+					actions:
+						ExecuteNamedAction saveAll,
+						Dialog bwdsm_testDsDialog(pcode to code)
+					text:$bw_entitydatamanagementNLS.test
+					tooltip:$bw_entitydatamanagementNLS.testtooltip
+					image:%collection_16.bulb
+					disabled:
+						OrPredicate {
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+						}
+				}
+				
+				Button {
+					actions:
+						ExecuteNamedAction resetSelectColumn
+					text:$bw_entitydatamanagementNLS.resetselectedmapping
+					image:%status_16.remove
+					tooltip: $bw_entitydatamanagementNLS.resetselectedmappingtooltip
+					disabled:
+						OrPredicate {
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+							StringPredicate(brainwaveattributetomap) { when IsEmpty then True }
+						}
+				}
+				
+				Button {
+					actions:
+						Confirm $bw_entitydatamanagementNLS.resetmappingconfirm,
+						ExecuteNamedAction resetMapping
+					text:$bw_entitydatamanagementNLS.resetmapping
+					image:%status_16.remove
+					tooltip:$bw_entitydatamanagementNLS.resetmappingtooltip
+					disabled:
+						OrPredicate {
+							Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+						}
+				}
+			}
+			Table {
+				data:modeltable
+				layout:Layout { grab:horizontal True vertical True }
+				configurable:True
+				show-filter:True
+				persist-configuration:True
+				persist-configuration-key:pcode
+				
+				Column {
+					column:column
+					selection:brainwaveattributetomap
+					header:$bw_entitydatamanagementNLS.mappingcolumn
+					image:TemplateImageSelection(Current type) using bw_entitymanagementColumnImageTemplate
+					styling:BooleanStyling(Current ismandatory) { when True then bold when False then default}
+					filterable:True
+					width:180px
+					tooltip:$bw_entitydatamanagementNLS.mappingcolumntooltip
+					actions:
+						ExecuteNamedAction entitydatamanagement_selectcolumn
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.mappingtype
+					selection:brainwaveattributetypetomap
+					column:type
+					width:100px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.mappingmandatory
+					column:ismandatory
+					text:Transform Current ismandatory using booleanDisplayMapping
+					width:100px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.mappingdescription
+					column:description
+					width:300px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.mappingexample
+					column:example
+					width:180px
+				}
+				Column {
+					header:$bw_entitydatamanagementNLS.mappingdest
+					column:mappedcolumn
+					filterable:True
+					width:180px
+					styling:BooleanStyling(Eval "current.ismandatory && (current.mappedcolumn==null || current.mappedcolumn=='')") { when True then errorStyle when False then default }
+				}
+			}
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:
+				Confirm $bw_entitydatamanagementNLS.removeconfigconfirm,
+				Set pcode to taskremoveconfig.code,
+				TaskComplete taskremoveconfig wait-end  timeout-seconds 240,
+				ReloadData(datasourceconfigDataset),
+				ReloadData(datasourceconfig),
+				ReloadData(datasourcecolumns),
+				Flash $bw_entitydatamanagementNLS.removeconfigflash
+			text:$bw_entitydatamanagementNLS.removeconfig
+			tooltip:$bw_entitydatamanagementNLS.removeconfigtooltip
+			disabled:
+				Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+		}
+		Button {
+			actions:
+				ExecuteNamedAction saveAll,
+				Flash $bw_entitydatamanagementNLS.saveflash,
+				GoTo BackInHistoryTruncate
+			text:$bw_entitydatamanagementNLS.save
+			disabled:
+				OrPredicate {
+					StringPredicate(separator) { when IsEmpty then True }
+					Not FeaturePredicate bw_datasourcemanagement_canupdateconfig
+				}
+		}
+	}
+
+
+}
+
+dsm_initColumns = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: initColumns
+  columns = Input { multivalued: True mandatory: True}
+  columnsOrder = Output { multivalued: True type: Integer}
+  mappedColumns = Output { multivalued: True }
+}
+
+
+
+bw_entitydatamanagement_addNLS = NLS {
+	title [en 'Column edition' fr 'Edition de la colonne']
+	titlecomputed [en 'Computed column edition' fr 'Edition de la colonne calculée']
+	name [en "Name" fr "Nom"]
+	nametooltip [en "Column name" fr "Nom de la colonne"]
+	type [en "Type" fr "Type"]
+	cstring [en "String" fr "Chaine de caractères"]
+	cdate [en "Date" fr "Date"]
+	ccustomdate [en "Custom Date" fr "Date Particulière"]
+	cboolean [en "Boolean" fr "Booléen"]
+	cnumber [en "Number" fr "Nombre"]
+	cemail [en "Email" fr "Email"]
+	typetooltip [en "Column type" fr "Type de colonne"]
+	lformat [en "Format" fr "Format"]
+	lformattooltip [en "String column format as a regex (optional)\nCustom date format as a date expression(optional)" fr "Format de la chaine de caractères sous la forme d'une regex (optionel)\nFormat de la date particulière sous la forme d'une date (optionel)"]
+	lformatps [en "Format description" fr "Description du format"]
+	lformatpstooltip [en "Format description, displayed when an error is found" fr "Description du format, affiché lorsqu'une erreur est trouvée"]
+	lmustbeunique [en "Content must be unique" fr "Le contenu doit être unique"]
+	lmustbeuniquetooltip [en "Content must be unique" fr "Le contenu doit être unique"]
+	lcontent [en "Content is mandatory" fr "Contenu est obligatoire"]
+	lcontenttooltip [en "Column content is mandatory or not"fr "Le contenu de la colonne est obligatoire / non obligatoire\nLa colonne ne doit pas être vide"]
+	lorder [en "Order" fr "Ordre"]
+	lordertooltip [en "Column order" fr "Numéro d'ordre de la colonne"]
+	lfillfactor [en "Minimum fill factor" fr "Taux de remplissage minimum"]
+	lfillfactortooltip [en "Minimum fill factor in percent if the content is not mandatory" fr "Pourcentage de remplissage minimum si le contenu n'est pas obligatoire"]
+	computedexpression [en "Computed expression" fr "Expression calculée"]
+	computedexpressiontooltip [	en "Computed expression, including references to the file columns in the form of {record.COLUMNNAME}\nwhere { } embbed a javascript macro and record.COLUMNNAME is a javascript String" 
+								fr "Expression calculée, incluant des références aux colonnes du fichier sous la forme de {record.COLUMNNAME}\nou { } inclus une macro javascript et record.COLUMNNAME est une String javascript"
+							  ]
+	noSyntaxErrorFound [en "No syntax error found" fr "Pas d'erreur de syntaxe trouvée"]
+}
+
+bw_entitymanagement_variabletype_16 = ImageMap {
+	string	[ "bw_dsm/noun_paragraph_32038.svg" width:16px ]
+	date	[ "bw_dsm/noun_date_2596272.svg" width:16px ]
+	boolean	[ "bw_dsm/noun_switch_2915755.svg" width:16px ]
+	number	[ "bw_dsm/noun_Number_3548116.svg" width:16px ]
+	email	[ "bw_dsm/noun_Email_3953821.svg" width:16px ]
+}
+
+bw_entitymanagementColumnImageTemplate = StringImageTemplate {
+	when 'String' then %bw_entitymanagement_variabletype_16.string
+	when 'Date' then %bw_entitymanagement_variabletype_16.date
+	when 'Customdate' then %bw_entitymanagement_variabletype_16.date
+	when 'Boolean' then %bw_entitymanagement_variabletype_16.boolean
+	when 'Number' then %bw_entitymanagement_variabletype_16.number
+	when 'Email' then %bw_entitymanagement_variabletype_16.email
+	when 'Mail' then %bw_entitymanagement_variabletype_16.email
+}
+bw_entitymanagementColumnTypeMapping = StringMapping {
+	when 'String' then $bw_entitydatamanagement_addNLS.cstring
+	when 'Date' then $bw_entitydatamanagement_addNLS.cdate
+	when 'Customdate' then $bw_entitydatamanagement_addNLS.ccustomdate
+	when 'Boolean' then $bw_entitydatamanagement_addNLS.cboolean
+	when 'Number' then $bw_entitydatamanagement_addNLS.cnumber
+	when 'Email' then $bw_entitydatamanagement_addNLS.cemail
+}
+bw_entitymanagementYesNoMappingNLS = NLS {
+	yes [en "Yes" fr "Oui"]
+	no [en "No" fr "Non"]
+}
+bw_entitymanagementYesNoMapping = StringMapping {
+	when 'No' then $bw_entitymanagementYesNoMappingNLS.no
+	when 'false' then $bw_entitymanagementYesNoMappingNLS.no
+	when 'Yes' then $bw_entitymanagementYesNoMappingNLS.yes
+	when 'true' then $bw_entitymanagementYesNoMappingNLS.yes
+}
+
+bw_entitydatamanagement_addEmptybyDashMapping = StringMapping {
+	when IsEmpty then '-'
+	otherwise current
+}
+
+
+
+
+bw_entitydatamanagement_add = Dialog {
+	title: $bw_entitydatamanagement_addNLS.title
+	enter-event:
+		StringCase ( cmustbeunique ) {
+			when "Yes" then [
+				Set True to innermustbeunique
+			] when "No" then [
+				Set False to innermustbeunique
+			]
+		},
+		TransferData tmpallcolumns(bw_datasourcecolumn_name) to (tmpallcolumns)
+	width:400
+	height:350
+	buttons: [
+		OkButton {
+			disabled: 
+				OrPredicate {
+					StringPredicate(cname) { when IsEmpty then True }
+					AndPredicate { // le nom de la colonne doit etre unique dans le cas de l'ajout d'une nouvelle colonne
+						Not BooleanPredicate(updatemode)
+						IntPredicate(Count namealreadyexists) { when >0 then True }
+					}
+				}
+			actions:
+				Set code to task.code,
+				Set cname to task.name,
+				Set ctype to task.type,
+				Set cformat to task.cformat,
+				Set cformatps to task.cformatprettystring,
+				Set cmandatory to task.cmandatory,
+				Set cfillfactor to task.cfillfactor,
+				Set cmustbeunique to task.cmustbeunique,
+				Set corder to task.corder,
+				Set 0 to task.iscomputed,
+				TaskComplete task wait-end  timeout-seconds 240
+		}
+		CancelButton
+	]
+	
+	code = Variable 
+	
+	updatemode = Variable { type:Boolean initial:False }
+	
+	cname= Variable
+	ctype= Variable
+	cformat= Variable
+	cformatps= Variable
+	cmandatory= Variable { initial:False}
+	cfillfactor= Variable { initial:0 }
+	corder= Variable { initial:1 }
+	cmustbeunique = Variable { initial:'No' }
+	innermustbeunique = Variable
+
+	tmpallcolumns = Variable { multivalued:True }
+	tmpallcolumns = Dataset {
+		view: bw_getdatasourceallcolumns with
+			code to code
+	}
+	namealreadyexists = Dataset {
+		columns: tmpallcolumns
+		includes:
+			SameValuePredicate ( cname, Current tmpallcolumns )		
+	}
+
+	task = TaskRecord(create "bw_adddatasourcecolumn")
+
+	Edit {
+		variable:cname
+		label:$bw_entitydatamanagement_addNLS.name
+		tooltip:$bw_entitydatamanagement_addNLS.nametooltip
+		disabled:
+			BooleanPredicate(updatemode)
+	}
+	Combo {
+		variable:ctype
+		label:$bw_entitydatamanagement_addNLS.type
+		options:Static {
+			Option { value:'String' text:$bw_entitydatamanagement_addNLS.cstring }
+			Option { value:'Date' text:$bw_entitydatamanagement_addNLS.cdate }
+			Option { value:'Customdate' text:$bw_entitydatamanagement_addNLS.ccustomdate }
+			Option { value:'Boolean' text:$bw_entitydatamanagement_addNLS.cboolean }
+			Option { value:'Number' text:$bw_entitydatamanagement_addNLS.cnumber }
+			Option { value:'EMail' text:$bw_entitydatamanagement_addNLS.cemail }
+		}
+		tooltip:$bw_entitydatamanagement_addNLS.typetooltip
+	}
+	Edit {
+		variable:cformat
+		label:$bw_entitydatamanagement_addNLS.lformat
+		tooltip:$bw_entitydatamanagement_addNLS.lformattooltip
+		disabled:
+			StringPredicate(ctype) {
+				when 'String' then False
+				when 'Customdate' then False
+				otherwise True
+			}
+	}
+	Edit {
+		variable:cformatps
+		label:$bw_entitydatamanagement_addNLS.lformatps
+		tooltip:$bw_entitydatamanagement_addNLS.lformatpstooltip
+		disabled:
+			OrPredicate {
+				StringPredicate ( cformat ) {
+					when IsEmpty then True
+				}
+				StringPredicate ( ctype ) {
+					when 'String' then False
+					otherwise True
+				}
+			}
+	}
+	Checkbox {
+		variable:innermustbeunique
+		label:$bw_entitydatamanagement_addNLS.lmustbeunique
+		tooltip:$bw_entitydatamanagement_addNLS.lmustbeuniquetooltip
+		modify-event:
+			BooleanCase ( innermustbeunique ) {
+				when True then [ Set "Yes" to cmustbeunique ]
+				when False then [ Set "No" to cmustbeunique ]
+			}
+	}
+	Checkbox {
+		variable:cmandatory
+		label:$bw_entitydatamanagement_addNLS.lcontent
+		tooltip:$bw_entitydatamanagement_addNLS.lcontenttooltip
+		modify-event:
+			BooleanCase ( cmandatory ) {
+				when True then [ Set 0 to cfillfactor ]
+				when False then []
+			}
+	}
+	Spinner {
+		variable:cfillfactor
+		label:$bw_entitydatamanagement_addNLS.lfillfactor
+		tooltip:$bw_entitydatamanagement_addNLS.lfillfactortooltip
+		minimum:0
+		maximum:100
+		disabled:
+			BooleanPredicate(cmandatory)
+	}
+	Spinner {
+		variable:corder
+		label:$bw_entitydatamanagement_addNLS.lorder
+		tooltip:$bw_entitydatamanagement_addNLS.lordertooltip
+		minimum:1
+		maximum:1000
+	}
+}
+
+bw_entitydatamanagement_selectcolumnNLS = NLS {
+	title [en "Pick a column" fr "Sélectionnez une colonne"]
+	subtitle [en "Pick a column in the list" fr "Choisissez une colonne dans la liste"]
+	pickexpression [en 'Pick a column in the list to include it in your expression' fr "Choisissez une colonne dans la liste pour l''inclure dans votre expression"]
+	addjavascript [en 'Add a javascript property or function if needed' fr 'Ajoutez une propriété ou une fonction javascript si besoin']
+}
+bw_entitydatamanagement_selectcolumn = Dialog {
+	title:$bw_entitydatamanagement_selectcolumnNLS.title
+	enter-event:
+		MultivaluedAdd brainwaveattributetypetomap to dynfilter,
+		StringCase(brainwaveattributetypetomap) { 
+			when "String" then [  // we also accept Email when the column type is a String
+				MultivaluedAdd "Email" to dynfilter 
+			] 
+			when "Date" then [ // two kind of date format are allowed here
+				MultivaluedAdd "Customdate" to dynfilter
+			] 
+		}
+	buttons:
+		[
+			OkButton {
+				actions:
+					Set column to selectedcolumn,
+					StringCase ( selectedcolumn ) {
+						when IsNull then [
+							Set '' to selectedcolumn
+						]
+					}
+			}
+			CancelButton 
+		]
+	
+	brainwaveattributetypetomap = Variable
+	code = Variable 
+	column = Variable
+	selectedcolumn = Variable
+	dynfilter = Variable { multivalued:True }
+	
+	standardcolumns = Dataset {
+		view: bw_getdatasourceallcolumns with
+			code to code,
+			dynfilter to type,
+			0 to iscomputed
+	}
+	computedcolumns = Dataset {
+		view: bw_getdatasourceallcolumns with
+			code to code,
+			1 to iscomputed
+	}
+	columns = Dataset {
+		union:Union {
+			datasets:standardcolumns, computedcolumns
+			discriminator-column:discr
+		}
+	}
+	
+	Header {
+		value:$bw_entitydatamanagement_selectcolumnNLS.subtitle
+	}
+	Combo {
+		label:Label {break:True}
+		allow-none:True
+		variable:column
+		options:Dynamic {
+			data:columns
+			value:Current bw_datasourcecolumn_name
+			text:Current bw_datasourcecolumn_name
+		}
+	}
+}
+
+bw_entitydatamanagement_pickcolumn = Dialog {
+	title:$bw_entitydatamanagement_selectcolumnNLS.title
+	buttons:
+		[
+			OkButton {
+				actions:
+					Set Concat('\\{record.',column) to expression,
+					StringCase ( function ) {
+						when Not IsEmpty then [
+							Set Concat (expression,'.',function) to expression
+						]
+					},
+					Set Concat(expression,'}') to expression
+			}
+			CancelButton 
+		]
+	
+	code = Variable 
+	column = Variable
+	function = Variable
+	expression = Variable 
+	
+	columns = Dataset {
+		view: bw_getdatasourceallcolumns with
+			code to code
+	}
+	javascriptfct = Dataset {
+		values:[
+			(name->"length", val->"length"),
+			(name->"charAt", val->"charAt(pos)"),
+			(name->"charCodeAt", val->"charCodeAt(pos)"),
+			(name->"concat", val->"concat(stringPart)"),
+			(name->"equals", val->"equals(obj)"),
+			(name->"equalsIgnoreCase", val->"equalsIgnoreCase(obj)"),
+			(name->"firstToken", val->"firstToken(separator)"),
+			(name->"format", val->"format(formatStr, separator, repeatLastValue)"),
+			(name->"fromCharCode", val->"fromCharCode(code)"),
+			(name->"indexOf", val->"indexOf(searchString)"),
+			(name->"italics", val->"italics()"),
+			(name->"lastIndexOf", val->"lastIndexOf(searchString)"),
+			(name->"lastToken", val->"lastToken(separator)"),
+			(name->"left", val->"left(position)"),
+			(name->"like", val->"like(filter)"),
+			(name->"match", val->"match(searchValue)"),
+			(name->"normalize", val->"normalize()"),
+			(name->"replace", val->"replace(searchValue, replaceValue, flag)"),
+			(name->"right", val->"right(position)"),
+			(name->"search", val->"search(searchValue)"),
+			(name->"slice", val->"slice(start, end)"),
+			(name->"split", val->"split(separator, limit)"),
+			(name->"splitDn", val->"splitDn()"),
+			(name->"sub", val->"sub()"),
+			(name->"substr", val->"substr(startIndex, length)"),
+			(name->"substring", val->"substring(start, end)"),
+			(name->"token", val->"token(separator)"),
+			(name->"toLowerCase", val->"toLowerCase()"),
+			(name->"toString", val->"toString()"),
+			(name->"toUpperCase", val->"toUpperCase()"),
+			(name->"trim", val->"trim()"),
+			(name->"valueOf", val->"valueOf()"),
+			(name->"contains", val->"contains(searchStr, ignoreCase)"),
+			(name->"startsWith", val->"startsWith(prefix, ignoreCase)"),
+			(name->"endsWith", val->"endsWith(suffix, ignoreCase)"),
+			(name->"removeEnd", val->"removeEnd(remove, ignoreCase)"),
+			(name->"removeStart", val->"removeStart(remove, ignoreCase)"),
+			(name->"repeat", val->"repeat(repeat)"),
+			(name->"getLevenshteinDistance", val->"getLevenshteinDistance(t)"),
+			(name->"capitalize", val->"capitalize()"),
+			(name->"isAllLowerCase", val->"isAllLowerCase()"),
+			(name->"isAllUpperCase", val->"isAllUpperCase()"),
+			(name->"isAlpha", val->"isAlpha()"),
+			(name->"isAlphanumeric", val->"isAlphanumeric()"),
+			(name->"isAlphanumericSpace", val->"isAlphanumericSpace()"),
+			(name->"isAlphaSpace", val->"isAlphaSpace()"),
+			(name->"isBlank", val->"isBlank()"),
+			(name->"isEmpty", val->"isEmpty()"),
+			(name->"isNumeric", val->"isNumeric()"),
+			(name->"isNumericSpace", val->"isNumericSpace()"),
+			(name->"isWhitespace", val->"isWhitespace()"),
+			(name->"getProperty", val->"getProperty(searchKey)")
+		]
+	}
+	
+	Header {
+		value:$bw_entitydatamanagement_selectcolumnNLS.pickexpression
+	}
+	Combo {
+		label:Label {break:True}
+		allow-none:False
+		variable:column
+		options:Dynamic {
+			data:columns
+			value:Current bw_datasourcecolumn_name
+			text:Current bw_datasourcecolumn_name
+		}
+	}
+	Header {
+		value:$bw_entitydatamanagement_selectcolumnNLS.addjavascript
+	}
+	Combo {
+		label:Label {break:True}
+		allow-none:True
+		variable:function
+		options:Dynamic {
+			data:javascriptfct
+			value:Current val
+			text:Current name
+		}
+	}
+}
+
+bw_entitydatamanagement_addcomputed = Dialog {
+	title:$bw_entitydatamanagement_addNLS.titlecomputed
+	width:800
+	height:250
+	enter-event:
+		TransferData tmpallcolumns(bw_datasourcecolumn_name) to (tmpallcolumns)
+	
+	buttons: [
+		OkButton {
+			disabled:
+				OrPredicate { 
+					StringPredicate ( cname ) {
+						when IsEmpty then True
+					}
+					AndPredicate { // le nom de la colonne doit etre unique dans le cas de l'ajout d'une nouvelle colonne
+						Not BooleanPredicate(updatemode)
+						IntPredicate(Count namealreadyexists) {
+							when >0 then True
+						}
+					}
+					Not BooleanPredicate(cname_valid)
+				}
+			actions:
+				Set code to task.code,
+				Set cname to task.name,
+				Set 'String' to task.type,
+				Set '' to task.cformat,
+				Set '' to task.cformatprettystring,
+				Set False to task.cmandatory,
+				Set 0 to task.cfillfactor,
+				Set False to task.cmustbeunique,
+				Set corder to task.corder,
+				Set 1 to task.iscomputed,
+				Set ccomputedexpression to task.computedexpression,
+				TaskComplete task wait-end  timeout-seconds 240
+		}
+		CancelButton
+	]
+	
+	code = Variable 
+	
+	updatemode = Variable { type:Boolean initial:False }
+	
+	cname= Variable{type:String}
+	cname_valid = Variable{type:Boolean}
+	corder= Variable { initial:1 }
+	ccomputedexpression = Variable { initial:'' }
+	
+	tempexpression = Variable
+	
+	checkexpression = Variable
+
+	tmpallcolumns = Variable { multivalued:True}
+	tmpallcolumns = Dataset {
+		view: bw_getdatasourceallcolumns with
+			code to code
+	}
+	namealreadyexists = Dataset {
+		columns: tmpallcolumns
+		includes:
+			SameValuePredicate ( cname, Current tmpallcolumns )		
+	}
+	check = Record {
+		view: bw_dsmcheckexpression with
+			code to code,
+			checkexpression to expression
+	}
+	task = TaskRecord(create "bw_adddatasourcecolumn")
+
+	Edit {
+		variable:cname
+		label:$bw_entitydatamanagement_addNLS.name
+		tooltip:$bw_entitydatamanagement_addNLS.nametooltip
+		disabled:
+			BooleanPredicate(updatemode)
+		layout:Layout {hint:width 300}
+		match: "^[a-zA-Z0-9_]*$"
+		validity: cname_valid
+	}
+	Edit {
+		variable:ccomputedexpression
+		label:$bw_entitydatamanagement_addNLS.computedexpression
+		tooltip:$bw_entitydatamanagement_addNLS.computedexpressiontooltip
+		commands:Commands {
+			position:After 
+			orientation:Horizontal
+			presentation:Icon
+			Command {
+				actions:
+					Dialog bw_entitydatamanagement_pickcolumn (
+						code to code,
+						tempexpression from expression
+					),
+					Set Concat(ccomputedexpression, tempexpression) to ccomputedexpression
+				icon:%status_16.add		
+			}
+			Command {
+				actions:
+					Set ccomputedexpression to checkexpression,
+					StringCase ( check.error ) {
+						when Not IsEmpty then [
+							Message Error check.error
+						] otherwise [
+							Message $bw_entitydatamanagement_addNLS.noSyntaxErrorFound
+						]
+					}
+				icon:%status_16.check		
+			}
+		
+		}
+	}
+	Spinner {
+		variable:corder
+		label:$bw_entitydatamanagement_addNLS.lorder
+		tooltip:$bw_entitydatamanagement_addNLS.lordertooltip
+		minimum:1
+		maximum:1000
+		layout:Layout {hint:width 200}
+	}
+}
+
+bw_entitydatamanagement_autodiscoverNLS = NLS {
+	title [en "Automatically discover CSV file columns" fr "Découvrir automatiquement les colonnes du fichier CSV"]
+	subtitle [en "Select a CSV file to discover its columns\nand automatically configure the datasource definition" fr "Sélectionnez un fichier CSV pour découvrir ses colonnes\net découvrir automatiquement la configuration de la source de données"]
+}
+bw_entitydatamanagement_autodiscover = Dialog {
+	title:$bw_entitydatamanagement_autodiscoverNLS.title
+	buttons:[
+		OkButton {
+			disabled:
+				Not BooleanPredicate(uploaded)
+		}
+		CancelButton
+	]
+	
+	file = Variable
+	uploadStatus = Variable
+	uploaded = Variable
+	
+	Text {
+		value:$bw_entitydatamanagement_autodiscoverNLS.subtitle
+		lines:2
+		compact:True
+	}
+	FileUpload {
+		uploaded-filename:file
+		hide-filename:True
+		upload-status:uploadStatus
+		upload-complete-event:
+			Set True to uploaded,
+			CloseDialog Ok
+	}
+}
+
+bw_entitydatamanagementNLS = NLS {
+	title [ en 'CSV datasource definition' fr 'Définition de la source CSV' ]
+	dynamictitle [ en '{0} CSV datasource definition' fr 'Définition de la source CSV pour {0}' ]
+	description [
+		en "Use this analytics to describe the format of the CSV file used to upload data to the Brainwave data model"
+		fr "Utilisez cette Analytics pour décrire le format du fichier CSV utilisé pour alimenter le modèle de données Brainwave"
+	]
+	
+	subtitle [en "Use this page to describe your datasource CSV file format and to configure the mapping to the Brainwave datamodel" fr "Utilisez cette page pour décrire le format de fichier CSV de votre source de données et associer ses colonnes au modèle de données Brainwave"]
+	uploaddisabled [en "File uploading is disabled for now, do you want to enable file upload for this datasource?" fr "Le téléchargement de fichiers est désactivé pour l'instant, souhaitez vous l'activer pour cette source de données?"]
+	flashuploadenabled [en "File upload enabled" fr "Téléchargement de fichiers activé"]
+	
+	uploadconfiguration [en "Upload configuration" fr "Configuration du téléchargement"]
+	warningolder [en "Warning if last uploaded file is older than" fr "Alerte si dernier fichier plus vieux que"]
+	warningoldertooltip [en "Send a warning by email if the most recent uploaded file is older than X days" fr "Envoyer une alerte par mail si le fichier téléchargé le plus récent est plus vieux que X jours"]
+	errorolder [en "Error if last uploaded file is older than" fr "Erreur si dernier fichier plus vieux que"]
+	erroroldertooltip [en "Send an error by email if the most recent uploaded file is older than X days" fr "Envoyer une erreur par mail si le fichier téléchargé le plus récent est plus vieux que X jours"]
+	checkvariation [en "Check file size variation" fr "Vérifier la variation de taille du fichier"]
+	checkvariationtooltip [en "Check the candidate file size variation with the latest uploaded one" fr "Vérifier la variation de taille du fichier téléchargé avec le fichier précédent"]
+	checkvariationpercent [en "Allowed variation in percent" fr "Variation autorisée (pourcentage)"]
+	
+	fileformat [en "File format" fr "Format du fichier"]
+	separator [en "Column separator character" fr "Caractère de séparation de colonnes"]
+	separatortooltip [en ', ; | \\t ...' fr ', ; | \\t ...']
+	fileencoding [en "File encoding" fr "Format d'encodage"]
+	booleanformat [en "Boolean format" fr "Format booléen"]
+	booleanformattooltip [en 'All True possibilities as a comma separated string followed by ;\nfollowed by all False possibilities as a comma separated string' fr 'Toutes les possibilités pour Vrai séparées par des , suivi de ;\nsuivi de toutes les possibilités pour Faux séparées par des ,']
+	dateformat [en "Date format" fr "Format date"]
+	dateformattooltip [
+		en "G - Era designator - Text - AD\ny - Year - Year - 1996; 96\nY - Week year - Year - 2009; 09\nM - Month in year - Month - July; Jul; 07\nw - Week in year - Number - 27\nW - Week in month - Number - 2\nD - Day in year - Number - 189\nd - Day in month - Number - 10\nF - Day of week in month - Number - 2\nE - Day name in week - Text - Tuesday; Tue\nu - Day number of week (1 = Monday, ..., 7 = Sunday) - Number - 1\na - Am/pm marker - Text - PM\nH - Hour in day (0-23) - Number - 0\nk - Hour in day (1-24) - Number - 24\nK - Hour in am/pm (0-11) - Number - 0\nh - Hour in am/pm (1-12) - Number - 12\nm - Minute in hour - Number - 30\ns - Second in minute - Number - 55\nS - Millisecond - Number - 978\nz - Time zone - General time zone - Pacific Standard Time; PST; GMT-08:00\nZ - Time zone - RFC 822 time zone - -0800\nX - Time zone - ISO 8601 time zone - -08; -0800; -08:00"
+		fr "G - Era designator - Text - AD\ny - Year - Year - 1996; 96\nY - Week year - Year - 2009; 09\nM - Month in year - Month - July; Jul; 07\nw - Week in year - Number - 27\nW - Week in month - Number - 2\nD - Day in year - Number - 189\nd - Day in month - Number - 10\nF - Day of week in month - Number - 2\nE - Day name in week - Text - Tuesday; Tue\nu - Day number of week (1 = Monday, ..., 7 = Sunday) - Number - 1\na - Am/pm marker - Text - PM\nH - Hour in day (0-23) - Number - 0\nk - Hour in day (1-24) - Number - 24\nK - Hour in am/pm (0-11) - Number - 0\nh - Hour in am/pm (1-12) - Number - 12\nm - Minute in hour - Number - 30\ns - Second in minute - Number - 55\nS - Millisecond - Number - 978\nz - Time zone - General time zone - Pacific Standard Time; PST; GMT-08:00\nZ - Time zone - RFC 822 time zone - -0800\nX - Time zone - ISO 8601 time zone - -08; -0800; -08:00"
+	]
+	fielddelimiter [en 'Text field delimiter' fr 'Délimiteur de champ texte']
+	fielddelimitertooltip [en 'String text field delimiter such as "' fr 'Délimiteur de champ texte comme par exemple "']
+	minimumnblines [en "Minimum nb of records required"	 fr "Nombre minimum d'enregistrements"]
+	minimumnblinestoolip [en "Minimum nb of records/lines required to consider this file valid"	 fr "Nombre minimum d'enregistrements/lignes requises pour considérer ce fichier valide"]
+
+	filecolumns [en "File columns" fr "Colonnes du fichier"]
+	addnewcolumn [en 'Add a new column' fr "Ajouter une nouvelle colonne"]
+	addnewcolumnflash [en "Column added" fr "Colonne ajoutée"]
+	updatecolumn [en "Update the selected column" fr "Mise à jour de la colonne"]
+	updatecolumnflash [en "Column updated" fr "Colonne mise à jour"]
+	removecolumn [en "Remove the selected column" fr "Suppression de la colonne"]
+	removecolumnflash [en "Column removed" fr "Colonne supprimée"]
+	corder [en "order" fr "ordre"]
+	cname [en "name" fr "nom"]
+	ctype [en "type" fr "type"]
+	cformat [en "format" fr "format"]
+	cformatdescription [en "format description" fr "description du format"]
+	cmustbeunique [en "content must\nbe unique" fr "le contenu\ndoit être unique"]
+	cmandatory [en "content is\nmandatory" fr "le contenu\nest obligatoire"]
+	cminimumfillfactor [en "minimum\nfill factor" fr "facteur de\nremplissage"]
+	cminimumfillfactortooltip 
+	[
+		en "used when some records can be empty\nfor instance at least 90% of the records must have a value for this column"
+		fr "utilisé quand les enregistrement peuvent être vides\npar exemple au moins 90% des enregistrements doivent avoir une valeur pour cette colonne"
+	]
+	ccomputedexpression [en "Macro expression" fr "Expression calculée"]
+
+	addnewcomputedcolumn [en 'Add a new computed column' fr "Ajouter une nouvelle colonne calculée"]
+	addnewcomputedcolumnflash [en "Computed column added" fr "Colonne calculée ajoutée"]
+	updatecomputedcolumn [en "Update the selected computed column" fr "Mise à jour de la colonne calculée"]
+	updatecomputedcolumnflash [en "Computed column updated" fr "Colonne calculée mise à jour"]
+	removecomputedcolumn [en "Remove the selected computed column" fr "Suppression de la colonne calculée"]
+	removecomputedcolumnflash [en "Computed column removed" fr "Colonne calculée supprimée"]
+	
+	removeconfig [en "Remove configuration" fr "Supprimer la configuration"]
+	removeconfigconfirm [en "Are you sure?\nThis can't be undone" fr "Etes vous sur?\nIl ne sera pas possible de revenir en arrière"]
+	removeconfigtooltip [
+			en "Remove upload configuration, therefore disabling the capability to upload files for this datasource"
+			fr "Supprimer la configuration et désactiver la possibilité de télécharger des fichiers pour cette source de données"
+		]
+	removeconfigflash [en "Configuration deleted" fr "Configuration supprimée"]
+	
+	save [en "Save" fr "Sauvegarder"]
+	saveflash [en "Configuration saved" fr "Configuration sauvegardée"]
+
+	tab1 [en "1. CSV File format definition" fr "1. Définition du format de fichier"]
+	tab2 [en "2. Add computed columns" fr "2. Ajout de colonnes calculées"]
+	tab3 [en "3. Columns mapping with Brainwave model" fr "3. Mapping des colonnes sur le modèle Brainwave"]
+
+	tab2subtitle [en "Computed columns dynamically added to the file columns" fr "Colonnes calculées ajoutées dynamiquement aux colonnes du fichier"]
+	tab3subtitle [en "Mapping between the Brainwave data model and the columns" fr "Correspondance entre le modèle de données Brainwave et les colonnes"]
+	
+	setmapping [en "Configure the mapping" fr "Configurer le mapping"]
+	setmappingtooltip [en "Configure the mapping for the selected column" fr "Configurer le mapping pour la colonne sélectionnée"]
+	setmappingflash [en "Mapped brainwave attribute {0}" fr "Attribut Brainwave {0} mappé"]
+	resetmappingconfirm [en "Are you sure that you want to reset ALL your mappings?\nThis can't be undone" fr "Etes vous sur de vouloir réinitialiser tous vos mappings?\nCette opération est définitive"]
+	resetmapping [en "Reset all mappings" fr "Réinitialiser tous les mappings"]
+	resetmappingtooltip [en "Reset all mappings" fr "Réinitialiser tous les mappings"]
+	
+	resetselectedmapping [en "Reset the selected mapping" fr "Réinitialiser le mapping sélectionné"]
+	resetselectedmappingtooltip [en "Reset the selected mapping" fr "Réinitialiser le mapping sélectionné"]
+	
+	
+	test [en "Test datasource" fr "Tester la source de données"]
+	testtooltip [en "Test datasource mapping\nby providing a sample source file" fr "Tester le mapping de la source de données\nen fournissant un fichier d''exemple"]
+
+	mappingcolumn [en "Brainwave Attribute" fr "Attribut Brainwave"]
+	mappingcolumntooltip [en "Clic to configure the mapping for this column" fr "Cliquez pour configurer le mapping sur cette colonne"]
+	mappingcolumnflash [en "Mapped brainwave attribute {0}" fr "Attribut Brainwave {0} mappé"]
+	mappingtype [en "Attribute\nType" fr "Type\nattribut"]
+	mappingmandatory [en "Mandatory\nAttribute" fr "Attribut\nobligatoire"]
+	mappingdescription [en "Attribute\nDescription" fr "Description\nattribut"]
+	mappingexample [en "Attribute Value\nExample" fr "Exemple de valeur\nd''attribut"]
+	mappingdest [en "Mapped Column" fr "Colonne mappée"]
+
+	autodiscoverconfirm [en "This will clear the current column configuration and mapping configuration\nAre you sure?" fr "Cela va réinitialiser la configuration courante des colonnes et du mapping\nEtes vous sur?"]
+	autodiscover [en "Auto discover columns" fr "Découvrir les colonnes automatiquement"]
+	autodiscovertooltip [	en "Automatically discover the columns from a CSV file\nand automatically map the columns if they have the same name as in the Brainwave model\nWarning: This will reset the current configuration"
+							fr "Découvrir automatiquement les colonnes d''un fichier CSV\net mapper automatiquement les colonnes si elles ont le même nom que dans le modèle de données Brainwave\nAttention: Cela va réinitialiser la configuration courante"
+						]
+}
+
+

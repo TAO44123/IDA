@@ -1,0 +1,955 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+
+fragmentOrganisationDetailsNLS = NLS {
+	number_members [en "Number of Persons" fr "Nombre de Personnes"]
+	number_members.response [ en "{0} direct / {1} total" fr "{0} direct / {1} total"]
+	
+	nbsuborgs [en "Subdepartments" fr "Sous Départements"]
+	nbdirectsuborgs [en "Direct Subdepartments" fr "Sous Départements directs"]
+	number_children.response [ en "{0} direct / {1} total" fr "{0} direct / {1} total"]
+
+	team.title [ en "Direct Members" fr "Membres Directs"]
+	team.response.others [en "{0,choice,-1#.|0#.|1# and {0} others.|1< and {0} others.}" fr "{0,choice,-1#.|0#.|1# et {0} autre.|1< et {0} autres.}"]
+
+	parentorgs [en "Parent organisations" fr "Organisations parentes"]
+	
+	accessrights [en "Access rights" fr "Droits d''accès"]
+	content [en "Content" fr "Contenu"]
+
+	nomanagers [en "No manager set" fr "Pas de responsable configuré"]
+
+	expertise [en "expertise" fr "responsabilité"]
+
+	classification [en "Classification" fr "Classification"]
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+
+	updatemetadata [en "Update group description" fr "Mise à jour de la description du groupe"]
+	managetags [en "Manage tags" fr "Gérer les labels"]
+}
+
+organisations_mawriskinfo_max_nbrisks = UserVariable { type: Integer initial: "notset" }
+organisations_maxriskinfo_max_riskrank = UserVariable { type: Integer initial: "notset" }
+organisations_mawriskinfo_max_risklevel = UserVariable { type: Integer initial: "notset" }
+fragmentOrganisationMaxRiskInfo = PageFragment {
+	enter-event: IntCase ( UserVariable organisations_mawriskinfo_max_risklevel ) {
+		when InvalidInteger then [
+			Set maxriskinfo.bwa_organisationanalytics_nbidentityrisks to UserVariable organisations_mawriskinfo_max_nbrisks,
+			Set maxriskinfo.bwa_organisationanalytics_riskrank to UserVariable organisations_maxriskinfo_max_riskrank,
+			Set maxriskinfo.bwa_organisationanalytics_aggmaxrisklevel to UserVariable organisations_mawriskinfo_max_risklevel
+		]
+	}
+	maxriskinfo = Record {
+		view: bwf_organisationmaxriskinfo
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation details in compact mode
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the organisation uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inshowrisks </b>optional, boolean value, true to show risks indicators (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inshowrisks = Variable { multivalued:False type:Boolean initial:False }
+	inonlydirect = Variable { multivalued:False type:Boolean initial:False }
+	
+	/* Datasets and records here */
+	detail = Record {
+		view: bwf_organisationDetail with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevdetail = Record {
+		view: bwf_organisationDetail with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:FromPage(-1)
+	}
+	
+	organisationDirectChildrenCount = Record {
+		view: br_organisationDetail_nbchildorganisations with
+			detail.recorduid to recorduid,
+			True to isDirectLink 
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	organisationChildrenCount = Record {
+		view: br_organisationDetail_nbchildorganisations with
+			detail.recorduid to recorduid,
+			False to isDirectLink 
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	managers = Dataset {
+		view: bwf_org_directbusinessmanagers with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	parentsOrgs = Dataset {
+		view: bwf_organisationparentorgs with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	
+	/* Page content */
+	// Compact mode
+	Text {
+		value:detail.code
+		label:$organisation.code
+		compact:True
+		hidden:SameValuePredicate(detail.code, detail.displayname)
+	}
+	Text {
+		value:detail.shortname
+		label:$organisation.shortname
+		compact:True
+		hidden:
+			OrPredicate {
+				StringPredicate(detail.shortname) { when IsEmpty then True otherwise False }
+				SameValuePredicate(detail.shortname, detail.displayname)
+				SameValuePredicate(detail.shortname, detail.code)
+			}
+	}
+	Text {
+		value:detail.displayname
+		label:$organisation.displayname
+		compact:True
+	}
+	Text {
+		value:detail.organisationtypedisplayname
+		label:$organisation.organisationtypedisplayname
+		compact:True
+	}
+
+	Header {
+		value:$fragmentOrganisationDetailsNLS.content
+	}
+	Separator {
+		width:1
+	}
+	Text {
+		value:detail.bwa_organisationanalytics_nbdirectmembers
+		label:$search.organisation.nbdirectmembers_compact
+		tooltip:Concat(Transform detail.bwa_organisationanalytics_nbdirectmembers using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbdirectmembers using mayBeNullMapping)
+		align:Right
+		compact:True
+		decorator:Decorator {
+			width:50
+			after:Image {
+				image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbdirectmembers, prevdetail.bwa_organisationanalytics_nbdirectmembers)) using bwf_trend
+				width:16
+			}
+		}
+	}
+	Text {
+		value:detail.bwa_organisationanalytics_nbtotalmembers
+		label:$search.organisation.nbmembers
+		tooltip:Concat(Transform detail.bwa_organisationanalytics_nbtotalmembers using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbtotalmembers using mayBeNullMapping)
+		align:Right
+		compact:True
+		decorator:Decorator {
+			width:50
+			after:Image {
+				image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbtotalmembers, prevdetail.bwa_organisationanalytics_nbtotalmembers)) using bwf_trend
+				width:16
+			}
+		}
+	}
+
+
+	Header {
+		value:$fragmentOrganisationDetailsNLS.accessrights
+	}
+	Separator {
+		width:1
+	}
+	Text {
+		value:Transform detail.bwa_organisationanalytics_nbapplication using bwf_defaultsTo0
+		label:$search.organisation.nbapplications
+		tooltip:Concat(Transform detail.bwa_organisationanalytics_nbapplication using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbapplication using mayBeNullMapping)
+		align:Right
+		compact:True
+		decorator:Decorator {
+			width:50
+			after:Image {
+				image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbapplication, prevdetail.bwa_organisationanalytics_nbapplication)) using bwf_trend
+				width:16
+			}
+		}
+	}
+
+	Text {
+		value:Transform detail.bwa_organisationanalytics_nbshare using bwf_defaultsTo0
+		label:$search.organisation.nbshares
+		feature: unstructureddata_license
+		tooltip:Concat(Transform detail.bwa_organisationanalytics_nbshare using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbshare using mayBeNullMapping)
+		align:Right
+		compact:True
+		decorator:Decorator {
+			width:50
+			after:Image {
+				image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbshare, prevdetail.bwa_organisationanalytics_nbshare)) using bwf_trend
+				width:16
+			}
+		}
+	}
+
+	Header {
+		value:$porganisation.managers
+	}
+	Separator {
+		width:1
+	}
+
+	ConditionalGroup {
+		IntCondition(Count managers) {
+			when =0 then [
+				Header {
+					value:$fragmentOrganisationDetailsNLS.nomanagers			
+				}
+			]
+			when =1 then [
+				Text {
+					iterate-on:managers
+					value:Concat(Current fullname, ' (', Current expertisedomaindisplayname, ')')
+					compact:True
+				}
+			]
+			otherwise [
+				Table {
+					data:managers
+					layout:Layout { grab:horizontal True vertical False hint:height 116 }
+					configurable:True
+					label:Label { break:True }
+					
+					Column {
+						column:uid
+						hidden:True
+					}
+					Column {
+						column: managerLinkRecorduid
+						hidden: True
+					}
+					Column {
+						column:expertisedomaincode
+						hidden:True
+					}
+					Column {
+						column:expertisedomaindisplayname
+						text:Transform Current expertisedomaincode using bwfManagerTypeMapping
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						header:$bwfManagement.type
+						sortable:True
+						width:140px
+					}
+					Column {
+						column:hrcode
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						header:$identity.hrcode
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:fullname
+						header:$identity.fullname
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						sortable:True
+						width:100%
+					}
+					Column {
+						column:internal
+						header:$pidentity.internal
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:active
+						header:$pidentity.active
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+			
+			
+					Column {
+						column:comment
+						header:$bwfManagement.comment
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:delegation
+						header:$bwfManagement.delegated
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:delegationreason
+						header:$bwfManagement.^reason
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:_priority
+						header:$bwfManagement.^priority
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:startdate
+						header:$bwfManagement.startdate
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+					Column {
+						column:enddate
+						header:$bwfManagement.enddate
+						styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+						initially-masked:True
+						sortable:True
+					}
+				}
+			]
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation details in 1366px wide
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the organisation uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inshowrisks </b>optional, boolean value, true to show risks indicators (false by default)</li>
+ * <li><b>incanupdatetags </b>optional, boolean value, true to enable tags update (false by default). Warning, this function is also restricted through a Feature</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update group description (false by default). Warning, this function is also restricted through a Feature</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationFullDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inshowrisks = Variable { multivalued:False type:Boolean initial:False }
+	inonlydirect = Variable { multivalued:False type:Boolean initial:False }
+	incanupdatetags = Variable { multivalued: False type: Boolean initial: False }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	
+	/* Datasets and records here */
+	detail = Record {
+		view: bwf_organisationDetail with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevdetail = Record {
+		view: bwf_organisationDetail with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:FromPage(-1)
+	}
+	
+	organisationDirectChildrenCount = Record {
+		view: br_organisationDetail_nbchildorganisations with
+			detail.recorduid to recorduid,
+			True to isDirectLink 
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	organisationChildrenCount = Record {
+		view: br_organisationDetail_nbchildorganisations with
+			detail.recorduid to recorduid,
+			False to isDirectLink 
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	managers = Dataset {
+		view: bwf_org_directbusinessmanagers with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	parentsOrgs = Dataset {
+		view: bwf_organisationparentorgs with inuid to uid unless-empty
+		limit:8
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	tags = Dataset {
+		view: bwf_organisationtags with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	tagsasString = Record {
+		view: bwa_organisationtagsasastring with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	/* Page content */
+	
+	IncludeFragment { fragment: fragmentOrganisationMaxRiskInfo inline: True }
+
+	// Standard
+	Flow {
+		disposition: Horizontal
+		layout: Layout { grab: horizontal True vertical False }
+		// Organization card
+		Group {
+			Text {
+				value: detail.displayname
+				styling: bigTitleStyle
+				compact: True
+				label: Label { break: False value: $organisation.displayname }
+			}
+			Text {
+				value: detail.code
+				compact: True
+				label: Label { break: False value: $organisation.code }
+				hidden: SameValuePredicate ( detail.code, detail.displayname )
+			}
+			Text {
+				value: detail.shortname
+				compact: True
+				label: Label { break: False value: $organisation.shortname }
+				hidden:
+					OrPredicate {
+						StringPredicate ( detail.shortname ) {
+							when IsEmpty then True
+						}
+						SameValuePredicate ( detail.shortname, detail.displayname )
+						SameValuePredicate ( detail.shortname, detail.code )
+					}
+			}
+			Text {
+				value: detail.organisationtypedisplayname
+				compact: True
+				label: Label { break: False value: $organisation.organisationtypedisplayname }
+			}
+			Text {
+				value: @srv_truncatestring (tagsasString.tag to string, 32 to maxlength)
+				tooltip: tagsasString.tag
+				label: Label { break: False value: $organisation.tags }
+				compact: True
+				commands:
+					Commands {
+						position: Before
+						orientation: Horizontal 
+						Command {
+							actions:
+								Dialog fragmentOrganisationTagsEditor(
+									inuid to uid,
+									incanupdatetags to canupdatetags
+								), 
+								ReloadData (detail),
+								ReloadData (tags),
+								ReloadData (tagsasString)
+							icon: %collection_16.tag
+							feature: organisationdetails_updatetags
+							disabled:
+								Not BooleanPredicate ( incanupdatetags )
+							tooltip: $fragmentOrganisationDetailsNLS.managetags
+						}
+					}
+			}
+			Text {
+				value: @srv_truncatestring (detail.description to string, 32 to maxlength)
+				tooltip: detail.description
+				compact: True
+				label: Label { break: False value: $organisation.description }
+				commands:
+					Commands {
+						position: Before
+						orientation: Horizontal 
+						Command {
+							actions:
+								Dialog bwfOrganisationDetailsMetadata_Dialog(
+									inuid to paramOrganisationUid,
+									detail.sensitivitylevel to sensitivitylevel,
+									detail.sensitivityreason to sensitivityreason,
+									detail.description to description
+								), 
+								ReloadData (detail)
+							icon: %collection_16.pencil
+							disabled: Not BooleanPredicate ( incanupdatedescription )
+							feature: organisationdetails_updatemetadata
+							tooltip: $fragmentOrganisationDetailsNLS.updatemetadata
+						}
+					}
+				
+			}
+		}
+		// Indicators
+		Group {
+			Grid {
+				columns: GridColumn {}, GridColumn {}, GridColumn {}
+				GridRow {
+					height: 46
+					GridCell {
+						IncludeHTMLWidget {
+							layout: Layout { hint: height 200 width 150 align: horizontal Center vertical Center }
+							template: mashupGaugeIndicator
+							hidden: Not BooleanPredicate ( inshowrisks )
+							bindings:
+								value-of $bwfOrganisationNLS.riskrank to title,
+								value-of "radial" to mode, // radial, numeric, row
+								value-of False to hasLink,
+								value-of False to hasThresholds,
+								value-of detail.bwa_organisationanalytics_riskrank to count,
+								value-of UserVariable organisations_maxriskinfo_max_riskrank to maxValue,
+								value-of Difference(detail.bwa_organisationanalytics_riskrank, prevdetail.bwa_organisationanalytics_riskrank) to trendValue,
+								value-of inuid to identifier,
+								value-of "#4170C0" to gaugeColor
+						}
+					}
+					GridCell {
+						IncludeHTMLWidget {
+							layout: Layout { hint: height 200 width 150 align: horizontal Center vertical Center }
+							template: mashupGaugeIndicator
+							hidden:Not BooleanPredicate(inshowrisks)
+							bindings:
+								value-of $bwfOrganisationNLS.maxrisk to title,
+								value-of "radial" to mode, // radial, numeric, row
+								value-of False to hasLink,
+								value-of True to hasThresholds,
+								value-of 1 to warningThreshold,
+								value-of 2 to criticalThreshold,
+								value-of detail.bwa_organisationanalytics_aggmaxrisklevel to count,
+								value-of UserVariable organisations_mawriskinfo_max_risklevel to maxValue,
+								value-of Difference(detail.bwa_organisationanalytics_aggmaxrisklevel, prevdetail.bwa_organisationanalytics_aggmaxrisklevel) to trendValue,
+								value-of inuid to identifier,
+								value-of "#4170C0" to gaugeColor
+						}
+					}
+					GridCell {
+						IncludeHTMLWidget {
+							layout: Layout { hint: height 200 width 150 align: horizontal Center vertical Center }
+							template: mashupGaugeIndicator
+							hidden:Not BooleanPredicate(inshowrisks)
+							bindings:
+								value-of $bwfOrganisationNLS.nbrisk to title,
+								value-of "radial" to mode, // radial, numeric, row
+								value-of False to hasLink,
+								value-of False to hasThresholds,
+								value-of detail.bwa_organisationanalytics_nbidentityrisks to count,
+								value-of UserVariable organisations_mawriskinfo_max_nbrisks to maxValue,
+								value-of Difference(detail.bwa_organisationanalytics_nbidentityrisks, prevdetail.bwa_organisationanalytics_nbidentityrisks) to trendValue,
+								value-of inuid to identifier,
+								value-of "#4170C0" to gaugeColor
+						}
+					}
+					GridCell {
+						IncludeHTMLWidget {
+							layout: Layout { hint: height 200 width 150 align: horizontal Center vertical Center }
+							template: mashupGaugeIndicator
+							hidden:Not BooleanPredicate(inshowrisks)
+							bindings:
+								value-of $bwfOrganisationNLS.nbriskratio to title,
+								value-of "radial" to mode, // radial, numeric, row
+								value-of False to hasLink,
+								value-of False to hasThresholds,
+								value-of detail.bwa_organisationanalytics_nbidentityrisksratio to count,
+								value-of 100 to maxValue,
+								value-of Difference(detail.bwa_organisationanalytics_nbidentityrisksratio, prevdetail.bwa_organisationanalytics_nbidentityrisksratio) to trendValue,
+								value-of inuid to identifier,
+								value-of "#4170C0" to gaugeColor
+						}
+					}
+					GridCell {
+					}
+				}
+			}
+		}
+	}	
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical False }
+		GridRow {
+			GridCell {
+				Group {
+					title:$fragmentOrganisationDetailsNLS.content
+					Text {
+						value:detail.bwa_organisationanalytics_nbdirectmembers
+						label:$search.organisation.nbdirectmembers_compact
+						tooltip:Concat(Transform detail.bwa_organisationanalytics_nbdirectmembers using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbdirectmembers using mayBeNullMapping)
+						align:Right
+						compact:True
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbdirectmembers, prevdetail.bwa_organisationanalytics_nbdirectmembers)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:detail.bwa_organisationanalytics_nbtotalmembers
+						label:$search.organisation.nbmembers
+						tooltip:Concat(Transform detail.bwa_organisationanalytics_nbtotalmembers using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbtotalmembers using mayBeNullMapping)
+						align:Right
+						compact:True
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbtotalmembers, prevdetail.bwa_organisationanalytics_nbtotalmembers)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						label: $fragmentOrganisationDetailsNLS.nbdirectsuborgs
+						align:Right
+						compact:True
+						value: organisationDirectChildrenCount.count
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:''
+								width:16
+							}
+						}
+					}
+					Text {
+						label: $fragmentOrganisationDetailsNLS.nbsuborgs
+						align:Right
+						compact:True
+						value: organisationChildrenCount.count
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:''
+								width:16
+							}
+						}
+					}
+				}
+			}
+			GridCell {
+				Group {
+					title:$fragmentOrganisationDetailsNLS.accessrights
+					Text {
+						value:Transform detail.bwa_organisationanalytics_nbapplication using bwf_defaultsTo0
+						label:$search.organisation.nbapplications
+						tooltip:Concat(Transform detail.bwa_organisationanalytics_nbapplication using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbapplication using mayBeNullMapping)
+						align:Right
+						compact:True
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbapplication, prevdetail.bwa_organisationanalytics_nbapplication)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform detail.bwa_organisationanalytics_nbshare using bwf_defaultsTo0
+						label:$search.organisation.nbshares
+						feature: unstructureddata_license
+						tooltip:Concat(Transform detail.bwa_organisationanalytics_nbshare using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbshare using mayBeNullMapping)
+						align:Right
+						compact:True
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbshare, prevdetail.bwa_organisationanalytics_nbshare)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform detail.bwa_organisationanalytics_nbbusinessactivity using bwf_defaultsTo0
+						label:$search.organisation.nbbusinessactivity_compact
+						feature: sod_license
+						hidden:AndPredicate {
+							IntPredicate(detail.bwa_organisationanalytics_nbbusinessactivity) { when >0 then False otherwise True }
+							IntPredicate(prevdetail.bwa_organisationanalytics_nbbusinessactivity) { when >0 then False otherwise True }
+						}
+						tooltip:Concat(Transform detail.bwa_organisationanalytics_nbbusinessactivity using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbbusinessactivity using mayBeNullMapping)
+						align:Right
+						compact:True
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbbusinessactivity, prevdetail.bwa_organisationanalytics_nbbusinessactivity)) using bwf_trend
+								width:16
+							}
+						}
+					}
+					Text {
+						value:Transform detail.bwa_organisationanalytics_nbtheoretical using bwf_defaultsTo0
+						label:$search.organisation.nbtheoretical_compact
+						feature: iam_license
+						hidden:AndPredicate {
+							IntPredicate(detail.bwa_organisationanalytics_nbtheoretical) { when >0 then False otherwise True }
+							IntPredicate(prevdetail.bwa_organisationanalytics_nbtheoretical) { when >0 then False otherwise True }
+						}
+						tooltip:Concat(Transform detail.bwa_organisationanalytics_nbtheoretical using mayBeNullMapping, ' / ', Transform prevdetail.bwa_organisationanalytics_nbtheoretical using mayBeNullMapping)
+						align:Right
+						compact:True
+						decorator:Decorator {
+							width:50
+							after:Image {
+								image:TemplateImageSelection (Difference(detail.bwa_organisationanalytics_nbtheoretical, prevdetail.bwa_organisationanalytics_nbtheoretical)) using bwf_trend
+								width:16
+							}
+						}
+					}
+				}
+			}
+			GridCell {
+				Group {
+					title:$fragmentOrganisationDetailsNLS.parentorgs
+					Text {
+						value: Current displayname
+						tooltip:Concat(NonEmpty(Current shortname, '-'), ' / ', Current organisationtypedisplayname)
+						iterate-on: parentsOrgs
+						compact:True
+					}
+				}
+			}
+			GridCell {
+				Group {
+					title:$fragmentOrganisationDetailsNLS.classification
+					Text {
+						value:Transform detail.sensitivitylevel using bwfOrganisationSensitivityLevelMapping
+						label:$fragmentOrganisationDetailsNLS.sensitivitylevel
+						compact:True
+					}
+					Text {
+						value:@srv_truncatestring (detail.sensitivityreason to string, 12 to maxlength)
+						tooltip:detail.sensitivityreason
+						label:$fragmentOrganisationDetailsNLS.sensitivityreason
+						compact:True
+					}
+				}
+			}
+		}
+	}	
+	Group {
+		title:$porganisation.managers
+		layout:Layout { grab: horizontal True vertical False }
+		ConditionalGroup {
+			IntCondition(Count managers) {
+				when =0 then [
+					Header {
+						value:$fragmentOrganisationDetailsNLS.nomanagers
+					}
+				]
+				when =1 then [
+					Text {
+						iterate-on:managers
+						value:Concat(Current fullname, ' (', Current expertisedomaindisplayname, ')')
+						compact:True
+					}
+				]
+				otherwise [
+					Table {
+						data:managers
+						layout:Layout { grab:horizontal True vertical False hint:height 116}
+						configurable:True
+						label:Label { break:True }
+						Column {
+							column:uid
+							hidden:True
+						}
+						Column {
+							column: managerLinkRecorduid
+							hidden: True
+						}
+						Column {
+							column:expertisedomaincode
+							hidden:True
+						}
+						Column {
+							column:expertisedomaindisplayname
+							text:Transform Current expertisedomaincode using bwfManagerTypeMapping
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							header:$bwfManagement.type
+							sortable:True
+							width:140px
+						}
+						Column {
+							column:hrcode
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							header:$identity.hrcode
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:fullname
+							header:$identity.fullname
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							sortable:True
+							width:100%
+						}
+						Column {
+							column:internal
+							header:$pidentity.internal
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:active
+							header:$pidentity.active
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:comment
+							header:$bwfManagement.comment
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:delegation
+							header:$bwfManagement.delegated
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:delegationreason
+							header:$bwfManagement.^reason
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:_priority
+							header:$bwfManagement.^priority
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:startdate
+							header:$bwfManagement.startdate
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+						Column {
+							column:enddate
+							header:$bwfManagement.enddate
+							styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+							initially-masked:True
+							sortable:True
+						}
+					}
+				]
+			}
+		}
+	}
+}

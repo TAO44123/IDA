@@ -1,0 +1,364 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/identity/rights.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+
+/* Nationalized labels here */
+bwsod_identitysodexceptionsNLS = NLS {
+	createexception [en "Create Exception" fr "Créer une exception"]
+	setexception [en "Set Exception" fr "Appliquer une exception"]
+	deleteexception [en "Delete Exception" fr "Supprimer l'exception"]
+	updateexception [en "Update Exception" fr "Mettre à jour l'exception"]
+	create_ [en "Create" fr "Créer"]
+	delete [en "Delete" fr "Supprimer"]
+	update [en "Update" fr "Mettre à jour"]
+	deleteinfo [en "The selected exceptions will be deleted" fr "Les exception sélectionnées seront supprimées"]
+	
+	controldetails [en "SoD Control Details" fr "Détails Contrôle SoD"]
+	
+	identities [en "Identities" fr "Identités"]
+	exception [en "Exception" fr "Exception"]
+	risklevel [en "Risk level" fr "Niveau de risque"]
+	riskinformation [en "Risk information" fr "Description du risque"]
+	multiplecontrol [en "Multiple controls selected" fr "Plusieurs contrôles sélectionnés"]
+	
+	reason_ [en "Exception reason" fr "Raison de l'exception"]
+	reasontooltip [en "Reason for the exception to be applicable" fr "Raison pour laquelle l'exception est applicable"]
+	expirationdate [en "Exception expiration date" fr "Date d'expiration de l'exception"]
+	comment [en "Exception comment" fr "Commentaire de l'exception"]
+}
+
+bwsod_identitysodexceptionscreateDialog = Dialog {
+	title: $bwsod_identitysodexceptionsNLS.createexception
+	enter-event: 
+		Set controlcodes to differentControls, 
+		MultivaluedDistinct differentControls
+	
+	buttons:[
+		ActionButton {
+			text: $bwsod_identitysodexceptionsNLS.create_
+			disabled: OrPredicate {
+				StringPredicate(exceptionReason) { when IsEmpty then True otherwise False } 
+			} 
+			actions: 
+				ExecuteNamedAction setTaskVariables,
+				TaskComplete task wait-end timeout-seconds 300
+			close: True
+		}
+		CancelButton
+	] 
+	width:1000
+	height:700
+	
+	identityuids = Variable {type: String multivalued: True}
+	controlcodes = Variable {type: String multivalued: True}
+	controlresulttypes = Variable {type: String multivalued: True}
+	
+	differentControls = Variable {type: String multivalued:True}
+	
+	exceptionStatus = Variable {type: String}
+	exceptionReason = Variable {type: String}
+	exceptionComment = Variable {type: String}
+	exceptionExpirationDate = Variable {type: Date}
+	
+	identities = Dataset {
+		view: getidentities with identityuids to uids
+	}
+	
+	control = Record {
+		view:bwsod_control with differentControls to controlcode
+		disabled: IntPredicate(SizeOf differentControls) { when =1 then False otherwise True}
+	}
+	
+	task = TaskRecord(create "bwsod_updatecontrolsexceptions")
+	
+	setTaskVariables = NamedAction(
+		Set identityuids to task.entities,
+		Set controlcodes to task.controlcodes,
+		Set controlresulttypes to task.controlresulttypes,
+//		Set exceptionStatus to task.exceptionstatus,
+		Set exceptionReason to task.exceptionreason,
+		Set exceptionComment to task.exceptioncomment,
+		Set exceptionExpirationDate to task.exceptionexpirationdate,
+//		Set exceptionNoExpiration to task.exceptionnoexpiration,
+		Set Principal.uid to task.issueruid
+	)
+	
+	ConditionalGroup {
+		title: $bwsod_identitysodexceptionsNLS.controldetails
+		layout: Layout {grab: horizontal True vertical False}
+		IntCondition(SizeOf differentControls) {
+			when =1 then [
+				Grid {
+					layout:Layout {grab: horizontal True vertical True}
+					columns:GridColumn,GridColumn
+					GridRow {
+						GridCell {
+							Text {
+								label:$controlresult.controlcode
+								value:control.controlcode
+								tooltip:control.controlcode
+								compact:True
+							}
+							Text {
+								label:$controlresult.controldisplayname
+								value:control.controldisplayname
+								tooltip:control.controldisplayname
+								compact:True
+							}
+						}
+						GridCell {
+							Text {
+								label:$bwsod_identitysodexceptionsNLS.risklevel
+								value: Transform control.risklevel using bwf_ControlLevelMapping
+								decorator: Decorator {
+									width: Fill
+									before: Image {
+										image: TemplateImageSelection(control.risklevel) using bwf_controllevel
+										width: 16
+									}
+								}
+								compact: True 
+							}
+							Text {
+								label:$bwsod_identitysodexceptionsNLS.riskinformation
+								value:control.riskinfo
+								compact:True
+							}
+						}
+					}
+				}
+			]
+			otherwise [
+				Text {
+					value: $bwsod_identitysodexceptionsNLS.multiplecontrol
+					compact: True
+				}
+			]
+		}
+	}
+	Group {
+		title: $bwsod_identitysodexceptionsNLS.identities
+		Table {
+			data: identities
+			layout: Layout { grab: horizontal True vertical True }
+			show-count:True
+			show-filter:True
+			configurable:True
+			Column {
+				column:uid
+				hidden:True
+			}
+			Column {
+				column:hrcode
+				header:$identity.hrcode
+				sortable:True
+				filterable:True
+				width:100px
+			}
+			Column {
+				column:fullname
+				header:$identity.fullname
+				sortable:True
+				filterable:True
+				width:100%
+			}
+			Column {
+				column:mail
+				header:$identity.mail
+				sortable:True
+				filterable:True
+				initially-masked:True
+				width:100%
+			}
+			Column {
+				column:internal
+				header:$identity.internal
+				sortable:True
+				filterable:True
+				initially-masked:True
+				width:100%
+			}
+		}
+	}
+	Group {
+		title: $bwsod_identitysodexceptionsNLS.exception
+		layout: Layout { grab: horizontal True vertical False}
+//		Combo {
+//			variable: exceptionStatus
+//			label: "Exception status"
+//			tooltip: "Status for the exception to be applicable"
+//			allow-none:False
+//			options: Static {
+//				Option { value: "Unresolved" text: "Unresolved" }
+//				Option { value: "Waiting for approval" text: "Waiting for approval" }
+//				Option { value: "Risk accepted" text: "Risk accepted" }
+//				Option { value: "Rejected" text: "Rejected" }
+//			}
+//		}
+		Grid {
+			columns: GridColumn {width: grow}, GridColumn {width: grow}
+			layout: Layout {grab: horizontal True vertical True}
+			GridRow {
+				GridCell {
+					Combo {
+						variable:exceptionReason
+						label:$bwsod_identitysodexceptionsNLS.reason_
+						tooltip:$bwsod_identitysodexceptionsNLS.reasontooltip
+						allow-none:False
+						options: Static {
+							Option { value: "Resource constraints" text: "Resource constraints" }
+							Option { value: "Business Continuity or Urgency" text: "Business Continuity or Urgency" }
+							Option { value: "Specialized Roles or High Security Clearance" text: "Specialized Roles or High Security Clearance" }
+							Option { value: "Temporary Needs" text: "Temporary Needs" }
+							Option { value: "Audit-Driven Justifications" text: "Audit-Driven Justifications" }
+						}
+						layout: Layout { grab: horizontal False vertical True}
+					}
+				}
+				GridCell {
+					DateTime {
+						variable: exceptionExpirationDate
+						label: $bwsod_identitysodexceptionsNLS.expirationdate
+						allow-none: True
+						type: Date 
+						format:"yyyyMMddhhmmss"
+					}
+				}
+			}
+			GridRow {
+				GridCell {
+					span: 2
+					Edit {
+						label: $bwsod_identitysodexceptionsNLS.comment
+						variable: exceptionComment
+					}
+				}
+			}
+		}
+	}
+}
+
+bwsod_identitysodexceptionsupdateDialog = Dialog {
+	title: $bwsod_identitysodexceptionsNLS.updateexception
+	enter-event: 
+		Set currentException.reason_ to exceptionReason, 
+		Set currentException.comment to exceptionComment, 
+		Set Date(currentException.validuntildate).valueLDAP to exceptionExpirationDate
+	
+	buttons:[
+		ActionButton {
+			text: $bwsod_identitysodexceptionsNLS.update
+			disabled: OrPredicate {
+				StringPredicate(exceptionReason) { when IsEmpty then True otherwise False } 
+			} 
+			actions: 
+				ExecuteNamedAction setTaskVariables,
+				TaskComplete task wait-end timeout-seconds 300
+			close: True
+		}
+		CancelButton
+	]
+	
+	width:550
+	height:200
+	
+	exceptions = Variable {type: String multivalued: True}
+	identities = Variable {type: String multivalued: True}
+	controlcodes = Variable {type: String multivalued: True}
+	controlresulttypes = Variable {type: String multivalued: True}
+	
+	exceptionStatus = Variable {type: String}
+	exceptionReason = Variable {type: String}
+	exceptionComment = Variable {type: String}
+	exceptionExpirationDate = Variable {type: Date}
+	
+	currentException = Record {
+		view: bwa360_sodexceptiondetails with exceptions to exceptionuid
+		disabled: IntPredicate(SizeOf exceptions) { when =1 then False otherwise True}
+	}
+	
+	task = TaskRecord(create "bwsod_updatecontrolsexceptions")
+	
+	setTaskVariables = NamedAction(
+		Set identities to task.entities,
+		Set controlcodes to task.controlcodes,
+		Set controlresulttypes to task.controlresulttypes,
+//		Set exceptionStatus to task.exceptionstatus,
+		Set exceptionReason to task.exceptionreason,
+		Set exceptionComment to task.exceptioncomment,
+		Set exceptionExpirationDate to task.exceptionexpirationdate,
+//		Set exceptionNoExpiration to task.exceptionnoexpiration,
+		Set Principal.uid to task.issueruid
+	)
+	
+	Combo {
+		variable: exceptionReason
+		label: $bwsod_identitysodexceptionsNLS.reason_
+		tooltip: $bwsod_identitysodexceptionsNLS.reasontooltip
+		layout: Layout { grab: horizontal False vertical False}
+		allow-none:False
+		options: Static {
+			Option { value: "Resource constraints" text: "Resource constraints" }
+			Option { value: "Business Continuity or Urgency" text: "Business Continuity or Urgency" }
+			Option { value: "Specialized Roles or High Security Clearance" text: "Specialized Roles or High Security Clearance" }
+			Option { value: "Temporary Needs" text: "Temporary Needs" }
+			Option { value: "Audit-Driven Justifications" text: "Audit-Driven Justifications" }
+		}
+	}
+	DateTime {
+		variable: exceptionExpirationDate
+		label: $bwsod_identitysodexceptionsNLS.expirationdate
+		allow-none: True
+		type: Date 
+		format:"yyyyMMddhhmmss"
+	}
+	Edit {
+		label: $bwsod_identitysodexceptionsNLS.comment
+		variable: exceptionComment
+	}
+}
+
+bwsod_identitysodexceptionsdeleteDialog = Dialog {
+	title: $bwsod_identitysodexceptionsNLS.deleteexception
+	
+	buttons:[
+		ActionButton {
+			actions: 
+				ExecuteNamedAction setTaskVariables,
+				TaskComplete task wait-end timeout-seconds 300
+			text: $bwsod_identitysodexceptionsNLS.delete
+			close: True
+			icon: %status_16.remove 
+		}
+		CancelButton
+	]
+		
+	width:500
+	height:150
+	
+	identities = Variable {type: String multivalued: True}
+	controlcodes = Variable {type: String multivalued: True}
+	controlresulttypes = Variable {type: String multivalued: True}
+	
+	
+	task = TaskRecord(create "bwsod_updatecontrolsexceptions")
+	// task.exceptionreason must be empty to delete the exception
+	
+	setTaskVariables = NamedAction(
+		Set identities to task.entities,
+		Set controlcodes to task.controlcodes,
+		Set controlresulttypes to task.controlresulttypes
+	)
+	
+	Group {
+		Text {
+			value: $bwsod_identitysodexceptionsNLS.deleteinfo
+			compact: True
+		}
+	}
+}

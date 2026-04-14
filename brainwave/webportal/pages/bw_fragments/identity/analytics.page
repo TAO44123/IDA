@@ -1,0 +1,201 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+fragmentIdentityAnalyticsNLS = NLS {
+	empty [en "No analytics available" fr "Pas d'analyse disponible"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the analytics for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityAnalytics = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	identity = Record {
+		view: br_identityDetail with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	relatedLinksTiles = Dataset {
+		pages: Pages{tags: "identity" and "byuid" }
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	managedaccountTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "accountmanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedaccount.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedappTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "applicationmanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedapp.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedassetTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "assetmanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedasset.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedgroupTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "groupmanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedgroup.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedoperTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "operationalmanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedoper.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedorgTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "organisationmanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedorg.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedpermTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "permissionmanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedperm.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedrepoTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "repositorymanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedrepo.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+
+	// data governance
+	managedshareTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "sharemanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedshare.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+	managedfolderTiles = Dataset { 
+		pages: Pages { tags: "identityext" and "byuid" and "foldermanager" } 
+		disabled: 
+			OrPredicate {
+				IntPredicate( managedfolder.nb ) { when = 0 then True otherwise False }
+				Not BooleanPredicate(inenabled)
+			}
+	}
+
+	// consolidated view
+	allRelatedLinksTiles = Dataset {
+		union:Union {
+			datasets: 
+				relatedLinksTiles, managedaccountTiles, managedappTiles,
+				managedassetTiles, managedgroupTiles, managedoperTiles, 
+				managedorgTiles, managedpermTiles,  managedrepoTiles,
+				managedshareTiles, managedfolderTiles
+			discriminator-column:discr
+		}
+		disabled: Not BooleanPredicate(inenabled)
+	}
+	
+	// Nb managed objects
+	managedaccount = Record { view: bwf_identitynbmanagedaccount with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedapp = Record { view: bwf_identitynbmanagedapp with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedasset = Record { view: bwf_identitynbmanagedasset with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedgroup = Record { view: bwf_identitynbmanagedgroup with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedoper = Record { view: bwf_identitynbmanagedoper with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedorg = Record { view: bwf_identitynbmanagedorg with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedperm = Record { view: bwf_identitynbmanagedperm with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedrepo = Record { view: bwf_identitynbmanagedrepo with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	// data governance
+	managedshare = Record { view: bwf_identitynbmanagedshare with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+	managedfolder = Record { view: bwf_identitynbmanagedfolder with identity.recorduid to recorduid disabled: Not BooleanPredicate(inenabled) }
+
+	ConditionalGroup {
+		IntCondition(Count allRelatedLinksTiles) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityAnalyticsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:allRelatedLinksTiles
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with identity.recorduid to recorduid, identity.uid to uid save-state
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with identity.recorduid to recorduid, identity.uid to uid save-state
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with identity.recorduid to recorduid, identity.uid to uid save-state
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+}

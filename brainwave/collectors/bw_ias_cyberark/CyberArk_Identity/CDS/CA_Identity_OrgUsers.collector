@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity OrgUsers" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1727949104203_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1727953961109">
+		<Component name="C1727953961109" type="discoverysource" x="76" y="50" w="300" h="64" title="CA_Identity_Users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_DSUsers.csv&apos;)}"/>
+		</Component>
+		<Component name="C1727954207693" type="groupmembers" x="75" y="320" w="300" h="64" title="Import OrgUsers">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Group code="user_orgid"/>
+			<Content members="internalname"/>
+		</Component>
+		<Component name="C1727954221091" type="joinfilter" x="76" y="181" w="300" h="64" title="Get OrgId">
+			<Join source="C1727954234226"/>
+			<Attributes>
+				<Attribute name="A1727954280332" attribute="user_orgid" source="id" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="orgpath" join="path"/>
+		</Component>
+		<Component name="C1727954234226" type="discoverysource" x="454" y="178" w="300" h="64" title="CA_Identity_Organization">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_Organization.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_Organizations.csv&apos;)}"/>
+		</Component>
+		<Link name="L1727954247569" source="C1727953961109" target="C1727954221091" priority="1"/>
+		<Link name="L1727954248426" source="C1727954234226" target="C1727954221091" priority="1"/>
+		<Link name="L1728044205498" source="C1727954221091" target="C1727954207693" priority="1"/>
+		<Component name="C1728477041505" type="joinfilter" x="77" y="559" w="300" h="64" title="Join users with admins">
+			<Join source="C1728477046144"/>
+			<Cache active="true" main="user_orgid" join="orgid"/>
+			<Attributes>
+				<Attribute name="A1728477470175" attribute="owner_guid" source="guid" multivalued="false" type="String"/>
+			</Attributes>
+		</Component>
+		<Component name="C1728477046144" type="discoverysource" x="461" y="559" w="300" h="64" title="CA_Identity_OrgAdmins">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_OrgAdmins.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_OrgAdmin.csv&apos;)}"/>
+		</Component>
+		<Link name="L1728477057641" source="C1728477046144" target="C1728477041505" priority="1"/>
+		<Component name="C1728477093656" type="groupmembers" x="79" y="678" w="300" h="64" title="Organization owner">
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="repoNotFound"/>
+			<Group code="group_owner_id" error="true" event="groupNotFound"/>
+			<Content members="owner_guid" error="true" event="memberNotFound"/>
+			<Domain isuniqueidentifier="false" repositorytype="repoType"/>
+		</Component>
+		<Link name="L1728477098465" source="C1728477041505" target="C1728477093656" priority="1"/>
+		<Component name="C1728477186308" type="changefilter" x="75" y="440" w="300" h="64" title="owner id">
+			<Actions>
+				<Action name="U1728477280392" action="add" attribute="group_owner_id" type="String" multivalued="false" newvalue="{dataset.user_orgid.get() + &quot;_o&quot;}" errorexist="false"/>
+				<Action name="U1728478771814" action="add" attribute="repoType" type="String" multivalued="false" newvalue="CDS" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1728477202350" source="C1727954207693" target="C1728477186308" priority="1"/>
+		<Link name="L1728477203071" source="C1728477186308" target="C1728477041505" priority="1"/>
+		<Component name="N1733216465592" type="note" x="518" y="58" w="300" h="50" title="Add members of organizations and administrators of organizations"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

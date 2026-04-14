@@ -1,0 +1,120 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+
+fragmentOrganisationApplicationsNLS = NLS {
+	directonly [en "only this organisation" fr "seulement cette organisation"]
+	employeetype [en "Employee type" fr "Type de contrat"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation applications
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inonlydirectselection</b> optional, boolean value, true to display only direct members (false by default)</li>
+ * <li><b>incanshowdetails</b> optional, boolean value, true to enable application and identity details (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationApplicationsCrosstab = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inonlydirectselection = Variable { multivalued:False initial:False type:Boolean}
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outapplicationuid = Variable { private:True }
+	outidentityuid = Variable { private:True }
+	
+	/* Datasets and records here */
+	applications_all = Dataset {
+		view: bwf_org_applications_identities_all with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate(inenabled)
+				BooleanPredicate(inonlydirectselection)
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	applications_direct = Dataset {
+		view: bwf_org_applications_identities_direct with inuid to uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate(inenabled)
+				Not BooleanPredicate(inonlydirectselection)
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	applications = Dataset {
+		union: Union {
+			datasets: applications_all , applications_direct discriminator-column: source
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			} 
+	}
+	
+	goApplicationDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outapplicationuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Group {
+		layout: Layout { grab: horizontal True vertical False }
+		Checkbox {
+			variable: inonlydirectselection
+			label: $fragmentOrganisationApplicationsNLS.directonly
+			tooltip:$bwfOrganisation.directonlytooltip
+		}
+	}
+	
+	CrossTable {
+		data: applications
+		cluster-sortable:True
+		cluster-keep-sort-on-change:True
+		cell-content: CellContent { text:'X' align:Center }
+		columns: Dim { value: uid label: displayname header: $application.concept header-click: outapplicationuid }
+		rows: 	Dim{ value: orgcode label:orgdisplayname header: $organisation.concept },
+				Dim{ value: jobtitledisplayname header: $identity.jobtitledisplayname },
+				Dim { value: identityuid label: identityfullname header: $identity.fullname header-click: outidentityuid }
+		
+		column-header-click: ExecuteNamedAction goApplicationDetails
+		row-header-click: ExecuteNamedAction goIdentityDetails
+	}
+	
+}

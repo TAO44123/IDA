@@ -1,0 +1,233 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+br_filesourcesNLS = NLS {
+	title [en "Files used to fulfill the ledger" fr "Fichiers utilisés pour alimenter le Grand Livre"]
+
+	onlyafter [en "Only files \nafter" fr "Seulement les fichiers \naprès le"]
+	onlybefore [en "Only files \nbefore" fr "Seulement les fichiers \navant le"]
+
+	filter_silocode [en "Filter by silo code" fr "Filtrer par code silo"]
+	filter_silostaticcode [en "Filter by silo static code" fr "Filtrer par code statique silo"]
+	filter_silotype [en "Filter by silo type" fr "Filtrer par type silo"]
+	highlight_limit [en "Highlight files \nover X days" fr "Surligner les fichiers \nde plus de X jours"]
+	highlight_limit.tooltip [en "Difference computed against timeslot commit date: {0}" fr "Différence calculée avec la date de validation du timeslot: {0}"]
+
+	silo_code [en "silo code" fr "code silo"]
+	silo_static_code [en "silo \nstatic code" fr "code statique \nsilo"]
+	silo_name [en "silo name" fr "nom silo"]
+	silo_type [en "silo type" fr "type silo"]
+	silo_collect_date [en "silo \ncollect date" fr "date collecte \nsilo"]
+	code [en "file path" fr "chemin fichier"]
+	modified_date [en "last modification \ndate" fr "date de dernière \nmodification"]
+	length [en "length \n(bytes)" fr "taille \n(octets)"]
+
+	modified_date.tooltip [en "extracted within {0} days" fr "extrait sous {0} jours"]
+}
+
+// returns date1-date2 in nb days
+br_filesources_datediff = IntService {
+	javascript-file:"/webportal/pages/bw_portaluar_base/admin/filesources.javascript"
+	javascript-method:datediff
+	date1 = Input {
+		type:String
+		mandatory:True
+		multivalued:False
+	}
+	date2 = Input {
+		type:String
+		mandatory:True
+		multivalued:False
+	}
+}
+
+
+br_filesources = Page {
+	title: $br_filesourcesNLS.title
+	tags:"admin"
+	icon:%report_32.file
+	large-icon:%report_48.file
+	enter-event:TransferData files(silocode, silostaticcode, silotype) to (data_silocode, data_silostaticcode, data_silotype), MultivaluedDistinct data_silocode, MultivaluedDistinct data_silostaticcode, MultivaluedDistinct data_silotype
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	data_silocode = Variable { multivalued:True }
+	data_silostaticcode = Variable { multivalued:True }
+	data_silotype = Variable { multivalued:True }
+
+	filter_silocode = Variable { multivalued:True }
+	filter_silostaticcode = Variable { multivalued:True }
+	filter_silotype = Variable { multivalued:True }
+
+	filter_datebefore = Variable { initial:Date(PageTimeslot.CommitDate).offset(1 days).valueLDAP  }
+	filter_dateafter = Variable { initial:Date(PageTimeslot.CommitDate).offset(-1825 days).valueLDAP  }
+
+	highlight_limit = Variable { initial:7 type:Integer }
+		
+	/* Datasets and records here */
+	silocodes = Dataset {
+		columns:data_silocode
+	}	
+	silostaticcodes = Dataset {
+		columns:data_silostaticcode
+	}	
+	silotypes = Dataset {
+		columns:data_silotype
+	}	
+	files = Dataset {
+		view:br_filesources with 	filter_dateafter to dateafter unless-empty, 
+									filter_datebefore to datebefore unless-empty,
+									filter_silocode to silocode unless-empty,
+									filter_silostaticcode to silostaticcode unless-empty,
+									filter_silotype to silotype unless-empty,
+									highlight_limit to dummy
+	}
+
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn { width:120px },GridColumn { width:120px },GridColumn { width:120px },GridColumn { width:grow },GridColumn { width:grow },GridColumn { width:grow }
+		layout:Layout { grab: horizontal True vertical False hint:height 100 } 
+		GridRow {
+			height:80px
+			GridCell {
+				DateTime {
+					variable:filter_dateafter
+					label:Label { break:True value:$br_filesourcesNLS.onlyafter }
+					type:Date
+					format:"yyyyMMddhhmmss"
+				}
+			}		
+			GridCell {
+				DateTime {
+					variable:filter_datebefore
+					label:Label { break:True value:$br_filesourcesNLS.onlybefore }
+					type:Date
+					format:"yyyyMMddhhmmss"
+				}
+			}		
+			GridCell {
+				Spinner {
+					variable:highlight_limit
+					label:Label { break:True value:$br_filesourcesNLS.highlight_limit }
+					minimum:0
+					maximum:1000
+					increment:1
+					tooltip:$br_filesourcesNLS.highlight_limit.tooltip(PageTimeslot.CommitDate)
+				}
+			}		
+			GridCell {
+				Combo {
+					variable:filter_silocode
+					allow-none:True
+					multi-selection:True
+					label:Label { break:True value:$br_filesourcesNLS.filter_silocode }
+					options:Dynamic {
+						data:silocodes
+						text:Current data_silocode
+						value:Current data_silocode
+					}
+				}
+			}		
+			GridCell {
+				Combo {
+					variable:filter_silostaticcode
+					allow-none:True
+					multi-selection:True
+					label:Label { break:True value:$br_filesourcesNLS.filter_silostaticcode }
+					options:Dynamic {
+						data:silostaticcodes
+						text:Current data_silostaticcode
+						value:Current data_silostaticcode
+					}
+				}
+			}		
+			GridCell {
+				Combo {
+					variable:filter_silotype
+					allow-none:True
+					multi-selection:True
+					label:Label { break:True value:$br_filesourcesNLS.filter_silotype }
+					options:Dynamic {
+						data:silotypes
+						text:Current data_silotype
+						value:Current data_silotype
+					}
+				}
+			}		
+		}
+	}
+
+	Table {
+		data:files
+		layout:Layout { grab:horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		persist-configuration:True
+		
+		Column {
+			column:silocode
+			header:$br_filesourcesNLS.silo_code
+			width:120px
+			sortable:True
+		}	
+		Column {
+			column:silostaticcode
+			initially-masked:True
+			header:$br_filesourcesNLS.silo_static_code
+			width:120px
+			sortable:True
+		}	
+		Column {
+			column:silodisplayname
+			initially-masked:True
+			header:$br_filesourcesNLS.silo_name
+			width:160px
+			sortable:True
+		}	
+		Column {
+			column:silotype
+			initially-masked:True
+			header:$br_filesourcesNLS.silo_type
+			width:120px
+			sortable:True
+		}	
+		Column {
+			column:silocollectdate
+			initially-masked:True
+			header:$br_filesourcesNLS.silo_collect_date
+			width:160px
+			sortable:True
+		}	
+		Column {
+			column:code
+			header:$br_filesourcesNLS.code
+			width:100%
+			sortable:True
+			filterable:True
+			styling:IntStyling(Difference(@br_filesources_datediff(Date(PageTimeslot.CommitDate).valueLDAP to date1, Date(Current modifieddate).valueLDAP to date2), highlight_limit)) { when >0 then errorStyle }
+		}	
+		Column {
+			column:modifieddate
+			tooltip: $br_filesourcesNLS.modified_date.tooltip(@br_filesources_datediff(Date(PageTimeslot.CommitDate).valueLDAP to date1, Date(Current modifieddate).valueLDAP to date2))
+			header:$br_filesourcesNLS.modified_date
+			width:160px
+			sortable:True
+			styling:IntStyling(Difference(@br_filesources_datediff(Date(PageTimeslot.CommitDate).valueLDAP to date1, Date(Current modifieddate).valueLDAP to date2), highlight_limit)) { when >0 then errorStyle }
+		}	
+		Column {
+			column:length
+			header:$br_filesourcesNLS.length
+			align:Right
+			sortable:True
+		}	
+		Column {
+			column:uid
+			hidden:True
+		}	
+	}
+}

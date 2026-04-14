@@ -1,0 +1,294 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control discrepancies for assets with root causes
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>selectedAssetsUid</b> (out) the selected asset UID</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_asset_details_table_with_root_cause = PageFragment {
+	
+	/* Variables here */
+	controlCode = Variable { type: String }
+	selectedAssetUid = Variable { type: String }
+	selectedAssetUids = Variable { type: String multivalued: True }
+	useExceptions = Variable { type: Boolean }
+	
+	/* Datasets and records here */
+	viewDataset = Dataset {
+		view: bw_control_browser_get_assests_discrepancies_on_control with
+			controlCode to controlCode,
+			True to getRootCause,
+			useExceptions to useExceptions
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	reload = NamedAction (
+		ReloadData ( viewDataset )
+	)
+	
+	/* Page content */
+	Table {
+		data: viewDataset
+		show-filter: True
+		show-count: True
+		hide-header: False
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		configurable: True
+		// Disabled as no buttons available yet
+//		checkboxes:
+//			uid to selectedAssetUids
+		Column {
+			column: displayname
+			header: $asset.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: code
+			header: $asset.code
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked:True
+		}
+		Column {
+			column: app_displayname
+			header: $rootcause.application
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: app_code
+			header: $papplication.code
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: recorduid
+			header: $asset.recorduid
+			sortable: True
+			filterable: True
+			width: 100%
+			hidden: True
+		}
+		Column {
+			column: uid
+			header: $asset.uid
+			sortable: True
+			filterable: True
+			width: 100%
+			hidden: True
+			selection: selectedAssetUid
+		}
+		Column {
+			column: perm_code
+			header: $ppermission.code
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: perm_displayname
+			header: $rootcause.displayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: perm_permissiontype
+			header: $rootcause.type
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: categoryrecorduid
+			header: $asset.categoryrecorduid
+			sortable: True
+			filterable: True
+			width: 100%
+			hidden: True
+		}
+		Column {
+			column: categoryuid
+			header: $asset.categoryuid
+			sortable: True
+			filterable: True
+			width: 100%
+			hidden: True
+		}
+		Column {
+			column: categorycode
+			header: $asset.categorycode
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked:True
+		}
+		Column {
+			column: importaction
+			header: $asset.importaction
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: categorydisplayname
+			header: $asset.categorydisplayname
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: deletedaction
+			header: $asset.deletedaction
+			sortable: True
+			filterable: True
+			width: 100%
+			initially-masked: True
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control discrepancies for assets without root causes
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>selectedAssetsUid</b> (out) the selected asset UID</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_asset_details_table = PageFragment {
+	
+	/* Variables here */
+	controlCode = Variable { type: String }
+	selectedAssetUid = Variable { type: String }
+	selectedAssetUids = Variable { type: String multivalued: True }
+	useExceptions = Variable { type: Boolean }
+	
+	/* Datasets and records here */
+	viewDataset = Dataset {
+		view: bw_control_browser_get_assests_discrepancies_on_control with
+			controlCode to controlCode,
+			False to getRootCause,
+			useExceptions to useExceptions
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	/* Page content */
+	Table {
+		data: viewDataset
+		show-filter: True
+		show-count: True
+		hide-header: False
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		configurable: True
+		persist-configuration: True
+		persist-configuration-key: "bw_control_browser_asset_details_table"
+		Column {
+			column: recorduid
+			header: $asset.recorduid
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+		}
+		Column {
+			column: uid
+			header: $asset.uid
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+			selection: selectedAssetUid
+		}
+		Column {
+			column: code
+			header: $asset.code
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+		}
+		Column {
+			column: displayname
+			header: $asset.displayname
+			sortable: True
+			filterable: True
+			width: 7%
+		}
+		Column {
+			column: categoryrecorduid
+			header: $asset.categoryrecorduid
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+		}
+		Column {
+			column: categoryuid
+			header: $asset.categoryuid
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+		}
+		Column {
+			column: categorycode
+			header: $asset.categorycode
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+		}
+		Column {
+			column: importaction
+			header: $asset.importaction
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+		}
+		Column {
+			column: categorydisplayname
+			header: $asset.categorydisplayname
+			sortable: True
+			filterable: True
+			width: 7%
+		}
+		Column {
+			column: deletedaction
+			header: $asset.deletedaction
+			sortable: True
+			filterable: True
+			width: 7%
+			initially-masked:True
+		}
+	}
+}

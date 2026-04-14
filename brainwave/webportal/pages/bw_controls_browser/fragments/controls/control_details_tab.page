@@ -1,0 +1,183 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_controls_browser/resources/styles.page"
+import "/webportal/pages/bw_controls_browser/resources/resources.page"
+import "/webportal/pages/bw_controls_browser/resources/mappings.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Display details on a selected control
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>selectedControlCode</b> (in) the control code of the control you want details on</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_control_details_tab = PageFragment {
+
+	/* Variables here */
+	selectedControlCode = Variable { type: String }
+	
+	/* Datasets and records here */
+	control_data = Record {
+		view: bw_control_browser_get_control_from_code with
+			selectedControlCode to controlCode
+		disabled:
+			StringPredicate ( selectedControlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	/* Page content */
+	Grid {
+		columns: GridColumn { group: c }
+		mixins: header
+		layout: Layout { grab: horizontal True vertical False }
+		fill: Both
+		GridRow {
+			GridCell {
+				span: 1
+				Text {
+					value: /*$sf_permission_fragment_general_NLS.titles.quickview*/ ""
+				}
+			}
+		}
+		GridRow {
+			GridCell {
+			span:3
+				Group {
+					title: $bw_control_browser.generalInfo
+					Text {
+						styling: infotext
+						label: $bw_control_browser.control.name
+						value: control_data.controldisplayname
+					}
+					Text {
+						styling: infotext
+						label: $bw_control_browser.control.entity
+						value:control_data.controlentity
+					}
+				}
+				Group {
+					title: $bw_control_browser.control.description
+					Text {
+						styling: infotext
+						value: control_data.controlnotes
+						lines: 5
+					}
+				}
+				Group {
+					title: $bw_control_browser.risk 
+					Text {
+						styling: infotext
+						label: $bw_control_browser.riskLevel
+						value: control_data.risklevel
+					}
+					Text {
+						styling: infotext
+						label: $bw_control_browser.control.description
+						value: control_data.riskinfo
+						lines: 2
+					}
+					Text {
+						styling: infotext
+						label: $bw_control_browser.control.suggestion
+						value: control_data.suggestedmitigation
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display KPIs on a selected control
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>selectedControlCode</b> (in) the control code of the control you want details on</li>
+ * <li><b>selectedControlEntity</b> (in) the control entity of the control you want details on</li>
+ * <li><b>selectedApp</b> (in) the applications selected on</li>
+ * <li><b>selectedKpi</b> (in) The precomputed KPI</li>
+ * <li><b>selectedKpiTrend</b> (in) The precomputed KPI trend</li>
+ * <li><b>selectedException</b> (in) The precomputed exception count</li>
+ * <li><b>selectedExceptionTrend</b> (in) The precomputed exception count trend</li>
+ * <li><b>entityDisplayed</b> (in) The entities controlled by the selected control</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_kpi_display = PageFragment {
+	
+	/* Variables here */
+	selectedControlCode = Variable { type: String }
+	selectedControlEntity = Variable { type: String }
+	selectedDiscrepancies = Variable { type: Integer }
+	selectedException = Variable { type: Integer }
+	selectedDiscrepanciesTrend = Variable { type: Integer }
+	selectedExceptionTrend = Variable { type: Integer }
+	entityDisplayed = Variable { type: String }
+	
+	/* Datasets and records here */
+	
+	/* Page content */
+	Group {
+		layout: Layout { grab: horizontal False vertical False }
+		Flow {
+			disposition: Horizontal
+			Group {
+				Text {
+					compact: True
+					label: $bw_control_browser.discrepancies
+					value: Transform selectedDiscrepancies using number
+					styling: Tag
+				}
+			}
+			Group {
+				Text {
+					value: ""
+					compact: True
+					decorator:
+						Decorator {
+							before:
+								Image {
+									image: TemplateImageSelection( Difference ( selectedDiscrepanciesTrend, 0  ) ) using evolutionWarningIcons
+									width: 16
+									tooltip: selectedDiscrepanciesTrend
+								}
+							width: 16
+							gap: 32
+						}
+				}
+			}
+		}
+		Flow {
+			disposition: Horizontal
+			feature: bw_control_browser_exceptions
+			Group {
+				Text {
+					compact: True
+					label: $detailspages.exception
+					value: Transform selectedException using number
+					styling: Tag
+				}
+			}
+			Group {
+				Text {
+					value: ""
+					compact: True
+					decorator:
+						Decorator {
+							before:
+								Image {
+									image: TemplateImageSelection( Difference ( selectedExceptionTrend, 0  ) ) using evolutionWarningIcons
+									width: 16
+									tooltip: selectedExceptionTrend
+								}
+							width: 16
+							gap: 32
+						}
+				}
+			}
+		}
+	}
+}

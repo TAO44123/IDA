@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity GroupMembers" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1730124901390_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1730198655868">
+		<Component name="C1730124925395" type="joinfilter" x="171" y="191" w="300" h="64" title="join rolemembers with users">
+			<Join source="C1730124928988"/>
+			<Cache active="true" main="guid" join="internalname"/>
+			<Attributes>
+				<Attribute name="A1730125050994" attribute="servicetype" source="servicetype" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1730124928988" type="discoverysource" x="626" y="188" w="300" h="50" title="CA_Identity_DSUsers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_DSUsers.csv&apos;)}"/>
+		</Component>
+		<Link name="L1730124935244" source="C1730124928988" target="C1730124925395" priority="1"/>
+		<Component name="C1730124975692" type="joinfilter" x="171" y="316" w="300" h="64" title="join rolemembers with roles">
+			<Cache active="true" main="guid" join="id"/>
+			<Join source="C1730124995419"/>
+			<Attributes>
+				<Attribute name="A1733229408850" attribute="id" source="id" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1730124995419" type="discoverysource" x="629" y="314" w="300" h="50" title="CA_Identity_Roles">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_Roles.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_Roles.csv&apos;)}"/>
+		</Component>
+		<Link name="L1730125003780" source="C1730124925395" target="C1730124975692" priority="1"/>
+		<Link name="L1730125005387" source="C1730124995419" target="C1730124975692" priority="1"/>
+		<Component name="C1730125039003" type="groupmembers" x="171" y="444" w="300" h="64" title="role members">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Group code="roleid"/>
+			<Content members="guid"/>
+		</Component>
+		<Link name="L1730125041686" source="C1730124975692" target="C1730125039003" priority="1" expression="(dataset.servicetype.get().equals(&apos;CDS&apos;)) || (!dataset.isEmpty(&apos;id&apos;))"/>
+		<Component name="C1730198655868" type="discoverysource" x="171" y="58" w="300" h="64" title="CA_Identity_RoleMembers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_RoleMembers.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_RoleMembers.csv&apos;)}"/>
+		</Component>
+		<Link name="L1730198664922" source="C1730198655868" target="C1730124925395" priority="1"/>
+		<Component name="N1730388355230" type="note" x="622" y="42" w="305" h="128" title="Collect line dedicated to Identity Only, so we don&apos;t want to manage external directory users.&#xA;Joins are used to filter out external directory users/groups&#xA;&#xA;First join : get only CAIdentity users&#xA;Second join : get only CAIdentity roles"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

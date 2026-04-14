@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0600 applications users" scriptfile="/collectors/bw_okta/0600 applications users.javascript" name="P1741104104649" startingpoint="C1741104125753">
+		<Component name="C1741104125753" type="discoverysource" x="188" y="54" w="300" h="64" title="applicationsusers">
+			<Discovery file="/discovery/bw_okta/applicationsusers.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-10)}/applicationsusers.csv"/>
+		</Component>
+		<Component name="C1741104139792" type="changefilter" x="188" y="202" w="300" h="64" title="update">
+			<Actions>
+				<Action name="U1741287262304" action="siloname" newvalue="{config.paramSiloName}"/>
+				<Action name="U1741287729469" action="add" attribute="SILO" type="String" multivalued="false" newvalue="{config.paramSiloName}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1741104151632" type="permission" x="188" y="359" w="300" h="64" title="DIRECT ACCESS permission">
+			<Permission code="PERMISSION" application="applicationid" type="Role" apperror="true" appevent="APPLICATIONNOTFOUND" error="true" event="PERMISSIONCODEISNULL">
+				<Attribute name="displayname" attribute="PERMISSION"/>
+			</Permission>
+		</Component>
+		<Component name="C1741104159146" type="right" x="188" y="525" w="300" h="64" title="right">
+			<Right account="accountid" application="applicationid" permission="PERMISSION" apperror="true" appevent="APPLICATIONNOTFOUND" permerror="true" permevent="PERMISSIONNOTFOUND" error="true" event="USERNOTFOUND"/>
+		</Component>
+		<Link name="L1741104181787" source="C1741104125753" target="C1741104139792" priority="1"/>
+		<Link name="L1741104182470" source="C1741104139792" target="C1741104151632" priority="1"/>
+		<Link name="L1741104183193" source="C1741104151632" target="C1741104159146" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="paramSiloName" description="paramSiloName"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

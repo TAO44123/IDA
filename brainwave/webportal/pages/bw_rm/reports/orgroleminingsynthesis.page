@@ -1,0 +1,83 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/orgprofiles.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+/* Nationalized labels here */
+bwpm_orgroleminingsynthesisNLS = NLS {
+	title [en "Organisation based role mining synthesis" fr "Synthèse role mining basé sur les organisations"]
+}
+
+bwpm_redbg = Style {
+	background:Color RGB(255, 198, 198)
+}
+
+bwpm_orgroleminingsynthesis = Page {
+	title: $bwpm_orgroleminingsynthesisNLS.title
+	tags: "generic", "mining"
+	icon: "16/audit/organisation_16.png"
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedOrganisation = Variable
+	
+	/* Datasets and records here */
+	data = Dataset {
+		view:bwpm_bvorgsroles_1
+	}
+	
+	/* Page content */
+	Table {
+		data:data
+		layout:Layout {grab:horizontal True vertical True}
+		show-count:True
+		show-filter:True
+		double-click:GoTo Page bwpm_orgprofiles with selectedOrganisation to uid
+	
+		Column {
+			column:uid
+			hidden:True
+			selection:selectedOrganisation
+		}	
+		Column {
+			column:shortname
+			width:200px
+			header: $permminingNLS.shortname
+			filterable:True
+			sortable:True
+		}
+		Column {
+			column:displayname
+			width:400px
+			header: $permminingNLS.name
+			sortable:True
+		}
+		Column {
+			column:organisationtypedisplayname
+			width:200px
+			header: $permminingNLS.type
+			sortable:True
+		}
+		Column {
+			column:nbmembers
+			width:150px
+			header: $bw_rm_managementNLS.nbpeople
+			sortable:True
+		}
+		Column {
+			column:nbrolecode
+			styling:IntStyling(Current nbrolecode) { when =0 then bwpm_redbg }
+			width:150px
+			header: $bw_rm_managementNLS.nbroles
+			sortable:True
+		}
+		Column {
+			column:nbidentities
+			styling:IntStyling(Current nbidentities) { when =0 then bwpm_redbg }
+			width:150px
+			header: $bw_rm_managementNLS.nbpeoplewithrole
+			sortable:True
+		}
+	}
+}

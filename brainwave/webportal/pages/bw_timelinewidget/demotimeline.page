@@ -1,0 +1,44 @@
+import "/webportal/pages/bw_timelinewidget/timeline.page"
+
+bwg_demotimelineNLS = NLS {
+	title [en "HTML Timeline Widgets Demo" ]
+}
+
+bwg_demotimeline = Page {
+	title: $bwg_demotimelineNLS.title
+	tags:"demo"
+	feature:bwtw_showcase
+
+	selectedOrg = Variable
+
+	orgs = Dataset {
+		view:br_organisation
+	}
+
+	timeline = Dataset {
+		view:htmlwidgets_computechanges with selectedOrg to orgcode
+	}
+
+
+		Combo {
+			variable:selectedOrg
+			options:Dynamic {
+				data:orgs
+				text:Current displayname
+				value:Current code
+			}
+		}		
+		IncludeHTMLWidget {
+			layout: Layout { grab:horizontal True vertical False hint:height 300 }
+			template: timeline
+			datasets:timeline(previoustimeslotuid, timeslotuid, previoustimeslotcommitdate, timeslotcommitdate, label, description, group) to chartdata(from_timeslotuid, to_timeslotuid, from_ts, to_ts, label, description, group)
+			widget-events: {
+				when onclick then [
+					Flash Concat ("Clicked on item group/from/to/label/description/from_timeslotuid/to_timeslotuid: ", Current group , " ", Current from_ts , " ", Current to_ts , " ", Current label , " ", Current description , " ", Current from_timeslotuid, " ", Current to_timeslotuid) 
+				]
+				when ongroupclick then [
+					Flash Concat ("Clicked on group: ", Current group) 
+				]
+			}
+		}
+}

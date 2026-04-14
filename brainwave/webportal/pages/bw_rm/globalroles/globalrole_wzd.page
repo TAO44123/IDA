@@ -1,0 +1,635 @@
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+import "/webportal/pages/bw_rm/rolemining_dialogs.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_access360/searchanalytics/identity/accessrightsincommon.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_base/widgets/stepper_js/stepper_js.page"
+import "/webportal/pages/bw_cloud_base/resources/services/dynamicrule_services.page"
+import "/webportal/pages/bw_cloud_base/resources/services/utils_jsservices.page"
+
+bwrm_GR_STEP_1IDENTITIES = Constant { value: "1identities" }
+bwrm_GR_STEP_2PERMISSIONS = Constant { value: "2permissions" }
+bwrm_GR_STEP_3INFO = Constant { value: "3info" }
+bwrm_GR_STEP_4SUMMARY = Constant { value: "4summary" }
+
+bwrm_globalrole_wzd_titleMapping = BooleanMapping {
+	when True then $global_roles_NLS.wzd.title.edit
+	when False then $global_roles_NLS.wzd.title.new
+}
+
+bwrm_globalrole_wzd = Dialog {
+	title: Transform edit using bwrm_globalrole_wzd_titleMapping 
+	width: 1000 height: 700
+	mixins: pageMixin
+	post-render-event:
+		ExecuteNamedAction doInit
+	buttons: [
+		CancelButton 
+		ActionButton {
+			text: $bwcdrm_wizardsNLS.button.previous
+			actions:
+				ExecuteNamedAction doPrevious
+			disabled:
+				Eval "currentStep.get() == '1info' "
+		}
+		ActionButton {
+			text: $bwcdrm_wizardsNLS.button.next
+			actions:
+				ExecuteNamedAction doNext
+			disabled:
+				Not BooleanPredicate(canNext)
+		}
+		ActionButton {
+			text: $bwcdrm_wizardsNLS.button.finish
+			actions:
+				ExecuteNamedAction doFinish
+			disabled:
+				Not BooleanPredicate(canFinish)
+			status: Ok
+			close: True
+		}
+	]
+
+	/* identity step and permissions
+	* cannot be moved to a fragment, because of the search widget
+	*/ 
+	identitySearch = SearchDefinition {
+		entity: Identity
+	}
+
+	inCode = Variable
+	identitySearchSer = Variable {}  // search serialization, including mode
+	identitySearchTitle = Variable {}  
+	identityCount = Variable { type: Integer initial: 0 }
+	selectedIdentityUid = Variable
+	identityRuleUid = Variable 
+
+	lowthreshold = Variable { type: Integer initial: 10 }
+	selectedpermissions = Variable  { multivalued: True }
+	curpermissionuid = Variable
+
+	// info 
+	code = Variable
+	name = Variable
+	description = Variable
+	status = Variable { initial: 1 }
+	version = Variable {initial:"1"}		
+	owner = Variable {initial:Principal.uid}
+	owner_fullname = Variable { }
+	category = Variable { }
+	
+	// state variable  
+	edit = Variable { type: Boolean initial: False }
+	currentStep = Variable { initial: Constant bwrm_GR_STEP_1IDENTITIES }
+	canNext = Variable { type: Boolean initial: True}
+	canFinish = Variable { type: Boolean initial: False}
+	codeValid = Variable { type: Boolean}
+	nameValid = Variable { type: Boolean}
+	error = Variable
+	rolePrefix = Variable { initial: Concat(Constant GLOBAL_ROLE, "_") }
+	fullCode = Variable 
+	identityRuleAdvanced = Variable { type: Boolean }
+	 
+	//stepper
+	steps = Dataset {
+		values: [
+			( id -> Constant bwrm_GR_STEP_1IDENTITIES, label -> $global_roles_NLS.wzd.step.label.identities, desc -> $global_roles_NLS.wzd.step.desc.identities ),
+			( id -> Constant bwrm_GR_STEP_2PERMISSIONS, label -> $global_roles_NLS.wzd.step.label.permissions, desc -> $global_roles_NLS.wzd.step.desc.permisssions),
+			( id -> Constant bwrm_GR_STEP_3INFO, label -> $global_roles_NLS.wzd.step.label.general, desc -> $global_roles_NLS.wzd.step.desc.general ),
+			( id -> Constant bwrm_GR_STEP_4SUMMARY , label -> $global_roles_NLS.wzd.step.label.summary, desc -> $global_roles_NLS.wzd.step.desc.summary )
+		]
+	}
+
+	// info
+	ownerDetail = Record {
+		view: br_identitynamebyuid with
+			owner to uid
+	}
+
+	existingRole = Record {
+		view: bwrm_role_exists_md with
+			Concat ( rolePrefix , code) to rolecode
+		disabled:
+			BooleanPredicate ( edit ) //disabled in edition
+	}
+
+	categories = Dataset {
+		view: bwrm_get_categories
+	}
+
+	roleDetail = Record {
+		view: bwpm_roledetails_md with
+			inCode to rolecode
+		disabled:
+			Not BooleanPredicate ( edit )
+	}
+
+	rolePermissions = Dataset {
+		view: bwpm_getrolepermissions_md with
+			inCode to rolecode
+		disabled:
+			Not BooleanPredicate ( edit )
+	}
+
+	// identity 
+	identityResult = Dataset {
+		search: Search {
+			view: bwrm_identity_search
+			definition: identitySearch
+		}
+		count-variable: identityCount
+	}
+
+	// permissions tab
+	accessrights = Dataset {
+		search: Search {
+			view: access360r_identityaccessrightsincommon with
+				identityCount to totalnbidentities,
+				lowthreshold to lowthreshold
+			definition: identitySearch
+		}
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		] 
+	}
+	
+	// summary tab permissions
+	rolePermissionDetails = Dataset {
+		view: bw_rm_permission_uids with
+			selectedpermissions to uids
+	}
+	
+	createrole = TaskRecord ( create "bwpm_createrole" )
+	updaterole = TaskRecord ( create "bwpm_updaterole" )
+	updaterolecontent = TaskRecord ( create "bwpm_updaterolecontent" )
+
+	/* Actions */
+	doInit = NamedAction (
+		Set Eval "!inCode.isEmpty()" to edit,
+		BooleanCase(edit){
+			when True then [
+				// edition
+				Set SubString ( 9 ,100) inCode to code, // strip role prefix from code
+				Set roleDetail.name to name, 
+				Set roleDetail.description to description,
+				Set roleDetail.status to status,
+				Set roleDetail.owner_uid to owner,
+				Set roleDetail.owner_fullname to owner_fullname,
+				Set roleDetail.category to category ,
+				Set roleDetail.identityrule to identityRuleUid,
+				Set roleDetail.identityrulecontent to identitySearchSer,
+				Set roleDetail.identityruletitle to identitySearchTitle,
+				ExecuteNamedAction doUpdateSearchState
+			] when False then [ ]
+		},
+		Set ownerDetail.fullname to owner_fullname,
+		ExecuteNamedAction doUpdateButtons
+	)
+
+	doPrevious = NamedAction (
+		StringCase( currentStep ) {
+			when Constant bwrm_GR_STEP_2PERMISSIONS then [
+				Set Constant bwrm_GR_STEP_1IDENTITIES to currentStep
+			] when Constant bwrm_GR_STEP_3INFO then [
+				Set Constant bwrm_GR_STEP_2PERMISSIONS to currentStep
+			] when Constant bwrm_GR_STEP_4SUMMARY then [
+				Set Constant bwrm_GR_STEP_3INFO to currentStep
+			]
+		},
+		Set False to canFinish,
+		ExecuteNamedAction doUpdateButtons
+	)
+
+	doNext = NamedAction (
+		StringCase( currentStep) {
+			when Constant bwrm_GR_STEP_1IDENTITIES then [
+				TransferData rolePermissions (uid ) to ( selectedpermissions),
+				Set Constant bwrm_GR_STEP_2PERMISSIONS to currentStep
+			] when Constant bwrm_GR_STEP_2PERMISSIONS then [
+				Set Constant bwrm_GR_STEP_3INFO to currentStep
+			] when Constant bwrm_GR_STEP_3INFO then [
+				Set Constant bwrm_GR_STEP_4SUMMARY to currentStep,
+				Set True to canFinish
+			]
+		},
+		ExecuteNamedAction doUpdateButtons
+	)
+
+	doFinish = NamedAction (
+		StringCase ( identityRuleUid ) {
+			when StartsWith "DYN:" then [
+				Set Eval "identityRuleUid.get().substr(4)" to identityRuleUid 
+			] otherwise  [
+				Set Concat( "RM:" , @b64_sha1(code to string)) to identityRuleUid
+			]
+		},
+		Call saveRule (
+			identityRuleUid to uid,
+			Eval "identitySearchSer.get().substr(1)" to content,
+			Eval "identityRuleAdvanced.get()? identitySearchTitle.get(): null " to title,
+			"RoleMining" to family,
+			"Role" to scope,
+			identityRuleUid from uid,
+			error from error
+		),
+		Set Concat( rolePrefix , code) to fullCode,
+		BooleanCase( edit) {
+			// creation
+			when False then [
+				Set fullCode to createrole.in_rolecode,
+				Set name to createrole.in_rolename,
+				Set description to createrole.in_roledescription,
+				Set Constant GLOBAL_ROLE to createrole.in_attachedorg,
+				Set owner to createrole.in_owner,
+				Set 0 to createrole.in_color,
+				Set status to createrole.in_status,
+				Set category to createrole.in_category,
+				Set version to createrole.in_roleversion,
+				Set True to createrole.in_setcontent,
+				Set identityRuleUid to createrole.in_identityrule,
+				Set identitySearchSer to createrole.in_identityrulecontent,
+				Set identitySearchTitle to createrole.in_identityruletitle,
+				Set selectedpermissions to createrole.in_permissions,
+				TaskComplete createrole wait-end timeout-seconds 15
+			] when True then [
+				//edition
+				Set fullCode to updaterole.in_rolecode,
+				Set name to updaterole.in_rolename,
+				Set description to updaterole.in_roledescription,
+				Set Constant GLOBAL_ROLE to updaterole.in_attachedorg,
+				Set owner to updaterole.in_owner,
+				Set 0 to updaterole.in_color,
+				Set status to updaterole.in_status ,
+				Set category to updaterole.in_category,
+				Set version to updaterole.in_roleversion,
+				Set identityRuleUid to updaterole.in_identityrule,
+				TaskComplete updaterole wait-end,
+				Set fullCode to updaterolecontent.in_rolecode,
+				Set identityRuleUid to updaterolecontent.in_identitiesrulename,
+				Set identitySearchSer to updaterolecontent.in_identitiesrulecontent,
+				Set identitySearchTitle to updaterolecontent.in_identitiesruletitle,
+				Set selectedpermissions to updaterolecontent.in_permissions,
+				TaskComplete updaterolecontent wait-end
+			]
+		}
+	)
+	
+	doUpdateSearchState = NamedAction(	
+		Set Eval "identitySearchSer.get().charAt(0) == 'a'" to identityRuleAdvanced,
+		// Set title to null in Smart Search mode to allow auto computing of title
+		BooleanCase( identityRuleAdvanced){
+			when False then [ Unset identitySearchTitle ]
+			when True then [ ]
+		}
+	)
+
+	doUpdateButtons = NamedAction (
+		StringCase( currentStep) {
+			when Constant bwrm_GR_STEP_1IDENTITIES then [
+				Set Eval "!identitySearchSer.isEmpty() && (!identityRuleAdvanced.get() || !identitySearchTitle.isEmpty()) " to canNext
+			] when Constant bwrm_GR_STEP_2PERMISSIONS then [
+				Set Eval "selectedpermissions.length > 0" to canNext
+			] when Constant bwrm_GR_STEP_3INFO then [
+				Set Eval "codeValid.get() && nameValid.get() && existingRole.code == null" to canNext
+			] otherwise [
+				Set False to canNext
+			]
+		}
+	)
+
+	// identity
+	goIdentityDetails = NamedAction (
+		GoTo Activity Identity Detail with selectedIdentityUid to paramIdentityUid
+	)
+
+	goPermissionDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog(
+			curpermissionuid to inuid,
+			True to inshowperjob,
+			True to inshowperorg
+		)
+	)
+
+	/* Dialog Content */
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical False hint: height 110 width 1050 }
+		template: bw_stepper
+		datasets: steps( id, label, desc ) to stepsdata (id, label, description)
+		bindings:
+			value-of "horizontal" to orientation,
+			value-of False to showState,
+			value-of currentStep to currentStep  
+		widget-events: {
+			when onlabelclick then [ Set Current id to currentStep ]
+		}
+	}
+	ConditionalGroup {
+		StringCondition( currentStep) {
+			when Constant bwrm_GR_STEP_1IDENTITIES then [
+				SearchEdition {
+					definition: identitySearch
+					rule-mode-enabled: True
+					apply-event:
+						Set SerializeSearch identitySearch to identitySearchSer,
+						ExecuteNamedAction doUpdateSearchState,
+						ExecuteNamedAction doUpdateButtons
+					layout: Layout { grab: horizontal True vertical False }
+				}
+				Edit {
+					variable: identitySearchTitle
+					label: $global_roles_NLS.wzd.identities.label.criteria
+					hidden: Not BooleanPredicate(identityRuleAdvanced)
+					modify-event: ExecuteNamedAction doUpdateButtons
+				}
+				Table {
+					data: identityResult
+					label: Label { value: $global_roles_NLS.wzd.identities.label.result break: True}
+					layout: Layout { grab: horizontal True vertical True }
+					configurable: True
+					show-count: True
+					Column {
+						column: uid
+						hidden: True
+						selection: selectedIdentityUid
+					}
+					Column {
+						column: hrcode
+						header: $identity.hrcode
+						width: 100%
+						sortable:True
+						initially-masked: False
+						actions: ExecuteNamedAction goIdentityDetails
+					}
+					Column {
+						column: givenname
+						header: $identity.givenname
+						width: 100%
+						sortable:True
+						initially-masked: False
+						actions: ExecuteNamedAction goIdentityDetails
+					}
+					Column {
+						column: surname
+						header: $identity.surname
+						width: 100%
+						sortable:True
+						initially-masked: False
+						actions: ExecuteNamedAction goIdentityDetails
+					}
+					Column {
+						column: fullname
+						header: $identity.fullname
+						width: 100%
+						sortable:True
+						initially-masked: True
+						actions: ExecuteNamedAction goIdentityDetails
+					}
+					Column {
+						column: arrivaldate
+						header: $identity.arrivaldate
+						width: 100%
+						sortable:True
+						initially-masked: True
+					}
+					Column {
+						column: departuredate
+						header: $identity.departuredate
+						width: 100%
+						sortable:True
+						initially-masked: True
+					}
+					Column {
+						column: active
+						header: $identity.active
+						width: 100%
+						sortable:True
+						initially-masked: True
+					}
+					Column {
+						column: internal
+						header: $identity.internal
+						width: 100%
+						sortable:True
+						initially-masked: True
+					}
+					Column {
+						column: job_organisation
+						header: $global_roles_NLS.wzd.identities.header.joborg
+						width: 100%
+						sortable:True
+						initially-masked: True
+					}
+				}
+			]
+			when Constant bwrm_GR_STEP_2PERMISSIONS then [
+				Table {
+					data:accessrights
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					checkboxes:permissionuid to selectedpermissions
+					checkboxes-changed-event: 
+						ExecuteNamedAction doUpdateButtons
+					Column {
+						column:permissionuid
+						hidden:True
+						selection:curpermissionuid
+					}
+					Column {
+						column:permissiondisplayname
+						header:$permission.concept
+						width:100%
+						sortable:True
+						filterable:True
+						actions: ExecuteNamedAction goPermissionDetails
+					}
+					Column {
+						column:permissioncode
+						header:$ppermission.code
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+						actions: ExecuteNamedAction goPermissionDetails
+					}
+					Column {
+						column:permissionbwa_permissionmetadata_sensitivitylevel
+						header:$access360analytics_identity_accessrightsincommonNLS.sensitivitylevel
+						width:140px
+						sortable:True
+						initially-masked:True
+					}
+					Column {
+						column:applicationdisplayname
+						header:$application.concept
+						width:140px
+						sortable:True
+					}
+					Column {
+						column:nbidentity
+						header:$access360analytics_identity_accessrightsincommonNLS.nbincluded
+						width:160px
+						sortable:True
+						align:Right
+					}
+					Column {
+						column:nbexcludedidentities
+						header:$access360analytics_identity_accessrightsincommonNLS.nbexcluded
+						width:160px
+						sortable:True
+						align:Right
+					}
+					Column {
+						column:percent
+						text:Concat(Current percent,' %')
+						header:$access360analytics_identity_accessrightsincommonNLS.includedpercent
+						width:160px
+						sortable:True
+						align:Right
+						styling:StylingTemplateSelection (Current percent) using similarStyle 
+					}
+				}
+				ButtonGroup {
+					Button {
+						actions:Dialog access360analytics_identity_accessrightsincommonorgjob(selectedpermissions to permissionsuid, SerializeSearch identitySearch to search)
+						image:%collection_16.bulb
+						text:$access360analytics_identity_accessrightsincommonNLS.analysisbutton
+						tooltip:$access360analytics_identity_accessrightsincommonNLS.originanalysis
+						disabled:
+							OrPredicate {
+								IntPredicate(SizeOf selectedpermissions) { when >999 then True otherwise False }
+								StringPredicate(selectedpermissions) { when IsEmpty then True otherwise False }
+							}
+					}
+				}
+			]
+			when Constant bwrm_GR_STEP_3INFO then [
+				Edit {
+					variable:code
+					label:$bwpm_createRoleNLS.codelabel
+					hidden: BooleanPredicate( edit )
+					not-empty:True
+					match:"^[a-z,A-Z,0-9,_]+"
+					validity: codeValid
+					tooltip:$bwpm_createRoleNLS.codetooltip
+					modify-event: ReloadData(existingRole), ExecuteNamedAction doUpdateButtons
+				}
+				Edit {
+					variable:name
+					label:$bwpm_createRoleNLS.namelabel
+					not-empty:True
+					validity: nameValid
+					tooltip:$bwpm_createRoleNLS.nametooltip
+					modify-event: ExecuteNamedAction doUpdateButtons
+				}
+				Edit {
+					variable:description
+					label:$bwpm_createRoleNLS.descriptionlabel
+					tooltip:$bwpm_createRoleNLS.descriptiontooltip
+				}
+				Text {
+					label: $bwpm_createRoleNLS.owner
+					value: owner_fullname
+					commands: Commands{
+								presentation: Icon
+								Command { 
+									actions: Dialog identityPicker(owner from outUid, owner_fullname from outDisplayname)
+									icon: "16/audit/identity_16.png"
+								}
+					}
+				}
+				Edit {
+					variable: category
+					proposal: categories.category
+					label:$permminingNLS.rolecategory
+				}
+				Edit {
+					variable:version
+					label:$bwpm_createRoleNLS.versionlabel
+					tooltip:$bwpm_createRoleNLS.versiontooltip
+				}
+				Combo {
+					variable:status
+					allow-none:False
+					label:$bwpm_createRoleNLS.statuslabel
+					tooltip:$bwpm_createRoleNLS.statustooltip
+					options:Static {
+						Option { text:$permminingNLS.status.design value:1 }
+						Option { text:$permminingNLS.status.production value:2 }
+						Option { text:$permminingNLS.status.disabled value: 0 }
+					}
+					hidden: Not BooleanPredicate(edit)
+				}
+			]
+			when Constant bwrm_GR_STEP_4SUMMARY then [
+				Text {
+					value: code
+					label: $bwpm_createRoleNLS.codelabel
+					hidden: BooleanPredicate( edit )
+				}
+				Text {
+					value: name
+					label: $bwpm_createRoleNLS.namelabel
+				}
+				Text {
+					value: description
+					label: $bwpm_createRoleNLS.descriptionlabel
+				}
+				Text {
+					value: category
+					label: $permminingNLS.rolecategory
+				}
+				Text {
+					value: owner_fullname
+					label: $bwpm_createRoleNLS.owner
+				}
+				// permissions and identities
+				Grid {
+					columns: GridColumn, GridColumn
+					GridRow {
+						GridCell {
+							Table {
+								data: identityResult 
+								layout:Layout {grab: horizontal True vertical True }
+								label:Label { break: True value: $permminingNLS.peoplerole }
+								show-count: True
+								Column { column: fullname header: $permminingNLS.fullname }
+								Column { column: job_organisation }
+							}
+						}
+						GridCell {
+							Table {
+								data: rolePermissionDetails
+								show-count: True
+								layout: Layout {grab: horizontal True vertical True }
+								label: Label { break: True value: $permminingNLS.permrole }
+								Column {
+									column: displayname
+									header: $permminingNLS.perm
+								}
+								Column {
+									column: app_displayname
+									header: $permminingNLS.app
+								}
+								Column {
+									column: code
+									header: $permminingNLS.permcode
+								}
+							}
+						}
+					}
+				}
+			]
+		}
+	}
+}

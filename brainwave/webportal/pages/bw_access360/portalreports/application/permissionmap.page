@@ -1,0 +1,111 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+/* Nationalized labels here */
+access360r_application_permissionmapNLS = NLS {
+	title [en "Permissions map" fr "Carte des permissions"]
+	dyntitle [en "{0} permissions map" fr "Carte des permissions pour {0}"]
+	unknown [en 'unknown' fr 'inconnue']
+	size [en "Blocs size" fr "Taille des blocs"]
+	size_prop [en "Proportional to the number of accounts" fr "Proportionnel au nombre de comptes"]
+	size_iprop [en "Inversely proportional to the number of accounts" fr "Inversement proportionnel au nombre de comptes"]
+	size_same [en "Identical" fr "Identique"]
+description [
+		en "This report presents the permissions accessible by the application accounts in the form of a card. The size of the blocks can either be proportional to the number of accounts, inversely proportional to the number of accounts or identical. Only active accounts are taken into account. Only the rights directly associated with the accounts are taken into account. Only permissions of type 'application profile' are taken into account. It is possible to restrict the display to direct members or to display all members. It is possible to display the details of the permissions by clicking on the blocks."
+		fr "Ce rapport présente les permissions accessibles par les comptes de l'application sous la forme d'une carte. La taille des blocs peut être au choix proportionnel au nombre de comptes, inversement proportionnel au nombre de comptes ou identique. Seuls les comptes actifs sont pris en compte. Seul les droits directement associés aux comptes sont pris en compte. Seuls les permissions de type 'profil applicatif' sont pris en compte. Il est possible de restreindre l'affichage aux membres directs ou d'afficher tous les membres. Il est possible d'afficher le détail des permissions en cliquant sur les blocs."
+	]
+}
+
+access360r_application_permissionmap = Page {
+	title: $access360r_application_permissionmapNLS.title
+	description: $access360r_application_permissionmapNLS.description
+	dynamic-title: $access360r_application_permissionmapNLS.dyntitle(application.displayname)
+	tags: "application" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: bwa_applicationpermissionmap
+		
+	mixins: simpleReport	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+	inonlydirectselection = Parameter { multivalued:False default:True }
+	
+	/* Variables here */
+	onlydirectselection = Variable { multivalued:False initial:inonlydirectselection }
+	
+	selectedPermission = Variable
+	
+	sizeStrg = Variable
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	application = Record {
+		view:br_applicationDetail with uid to uid 
+	}
+
+	appPerms = Dataset {
+		view:bwaccess360r_application_applicationnbpermission with uid to uid
+	}
+	
+	showDetails = NamedAction (
+		Dialog bwf_permissionDetailsDialog(	selectedPermission to inuid, 
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg
+												)
+	
+	
+	)
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					variable:sizeStrg
+					label:$access360r_application_permissionmapNLS.size
+					layout:Layout {hint: width 400 align:horizontal Beginning vertical Center}
+					options:Static {
+						Option {text:$access360r_application_permissionmapNLS.size_prop value:"count"}
+						Option {text:$access360r_application_permissionmapNLS.size_iprop value:"reversecount"}
+						Option {text:$access360r_application_permissionmapNLS.size_same value:"same"}
+					}
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:2
+			
+				IncludeHTMLWidget {
+					//layout: Layout { hint: height 500 width 1050 align: horizontal Center vertical Center }
+					layout: Layout { grab: horizontal True vertical True }
+					template: treemapChart
+					datasets: appPerms (displayname, uid, nb) to chartdata ( label, code , count)
+					bindings: 
+						sizeStrg binds-to sizeStrategy
+					widget-events: {
+						when onclick then [
+							Set Current code to selectedPermission,
+							ExecuteNamedAction showDetails
+						]
+					}
+				}
+
+
+			}
+		}
+	}
+}

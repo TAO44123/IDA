@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>Text editor</title>
+	<script src="bw_pages.js"></script>
+	<script src="tinymce_4.9.2/jquery.min.js"></script>
+	<script src="tinymce_4.9.2/tinymce-jquery.min.js"></script>
+	<script src="tinymce_4.9.2/tinymce.min.js"></script>
+	<style type="text/css">
+		body {
+			font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+			margin: auto;
+			position: relative;
+		}
+
+		textarea {
+			width: 100%;
+			height: 100vw;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="container" style="width:100%;"></div>
+
+	<script>
+		var content = "";
+		var readonly = false;
+		var toolbarHeight = 70;
+		var toolbarOptions = ["styleselect fontselect fontsizeselect | bold italic underline", "forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | print"];
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "content") {
+				content = initialValue;
+			}
+			if (varName == "readonly") {
+				if (initialValue) {
+					readonly = true;
+					toolbarHeight = 35;
+					toolbarOptions = "print";
+				}
+				else
+					readonly = false;
+			}
+		});
+
+		function init() {
+			document.documentElement.style.overflow = 'hidden';
+			document.body.scroll = "no";
+
+			var html = document.documentElement;
+			var container = document.getElementById('container');
+
+			var divwidth = html.clientWidth;
+			var divheight = html.clientHeight;
+			container.style.width = divwidth + 'px';
+			container.style.height = divheight + 'px';
+
+			var language = window.navigator.userLanguage || window.navigator.language;
+			if (language != null) {
+				language = language.substring(0, 2).toLowerCase();
+			}
+			if (language != 'fr')
+				language = 'en';
+
+			tinymce.init({
+				setup: function (ed) {
+					ed.on('change', function (e) {
+						//Pages.sendChange("content", ed.getContent());
+					});
+					ed.on('focus', function () {
+						//$(this.contentAreaContainer.parentElement).find("div.mce-toolbar-grp").show();
+					});
+					ed.on('blur', function () {
+						Pages.sendChange("content", ed.getContent());
+						//$(this.contentAreaContainer.parentElement).find("div.mce-toolbar-grp").hide();
+					});
+                    ed.on("init", function () {
+                        //$(this.contentAreaContainer.parentElement).find("div.mce-toolbar-grp").hide();
+                        resizeToFit();
+                        // Add null check before setting content
+                        if (content !== null && content !== undefined) {
+                            tinymce.get('container').setContent(content || '');
+                        } else {
+                            tinymce.get('container').setContent('');
+                        }
+
+                        window.onresize = function (event) {
+                            resizeToFit();
+                        };
+                    });
+				},
+				license_key: 'gpl',
+				selector: 'div#container',
+				theme: "silver",
+				plugins: 'autolink link image lists charmap preview anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking save table directionality emoticons',
+				menubar: false,
+				statusbar: false,
+				branding: false,
+				readonly: readonly,
+				language: language,
+				paste_webkit_styles: 'all',
+				convert_fonts_to_spans: true,
+				toolbar: toolbarOptions,
+				convert_urls: false,
+			});
+		}
+
+		function resizeToFit() {
+			var html = document.documentElement;
+			var container = document.getElementById('container');
+
+			var divwidth = html.clientWidth;
+			var divheight = html.clientHeight;
+			container.style.width = divwidth + 'px';
+			container.style.height = divheight + 'px';
+
+			var h = toolbarHeight;
+			if (divwidth < 435 && !readonly)
+				h = h + 60;
+
+			// Replace the theme.resizeTo method with the proper way to resize in newer TinyMCE versions
+			var editor = tinymce.get('container');
+			if (editor) {
+				// Set the editor's size using CSS
+				var editorContainer = editor.getContainer();
+				if (editorContainer) {
+					editorContainer.style.width = (divwidth - 3) + 'px';
+					editorContainer.style.height = (divheight - h) + 'px';
+
+					// Force TinyMCE to update its UI
+					if (typeof editor.fire === 'function') {
+						editor.fire('ResizeEditor');
+					}
+				}
+			}
+		}
+
+		Pages.listenInitDone(function () {
+			init();
+
+			Pages.listenTo("content", function (newValue) {
+				content = newValue;
+				tinymce.get('container').setContent(content);
+			});
+		});
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,224 @@
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/workflow/bw_delegations/delegationsAdminList.page"
+import "/webportal/pages/workflow/bw_delegations/delegationSharedResources.page"
+
+modifyDelegation = Page {
+	title: $modifyDelegation_NLS.title
+	feature: delegation_admin_edit
+	enter-event:
+		Set delegationRecordUid to task.delegationRecordUid,
+		Set delegationRecord.label to task.label,
+		Set Date ( delegationRecord.begindate ).value( Constant DATEFORMAT ) to task.beginDate,
+		Set Date ( delegationRecord.enddate ).value( Constant DATEFORMAT ) to task.endDate,
+		Set delegationRecord.comment to task.comment,
+		Set delegationRecord.delegatoruid to task.delegator,
+		Set Split delegationRecord.rolelist using "," remove-empty to selectedRoles,
+		TransferData availableProcDef (processDefinitionKey) to (task.processDefinitions)
+	
+	delegationRecordUid = Parameter {
+		mandatory: True
+		hidden: True
+	}
+	
+	valid = Variable { type: Boolean initial: True }
+ 	selectedRoles = Variable { type: String multivalued: True }
+ 	showDelegatorRoles = Variable { type: Boolean initial:True }
+	
+	task = TaskRecord (create "br_modifyDelegation")
+
+	delegationRecord = Record(br_delegationInfo with delegationRecordUid to recordUid)
+		
+	availableRoles = Dataset {
+		roles:
+			Roles {
+				project-roles: True
+			} 
+		excludes:
+			StringPredicate ( Current role ) {
+				when Constant TSEXTENDEDACCESSROLE then True
+			}
+	}
+	
+	delegatorRoles = Dataset {
+		view: getroles with
+			task.delegator to identityuid
+		excludes:
+			StringPredicate ( Current role ) {
+				when Constant TSEXTENDEDACCESSROLE then True
+			}
+		disabled:
+			StringPredicate ( task.delegator ) {
+				when IsEmpty then True
+			}
+	}
+	
+	availableProcDef = Dataset {
+		process-definitions: ProcessDefinitionFilter {
+			all-definitions: True
+			show-technical: False
+			show-not-browsable: True
+		}
+	}
+	
+	Text {
+		label: Label {
+			value: $delegations_NLS.delegator_title
+			layout: Layout {hint: width 120}
+		}
+		value: delegationRecord.delegatorfullname
+		mixins: workflowTextWithCommandMixin
+	}		
+	Text {
+		label: $delegations_NLS.delegate_title
+		value: delegationRecord.delegateefullname
+		mixins: workflowTextWithCommandMixin
+	}
+	Edit {
+		label: $delegations_NLS.label
+		variable: task.label
+		not-empty: True
+	}
+	DateTime {
+		type: Date
+		label: $delegations_NLS.delegation_startdate
+		variable: task.beginDate
+		format: "yyyyMMddHHmmss"
+		date-before: Date(task.endDate, Constant DATEFORMAT)
+		validity: valid
+	}
+	DateTime {
+		type: Date
+		label: $delegations_NLS.delegation_enddate
+		variable: task.endDate
+		format: "yyyyMMddHHmmss"
+		allow-none: True
+		date-after: Date(task.beginDate, Constant DATEFORMAT)
+		validity: valid
+	}
+	Edit {
+		label: $delegations_NLS.comment
+		variable: task.comment
+		multi-lines: True
+		layout: Layout {
+			grab: horizontal True vertical False
+			hint: height 150
+		}
+	}
+	Header {
+		value:$delegations_NLS.scope_header
+		styling: bigTitleStyle
+		layout: Layout {indent: horizontal 0 vertical 30 }
+	}
+	Grid {
+		insets: 0 0 0 0
+		columns: GridColumn { width: 0px },
+		GridColumn {
+			fill: True
+			width: grow		
+			group: col
+		}, GridColumn {
+			fill: True
+			width: grow
+			group: col
+		}
+		layout: Layout {
+			grab: horizontal True vertical False
+		}
+		GridRow {
+			GridCell {}
+			GridCell {
+				Checkbox {
+					variable: showDelegatorRoles 
+					text: $delegations_NLS.roles.showonlydelegatorroles
+				}
+				ConditionalGroup{
+					BooleanCondition (showDelegatorRoles) { 
+						when True then [ 
+							Table {
+								data: delegatorRoles
+								checkboxes: role to selectedRoles
+								hide-header: True
+								hide-lines: True
+								label: Label {
+									value: $delegations_NLS.roles
+									layout: Layout {hint: width 115}					
+									tooltip: $delegations_NLS.roles_tooltip
+								}
+								layout: Layout {
+									grab: horizontal True vertical False
+									hint: height 200
+								}
+								 
+								Column {
+									column: role
+									text: Transform [Current role] using roleMapping
+									width: 100%
+								}
+							}
+						]
+						when False then [
+							Table {
+								data: availableRoles
+								checkboxes: role to selectedRoles
+								hide-header: True
+								hide-lines: True
+								label: Label {
+									value: $delegations_NLS.roles
+									layout: Layout {hint: width 115}					
+									tooltip: $delegations_NLS.roles_tooltip
+								}
+								layout: Layout {
+									grab: horizontal True vertical False
+									hint: height 200
+								}
+								 
+								Column {
+									column: role
+									text: Transform [Current role] using roleMapping
+									width: 100%
+								}
+							}
+						]
+					}
+				}
+			}
+		}
+	} // Grid
+	Group {
+		title: $delegations_NLS.actionsection
+		mixins: workflowActionsMixin
+		ButtonGroup {
+			uniform: True
+			align: Right
+			Button { 
+				disabled:
+					OrPredicate {
+						IntPredicate Size ( selectedRoles ) {
+							when = 0 then True
+						}
+						Not BooleanPredicate ( valid )
+						// The delegatee must be different from delegator
+						SameValuePredicate ( task.delegator, task.delegate )
+					}
+				text: $modifyDelegation_NLS.complete.buttontext
+				actions:
+					Confirm $modifyDelegation_NLS.complete.confirm,
+					Set delegationRecord.delegateeuid to task.delegate, // used for notification
+					Set delegationRecord.delegatoruid to task.delegator, // used for notification
+					Set delegationRecord.delegateefullname to task.delegate_fullname,
+					Unset task.roles,
+					MultivaluedAdd selectedRoles to task.roles,
+					TaskComplete task wait-end timeout-seconds 30, 
+					Flash Information $modifyDelegation_NLS.complete.flashmessage, 
+					GoTo Page adminDelegations
+			}			
+			Button { 
+				text: $modifyDelegation_NLS.cancel.buttontext
+				actions:
+					TaskCancel task,
+					GoTo Page adminDelegations
+			}
+		}
+	}
+}

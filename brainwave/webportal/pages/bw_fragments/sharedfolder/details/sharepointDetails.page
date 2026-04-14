@@ -1,0 +1,204 @@
+import "/webportal/pages/bw_fragments/sharedfolder/details.page"
+import "/webportal/pages/bw_fragments/sharedfolder/accounts.page"
+import "/webportal/pages/bw_fragments/sharedfolder/acls.page"
+import "/webportal/pages/bw_fragments/sharedfolder/perorg.page"
+import "/webportal/pages/bw_fragments/sharedfolder/perjob.page"
+import "/webportal/pages/bw_fragments/sharedfolder/usages.page"
+import "/webportal/pages/bw_fragments/permission/controls.page"
+import "/webportal/pages/bw_fragments/permission/decisionhistory.page"
+import "/webportal/pages/bw_fragments/account/acls.page"
+import "/webportal/pages/bw_fragments/custom/sharedfolderExtendedDetails.page"
+
+
+bwf_sharepointDetailsDialogNLS = NLS {
+	title [en 'Sharepoint detail' fr 'Détails du répertoire']
+	extended [en "Additional information" fr "Informations complémentaires"]
+	permission [en "Folder" fr "Répertoire"]
+	accounts [en "Accounts" fr "Comptes"]
+	acls [en "ACLs" fr "ACLs"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * sharepoint details dialog box fragment
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>permission uid</li>
+ * <li><b>inshowacls </b>optional boolean, true to show ACLs tab, false by default. !!this tab gives a lot of information, including account list</li>
+ * <li><b>inshowaccountacls </b>optional boolean, true to show ACLs tab for a given account, false by default. use it with inaccountuid</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, false by default</li>
+ * <li><b>inshowaccountsfororganisation </b>optional boolean, true to show accounts tab for a given organisation, as to be used with inorganisationuid, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show permission origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show permission origin per job tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inaccountuid </b>to be used with inshowaccountacls</li>
+ * </ul>
+ * </span>
+ */
+bwf_permissionDetailsFragmentSharepoint = PageFragment {
+	enter-event:IntCase(folder.bwa_permissionanalytics_nbusage) { when >0 then [ Set True to hasusages ] }
+	
+	inuid = Variable
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowacls = Variable { type:Boolean initial:False }
+	inshowaccountacls = Variable { type:Boolean initial:False }
+	inshowaccountsfororganisation = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+
+	inapplicationuids = Variable { type:String multivalued:True }
+	inpermissiontypes = Variable { type:String multivalued:True }
+	inaccountuid = Variable { type:String }
+	
+	nbdefects = Variable { private:True }
+	nboverallocated = Variable { private:True }
+	hasusages = Variable { private:True initial:False }
+
+	grouptype = Variable { private:True }
+
+	showextended = Variable { private:True initial:False }
+
+	active_sharedfolder = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_acls = Variable { initial:False multivalued:False type:Boolean }
+	active_accountacls = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_accountsfororganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+
+	folder = Record {
+		view: bwf_permissionDetail with inuid to uid
+	}
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.permission
+			activation-event: Set True to active_sharedfolder
+			
+			IncludeFragment (fragmentSharedfolderFullDetails with value-of inuid to inuid, value-of active_sharedfolder to inenabled )
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentSharedfolderExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem  {
+			text: $bwf_sharepointDetailsDialogNLS.acls
+			feature: unstructureddata_license
+			hidden:
+				Not BooleanPredicate ( inshowacls )
+			activation-event:
+				Set True to active_acls,
+				ExecuteFragmentNamedAction fragmentSharedfolderAcls.reload
+			fragmentSharedfolderAcls = IncludeFragment {
+				fragment: fragmentSharedfolderAcls with
+					value-of inuid to inuid,
+					value-of True to incanshowdetails,
+					value-of active_acls to inenabled
+			}
+		}
+		TabItem  {
+			text: $bwf_sharepointDetailsDialogNLS.acls
+			feature: unstructureddata_license
+			hidden:
+				Not BooleanPredicate ( inshowaccountacls )
+			activation-event:
+				Set True to active_accountacls,
+				ExecuteFragmentNamedAction fragmentAccountPermissionACLs.reload
+			fragmentAccountPermissionACLs = IncludeFragment {
+				fragment: fragmentAccountPermissionACLs with
+					inaccountuid binds-to inuid, 
+					inuid binds-to inpermissionuid, 
+					value-of True to incanshowdetails, 
+					value-of active_accountacls to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.accounts
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowaccounts)
+			activation-event: Set True to active_accounts
+			
+			IncludeFragment (fragmentSharedfolderAccounts with value-of inuid to inuid, value-of True to incanshowdetails,  value-of active_accounts to inenabled )
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.accounts
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowaccountsfororganisation)
+			activation-event: Set True to active_accountsfororganisation
+			
+			IncludeFragment (fragmentSharedfolderAccountsForOrg with value-of inuid to inuid, 
+															inorganisationuid binds-to inorganisationuid,
+															inonlydirectselection binds-to inonlydirectselection,
+															value-of True to incanshowdetails,  
+															value-of active_accountsfororganisation to inenabled )
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.oorigin
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowperorg)
+			activation-event: Set True to active_perorg
+			
+			IncludeFragment (fragmentSharedfolderPerOrg with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perorg to inenabled )
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.jorigin
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowperjob)
+			activation-event: Set True to active_perjob
+			
+			IncludeFragment (fragmentSharedfolderPerJob with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perjob to inenabled )
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.usages
+			feature:unstructureddata_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(hasusages)		
+					Not BooleanPredicate(inshowusages)
+				}
+			activation-event: Set True to active_usages
+			
+			IncludeFragment (fragmentSharedFolderUsages with value-of inuid to inuid, value-of active_usages to inenabled )
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.controls
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentPermissionAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_sharepointDetailsDialogNLS.decisionhistory
+			feature:unstructureddata_license
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentPermissionDecisionHistory with value-of inuid to inuid, value-of active_decision to inenabled )
+		}
+	}
+}

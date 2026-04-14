@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_repository_allcontroldefects_nb" displayname="Number of control defects for repo">
+	<Definition scriptfile="/views/bw_fragments/repository/allcontroldefects.javascript" name="D1615798037241" description="Number of control defects for repo">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1615798037240" title="Repository">
+			<InnerView name="bwf_repository">
+				<Param name="F1615798149003" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1637309491148" type="joinview" x="842" y="152" w="300" h="50" title="# Account defects">
+			<InnerView name="bwf_repositoryaccountcontroldefects_nb" prefix="acc_">
+				<Param name="F1637309536089" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637313993324" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.acc_repo_uid.get()}"/>
+		</Component>
+		<Link name="L1637309491914" source="C1615798037240" target="C1637309491148" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637309587640" type="joinview" x="705" y="233" w="300" h="50" title="# Group defects">
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.group_repo_uid.get()}"/>
+			<InnerView name="bwf_repositorygroupcontroldefects_nb" prefix="group_">
+				<Param name="F1637309623197" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637314000031" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+		</Component>
+		<Link name="L1637309588812" source="C1637309491148" target="C1637309587640" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637309662176" type="joinview" x="685" y="319" w="300" h="50" title="# Shares defects">
+			<InnerView name="bwf_serversharecontroldefects_nb" prefix="share_">
+				<Param name="F1637309695366" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637314005216" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.share_repo_uid.get()}"/>
+			<ViewComputedAttribute name="_total" displayname="Total number of defects on repo" type="Integer" expression="( dataset.isEmpty( &apos;acc_nb&apos; ) ? 0 : dataset.acc_nb.get() ) + ( dataset.isEmpty( &apos;group_nb&apos; ) ? 0 : dataset.group_nb.get() ) + ( dataset.isEmpty( &apos;share_nb&apos; ) ? 0 : dataset.share_nb.get() )"/>
+			<ExcludeList>
+				<Exclude name="acc_nb"/>
+				<Exclude name="acc_repo_uid"/>
+				<Exclude name="group_nb"/>
+				<Exclude name="group_repo_uid"/>
+				<Exclude name="share_nb"/>
+				<Exclude name="share_repo_uid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1637309663613" source="C1637309587640" target="C1637309662176" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1616574767554_1" data="EURO_1637084560992_849653"/>
+	</ViewParam>
+	<ViewSort name="sort" attribute1="controlrisklevel" direction1="DESC" attribute2="controldisplayname"/>
+	<ViewParam name="minimumrisklevel" displayname="minimumrisklevel" type="Integer">
+		<Value name="V1637313979780_1" data="2"/>
+	</ViewParam>
+</View>

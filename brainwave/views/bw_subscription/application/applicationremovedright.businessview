@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bws_applicationremovedright" displayname="applicationremovedright">
+	<Definition scriptfile="/views/bw_subscription/application/applicationrightcontrols.javascript" name="D1639070558372">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1639070558372" title="active rights">
+			<InnerView name="bws_application_rights">
+				<Param name="F1639070595837" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1639070691329" type="trendview" x="630" y="173" w="300" h="50" title="detect removed rights">
+			<Trend timeslot="-1" key="{dataset.key.get()}" comparing_column="val" trend_column_name="status" include_removed="true" exclude_same="true" exclude_new="true"/>
+			<ExcludeList>
+				<Exclude name="key"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1639070691418" source="C1639070558372" target="C1639070691329" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1640257149383" type="unionview" x="432" y="446" w="300" h="50" title="Append disabled rights">
+			<InnerView name="bws_application_disabledrights_inner">
+				<Param name="F1640257186343" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="Removed" secondary_discriminator="Disabled" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1640257204079" source="C1639070691329" target="C1640257149383" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1640257336457" type="note" x="348" y="22" w="300" h="50" title="Consolidate BOTH removed access rights AND disabled rights (accounts is disabled)"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1639143800623_1" data="CASHPOOLER_1635163253657_90209"/>
+	</ViewParam>
+	<ViewParam name="RefTimeslot" displayname="RefTimeslot" defaultvalue="true" type="Boolean"/>
+	<ViewSort name="sort" attribute1="accountlogin" attribute2="permissiondisplayname" attribute3="perimeterdisplayname"/>
+</View>

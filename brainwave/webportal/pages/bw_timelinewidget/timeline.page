@@ -1,0 +1,90 @@
+/**
+ * A Timeline to include in your Pages
+ * Relies on VisJs
+ * 
+ * see /webportal/pages/bw_htmlwidgets/demotimeline.page for an example
+ * 
+ * Brainwave 2018
+ */
+
+
+/**
+ * <span style="white-space: pre-line">
+ * A timeline component to display information between timeslots for groups of objects
+ * You can drag&drop to move the timeline, use the mouse wheel + the Ctrl key to zoom in and zoom out
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>id (String)</b> (Optional) the item id
+ * <b>to_timeslotuid (String)</b> (Optional) the end date timeslot uid
+ * <b>from_timeslotuid (String)</b> (Optional) the start date timeslot uid
+ * <b>from_ts (Date)</b>  the start date
+ * <b>to_ts (Date)</b> the end date
+ * <b>label (String)</b> the label displayed within the item
+ * <b>description (String)</b> (Optional) the item tooltip
+ * <b>group (String)</b> the group code
+ * <b>grouplabel (String)</b> (Optional) the group label, defaults to 'group'
+ * <b>itemstyle (String )</b> (Optional) itemstyle is a css style for the item such as "color:#FFFFFF;background-color:#FFDDCC;border:#FFDDCC;" if provided it overrides the style given through the group 
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>navigationButtons (Boolean)</b> display navigation buttons in overlay</li>
+ * <li><b>hideTimeslots (Boolean)</b> hide the timeslots items</li>
+ * <li><b>hideTimeslotsTime (Boolean)</b> hide the timeslots time lines</li>
+ * <li><b>itemType (String)</b> item type, can be point, box, range, background</li>
+ * <li><b>orientationAxis (String)</b> axis orientation, can be none, top, bottom, both</li>
+ * <li><b>itemIdent (String)</b> item text indentation, can be left, center, right</li>
+ * <li><b>itemStack (Boolean)</b> true to stack the same group items if they overlap</li>
+ * <li><b>selectable (String)</b> define the selection strategy, can be : none, timeslot, item</li>
+ * <li><b>fullHeight (Boolean)</b> the timeline widget takes all the space</li>
+ * <li><b>showCurrentTime (Boolean)</b> shows the current time as a red line</li>
+ * <li><b>minZoom (Integer)</b> minimum zoom level in days</li>
+ * <li><b>maxZoom (Integer)</b> maximum zoom level in days</li>
+ * <li><b>customColors (String)</b> Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" each group will be given a color in the palette</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on an item. different options are possible here depending on the value 'selectable' option: if 'timeslot' is set, only 'timeslots' are provided, if a range is selected, only 'from' and 'to' variables are set. if 'item' is set, all information regarding the selected item is provided.</li>
+ * <li><b>ongroupclick</b> fired when the user click on a group on the left side of the timeline</li>
+ * </ul>
+ * </span>
+ */
+timeline = HTMLWidgetTemplate {
+	source-file: "static/bw_timelinewidget/charts/timeline/timeline.html"
+	datasets: chartdata (   id as String,  /*Optional */ 
+							to_timeslotuid as String,  /*Optional */ 
+							from_timeslotuid as String,   /*Optional */ 
+							from_ts as Date, 
+							to_ts as Date, 
+							label as String, 
+							description as String,  /*Optional */ 
+							group as String,
+							grouplabel as String, /*Optional */
+							itemstyle as String /*Optional */
+						    )
+	bindings:
+		minZoom as in Integer, // 7
+		maxZoom as in Integer, // 365
+		fullHeight as in Boolean, // false
+		showCurrentTime as in Boolean, // false
+		navigationButtons as in Boolean, // false
+		hideTimeslots as in Boolean, // false
+		hideTimeslotsTime as in Boolean, // false
+		itemType as in String, // range
+		orientationAxis as in String, // top
+		itemIdent as in String, // right
+		itemStack as in Boolean, // false
+		selectable as in String, // timeslot
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+	widget-events:
+		onclick ( 
+			id as String, 
+			from_timeslotuid as String, 
+			to_timeslotuid as String, 
+			from_ts as Date, 
+			to_ts as Date, 
+			label as String, 
+			description as String, 
+			group as String
+		),
+		ongroupclick ( group as String
+		)
+}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="access360r_accountaccessrightsincommon" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="true" concept="account" displayname="groupsincommon" notes="" begindate="" enddate="">
+	<ViewParam name="totalnbaccounts" displayname="totalnbaccounts" type="Integer">
+		<Value name="0" data="100"/>
+	</ViewParam>
+	<ViewParam name="lowthreshold" displayname="lowthreshold" type="Integer"/>
+	<ViewParam name="lowvalue" displayname="lowvalue" type="Integer" defaultvalue="{1+(param.totalnbaccounts.get()*param.lowthreshold.get())/100}"/>
+	<ViewParam name="applications" displayname="applications"/>
+	<ViewComputedAttribute name="nbexcludedaccounts" displayname="nbexcludedaccounts" type="Integer" expression="param.totalnbaccounts.get()-dataset.nbaccount.get()"/>
+	<ViewComputedAttribute name="label" displayname="label" type="String" expression="dataset.permissiondisplayname.get()+&apos;/&apos;+dataset.applicationdisplayname.get()"/>
+	<ViewComputedAttribute name="percent" displayname="percent" type="Integer" expression="(dataset.nbaccount.get()*100)/param.totalnbaccounts.get()"/>
+	<ViewComputedAttribute name="empty" displayname="empty" type="String" expression="&apos;&apos;"/>
+	<ViewSort name="sort" attribute1="A1617468700259_1932" direction1="DESC"/>
+	<ViewAttribute name="A1617468700259_1932" attribute="recorduid" alias="nbaccount" displayname="nbaccount" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1617471426339_0" reference="lowvalue" operation="ge" ignoreifempty="true"/>
+	</ViewAttribute>
+	<ViewJoin name="J1617638192412_2701" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermissionright">
+		<ViewJoin name="J1617638196543_2702" prefix="application" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="A1617638208528_2703" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1617638267457_0" reference="applications" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1617638209338_2704" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1617638209930_2705" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1617638211686_2706" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1617638213777_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="Profile"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="A1617638224907_2708" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1617638225522_2709" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1617638226183_2710" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1617638227233_2711" attribute="permissiontype" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1617695810832_0" operation="notIn" ignoreifempty="false">
+				<Value name="0" data="Activity"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewAttribute name="A1617638594996_2783" attribute="bwa_permissionmetadata_descr" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="A1617638600599_2784" attribute="bwa_permissionmetadata_sensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+	</ViewJoin>
+</View>

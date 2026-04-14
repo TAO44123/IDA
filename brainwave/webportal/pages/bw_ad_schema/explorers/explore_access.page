@@ -1,0 +1,702 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dialogs.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+boldStyle = Style {
+	bold: True
+}
+
+looksLikeParentDN = StringMapping {
+	when IsEmpty then current
+	otherwise current prefix "%"
+}
+
+groupPemissions = EventService {
+	javascript-file: "/webportal/pages/bw_ad_schema/explorers/explore_access.javascript"
+	javascript-method: groupPemissions
+	
+	timeslot = Input { type: String multivalued: False }
+	adObjectUid = Input { type: String multivalued: False }
+	
+	account_uid = Output { type: String multivalued: True }
+	login = Output { type: String multivalued: True }
+	r = Output { type: Integer multivalued: True }
+	w = Output { type: Integer multivalued: True }
+	l = Output { type: Integer multivalued: True }
+	a = Output { type: Integer multivalued: True }
+	d = Output { type: Integer multivalued: True }
+	p = Output { type: Integer multivalued: True }
+	
+	iduid = Output { type: String multivalued: True }
+	idname = Output { type: String multivalued: True }
+	orguid = Output { type: String multivalued: True }
+	orgname = Output { type: String multivalued: True }
+}
+
+ad_schema_explorer = Page {
+	title: $adschema_explorer.title
+	dynamic-title: $adschema_explorer.dyntitle(repository.displayname)
+	description: $adschema_explorer.description
+	mixins: base_pageMixin
+	enter-event: 
+		Set repository.recorduid to selectedDomainRecorduid,
+		StringCase ( selectedDomainParam ) { when Not IsEmpty then [ Set domainAsParam.recorduid to selectedDomainRecorduid ] },
+		TransferData domainperimeterdataset(uid) to ( domainperimeter )
+
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	initialTimeSlotUid = Parameter { default: PageTimeslot.UID hidden: True }
+	selectedDomainParam = Parameter { type: String }
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	/* Selection vars */
+	selectedObjectRecorduId = Variable  { type: Integer}
+	selectedObjectUid = Variable  { type: String}
+	selectedDomainRecorduid = Variable { type: Integer }
+	selectedTimeSlotUid = Variable { type: String }
+	selectedACEUid = Variable { type: String }
+	selectedGroupUid = Variable { type: String }
+	selectedPermissionUid = Variable { type: String }
+	selectedPerimeterUid = Variable { type: String }
+	selectedAccountUid = Variable { type: String }
+	selectedIdentityUid = Variable { type: String }
+	
+	selectedUid = Variable { type: String }
+	selectedType = Variable { type: String }
+	
+	/* Variables for tabs */
+	selectedTab = Variable { type: Integer initial: 0 }
+	
+	/* Variables for feature */
+	hideDefault = Variable { type: Boolean initial: True }
+	selectAll = Variable { type: Integer initial: 0 }
+	uids =  Variable {type:String multivalued:True}
+	
+	/* Variables for the first tab */
+	account_uid = Variable { type: String multivalued: True }
+	login = Variable { type: String multivalued: True }
+	r = Variable { type: Integer multivalued: True }
+	w = Variable { type: Integer multivalued: True }
+	l = Variable { type: Integer multivalued: True }
+	a = Variable { type: Integer multivalued: True }
+	d = Variable { type: Integer multivalued: True }
+	p = Variable { type: Integer multivalued: True }
+	iduid = Variable { type: String multivalued: True }
+	idname = Variable { type: String multivalued: True }
+	orguid = Variable { type: String multivalued: True }
+	orgname = Variable { type: String multivalued: True }
+	
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with uid to uid	
+	}
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	/* Datasets for the explorer */
+	objectsTree = HierarchicalData {
+		roots-view: objects_root with selectedDomainRecorduid to recorduid
+		children-view: objects_withparents with selectedDomainRecorduid to recorduid parameter: parentrecorduid attribute: recorduid
+	}
+	allDomains = Dataset {
+		view: getdomains with domainperimeter to domains
+	}
+	domainAsParam = Record {
+		view: getsingledomain with selectedDomainParam to uid 
+	}
+	
+	/* Selection related datasets */
+	selectedObject = Record { view: adobject_Detail with selectedObjectRecorduId to recorduid }
+
+	/* Datasets for the first tab (Accounts and Identities)  */
+	dataToShow = Dataset {
+		columns: account_uid, login, r, w, l, a, d, p , iduid as meta_id_uid, idname as meta_id_fullname, orgname as meta_org_shortname
+		disabled: IntPredicate ( selectedTab ) { when =1 then False otherwise True }
+	}
+	/*
+	accountAndIdentities = Dataset {
+		view: identities_byaccount with account_uid to uids
+		disabled: IntPredicate ( selectedTab ) { when =1 then False otherwise True }
+	}
+	dataToShow = Dataset {
+		join: Join { 
+			primary-dataset: groupedPermissions
+			primary-optional: False 
+			primary-column: account_uid
+			secondary-dataset: accountAndIdentities
+			secondary-column: account_uid
+			secondary-cardinality: optional many
+			secondary-prefix: meta_
+		}
+		disabled: IntPredicate ( selectedTab ) { when =1 then False otherwise True }
+	}*/
+	
+	/* Datasets for the second tab (ACLs Details)  */
+	groupAcls = Dataset {
+		view: adacl_groupacls with selectedObjectUid to uid , hideDefault to hideDefault unless-empty
+		timeslot: selectedTimeSlotUid 
+		disabled: IntPredicate ( selectedTab ) { when =2 then False otherwise True }
+	}
+	accountAcls = Dataset {
+		view: adacl_accountacls with selectedObjectUid to uid ,  hideDefault to hideDefault unless-empty
+		timeslot: selectedTimeSlotUid 
+		disabled: IntPredicate ( selectedTab ) { when =2 then False otherwise True }
+	}
+	
+	/* Datasets for the third tab (Container details) */
+	accountsInObject = Dataset {
+		view: accounts_inobject with Transform selectedObject.dn using looksLikeParentDN to dn
+		disabled: IntPredicate ( selectedTab ) { when =3 then False otherwise True }
+	}
+	groupsInObject = Dataset {
+		view: groups_inobject with Transform selectedObject.dn using looksLikeParentDN to dn
+		disabled: IntPredicate ( selectedTab ) { when =3 then False otherwise True }
+	}
+	objectContents = Dataset {
+		union: Union {
+			datasets: 	accountsInObject discriminator "account"  projects ( login to displayname, identifier to code, uid to uid), 
+						groupsInObject discriminator "group"
+			discriminator-column: type
+		}
+		disabled: IntPredicate ( selectedTab ) { when =3 then False otherwise True }
+	}
+	
+	/* timeslots */
+	timeslots = Dataset { view: explorergettimeslots }
+	
+	// Dataset for identity Reports
+	identityanalytics = Dataset {
+		pages: Pages{tags: "identity" and "byuids" }
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	// Dataset for account Reports
+	accountanalytics = Dataset {
+		pages: Pages{tags: "account" and "byuids" }
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	analytics = Dataset {
+		union:Union{ datasets:identityanalytics discriminator "identity", accountanalytics discriminator "account" discriminator-column: id }
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	
+	/* Named Actions */
+	
+	initAll = NamedAction (
+		Unset selectedTab,
+		Unset selectedObjectRecorduId,
+		Unset selectedACEUid,
+		Unset selectedGroupUid, 
+		Unset selectedPerimeterUid,
+		Unset selectedPermissionUid,
+		Unset selectedTimeSlotUid,
+		Unset hideDefault
+	)
+	
+	groupPermissions = NamedAction (
+		Call groupPemissions ( selectedObjectUid to adObjectUid,
+			PageTimeslot.UID to timeslot,
+			account_uid from account_uid,
+			login from login ,
+			r from r ,
+			w from w ,
+			l from l ,
+			a from a ,
+			d from d ,
+			p from p ,
+			iduid from iduid , 
+			idname from idname ,
+			orguid from orguid,
+			orgname from orgname)
+	)
+	
+	
+	showAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(
+			selectedAccountUid to inuid,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowshares,
+			True to inshowusages
+		)
+	)
+
+	showIdentityDetails = NamedAction (
+		StringCase(selectedIdentityUid) {
+			when Not IsEmpty then [
+				Dialog bwf_identityDetailsDialog(
+					selectedIdentityUid to inuid,
+					True to inshowaccounts,
+					True to inshowapplications,
+					True to inshowbusinessactivities,
+					True to inshowcontrols,
+					True to inshowdecisionhistory,
+					True to inshowoverallocated,
+					True to inshowposition,
+					True to inshowrisks,
+					True to inshowshares,
+					True to inshowtheoretical,
+					True to inshowusages
+				)
+			]
+		}
+	)
+	
+	showIdentityGroupDetails = NamedAction (
+		StringCase(selectedType) {
+			when "account" then [
+				Dialog bwf_accountDetailsDialog(
+					selectedUid to inuid,
+					True to inshowapplications,
+					True to inshowcontrols,
+					True to inshowdecisionhistory,
+					True to inshowgroups,
+					True to inshowowner,
+					True to inshowshares,
+					True to inshowusages
+				)
+			]
+			when "group" then [
+				Dialog bwf_groupDetailsDialog(
+					selectedUid to inuid,
+					True to inshowaccounts,
+					True to inshowapplications,
+					True to inshowshares,
+					True to inshowcontrols,
+					True to inshowdecisionhistory,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			]
+		}
+	)
+	
+	/* Page content */
+	
+	Splitter {
+		disposition: Horizontal 
+		size: 25%
+		
+		
+		Group {
+			mixins: fileExplorer
+			margins: All 0
+			compact: True 
+			border: False 
+			
+		/*
+			Group {
+				mixins: fileExplorerLabel
+				layout: Layout { grab: horizontal False vertical False indent: horizontal 6 vertical 0 }
+				Combo {
+					label: $adschema_explorer.labels.selectdomain
+					options: Dynamic { data: allDomains text: Current displayname value: Current recorduid }
+					variable: selectedDomainRecorduid
+					modify-event: ExecuteNamedAction initAll
+				}
+				Spacer { height: 6 }
+			}
+		*/	
+			Tree {
+				data: objectsTree 
+				layout: Layout { grab: horizontal True vertical True }
+				expand-level: 2
+				hide-header: True
+				selection-changed-event: IntCase ( selectedTab ) { when =0 then [ Set 1 to selectedTab , ExecuteNamedAction groupPermissions ] when =1 then [ ExecuteNamedAction groupPermissions ] } 
+				
+				
+				
+				Column {
+					column: displayname
+					width: 100%
+					
+					// Icon 
+					image: StringImageSelection ( Current type ) {
+						
+						when "D" then "bw_ad_schema/16/container_16.png" // Domain
+						when "C" then "bw_ad_schema/16/container_16.png" // Container
+						when "O" then "bw_ad_schema/16/ou_16.png" // OU
+						
+						
+					} 
+					
+					// Style
+					styling: blankStyle
+					
+					// Text
+					text: Concat ( "  "  , Current displayname )	
+				}
+				
+				Column { column: recorduid hidden: True selection: selectedObjectRecorduId } 
+				Column { column: uid hidden: True selection: selectedObjectUid } 
+				
+				
+			}
+		} 
+		
+		Group {
+		
+			/*********** START OF THE RIGHT SIDE ************/
+			
+			
+			/********* TABS BORDER AND CONTAINER *******/
+			Group {
+				background: Color RGB(180, 180, 180)
+				layout: Layout { grab: horizontal True vertical True}
+				margins: All 1
+				Group {
+					background: Color RGB ( 249 , 247 , 246)
+					layout: Layout { grab: horizontal True vertical True}
+					
+					
+					/*********** TABS TITLES  **********/
+					mixins: tabsStyle
+					Grid {
+						layout: Layout { grab: horizontal True vertical False }
+						columns: GridColumn { width: 200px }, GridColumn { width: 200px }, GridColumn { width: 200px }, GridColumn { width: grow }
+						GridRow{
+							height: 40 px 
+							GridCell {
+								Button {
+									actions: Set 1 to selectedTab
+									text: $adschema_explorer.tabs.identities.title
+									image:  IntImageSelection ( selectedTab ) { when =1 then "bw_ad_schema/32/menu_32_red.png" otherwise "bw_ad_schema/32/menu_32_grey.png"  }
+									disabled: IntPredicate (selectedObjectRecorduId) { when > 0 then False otherwise True }
+								}
+							}
+							GridCell {
+								Button {
+									actions: Set 2 to selectedTab
+									text: $adschema_explorer.tabs.acldetails.title
+									image:  IntImageSelection ( selectedTab ) { when =2 then "bw_ad_schema/32/menu_32_red.png" otherwise "bw_ad_schema/32/menu_32_grey.png"  }
+									disabled: IntPredicate (selectedObjectRecorduId) { when > 0 then False otherwise True }
+								}
+							}
+							GridCell {
+								Button {
+									actions: Set 3 to selectedTab
+									text: $adschema_explorer.tabs.childrendetails.title
+									image:  IntImageSelection ( selectedTab ) { when =3 then "bw_ad_schema/32/menu_32_red.png" otherwise "bw_ad_schema/32/menu_32_grey.png"  }
+									disabled: IntPredicate (selectedObjectRecorduId) { when > 0 then False otherwise True }
+								}
+							}				
+						}
+					}
+					Separator {}
+					
+					
+					/********* TAB NUMBER 0 *********/
+					Group {
+						layout: Layout { grab: horizontal True vertical True }
+						margins: All 20
+						background: Color white
+						hidden: IntPredicate ( selectedTab) { when !=0 then True}
+						
+						Image {
+							layout: Layout { indent: vertical 100 horizontal 0 } 
+							image: "bw_ad_schema/32/menu_32_red.png"
+							align: Center
+						}
+						Text {
+							align: Center
+							value: $adschema_explorer.tabs.emptytab.message
+							styling: smallLabel
+						}
+					}
+					
+					/********** TAB NUMBER 1 *********/
+					Group {
+						layout: Layout { grab: horizontal True vertical True }
+						margins: All 20
+						background: Color white
+						hidden: IntPredicate ( selectedTab) { when !=1 then True}
+						
+						Grid {
+							columns: GridColumn { width: grow } , GridColumn { width:minimum 60 maximum 60 ( prefered 60) } , GridColumn{}
+							
+							GridRow {
+								height:grow
+								GridCell {
+									Table {
+										data: dataToShow
+										layout: Layout { grab: horizontal True vertical True indent: horizontal 0 vertical 5 }
+										show-count: True 
+										double-click: Dialog dialogACLDetails ( selectedObjectUid to adObjectUid , selectedAccountUid to accountUid  )
+										
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70% column: login header: $account.login actions:ExecuteNamedAction showAccountDetails }
+										
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: r header: "R"  image: TemplateImageSelection (Current r) using rightTemplate text: "" }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: w header: "W"  image: TemplateImageSelection (Current w) using rightTemplate text: "" }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: l header: "L"  image: TemplateImageSelection (Current l) using rightTemplate text: "" }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: a header: "A" image: TemplateImageSelection  (Current a) using rightTemplate text: "" }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: d header: "D" image: TemplateImageSelection  (Current d) using rightTemplate text: "" }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 25px column: p header: "+" image: TemplateImageSelection  (Current p) using rightTemplate text: "" }
+										
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70%  column: meta_id_fullname header: $pidentity.fullname  actions:ExecuteNamedAction showIdentityDetails text: Transform Current meta_id_fullname using optionStringMapping }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 50%  column: meta_org_shortname header: $organisation.concept text: Transform Current meta_org_shortname using optionStringMapping  }
+										
+										Column { column: account_uid hidden: True selection: selectedAccountUid }		
+										Column { column: meta_id_uid hidden: True selection: selectedIdentityUid }		
+									}
+								}
+								/* Action icons */
+								GridCell {
+									Group{
+										layout: Layout { grab: horizontal True vertical True align: horizontal Center vertical Beginning}
+										
+										Spacer {
+											height: 10
+										}
+										Button {
+											actions: Dialog dialogACLDetails ( selectedObjectUid to adObjectUid , selectedAccountUid to accountUid  )
+											image: "bw_ad_schema/48/red/info_48.png"
+											presentation: Link
+											disabled: IntPredicate (  Sum ( Transform selectedAccountUid using isEmptyMapping, selectAll ) ) { when > 0 then True}
+										}
+										Button {
+											actions:  Set 1 to selectAll , ReloadData ( dataToShow )
+											image: "bw_ad_schema/48/red/analytics.png"
+											presentation: Link
+											disabled: IntPredicate ( Count dataToShow ) { when =0 then True }
+											hidden: IntPredicate ( selectAll ) { when =1 then True }
+											feature: Any (accountsearch_analytics, groupsearch_analytics)  
+										}
+										Button {
+											actions:  Set 0 to selectAll , ReloadData ( dataToShow )
+											image: "bw_ad_schema/48/red/back.png"
+											presentation: Link
+											disabled: IntPredicate ( Count dataToShow ) { when =0 then True }
+											hidden: IntPredicate ( selectAll ) { when =0 then True }
+											feature: Any (accountsearch_analytics, groupsearch_analytics)  
+										}
+									}
+								}
+								/* Analytics Section */
+								GridCell {
+								
+									Group {
+										hidden: IntPredicate ( selectAll ) { when =0 then True}
+										layout:Layout{hint:width 320}
+							
+										TemplateTable {
+											data:analytics
+											layout:Layout{grab: horizontal True vertical True}
+											row-height:82
+											initial-sort:^priority
+											pagination:6
+											disabled:IntPredicate(Count dataToShow) {when =0 then True}
+											show-filter:True			
+											double-click:
+														StringCase(Current id) {
+															when "identity" then [TransferData dataToShow(meta_id_uid) to (uids)]
+															when "account" then [TransferData dataToShow(account_uid) to (uids)]
+														},													
+														MultivaluedDistinct uids, MultivaluedRemove all '' from uids,
+															IntCase(SizeOf uids) { 
+																//when =0 then [Message $search_page.analyticsreportnoentries]
+																when <2001 then [GoTo Dynamic (Current type, Current name) with uids to uids] //MAX AS OF SQL SERVER : 2100 parameters in Hibernate request
+																//otherwise [Message $search_page.analyticsreporttoomanyentries]
+															}
+											
+											ImageCell {
+												image:Current largeIcon
+												top:0
+												height:48
+												left:136
+												width:48
+												on-click:
+														StringCase(Current id) {
+															when "identity" then [TransferData dataToShow(meta_id_uid) to (uids)]
+															when "account" then [TransferData dataToShow(account_uid) to (uids)]
+														},													
+														MultivaluedDistinct uids, MultivaluedRemove all '' from uids,
+															IntCase(SizeOf uids) { 
+																//when =0 then [Message $search_page.analyticsreportnoentries]
+																when <2001 then [GoTo Dynamic (Current type, Current name) with uids to uids] //MAX AS OF SQL SERVER : 2100 parameters in Hibernate request
+																//otherwise [Message $search_page.analyticsreporttoomanyentries]
+															}
+												}
+											TextCell {
+												column:title
+												top:50
+												height:32
+												left:0
+												width:320
+												horizontal-align:Center
+												filterable:True
+												on-click:
+														StringCase(Current id) {
+															when "identity" then [TransferData dataToShow(meta_id_uid) to (uids)]
+															when "account" then [TransferData dataToShow(account_uid) to (uids)]
+														},													
+														MultivaluedDistinct uids, MultivaluedRemove all '' from uids,
+															IntCase(SizeOf uids) { 
+																//when =0 then [Message $search_page.analyticsreportnoentries]
+																when <2001 then [GoTo Dynamic (Current type, Current name) with uids to uids] //MAX AS OF SQL SERVER : 2100 parameters in Hibernate request
+																//otherwise [Message $search_page.analyticsreporttoomanyentries]
+															}
+											
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					
+					
+					/********** TAB NUMBER 2 *********/
+					Group {
+						layout: Layout { grab: horizontal True vertical True }
+						margins: All 20
+						background: Color white
+						hidden: IntPredicate ( selectedTab) { when !=2 then True}
+						
+						
+							
+						Text { value: $adschema_explorer.tabs.acldetails.timenavitagor styling: redSmallLabel layout: Layout { indent: horizontal 0 vertical 5}}
+						SetNavigator {
+							data: timeslots 
+							column: uid 
+							align: Center
+							selection: selectedTimeSlotUid  
+							label: Current displayname
+							label-width: 350
+							dropdown: Dropdown { text: Current displayname } 
+							initial: initialTimeSlotUid
+							show-last:True
+						}
+						
+						Grid {
+							columns: GridColumn {} , GridColumn {}
+							fill: Horizontal 
+							gap:0
+							insets: 0
+							layout: Layout {  grab: horizontal False vertical False}
+							GridRow {
+								GridCell { Text { value: $adschema_explorer.tabs.acldetails.groupacls styling: redSmallLabel layout: Layout { indent: horizontal 0 vertical 10}}  } 
+								GridCell { Checkbox { variable: hideDefault text:$adschema_explorer.labels.hidedefault layout: Layout { align: horizontal End vertical End hint: width 180 } }   }
+							}
+						}
+						
+						
+						Table {
+							data: groupAcls
+							layout: Layout { grab: vertical True  horizontal True }
+							show-count: True
+							double-click: Dialog dialogACEDetails( selectedGroupUid to groupAceGroupUid , selectedPermissionUid to groupAcePermUid, selectedPerimeterUid to groupAcePerimUid )
+							commands:Commands{position:After orientation:Vertical presentation:Icon 
+								Command{actions: Dialog dialogACLHelp icon:"16/famfamfam_silk_icons_v013/help.png" tooltip: $adschema_dialogs.aclhelp.tooltip.button}
+								Command{actions: Dialog dialogACEDetails( selectedGroupUid to groupAceGroupUid , selectedPermissionUid to groupAcePermUid, selectedPerimeterUid to groupAcePerimUid ) icon:"16/mimetypes/templates_16.png"  tooltip: $adschema_dialogs.acedetails.tooltip disabled: StringPredicate( selectedGroupUid ){ when IsEmpty then True otherwise False }  }
+								Command{actions: Dialog dialogGroupMembers ( selectedGroupUid to groupUid)  icon:"16/others/kwrite_16.png" tooltip: $adschema_dialogs.groupmembers.tooltip disabled: StringPredicate( selectedGroupUid ){ when IsEmpty then True otherwise False } }
+							}
+							
+							
+							Column { width: 25% column: domain_displayname header: $ad_domain.displayname }
+							Column { width: 50% column: group_displayname header: $group.displayname }
+							
+							
+							Column { width: 25px column: ADS_RIGHT_DS_READ_PROP header: "R"  image: TemplateImageSelection (Current ADS_RIGHT_DS_READ_PROP) using rightTemplate text: ""  }
+							Column { width: 25px column: ADS_RIGHT_DS_WRITE_PROP header: "W"  image: TemplateImageSelection (Current ADS_RIGHT_DS_WRITE_PROP) using rightTemplate text: "" }
+							Column { width: 25px column: ADS_RIGHT_ACTRL_DS_LIST header: "L"  image: TemplateImageSelection (Current ADS_RIGHT_ACTRL_DS_LIST) using rightTemplate text: "" }
+							Column { width: 25px column: ADS_RIGHT_DS_CREATE_CHILD header: "A" image: TemplateImageSelection (Current ADS_RIGHT_DS_CREATE_CHILD) using rightTemplate text: "" }
+							Column { width: 25px column: ADS_RIGHT_DS_DELETE_CHILD header: "D" image: TemplateImageSelection (Current ADS_RIGHT_DS_DELETE_CHILD) using rightTemplate text: "" }
+							Column { width: 25px column: SPECIAL header: "+" image: TemplateImageSelection (Current SPECIAL) using rightTemplate text: ""}
+							
+							
+							Column { width: 100% column: perimeterdisplayname header: $ad_perimeter.displayname }
+							Column { width: 56px column: isdefault header: $adschema_explorer.headers.defaultright  text: Transform Current isdefault using booleanDisplayMapping }
+							
+							Column { column: group_uid hidden: True selection: selectedGroupUid}
+							Column { column: perimeteruid hidden: True selection: selectedPerimeterUid }
+							Column { column: perm_uid hidden: True selection: selectedPermissionUid }
+							
+						}
+						
+						Text { value: $adschema_explorer.tabs.acldetails.accountacls styling: redSmallLabel layout: Layout { indent: horizontal 0 vertical 5}}
+						
+						Table {
+							data: accountAcls
+							layout: Layout { grab: vertical True  horizontal True }
+							show-count: True
+							double-click: Dialog dialogACEDetails( selectedACEUid to accountAceUid )
+							commands:Commands{position:After orientation:Vertical presentation:Icon 
+								Command{actions: Dialog dialogACLHelp icon:"16/famfamfam_silk_icons_v013/help.png" tooltip: $adschema_dialogs.aclhelp.tooltip.button}
+								Command{actions: Dialog dialogACEDetails( selectedACEUid to accountAceUid ) icon:"16/mimetypes/templates_16.png"  tooltip: $adschema_dialogs.acedetails.tooltip disabled: StringPredicate( selectedACEUid ){ when IsEmpty then True otherwise False }  }
+							}
+								
+							
+							Column { width: 25% column: domain_displayname header:$ad_domain.displayname  }
+							Column { width: 50% column: account_login header: $account.login}
+							
+							Column { width: 25px column: ADS_RIGHT_DS_READ_PROP header: "R"  image: TemplateImageSelection (Current ADS_RIGHT_DS_READ_PROP) using rightTemplate text: ""  }
+							Column { width: 25px column: ADS_RIGHT_DS_WRITE_PROP header: "W"  image: TemplateImageSelection (Current ADS_RIGHT_DS_WRITE_PROP) using rightTemplate text: "" }
+							Column { width: 25px column: ADS_RIGHT_ACTRL_DS_LIST header: "L"  image: TemplateImageSelection (Current ADS_RIGHT_ACTRL_DS_LIST) using rightTemplate text: "" }
+							Column { width: 25px column: ADS_RIGHT_DS_CREATE_CHILD header: "A" image: TemplateImageSelection (Current ADS_RIGHT_DS_CREATE_CHILD) using rightTemplate text: "" }
+							Column { width: 25px column: ADS_RIGHT_DS_DELETE_CHILD header: "D" image: TemplateImageSelection (Current ADS_RIGHT_DS_DELETE_CHILD) using rightTemplate text: "" }
+							Column { width: 25px column: SPECIAL header: "+" image: TemplateImageSelection (Current SPECIAL) using rightTemplate text: ""}
+							
+							Column { width: 100% column: perimeterdisplayname  header: $ad_perimeter.displayname  }
+							Column { width: 56px column: isdefault header: $adschema_explorer.headers.defaultright text: Transform Current isdefault using booleanDisplayMapping }
+							
+							Column { column: uid hidden: True selection: selectedACEUid}
+							
+						}
+					}
+					
+					
+					
+					/********** TAB NUMBER 3 *********/
+					Group {
+						layout: Layout { grab: horizontal True vertical True }
+						margins: All 20
+						background: Color white
+						hidden: IntPredicate ( selectedTab) { when !=3 then True}
+						
+						
+						Text { value: $adschema_explorer.tabs.childrendetails.containerdetails styling: redSmallLabel layout: Layout { indent: horizontal 0 vertical 5}}
+						Group {
+							layout: Layout { hint: height 60  grab: horizontal True vertical False indent: horizontal 20  vertical 0}
+							
+							Text { value: selectedObject.custom1 label: $ad_object.dn compact: True }
+							Text { value: selectedObject.custom2 label: $ad_object.guid  compact: True }
+							
+						}
+						
+						Text { value: $adschema_explorer.tabs.childrendetails.groupsandaccounts  styling: redSmallLabel layout: Layout { indent: horizontal 0 vertical 15}}
+						
+						Group{
+							layout: Layout { indent: horizontal 0  vertical 0}
+							
+							Table {
+								data: objectContents
+								layout: Layout { grab: horizontal True vertical True }
+								show-count: True
+								
+								Column { column: type width: 10% header: $adschema_explorer.headers.type selection:selectedType }
+								Column { column: code width: 100% header: $adschema_explorer.headers.code actions:ExecuteNamedAction showIdentityGroupDetails }
+								Column { column: displayname width: 100% header: $adschema_explorer.headers.displayname actions:ExecuteNamedAction showIdentityGroupDetails }
+							
+								Column { column: uid hidden:True selection:selectedUid }
+							}	
+						}
+					}
+				}
+			}
+		}
+	}
+}

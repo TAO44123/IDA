@@ -1,0 +1,382 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_comparison/account_comparison.page"
+import "/webportal/pages/bw_comparison/group_comparison.page"
+
+fragmentApplicationGroupsNLS = NLS {
+	permissions [en '{1} ({0}) Permissions' fr 'Permissions de {1} ({0})']
+	noownercode [en "Technical \naccount" fr "Compte \ntechnique"]
+	trends [en "Account \nChanges" fr "Changements \nde comptes"]
+	nbperms [en "Nb \npermissions" fr "Nb \npermissions"]
+	comparewith [en "Compare {0} with ..." fr "Comparer {0} avec ..."]
+	nbdirectaccount [en "Nb Direct \nAccounts" fr "Nb comptes \ndirects"]
+	nbaccount [en "Nb Accounts" fr "Nb comptes"]
+	nbpermission [en "Nb Permissions" fr "Nb permissions"]
+	empty [en "No groups with permissions found for this application" fr "Cette application ne contient pas de groupes avec des permissions"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected application groups along with the number of direct assigned "Role" permissions
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate groups details list through GUI</li>
+ * <li><b>incancompare </b>optional, boolean value, true to group comparison (false by default).</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outgroupuid </b>the selected group uid</li>
+ * <li><b>outgroupcode </b>the selected group login</li>
+ * <li><b>outgroupdisplayname </b>the selected group repository uid</li>
+ * <li><b>outrepositoryname </b>the selected group repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentApplicationGroups = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanreconcile = Variable { multivalued:False type:Boolean initial:False }
+	incancompare = Variable { type:Boolean initial:False }
+	outgroupuid = Variable
+	outgroupcode = Variable
+	outgroupdisplayname = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	selectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+
+	groups_wcompare = Dataset {
+		view: bwf_applicationgroups with inuid to uid
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:nbaccount
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				 Not BooleanPredicate(inenabled)
+				 Not BooleanPredicate(incancompare)
+				 StringPredicate ( inuid ) {
+				 	when IsEmpty then True
+				 }
+		 	}
+	}
+	groups_wocompare = Dataset {
+		view: bwf_applicationgroups with inuid to uid
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:nbaccount
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				 Not BooleanPredicate(inenabled)
+				 BooleanPredicate(incancompare)
+				 StringPredicate ( inuid ) {
+				 	when IsEmpty then True
+				 }
+		 	}
+	}
+
+
+	comparisonGroup = Record {
+		view: br_groupDetail with compareFrom to uid
+		disabled:
+			StringPredicate(compareFrom) { when IsEmpty then True }
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid, 
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowapplications,
+												inuid to inapplicationuids
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				ConditionalGroup {
+					IntCondition(Count groups_wcompare) {
+						when =0 then [
+							Header {
+								value:$fragmentApplicationGroupsNLS.empty
+								styling:bigTitleStyle
+							}
+						]
+						otherwise [
+							ButtonGroup {
+								Button {
+								actions:
+									Set ElementAt 1 of selectedUids to compareFrom,
+									Set selectedUids to compareTo,
+									MultivaluedRemove compareFrom from compareTo,
+									GoTo Page bwc_group_comparison with compareFrom to uid, compareTo to uids  save-state 
+								text:$fragmentApplicationGroupsNLS.comparewith(NonEmpty(comparisonGroup.displayname,' '))
+								disabled:IntPredicate(SizeOf selectedUids) { when <2 then True otherwise False }
+								layout:Layout { hint:width 300 }
+								presentation:Button
+								}
+							}
+					
+							Table {
+								data:groups_wcompare
+								layout:Layout {grab: horizontal True vertical True}
+								configurable:True
+								show-count:True
+								show-filter:True
+								double-click:ExecuteNamedAction goDetails
+								disabled:Not BooleanPredicate(incancompare)
+								checkboxes:uid to selectedUids
+								checkboxes-changed-event:Set ElementAt 1 of selectedUids to compareFrom
+								
+								Column {
+									column:displayname
+									header:$group.displayname
+									sortable:True
+									filterable:True
+									selection:outgroupdisplayname
+									actions:ExecuteNamedAction goDetails
+									width:240px
+								}
+								Column {
+									column:code
+									header:$group.code
+									sortable:True
+									filterable:True
+									selection:outgroupcode
+									actions:ExecuteNamedAction goDetails
+									initially-masked:True
+									width:240px
+								}
+						
+								Column {
+									column:repositorydisplayname
+									header:$repository.concept
+									sortable:True
+									filterable:True
+									selection:outrepositoryname
+									width:160px
+								}
+								Column {
+									column:description
+									tooltip:Current description
+									header:$group.comment
+									sortable:True
+									filterable:True
+									width:100%
+								}
+						
+								Column {
+									column:sensitivitylevel
+									header:$group.sensitivitylevel
+									sortable:True
+									filterable:True
+									width:160px
+									initially-masked:True
+								}
+						
+								Column {
+									column:nbdirectaccount
+									header:$fragmentApplicationGroupsNLS.nbdirectaccount
+									sortable:True
+									filterable:True
+									initially-masked:True
+									width:120px
+									align:Right
+								}
+						
+								Column {
+									column:nbpermission
+									header:$fragmentApplicationGroupsNLS.nbpermission
+									sortable:True
+									filterable:True
+									width:120px
+									align:Right
+								}
+								Column {
+									column:nbaccount
+									header:$fragmentApplicationGroupsNLS.nbaccount
+									sortable:True
+									filterable:True
+									width:120px
+									align:Right
+								}
+								Column {
+									column:repositoryuid
+									hidden:True
+									selection:outrepositoryuid
+								}
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								Column {
+									column: trends
+									header: $fragmentApplicationGroupsNLS.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+						
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+					}
+				}
+			]
+			when False then [
+				ConditionalGroup {
+					IntCondition(Count groups_wocompare) {
+						when =0 then [
+							Header {
+								value:$fragmentApplicationGroupsNLS.empty
+								styling:bigTitleStyle
+							}
+						]
+						otherwise [
+							Table {
+								data:groups_wocompare
+								layout:Layout {grab: horizontal True vertical True}
+								configurable:True
+								show-count:True
+								show-filter:True
+								double-click:ExecuteNamedAction goDetails
+								disabled:Not BooleanPredicate(incancompare)
+								
+								Column {
+									column:displayname
+									header:$group.displayname
+									sortable:True
+									filterable:True
+									selection:outgroupdisplayname
+									actions:ExecuteNamedAction goDetails
+									width:240px
+								}
+								Column {
+									column:code
+									header:$group.code
+									sortable:True
+									filterable:True
+									selection:outgroupcode
+									actions:ExecuteNamedAction goDetails
+									initially-masked:True
+									width:240px
+								}
+						
+								Column {
+									column:repositorydisplayname
+									header:$repository.concept
+									sortable:True
+									filterable:True
+									selection:outrepositoryname
+									width:160px
+								}
+								Column {
+									column:description
+									tooltip:Current description
+									header:$group.comment
+									sortable:True
+									filterable:True
+									width:100%
+								}
+						
+								Column {
+									column:sensitivitylevel
+									header:$group.sensitivitylevel
+									sortable:True
+									filterable:True
+									width:160px
+									initially-masked:True
+								}
+						
+								Column {
+									column:nbdirectaccount
+									header:$fragmentApplicationGroupsNLS.nbdirectaccount
+									sortable:True
+									filterable:True
+									initially-masked:True
+									width:120px
+									align:Right
+								}
+						
+								Column {
+									column:nbpermission
+									header:$fragmentApplicationGroupsNLS.nbpermission
+									sortable:True
+									filterable:True
+									width:120px
+									align:Right
+								}
+								Column {
+									column:nbaccount
+									header:$fragmentApplicationGroupsNLS.nbaccount
+									sortable:True
+									filterable:True
+									width:120px
+									align:Right
+								}
+								Column {
+									column:repositoryuid
+									hidden:True
+									selection:outrepositoryuid
+								}
+								Column {
+									column:uid
+									hidden:True
+									selection:outgroupuid
+								}
+								
+								Column {
+									column: trends
+									header: $fragmentApplicationGroupsNLS.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+						
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}

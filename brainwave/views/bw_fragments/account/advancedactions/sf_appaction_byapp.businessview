@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_appaction_byapp" displayname="sf appaction byapp">
+	<Definition scriptfile="/views/bw_fragments/account/advancedactions/sf_appaction_byapp.javascript" name="D1564583098509">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1564583098509" title="Get actions from account ACL">
+			<InnerView name="bwf_aclaccount_action_byapp">
+				<Param name="F1564583286869" viewparam="appfamily" viewparamvalue="{param.appfamily}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1564583118776" type="unionview" x="531" y="156" w="300" h="50" title="Get actions from group ACL">
+			<InnerView name="bwf_aclgroup_action_byapp">
+				<Param name="F1564583301529" viewparam="appfamily" viewparamvalue="{param.appfamily}"/>
+			</InnerView>
+			<Union primary_discriminator="v1" secondary_discriminator="v2" discriminatorcolumn="d1"/>
+		</Component>
+		<Link name="L1564583118883" source="C1564583098509" target="C1564583118776" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1564583142546" type="unionview" x="715" y="128" w="300" h="50" title="Get actions from fsrights">
+			<InnerView name="bwf_fsright_action_byapp">
+				<Param name="F1564583311766" viewparam="appfamily" viewparamvalue="{param.appfamily}"/>
+			</InnerView>
+			<Union discriminatorcolumn="d2" primary_discriminator="v3" secondary_discriminator="v4"/>
+		</Component>
+		<Link name="L1564583142605" source="C1564583118776" target="C1564583142546" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1564583743542" type="scriptview" x="654" y="178" w="300" h="50" title="Deduplicate">
+			<ExcludeList>
+				<Exclude name="d1"/>
+				<Exclude name="d2"/>
+			</ExcludeList>
+			<Script onscriptread="read"/>
+		</Component>
+		<Link name="L1564583743657" source="C1564583142546" target="C1564583743542" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1564585135355" type="scriptview" x="916" y="204" w="300" h="50" title="Add action displayname">
+			<Script onscriptread="readdisplayname" onscriptinit="initdisplayname"/>
+			<Attributes>
+				<Attribute name="A1564586017491" attribute="appactioncount" type="Number" multivalued="false"/>
+				<Attribute name="A1565707863685" attribute="appactiondisplayname" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1564585135503" source="C1564583743542" target="C1564585135355" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="appfamily" displayname="appfamily">
+		<Value name="V1564586385709_1" data="SharePointOnline"/>
+	</ViewParam>
+</View>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_groupallcontroldefects_nb" displayname="Number of group control defects">
+	<Definition scriptfile="/views/bw_fragments/group/allcontroldefects.javascript" name="D1586182135774" description="Number of group control defects">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1586182135773" title="group">
+			<InnerView name="bwf_group">
+				<Param name="F1586182260460" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1637769219661" type="joinview" x="594" y="243" w="300" h="50" title="Group defects">
+			<InnerView name="bwf_groupcontroldefects_nb" prefix="group_">
+				<Param name="F1637769237807" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637769242001" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.group_groupuid.get()}"/>
+		</Component>
+		<Link name="L1637769219754" source="C1586182135773" target="C1637769219661" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637769271679" type="joinview" x="696" y="266" w="300" h="50" title="Account defects">
+			<InnerView name="bwf_groupaccountcontroldefects_nb" prefix="acc_">
+				<Param name="F1637769286194" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637769291101" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.acc_grp_uid.get()}"/>
+			<ViewComputedAttribute name="_total" displayname="Total number of defects" type="Integer" expression="( dataset.isEmpty( &apos;acc_nb&apos; ) ? 0 : dataset.acc_nb.get() ) + ( dataset.isEmpty( &apos;group_nb&apos; ) ? 0 : dataset.group_nb.get() )"/>
+			<ExcludeList>
+				<Exclude name="acc_nb"/>
+				<Exclude name="acc_grp_uid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1637769271920" source="C1637769219661" target="C1637769271679" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String"/>
+	<ViewParam name="minimumrisklevel" displayname="minimumrisklevel" type="Integer"/>
+	<ViewSort name="sort" attribute1="controlrisklevel" direction1="DESC"/>
+</View>

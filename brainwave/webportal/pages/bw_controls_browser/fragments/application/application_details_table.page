@@ -1,0 +1,474 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_fragments/share/details/shareDetails.page"
+import "/webportal/pages/bw_controls_browser/resources/mappings.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control discrepancies for applications without root causes
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>selectedAppUid</b> (out) the selected account UID</li>
+ * <li><b>selectedAppRecorduid</b> (out) the selected account recorduid </li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_application_details_table = PageFragment {
+
+	/* Variables here */
+	controlCode = Parameter { type: String }
+	// Type of entity (Account, Perm, ... or Right, Share, etc.)
+	type = Parameter { type: String }
+	selectedAppUid = Variable { type: String }
+	selectedAppUids = Variable { type: String multivalued: True }
+	selectedAppRecorduid = Variable { type: String }
+	initialIndex = Variable { type: Integer }
+	useExceptions = Variable { type: Boolean }
+	controlType = Variable { type: String }
+	updateRequired = Variable { type: Boolean }
+	// View filters
+	filterRepositoryUid = Variable { type: String multivalued: True }
+	filterTags = Variable { type: String multivalued: True }
+	// Variables for filtering, from view
+	repo_uid = Variable { type: String multivalued: True }
+	repo_displayname = Variable { type: String multivalued: True }
+	// Tab selection
+	isActive = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	applicationData = Dataset {
+		view: bw_controls_browser_get_app_discrepancies_on_control with
+			controlCode to controlCode,
+			False to getRootCause,
+			useExceptions to useExceptions,
+			filterRepositoryUid to repo_uid unless-empty,
+			filterTags to tags unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	repositories = Dataset {
+		columns:
+			repo_uid,
+			repo_displayname
+	}
+	
+	tags = Dataset {
+		view: bw_controls_browser_applicationTags with
+			controlCode to controlCode
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	updateRepos = NamedAction (
+		TransferData applicationData ( repository_uid, repository_displayname )
+			to ( repo_uid, repo_displayname ),
+		MultivaluedDistinct repo_uid and ( repo_displayname )
+	)
+	
+	updateFilters = NamedAction (
+		ExecuteNamedAction updateRepos
+	)
+	
+	goDetails = NamedAction (
+		StringCase ( type ) {
+			when Constant _Application then [
+				Dialog bwf_applicationDetailsDialog (
+					selectedAppUid to inuid,
+					True to inshowaccounts,
+					True to inshowapplications,
+					True to inshowcontrols,
+					True to inshowshares,
+					True to inshowACLs,
+					True to inshowgroups,
+					True to inshowowner,
+					True to inshowpermissions
+				)
+			] when Constant _Share then [
+				Dialog bwf_applicationDetailsDialog (
+					selectedAppUid to inuid,
+					True to inshowaccounts,
+					True to inshowapplications,
+					True to inshowcontrols,
+					True to inshowfolders,
+					True to inshowacls
+				)
+			] otherwise [
+				// Default to application
+				Dialog bwf_applicationDetailsDialog (
+					selectedAppUid to inuid,
+					True to inshowaccounts,
+					True to inshowapplications,
+					True to inshowcontrols,
+					True to inshowshares,
+					True to inshowACLs,
+					True to inshowgroups,
+					True to inshowowner,
+					True to inshowpermissions
+				)
+			]
+		}
+	)
+	
+	reload = NamedAction (
+		ReloadData ( applicationData )
+	)
+	
+	/* Page content */
+	// Filters
+	Group {
+		title: $bw_control_browser.filter
+		layout: Layout { grab: horizontal True vertical False }
+		Flow {
+			disposition: Horizontal
+			Group {
+				Combo {
+					variable: filterTags
+					label: Label {
+						break: True
+						value: $bw_control_browser.tag
+						tooltip: $bw_control_browser.tag.tooltip
+					}
+					multi-selection: True
+					allow-none: True
+					layout: Layout { grab: horizontal False vertical False hint: width 200 }
+					options: Dynamic {
+						data: tags
+						text: Current bwa_applicationtags_tag
+						value: Current bwa_applicationtags_tag
+					}
+					disabled:
+						IntPredicate ( Count tags ) {
+							when < 1 then True
+						}
+				}
+			}
+			Group {
+				Combo {
+					variable: filterRepositoryUid
+					label: Label {
+						break: True
+						value: Transform type using repo_type_mapping
+						tooltip: Transform type using repo_type_mapping_tooltip
+					}
+					multi-selection: True
+					allow-none: True
+					layout: Layout { grab: horizontal False vertical False hint: width 200 }
+					options: Dynamic {
+						data: repositories
+						text: Current repo_displayname
+						value: Current repo_uid
+					}
+					disabled:
+						IntPredicate ( Count repositories ) {
+							when < 1 then True
+						}
+				}
+			}
+			Group {
+				Spacer {
+					height: Fill
+				}
+				ButtonGroup {
+					align: Center
+					Button {
+						text: $bw_control_browser.clear
+						tooltip: $bw_control_browser.clear.tooltip
+						image: %collection_16.delete
+						presentation: Link
+						actions:
+							Unset filterRepositoryUid,
+							Unset filterTags
+					}
+				}
+			}
+		}
+	}
+	Table {
+		data: applicationData
+		double-click:
+			ExecuteNamedAction goDetails
+		layout: Layout { grab: horizontal True vertical True }
+		configurable: True
+		persist-configuration: True
+		persist-configuration-key: "bw_control_browser_application_details_table"
+		selection-index: initialIndex
+		show-filter: True
+		show-count: True
+		// Disabled as no buttons available yet
+//		checkboxes:
+//			uid to selectedAppUids
+		Column {
+			column: uid
+			hidden: True
+			selection: selectedAppUid
+		}
+		Column {
+			column: displayname
+			header: $application.displayname
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: code
+			header: $application.code
+			width: 100%
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: repository_code
+			header: $prepository.code
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: repository_displayname
+			header: Transform type using repo_type_mapping
+			width: 100%
+			initially-masked: False
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: category
+			header: $papplicationextNLS.category
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: sensitivitylevel
+			text:Transform Current sensitivitylevel using bwfApplicationSensitivityLevelMapping
+			header: $papplicationextNLS.sensitivitylevel
+			width: 100%
+			initially-masked: True
+			sortable: True
+		}
+		Column {
+			column: sensitivityreason
+			header: $papplicationextNLS.sensitivityreason
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+		Column {
+			column: description
+			header: $papplicationextNLS.description
+			width: 100%
+			initially-masked: True
+			filterable: True
+			sortable: True
+		}
+	}
+	ButtonGroup {
+		layout: Layout { align: horizontal End vertical End }
+		Button {
+			actions:
+				StringCase ( selectedAppUids ) {
+					when IsEmpty then [
+						Dialog createControlExceptionDialog (
+							controlCode to controlcode,
+							selectedAppUid to targetuids,
+							controlType to controlresulttype
+						)	
+					] otherwise [
+						Dialog createControlExceptionDialog (
+							controlCode to controlcode,
+							selectedAppUids to targetuids,
+							controlType to controlresulttype
+						)
+					]
+				},
+				Set True to updateRequired,
+				ExecuteNamedAction reload,
+				Unset selectedAppUids
+			presentation: Button
+			text: $detailspages.addexception
+			tooltip: $detailspages.addexceptionTt
+			image: %collection_16.add_user
+			feature: bw_control_browser_exceptions
+			disabled:
+				AndPredicate {
+					StringPredicate ( selectedAppUid ) {
+						when IsEmpty then True
+					}
+					StringPredicate ( selectedAppUids ) {
+						when IsEmpty then True
+					}
+				}
+		}
+	}
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control discrepancies for applications with root causes
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>includedApplicationUid</b> (in) filter the control discrepancies to just the selected Uids </li>
+ * <li><b>includedRootcauseUid</b> (in) filter the control root causes to just the selected Uids </li>
+ * <li><b>selectedAppUid</b> (out) the selected account UID</li>
+ * <li><b>selectedAppRecorduid</b> (out) the selected account recorduid </li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_application_details_table_with_root_cause = PageFragment {
+
+	/* Variables here */
+	controlCode = Parameter { type: String }
+	selectedAppUid = Variable { type: String }
+	selectedAppRecorduid = Variable { type: String }
+	includedRootcauseUid = Variable { type: String multivalued: True }
+	includedApplicationUid = Variable { type: String multivalued: True }
+	initialIndex = Variable { type: Integer }
+	// Tab selection
+	isActive = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	applicationData = Dataset {
+		view: bw_controls_browser_get_app_discrepancies_on_control with
+			controlCode to controlCode,
+			True to getRootCause,
+			includedRootcauseUid to includedRootcauseUid, 
+			includedApplicationUid to includedApplicationUid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( isActive )
+				StringPredicate ( controlCode ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog (
+			selectedAppUid to inuid,
+			True to inshowaccounts,
+			True to inshowaccountsfororganisation,
+			True to inshowapplications,
+			True to inorganisationuid, 
+			True to inshowcontrols,
+			True to inshowshares,
+			True to inshowACLs,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowpermissions
+		)
+	)
+	
+	/* Page content */
+	Table {
+		data: applicationData
+		double-click:
+			ExecuteNamedAction goDetails
+		layout: Layout { grab: horizontal True vertical True }
+		configurable: True
+		persist-configuration: True
+		selection-index: initialIndex
+		show-filter: True
+		show-count: True
+		Column {
+			column: uid
+			hidden: True
+			selection: selectedAppUid
+		}
+		Column {
+			column: code
+			header: $application.code
+			width: 100%
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: displayname
+			header: $application.displayname
+			width: 100%
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: repository_code
+			header: $prepository.code
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: repository_displayname
+			header: $prepository.displayname
+			width: 100%
+			initially-masked: False
+		}
+		Column {
+			column: category
+			header: $papplicationextNLS.category
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: sensitivitylevel
+			text:Transform Current sensitivitylevel using bwfApplicationSensitivityLevelMapping
+			header: $papplicationextNLS.sensitivitylevel
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: sensitivityreason
+			header: $papplicationextNLS.sensitivityreason
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: description
+			header: $papplicationextNLS.description
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: perm_displayname
+			header: $rootcause.displayname
+			width: 100%
+			initially-masked: False
+		}
+		Column {
+			column: perm_permissiontype
+			header: $rootcause.type
+			width: 100%
+			initially-masked: True
+		}
+		Column {
+			column: app_displayname
+			header: $rootcause.application
+			width: 100%
+			initially-masked: True
+		}
+	}
+}

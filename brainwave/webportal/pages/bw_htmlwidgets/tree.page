@@ -1,0 +1,328 @@
+/**
+ * A series of dynamic Charts to include in your Pages
+ * Relies on VisJs and InfoVis (see http://visjs.org and https://philogb.github.io/jit/)
+ * 
+ * see /webportal/pages/bw_htmlwidgets/demotree.page for an example
+ * 
+ * Brainwave 2018
+ */
+
+
+/**
+ * <span style="white-space: pre-line">
+ * A tree component to display hierarchies
+ * This component automatically detect loops, each node is only displayed once which means that this component only accept hierarchies of elements (and is not compatible with 'graph')
+ *  
+ * <u>Dataset: chartdata</u>
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>code (String)</b> the item unique code
+ * <b>description (String)</b> the item description displayed as a tooltip
+ * <b>parentcode (String)</b> the parent item code
+ * <b>cssattributes (String)</b> Optional it is used to override the default node style, it must contains a JSON object such as "{'$color':'#00FF00'}"
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>treeOrientation (String)</b> the tree orientation, can be: left,right,top,bottom</li>
+ * <li><b>treeAlign (String)</b> the tree leaves alignment, can be: left,right</li>
+ * <li><b>treeIndent (Integer)</b> the tree leaves identation</li>
+ * <li><b>alignBeginning (Boolean)</b> True to align the tree at the beginning of the display area, false to center the tree in the container</li>
+ * <li><b>levelsToShow (Integer)</b> number of sub levels to display at once( 1 or 2)</li>
+ * <li><b>levelDistance (Integer)</b> distance in pixels between layers</li>
+ * <li><b>animationDuration (Integer)</b> animation duration in ms</li>
+ * <li><b>defaultNodeColor (String)</b> default node background color</li>
+ * <li><b>selectedNodeColor (String)</b> selected nodes background color</li>
+ * <li><b>leafNodeColor  (String)</b> leaf nodes background color</li>
+ * <li><b>selectedLinkSize (Integer)</b> selected link size in pixels</li>
+ * <li><b>forceNodeWidth (Integer)</b> force node width (in pixels)</li>
+ * <li><b>forceNodeHeight (Integer)</b> force node height (in pixels)</li>
+ * <li><b>clickLabel (String)</b> the label to display to inform the user that a clic on the selected node will fire a onclick event</li>
+ * <li><b>defaultRootID (String)</b> default root id in case of several roots in the dataset</li>
+ * <li><b>defaultRootLabel (String)</b> default root label in case of several roots in the dataset </li>
+ * <li><b>defaultRootDescription  (String)</b> default root description in case of several roots in the dataset</li>
+ * <li><b>fontColor (String)</b> font color</li>
+ * <li><b>fontSize (String)</b> font size (such as '0.8em')</li>
+ * <li><b>edgeType (String)</b> edge type, can be: line, bezier</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on the expanded/selected node.</li>
+ * <li><b>onanimationclick</b> fired when the user click on a node to expand it and to select it.</li>
+ * </ul>
+ * </span>
+ */
+spaceTree = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/spacetree/spacetree.html"
+	datasets: chartdata ( code as String , label as String, description as String, parentcode as String, cssattributes as String) /* Mandatory */
+	bindings:
+		treeOrientation as in String,
+		treeAlign as in String,
+		treeIndent as in Integer,
+		alignBeginning as in Boolean,
+		levelsToShow as in Integer,
+		levelDistance as in Integer,
+		animationDuration as in Integer,
+		defaultNodeColor as in String,
+		selectedNodeColor as in String,
+		leafNodeColor  as in String,
+		selectedLinkSize as in Integer,
+		forceNodeWidth as in Integer,
+		forceNodeHeight as in Integer,
+		clickLabel as in String,
+		defaultRootID as in String,
+		defaultRootLabel as in String,
+		defaultRootDescription  as in String,
+		fontColor as in String,
+		fontSize as in String,
+		edgeType as in String
+	widget-events:
+		onanimationclick ( code as String, label as String),
+		onclick ( code as String, label as String)
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * A network component to display acyclic/cyclic directed networks such as group hierarchies or permission hierarchies
+ * Some columns in the dataset are specific: description is used for the tooltop, group is used to group the nodes by using the same color for each individual group (customColors palette is used then)
+ * edgevalue is used to compute the edge width, edgelabel will display a label on the corresponding edge
+ * nodeattributes is used to override the node characteristics, it is a JSON string such as: (see http://visjs.org/docs/network/nodes.html)
+						{
+							"shape":"box",
+							"color":{
+								"background":"#00FF00",
+								"highlight":"#00FF00",
+								"hover":"#00FF00",
+								"border":"#00FF00"
+							},
+							"font":{
+								"color":"#000000"
+							}
+						}
+ * edgeattributes is used to override the edge characteristics, it is a JSON string such as: (see http://visjs.org/docs/network/edges.html)
+						{
+							"dashes":true,
+							"color":{
+								"color":"#00FF00"
+							}
+						}
+
+ * <u>Dataset: chartdata</u>
+ * <b>code (String)</b> the item unique code
+ * <b>label (String)</b> the item label displayed in the widget
+ * <b>description (String)</b> Optional the item description displayed as a tooltip
+ * <b>parentcode (String)</b> the parent item code
+ * <b>group (String)</b> Optional Group identifier used to apply the same color
+ * <b>edgevalue (String)</b> Optional edge width ratio
+ * <b>edgelabel (String)</b> Optional edge displayed label
+ * <b>nodeattributes (String)</b> Optional override node characteristics through a JSON object
+ * <b>edgeattributes (String)</b> Optional override edge characteristics through a JSON object
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>selectednode (String)</b> selected node code (if any) to highlight the corresponding node. This can be binded to a variable to update the network chart accordingly</li>
+ * <li><b>nodecolor (String)</b> node color (if not included in a group)</li>
+ * <li><b>fontcolor (String)</b> font color (if not included in a group)</li>
+ * <li><b>shape  (String)</b>  can be ellipse, circle, database, box. The ones with the label outside of it are: diamond, dot, star, triangle, triangleDown, hexagon, square
+                           the following values correspond to Brainwave icons with the label outside: identities, account, manager, organisation, application, permission, check, sharepoint, repository, identity, share, role, folder, job, control, asset, group, log, usage</li>
+ * <li><b>smoothedge (Boolean)</b> draw smooth edges using bezier curves</li>
+ * <li><b>hierarchical (Boolean)</b> hierarchical display</li>
+ * <li><b>hierarchical_levelseparation (Integer)</b> Distance between levels.</li>
+ * <li><b>hierarchical_nodespacing (Integer)</b> Minimum distance between nodes on the free axis.</li>
+ * <li><b>hierarchical_treespacing (Integer)</b> Distance between different trees (independent networks).</li>
+ * <li><b>hierarchical_blockshifting (Boolean)</b> Method for reducing whitespace. Can be used alone or together with edge minimization. Each node will check for whitespace and will shift it's branch along with it for as far as it can, respecting the nodeSpacing on any level.</li>
+ * <li><b>hierarchical_edgeminimization (Boolean)</b> Method for reducing whitespace. Can be used alone or together with block shifting. Enabling block shifting will usually speed up the layout process. Each node will try to move along its free axis to reduce the total length of it's edges.</li>
+ * <li><b>hierarchical_parentcentralization (Boolean)</b> When true, the parents nodes will be centered again after the the layout algorithm has been finished.</li>
+ * <li><b>hierarchical_direction (String)</b> hierarchy direction: UD, DU, LR, RL</li>
+ * <li><b>hierarchical_sortmethod (String)</b> sort method: hubsize, directed</li>
+ * <li><b>arrows_to (Boolean)</b> display an arrow directed to the 'to'</li>
+ * <li><b>arrows_middle (Boolean)</b> display the arrows in the middle of the edge</li>
+ * <li><b>arrows_from (Boolean)</b> display an arrow directed to the 'from'</li>
+ * <li><b>textboxsize (Integer)</b> text box size, change it to 1000 if you want to limit text carriage return (defaults to 100)</li>
+ * <li><b>randomSeed (Integer)</b> set a value if you want your network always layouting the same way</li>
+ * <li><b>edgescalingmin (Integer)</b> the minimum width of an edge, used to compute the edge width if a edgevalue is provided in the dataset</li>
+ * <li><b>edgescalingmax (Integer)</b> the maximum width of an edge, used to compute the edge width if a edgevalue is provided in the dataset</li>
+ * <li><b>navigationButtons (Boolean)</b> true to display navigation buttons in the layout</li>
+ * <li><b>computegroupfontcolor (Boolean)</b> true to compute the font color automatically based on the background color (useful when using groups with labels inside shapes)</li>
+ * <li><b>stopPhysics (Boolean)</b> true to stop physics animation once the network is displayed: You can drag&drop a node without any side effect relayouting</li>
+ * <li><b>customColors (String)</b> Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" </li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>onclick</b> fired when the user click on the node.</li>
+ * <li><b>ondoubleclick</b> fired when the user double click on the node.
+ * <li><b>onedgeclick</b> fired when the user click on the edge.
+ * <li><b>onedgedoubleclick</b> fired when the user double click on the edge. 
+ * </ul>
+ * </span>
+ */
+network = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/network/network.html"
+	datasets: chartdata ( 	code as String , 
+							label as String, 
+							description as String, /*optional*/ 
+							parentcode as String, 
+							group as String, /*optional*/
+						    edgevalue as Integer, /*optional*/
+						    edgelabel as String, /*optional*/ 
+						    nodeattributes as String, /*optional*/
+						    edgeattributes as String /*optional*/
+						    )
+	bindings:
+		nodecolor as in String,
+		fontcolor as in String,
+		shape  as in String, // ellipse, circle, database, box, text. The ones with the label outside of it are: diamond, dot, star, triangle, triangleDown, hexagon, square
+		smoothedge as in Boolean,
+		computegroupfontcolor as in Boolean,
+		stopPhysics as in Boolean,
+		hierarchical as in Boolean,
+		hierarchical_levelseparation as in Integer,
+		hierarchical_nodespacing as in Integer,
+		hierarchical_treespacing as in Integer,
+		hierarchical_blockshifting as in Boolean,
+		hierarchical_edgeminimization as in Boolean,
+		hierarchical_parentcentralization as in Boolean,
+		hierarchical_direction as in String, // UD, DU, LR, RL
+		hierarchical_sortmethod as in String, // hubsize, directed
+		arrows_to as in Boolean,
+		arrows_middle as in Boolean,
+		arrows_from as in Boolean,
+		navigationButtons as in Boolean,
+		textboxsize as in Integer,
+		randomSeed as in Integer,
+		edgescalingmin as in Integer,
+		edgescalingmax as in Integer,
+		selectednode as in String,
+		customColors as in String /* Optional Colors such as: "#fcc3a7,#f5aa85,#ef8d5d" */
+	widget-events:
+		onclick ( code as String, label as String, description as String, parentcode as String, group as String),
+		ondoubleclick ( code as String, label as String, description as String, parentcode as String, group as String),
+		onedgeclick ( _from as String, _to as String),
+		onedgedoubleclick ( _from as String, _to as String)
+}
+
+
+
+
+/**
+ * <span style="white-space: pre-line">
+ * A parallel set component to display relations in categorical data such as permission graphs.
+ * Parallel set provides a simple, interactive way to explore and analyze such data.
+ * You MUST provide both a Dataset and the dimensions names. dataset is provided through the "chartdata" dataset value while dimensions are provided through the "dimensions" binding variable.
+ * "dimensions" must contain the name of the different dimensions, separated by a '|' symbol. a mapping is performed to assign each dimension a dataset column.
+ * dataset columns are indexed, starting at 0: dim0, dim1, dim2, ... up to 0 dimensions can be provided (although I am not sure that the chart will still be readable...)
+ * Warning: onpathclick and onpathdbleclick events won't be fired anymore if the dimensions are reordered by the end user
+ * 
+ * <u>Dataset: chartdata</u>
+ * <b>dim0 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim1 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim2 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim3 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim4 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim5 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim6 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim7 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim8 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim9 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim10 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim11 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim12 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim13 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim14 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim15 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim16 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim17 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim18 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * <b>dim19 (String)</b> value for the dimension (as defined in the 'dimensions' variable)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>dimensions (String)</b> MANDATORY, list of dimensions to consider separated by a | symbol, you must provide the corresponding values in the dataset. Example: "business activity|transaction|simple role|composite role"</li>
+ * <li><b>rotate (Boolean)</b> rotate the chart by 90 degree</li>
+ * </ul>
+ * 
+ * <u>Events:</u><ul>
+ * <li><b>ondimensiondbleclick</b> fired when the user double click on a dimension.</li>
+ * <li><b>oncategorydbleclick</b> fired when the user double click on a category value.</li>
+ * <li><b>onpathclick</b> fired when the user double click on a path.</li>
+ * <li><b>onpathdbleclick</b> fired when the user double click on a path.</li>
+ * </ul>
+ * </span>
+ */
+parallelSet = HTMLWidgetTemplate {
+	source-file: "static/bw_htmlwidgets/charts/parallelset/parallelset.html"
+	datasets: chartdata ( 
+		dim0 as String,
+		dim1 as String,
+		dim2 as String,
+		dim3 as String,
+		dim4 as String,
+		dim5 as String,
+		dim6 as String,
+		dim7 as String,
+		dim8 as String,
+		dim9 as String,
+		dim10 as String,
+		dim11 as String,
+		dim12 as String,
+		dim13 as String,
+		dim14 as String,
+		dim15 as String,
+		dim16 as String,
+		dim17 as String,
+		dim18 as String,
+		dim19 as String
+		) /* Mandatory */
+	bindings:
+		dimensions as in String, /* Mandatory */
+		rotate as in Boolean
+	widget-events:
+		ondimensiondbleclick ( 
+			dimensionindex as Integer, 
+			dimension as String
+			),
+		oncategorydbleclick ( 
+			dimensionindex as Integer, 
+			dimension as String,
+			category as String
+			),
+		onpathdbleclick (
+			dim0 as String,
+			dim1 as String,
+			dim2 as String,
+			dim3 as String,
+			dim4 as String,
+			dim5 as String,
+			dim6 as String,
+			dim7 as String,
+			dim8 as String,
+			dim9 as String,
+			dim10 as String,
+			dim11 as String,
+			dim12 as String,
+			dim13 as String,
+			dim14 as String,
+			dim15 as String,
+			dim16 as String,
+			dim17 as String,
+			dim18 as String,
+			dim19 as String
+			),
+		onpathclick (
+			dim0 as String,
+			dim1 as String,
+			dim2 as String,
+			dim3 as String,
+			dim4 as String,
+			dim5 as String,
+			dim6 as String,
+			dim7 as String,
+			dim8 as String,
+			dim9 as String,
+			dim10 as String,
+			dim11 as String,
+			dim12 as String,
+			dim13 as String,
+			dim14 as String,
+			dim15 as String,
+			dim16 as String,
+			dim17 as String,
+			dim18 as String,
+			dim19 as String
+			)
+}

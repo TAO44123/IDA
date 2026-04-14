@@ -1,0 +1,639 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/filters.page"
+import "/webportal/pages/bw_controls_browser/details_panel.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/control/details.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_controls_browser/detailspages/controls_details.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_controls_browser/resources/mappings.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/variables.page"
+import "/webportal/pages/bw_portaluar_base/admin/controlsmanager.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_controls_browser/resources/icons.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * The main page of the control browser.
+ * </span>
+ */
+bw_control_browser = Page {
+	title: $bw_control_browser.title
+	description: $bw_control_browser.description
+	feature: bw_control_browser_home
+	
+	enter-event:
+		BooleanCase using FeaturePredicate bw_control_browser_exceptions in {
+			when True then [
+				Set True to useExceptions
+			] when False then []
+		},
+		// Work-around for COL-1458
+		StringCase ( UserVariable bwcb_typeControl ) {
+			when IsEmpty then [
+				Set [] to UserVariable bwcb_typeControl
+			]
+		}
+		
+	dock-right:
+		Dock {
+			collapsed: True
+			collapsible: True
+			width: 450
+			/* Side panel */
+			ConditionalGroup {
+				StringCondition ( selectedControlCode ) {
+					when IsEmpty then [
+						Text {
+							value: $bw_control_browser.selectFirst
+							compact: True
+						}
+					] otherwise [
+						IncludeFragment {
+							fragment: bw_control_browser_details_panel with
+								value-of selectedControlCode to selectedControlCode, 
+								value-of selectedException to selectedException,
+								value-of selectedDiscrepancies to selectedDiscrepancies, 
+								value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+								value-of selectedExceptionTrend to selectedExceptionTrend,
+								entityDisplayed binds-to entityDisplayed
+						}
+					]
+				}
+			}
+		}
+	
+	/* Variables here */
+	selectedControlId = Variable { type: String }
+	selectedControlCode = Variable { type: String }
+	selectedControlEntity = Variable { type: String }
+	selectedControlType = Variable { type: String }
+	selectedType = Variable { type: String }
+	selectedControlName = Variable { type: String }
+	selectedControlShortName = Variable { type: String }
+	selectedControlIsAvailable = Variable { type: Boolean }
+	selectedDiscrepancies = Variable { type: String }
+	selectedException = Variable { type: String }
+	selectedDiscrepanciesTrend = Variable { type: String }
+	selectedExceptionTrend = Variable { type: String }
+	entityDisplayed = Variable { type: String }
+	filterControlName = Variable { type: String }
+	filterControlName_tmp = Variable { type: String }
+	updateRequired = Variable { type: Boolean initial: False }
+	useExceptions = Variable { type: Boolean initial: False }
+	isControlOnRights = Variable { type: Boolean initial: False }
+	typeControl = Variable { type: String multivalued: True initial: [] }
+	
+	/* Datasets and records here */
+	control_list = Dataset {
+		view: bw_control_browser_trend with
+			UserVariable bwcb_onlyWithDiscrepancies to onlyDiscrepancies,
+			UserVariable bwcb_riskLevel to riskLevel unless-empty,
+			filterControlName to filterControlName  unless-empty
+		includes:
+			OrPredicate {
+				StringPredicate ( typeControl ) {
+					when IsEmpty then True
+				}
+				MultivaluedPredicate ( typeControl contains Current _type )
+			}
+	}
+	
+	reload = NamedAction (
+		BooleanCase ( updateRequired ) {
+			when True then [
+				ReloadData ( control_list ),
+				Set False to updateRequired			
+			] when False then []
+		}
+	)
+	
+	openDetailsDialog = NamedAction (
+		StringCase (selectedControlEntity) {
+			when Constant _Account then [
+				BooleanCase ( isControlOnRights ) {
+					when True then [
+						Dialog bw_control_browser_controls_details_on_acc_rights (
+							selectedControlCode to controlCode,
+							selectedControlType to controlType,
+							selectedControlName to controlName,
+							useExceptions to useExceptions,
+							updateRequired from updateRequired,
+							selectedDiscrepancies to selectedDiscrepancies,
+							selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+							selectedException to selectedException,
+							selectedExceptionTrend to selectedExceptionTrend
+						)
+					] when False then [
+						Dialog bw_control_browser_controls_details_on_acc (
+							selectedControlCode to controlCode,
+							selectedControlType to controlType,
+							selectedControlName to controlName,
+							useExceptions to useExceptions,
+							updateRequired from updateRequired,
+							selectedDiscrepancies to selectedDiscrepancies,
+							selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+							selectedException to selectedException,
+							selectedExceptionTrend to selectedExceptionTrend
+						)
+					]
+				}
+			] when Constant _Application then [
+				Dialog bw_control_browser_controls_details_on_app (
+					selectedControlCode to controlCode,
+					selectedControlType to controlType,
+					selectedControlName to controlName,
+					selectedType to type,
+					useExceptions to useExceptions,
+					updateRequired from updateRequired,
+					selectedDiscrepancies to selectedDiscrepancies,
+					selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					selectedException to selectedException,
+					selectedExceptionTrend to selectedExceptionTrend
+				)
+			] when Constant _Permission then [
+				Dialog bw_control_browser_controls_details_on_perm (
+					selectedControlCode to controlCode,
+					selectedControlType to controlType,
+					selectedControlName to controlName,
+					selectedType to type,
+					useExceptions to useExceptions,
+					updateRequired from updateRequired,
+					selectedDiscrepancies to selectedDiscrepancies,
+					selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					selectedException to selectedException,
+					selectedExceptionTrend to selectedExceptionTrend
+				)
+			] when Constant _Identity then [
+				Dialog bw_control_browser_controls_details_on_identities (
+					selectedControlCode to controlCode,
+					selectedControlType to controlType,
+					selectedControlName to controlName,
+					useExceptions to useExceptions,
+					updateRequired from updateRequired,
+					selectedDiscrepancies to selectedDiscrepancies,
+					selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					selectedException to selectedException,
+					selectedExceptionTrend to selectedExceptionTrend
+				)
+			] when Constant _Group then [
+				Dialog bw_control_browser_controls_details_on_groups (
+					selectedControlCode to controlCode,
+					selectedControlType to controlType,
+					selectedControlName to controlName,
+					useExceptions to useExceptions,
+					updateRequired from updateRequired,
+					selectedDiscrepancies to selectedDiscrepancies,
+					selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					selectedException to selectedException,
+					selectedExceptionTrend to selectedExceptionTrend
+				)
+			] when Constant _Asset then [
+				Dialog bw_control_browser_controls_details_on_assets (
+					selectedControlCode to controlCode,
+					selectedControlType to controlType,
+					selectedControlName to controlName,
+					useExceptions to useExceptions,
+					updateRequired from updateRequired,
+					selectedDiscrepancies to selectedDiscrepancies,
+					selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					selectedException to selectedException,
+					selectedExceptionTrend to selectedExceptionTrend
+				)
+			] when Constant _Organisation then [
+				Dialog bw_control_browser_controls_details_on_organisations (
+					selectedControlCode to controlCode,
+					selectedControlType to controlType,
+					selectedControlName to controlName,
+					useExceptions to useExceptions,
+					updateRequired from updateRequired,
+					selectedDiscrepancies to selectedDiscrepancies,
+					selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					selectedException to selectedException,
+					selectedExceptionTrend to selectedExceptionTrend
+				)
+			]
+		},
+		ExecuteNamedAction reload
+	)
+	
+	/* Page content */
+	// Actions fragment
+	fragmentActions = IncludeFragment {
+		layout: Layout { grab: horizontal False vertical False }
+		fragment: bw_controlsmanager_admin_actions with
+			value-of selectedControlCode to selectedcontrolcode,
+			value-of selectedControlId to selectedcontrolid,
+			value-of selectedControlName to selectedcontroldisplayname,
+			value-of selectedControlIsAvailable to selectedcontrolisvailable,
+			updateRequired binds-to updateRequired
+		fragment-events:
+			{
+				when "reload" then [
+					ExecuteNamedAction reload
+				]
+			}
+	}
+	// Content
+	Grid {
+		columns: GridColumn {}
+		layout: Layout { grab: vertical True horizontal True }
+		GridRow {
+			GridCell {
+				IncludeFragment {
+					fragment: bw_control_browser_filters with
+						typeControl binds-to typeControl
+				}
+			}
+		}
+		GridRow {
+			height: grow 3
+			GridCell {
+				Group {
+					title: $detail.controls
+					Group {
+						layout: Layout { grab: horizontal True vertical False }
+						// Work-around because the search / filter does not work on computed columns
+						Edit {
+							variable: filterControlName_tmp
+							label: $controlresult.controldisplayname
+							commands:
+								Commands {
+									Command {
+										icon: %browsing_16.zoom
+										actions:
+											Set filterControlName_tmp to filterControlName
+										disabled:
+											OrPredicate {
+												StringPredicate ( filterControlName_tmp ) {
+													when IsEmpty then True
+												}
+												SameValuePredicate ( filterControlName, filterControlName_tmp )
+											}
+									}
+									Command {
+										icon: %bwcb.bin
+										actions:
+											Unset filterControlName,
+											Unset filterControlName_tmp
+										disabled:
+											StringPredicate ( filterControlName ) {
+												when IsEmpty then True
+											}
+									}
+								}
+						}
+					}
+					Group {
+						Table {
+							configurable: True
+							layout: Layout { grab: vertical True horizontal True }
+							data: control_list
+							show-count: True
+							show-filter: False
+							persist-configuration: True
+							persist-configuration-key: "bw_control_browser"
+							selection-changed-event:
+								StringCase ( Current _type ) {
+									when Constant _Rights then [
+										Set True to isControlOnRights
+									] when Constant _Right then [
+										Set True to isControlOnRights
+									] otherwise [
+										Set False to isControlOnRights
+									]
+								}
+							commands:
+								Commands {
+									position: After
+									presentation: Icon
+									orientation: Vertical
+									Command {
+										// Layouting
+										actions:
+											Message "nop"
+										icon: ""
+										disabled: True
+									}
+									Command {
+										icon: %bwcb.refresh
+										tooltip: $bw_control_browser.refresh
+										actions:
+											ReloadData (control_list)
+									}
+									Command {
+										// Layouting
+										actions:
+											Message "nop"
+										icon: ""
+										disabled: True
+									}
+									Command {
+										actions:
+											ExecuteFragmentNamedAction fragmentActions.goDetails
+										icon: %browsing.information
+										tooltip: $bw_controlsmanager_admin.showControldDetails
+										disabled:
+											OrPredicate {
+												StringPredicate ( selectedControlCode ) {
+													when IsEmpty then True
+												}
+											}
+									}
+									Command {
+										actions:
+											ExecuteFragmentNamedAction fragmentActions.goExecuteControl
+										icon: %browsing.play
+										tooltip: $bw_controlsmanager_admin.executeControl
+										disabled:
+											OrPredicate {
+												StringPredicate ( selectedControlCode ) {
+													when IsEmpty then True
+												}
+											}
+									}
+									Command {
+										actions:
+											ExecuteFragmentNamedAction fragmentActions.goAddControl
+										icon: %status.add
+										tooltip: $bw_controlsmanager_admin.addControl
+									}
+								}
+							Column {
+								hidden: True
+								column: info_available_controlid
+								selection: selectedControlId
+							}
+							Column {
+								hidden: True
+								column: info_isavailable
+								selection: selectedControlIsAvailable
+							}
+							Column {
+								header: $fragmentControlDetailsNLS.risklevel.header
+								column: _risklevel
+								text: Transform Current _risklevel using number
+								image: TemplateImageSelection(Current _risklevel) using bwf_controllevel						
+								width: 5%
+								sortable: True
+							}
+							Column {
+								header: $filters.Entity.header
+								initially-masked: True
+								column: controlentity
+								text: Transform Current controlentity using type
+								filterable: True
+								sortable: True
+								selection: selectedControlEntity
+								image: TemplateImageSelection(Current controlentity) using concept
+							}
+							Column {
+								header: $filters.type
+								initially-masked: False
+								column: _type
+								text: Transform Current _type using type
+								filterable: True
+								sortable: True
+								selection: selectedType
+								image: TemplateImageSelection(Current _type) using concept
+							}
+							Column {
+								header: $bw_control_browser.label
+								initially-masked: False
+								column: _label
+								actions:
+									ExecuteNamedAction openDetailsDialog
+								filterable: True
+								sortable: True
+								width: 100%
+							}
+							Column {
+								header: $bw_control_browser.shortname
+								initially-masked: True
+								column: controlname
+								actions:
+									ExecuteNamedAction openDetailsDialog
+								filterable: True
+								sortable: True
+								width: 100%
+								selection: selectedControlShortName
+							}
+							Column {
+								header: $controlresult.controldisplayname
+								column: controldisplayname
+								actions:
+									ExecuteNamedAction openDetailsDialog
+								initially-masked: True
+								filterable: True
+								sortable: True
+								width: 100%
+								selection: selectedControlName
+							}									
+							Column {
+								header: $discrepancies.concept
+								column: _nb_discrepancies
+								text: Transform Current _nb_discrepancies using number
+								width: 20%
+								filterable: True
+								sortable: True
+								selection: selectedDiscrepancies
+							}
+							Column {
+								header: $discrepancies.trend.header
+								column: _discrepancies_trend
+								text: Transform Current _discrepancies_trend using number
+								initially-masked: True
+								width: 20%
+								filterable: True
+								sortable: True
+								selection: selectedDiscrepanciesTrend
+							}
+							Column {
+								header: $controlexception.concept.header
+								column: exceptions
+								text: Transform Current exceptions using number
+								width: 20%
+								filterable: True
+								sortable: True
+								selection: selectedException
+								feature: bw_control_browser_exceptions
+							}
+							Column {
+								header: $exceptions.trend.header
+								column: _exceptions_trend
+								text: Transform Current _exceptions_trend using number
+								width: 20%
+								filterable: True
+								sortable: True
+								selection: selectedExceptionTrend
+								feature: bw_control_browser_exceptions
+							}
+							Column {
+								header: $controlresult.controlcode
+								hidden: True
+								initially-masked: True
+								column: controlcode
+								selection: selectedControlCode
+							}
+							Column {
+								header: $controlresult.controlnotes
+								initially-masked: True
+								column: controlnotes
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltype
+								initially-masked: True
+								column: controltype
+								filterable: True
+								sortable: True
+								selection: selectedControlType
+							}
+							Column {
+								header: $controlresult.controlresulttype
+								initially-masked: True
+								column: controlresulttype
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagapplication
+								initially-masked: True
+								column: controltagapplication
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom1
+								initially-masked: True
+								column: controltagcustom1
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom2
+								initially-masked: True
+								column: controltagcustom2
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom3
+								initially-masked: True
+								column: controltagcustom3
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom4
+								initially-masked: True
+								column: controltagcustom4
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom5
+								initially-masked: True
+								column: controltagcustom5
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom6
+								initially-masked: True
+								column: controltagcustom6
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom7
+								initially-masked: True
+								column: controltagcustom7
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom8
+								initially-masked: True
+								column: controltagcustom8
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagcustom9
+								initially-masked: True
+								column: controltagcustom9
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagfamily
+								initially-masked: True
+								column: controltagfamily
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagpermission
+								initially-masked: True
+								column: controltagpermission
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagscope
+								initially-masked: True
+								column: controltagscope
+								text: Transform Current controltagscope using type
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $controlresult.controltagtype
+								initially-masked: True
+								column: controltagtype
+								filterable: True
+								sortable: True
+							}
+							Column {
+								header: $bw_control_browser.riskinfo
+								initially-masked: True
+								column: riskinfo
+								filterable: True
+								sortable: True
+							}									
+							Column {
+								header: $bw_control_browser.suggestedmitigation
+								initially-masked: True
+								column: suggestedmitigation
+								filterable: True
+								sortable: True
+							}
+							Column {
+								column: info_lastexecutiondate
+								header: $bw_controlsmanager_admin.lastexecutiondate
+								initially-masked: True
+								sortable: True
+								filterable: True
+								width: 140px
+							}
+							Column {
+								column: info_status
+								header: $bw_controlsmanager_admin.status
+								text: Transform Current info_status using bw_controlExecutionStatus
+								initially-masked: True
+								sortable: True
+								filterable: True
+								width: 100px
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

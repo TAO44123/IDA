@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_identityallcontroldefects_nb" displayname="Number of control defects for identity">
+	<Definition scriptfile="/views/bw_fragments/identity/allcontroldefects.javascript" name="D1585057894076" description="Number of control defects for identity">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1585057894074" title="Identity">
+			<InnerView name="bwf_identitydetails">
+				<Param name="F1585058074248" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1637771115864" type="joinview" x="776" y="179" w="300" h="50" title="# Identity defects">
+			<InnerView name="bwf_identitycontroldefects_nb" prefix="idt_">
+				<Param name="F1637771140248" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637771145861" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.idt_identityuid.get()}"/>
+		</Component>
+		<Link name="L1637771116105" source="C1585057894074" target="C1637771115864" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637771157040" type="joinview" x="706" y="209" w="300" h="50" title="# Account defects">
+			<InnerView name="bwf_identityaccountcontroldefects_nb" prefix="acc_">
+				<Param name="F1637771173195" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637771178982" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.acc_uid.get()}"/>
+			<ViewComputedAttribute name="_total" displayname="Total number of defects" type="Integer" expression="( dataset.isEmpty( &apos;acc_nb&apos; ) ? 0 : dataset.acc_nb.get() ) + ( dataset.isEmpty( &apos;idt_nb&apos; ) ? 0 : dataset.idt_nb.get() )"/>
+			<ExcludeList>
+				<Exclude name="acc_nb"/>
+				<Exclude name="acc_uid"/>
+				<Exclude name="idt_identityuid"/>
+				<Exclude name="idt_nb"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1637771157319" source="C1637771115864" target="C1637771157040" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String"/>
+	<ViewParam name="minimumrisklevel" displayname="minimum risk level" type="Integer"/>
+	<ViewSort name="sort" attribute1="controlrisklevel" direction1="DESC" attribute2="controldisplayname"/>
+</View>

@@ -1,0 +1,224 @@
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+import "/webportal/pages/bw_cloud_base/resources/services/control_services.page"
+import "/webportal/pages/bw_cloud_base/resources/services/dynamicrule_services.page"
+import "/webportal/pages/bw_cloud_pam/resources/globals.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+
+import "/webportal/pages/bw_cloud_pam/resources/globals.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/vaultDetails.page"
+
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/vaultDetails.page"
+
+bwpam_model_refresher = PageFragment {
+  
+  doRefreshDynamicRules = NamedAction(
+  	 Call executeRules (Constant PWPAM_RULE_FAMILY to family ) 
+  )
+  
+}
+
+bwcpam_vault_graph_NLS = NLS {
+	secrets_option [
+		en "Show only users having access to credentials inside the Safe (permissions useAccounts and retreiveAccounts). If unchecked, it shows all accesses including admin operations."
+		fr "Ne montrer que les utilisateurs ayant accès aux secrets du Safe (permissions useAccounts and retreiveAccounts). Sans cette option, le graphe affiche tous les accès y compris les opération de type administration."
+	]
+	showpredefined [ 
+		en "Show predefined CyberArk users" 
+		fr "Afficher les utilisateurs CyberArk prédéfinis"
+	]
+}
+
+bwpam_vault_graph = PageFragment {
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	insecretsonly = Variable { multivalued:False type:Boolean initial:False }
+
+	outSelectionType = Variable
+
+	outSelectedcode = Variable
+	outSelectedlabel = Variable
+	outSelectedGroup = Variable
+	
+	outFromNode = Variable
+	outToNode = Variable
+
+	showSecretsOnly = Variable {type:Boolean initial:False}
+	
+	accountuid = Variable
+	lastreconrecorduid = Variable
+	
+
+	dataviz = Dataset {
+		view:bwcpam_tree_vault_identities with inuid to vault_uid, showSecretsOnly to secrets_only, UserVariable PAM_SHOW_PREDEFINED to showpredefined unless-empty
+		disabled:OrPredicate{
+			Not BooleanPredicate(inenabled)
+			StringPredicate(inuid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+	}
+	
+	lastrecon = Record {
+		view: br_reconciliation_recent with accountuid to accountuid
+	}
+
+	Checkbox {
+		label: Label{break:True}
+		variable: showSecretsOnly
+		text: $bwcpam_vault_graph_NLS.secrets_option
+		hidden: Not BooleanPredicate(insecretsonly)
+	}
+	Checkbox {
+		label: Label{break:True}
+		variable: UserVariable PAM_SHOW_PREDEFINED
+		text: $bwcpam_vault_graph_NLS.showpredefined
+	}
+
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: network
+		datasets:dataviz(target_uid, target_code, target_family, target_tooltip, source_uid, node, edge) to chartdata(code, label, group, description, parentcode, nodeattributes, edgeattributes)
+		bindings:
+			value-of False to hierarchical,
+			value-of 'box' to shape,
+			value-of 'LR' to hierarchical_direction,// UD, DU, LR, RL
+			value-of 2000 to textboxsize,
+			value-of True to navigationButtons
+		widget-events: {
+			when onclick then [
+				Set 'node' to outSelectionType,
+				Set Current code to outSelectedcode,
+				Set Current label to outSelectedlabel,
+				Set Current group to outSelectedGroup,
+				Set '' to outFromNode,
+				Set '' to outToNode,
+				StringCase ( Current group ) {
+					when "GROUP" then [ 
+						Dialog bwf_groupDetailsDialog ( Current code to inuid )
+					]
+					when "ACCOUNT" then [ 
+						Set Current code to accountuid,
+						Set lastrecon.recorduid to lastreconrecorduid, ReloadData ( lastrecon ),
+						Dialog bwf_accountDetailsDialog ( Current code to inuid , True to incanreconcile ),
+						ReloadData ( lastrecon ),
+						BooleanCase using SameValuePredicate ( lastrecon.recorduid , lastreconrecorduid ) in {
+							when False then [
+								ReloadData ( dataviz )
+							]
+							when True then []
+						}
+					]
+					when "IDENTITY" then [ 
+						Dialog bwf_identityDetailsDialog ( Current code to inuid )
+					]
+					when "ca_safe" then [ 
+						Dialog bwf_casafeDetailsDialog ( Current code to inuid )
+					]
+					when "ca_vault" then [ 
+						Dialog bwf_cavaultDetailsDialog ( Current code to inuid )
+					]
+				}
+			]
+			when onedgeclick then [
+				Set 'edge' to outSelectionType,
+				Set Current _from to outFromNode,
+				Set Current _to to outToNode,
+				Set '' to outSelectedcode,
+				Set '' to outSelectedlabel,
+				Set '' to outSelectedGroup
+			]
+		}
+	}
+}
+
+bwpam_secret_graph = PageFragment {
+	inuid = Variable
+	insecretuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	insecretsonly = Variable { multivalued:False type:Boolean initial:False }
+
+	outSelectionType = Variable
+
+	outSelectedcode = Variable
+	outSelectedlabel = Variable
+	outSelectedGroup = Variable
+	
+	outFromNode = Variable
+	outToNode = Variable
+
+	showSecretsOnly = Variable {type:Boolean initial:False}
+
+	dataviz = Dataset {
+		view:bwcpam_tree_secret_identities with inuid to vault_uid, insecretuid to secret_uid, showSecretsOnly to secrets_only
+		disabled:OrPredicate{
+			Not BooleanPredicate(inenabled)
+			StringPredicate(inuid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+	}
+
+	Checkbox {
+		label: Label{break:True}
+		variable: showSecretsOnly
+		text: $bwcpam_vault_graph_NLS.secrets_option
+		hidden: Not BooleanPredicate(insecretsonly)
+	}
+
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: network
+		datasets:dataviz(target_uid, target_code, target_family, target_tooltip, source_uid, node, edge) to chartdata(code, label, group, description, parentcode, nodeattributes, edgeattributes)
+		bindings:
+			value-of False to hierarchical,
+			value-of 'box' to shape,
+			value-of 'LR' to hierarchical_direction,// UD, DU, LR, RL
+			value-of 2000 to textboxsize,
+			value-of True to navigationButtons
+		widget-events: {
+			when onclick then [
+				Set 'node' to outSelectionType,
+				Set Current code to outSelectedcode,
+				Set Current label to outSelectedlabel,
+				Set Current group to outSelectedGroup,
+				Set '' to outFromNode,
+				Set '' to outToNode,
+				StringCase ( Current group ) {
+					when "GROUP" then [ 
+						Dialog bwf_groupDetailsDialog ( Current code to inuid )
+					]
+					when "ACCOUNT" then [ 
+						Dialog bwf_accountDetailsDialog ( Current code to inuid )
+					]
+					when "IDENTITY" then [ 
+						Dialog bwf_identityDetailsDialog ( Current code to inuid )
+					]
+					when "ca_safe" then [ 
+						Dialog bwf_casafeDetailsDialog ( Current code to inuid )
+					]
+					when "ca_vault" then [ 
+						Dialog bwf_cavaultDetailsDialog ( Current code to inuid )
+					]
+//					when "ca_secret" then [ 
+//						Dialog bwf_applicationDetailsDialog ( Current code to inuid )
+//					]
+				}
+			]
+			when onedgeclick then [
+				Set 'edge' to outSelectionType,
+				Set Current _from to outFromNode,
+				Set Current _to to outToNode,
+				Set '' to outSelectedcode,
+				Set '' to outSelectedlabel,
+				Set '' to outSelectedGroup
+			]
+		}
+	}
+}

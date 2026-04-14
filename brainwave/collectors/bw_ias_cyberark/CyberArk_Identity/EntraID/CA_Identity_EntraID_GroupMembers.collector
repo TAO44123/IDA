@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity External GroupMembers" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1730118048345_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1727880560246_1">
+		<Component name="C1727880560246_1" type="discoverysource" x="86" y="41" w="300" h="64" title="CA_Identity_RoleMembers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_RoleMembers.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_RoleMembers.csv&apos;)}"/>
+		</Component>
+		<Component name="C1729689320109_1" type="discoverysource" x="531" y="181" w="300" h="64" title="aad_users">
+			<Discovery file="/discovery/bw_ad_azure/aad_users.discovery" datafile="{config.inputfilename}"/>
+		</Component>
+		<Component name="C1727880571359_1" type="groupmembers" x="84" y="535" w="300" h="64" title="Role Members">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Content members="object_id"/>
+			<Group code="roleid"/>
+			<Domain/>
+		</Component>
+		<Component name="C1729689380634_1" type="joinfilter" x="86" y="181" w="300" h="64" title="join rolemembers with aad_users">
+			<Join source="C1729689320109_1"/>
+			<Cache active="true" main="name" join="userprincipalname"/>
+			<Attributes>
+				<Attribute name="A1729689514826" attribute="aad_accountid" source="id" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1729689387854_1" source="C1727880560246_1" target="C1729689380634_1" priority="1"/>
+		<Link name="L1729689389548_1" source="C1729689320109_1" target="C1729689380634_1" priority="1"/>
+		<Component name="C1730120743394" type="joinfilter" x="85" y="325" w="300" h="64" title="join rolesmembers with aad_groups">
+			<Join source="C1730120983859"/>
+			<Cache active="true" main="guid" join="id"/>
+		</Component>
+		<Link name="L1730120747389" source="C1729689380634_1" target="C1730120743394" priority="2"/>
+		<Link name="L1730120748052" source="C1730120743394" target="C1730126137501" priority="1" expression="(! dataset.isEmpty(&apos;aad_accountid&apos;)) || (! dataset.isEmpty(&apos;id&apos;))"/>
+		<Component name="C1730120983859" type="discoverysource" x="524" y="323" w="300" h="64" title="aad_groups">
+			<Discovery file="/discovery/bw_ad_azure/aad_groups.discovery" datafile="{config.inputfilename}"/>
+		</Component>
+		<Link name="L1730120997045" source="C1730120983859" target="C1730120743394" priority="1"/>
+		<Component name="C1730126137501" type="changefilter" x="87" y="433" w="300" h="64" title="object_id">
+			<Actions>
+				<Action name="U1730126153617" action="add" attribute="object_id" type="String" multivalued="false" errorexist="false" newvalue="{dataset.isEmpty(&apos;aad_accountid&apos;)?dataset.guid.get():dataset.aad_accountid.get()}"/>
+			</Actions>
+		</Component>
+		<Link name="L1730126253751" source="C1730126137501" target="C1727880571359_1" priority="1"/>
+		<Component name="N1733216138952" type="note" x="535" y="54" w="300" h="50" title="Add EntraID users and roles in CyberArk Identity roles"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="inputfilename"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

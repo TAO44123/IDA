@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bw_control_browser_get_all_discrepancies_and_exception" displayname="get all discrepancies and exception">
+	<Definition scriptfile="/views/bw_controls_browser/control_browser/get_all_discrepancies_and_exception.javascript" name="D1599652334786">
+		<Component name="C1599652371088" type="innerview" x="510" y="115" w="300" h="50" title="Get control results">
+			<InnerView name="bw_control_browser_all_controls_and_result">
+				<Param name="F1600255155694" viewparam="risk_level" viewparamvalue="{param.risk_level.get()}"/>
+				<Param name="F1629722748313" viewparam="controlCode" viewparamvalue="{param.controlCode.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1669825495225" expression="param.isEmpty( &apos;filterControlName&apos; ) || dataset._label.get().contains( param.filterControlName.get(), true )" comment="Filtre on the control name / label" type="Include"/>
+			</FilterList>
+		</Component>
+		<Component name="C1599652412362_1" type="joinview" x="901" y="302" w="300" h="50" title="Get discrepancies">
+			<InnerView name="bw_control_browser_get_discrepancies">
+				<Param name="F1629722868326" viewparam="controlCode" viewparamvalue="{param.controlCode.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.controlcode.get()}" key2="{dataset.value2string.get()}"/>
+			<ExcludeList>
+				<Exclude name="value2string"/>
+				<Exclude name="discrepancies"/>
+			</ExcludeList>
+			<FilterList>
+				<Filter name="F1599661914745" expression="dataset.controlcode.get()" type="Deduplicate"/>
+				<Filter name="F1600247312456" expression="(!param.isEmpty( &apos;only_discrepancies&apos; )) &amp;&amp; param.only_discrepancies.get() &amp;&amp; ( dataset.isEmpty( &quot;_nb_discrepancies&quot; ) || dataset._nb_discrepancies.get() &lt; 1 )" type="Exclude" comment="Keep only controls with discrepancies if filter is active"/>
+			</FilterList>
+			<ViewComputedAttribute name="_nb_discrepancies" displayname="Number of discrepancies" type="Integer" expression="dataset.isEmpty( &apos;discrepancies&apos; ) ? 0 : dataset.discrepancies.get()"/>
+		</Component>
+		<Link name="L1629728468918" source="C1599652371088" target="C1599652412362_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1600242254436_2" type="trendview" x="1064" y="304" w="300" h="50" title="Compute discrepancies trend">
+			<Trend usereferencedtimeslots="{config.bw_controls_browser_use_reference_timeslots_in_trend}" timeslot="-1" comparing_column="_nb_discrepancies" trend_column_result="discrepancies_trend" key="{dataset.controlcode.get()}"/>
+			<ViewComputedAttribute name="_discrepancies_trend" displayname="Discrepancies trend without null value" type="Integer" expression="dataset.isEmpty( &apos;discrepancies_trend&apos; ) ? 0 : dataset.discrepancies_trend.get()"/>
+			<ExcludeList>
+				<Exclude name="discrepancies_trend"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1629728472038" source="C1599652412362_1" target="C1600242254436_2" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewSort name="sort" direction1="ASC"/>
+	<ViewParam name="only_discrepancies" displayname="only discrepancies" type="Boolean"/>
+	<ViewParam name="risk_level" displayname="risk_level" type="Integer">
+		<Value name="V1602245855068_1" data="0"/>
+	</ViewParam>
+	<ViewParam name="controlCode" displayname="Control Code (optional)" type="String">
+		<Value name="V1668000149577_1" data="0fa5186a-11de-4c9c-9845-8f9a58e4957f"/>
+	</ViewParam>
+	<ViewParam name="filterControlName" displayname="Filter on Control Name" type="String"/>
+	<ViewParam name="typeControl" displayname="Type of control (scope or entity)" type="String"/>
+</View>

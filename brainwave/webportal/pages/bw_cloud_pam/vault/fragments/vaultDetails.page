@@ -1,0 +1,127 @@
+
+import "/webportal/pages/bw_cloud_pam/vault/fragments/details.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/accounts.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/controls.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/safes.page"
+import "/webportal/pages/bw_cloud_pam/resources/pam_fragments.page"
+
+bwf_cavaultDetailsDialogNLS = NLS {
+    title [en 'Vault Detail' fr "Détails du vault"]
+	cavault [en "Vault" fr "Vault"]    
+	casafe [en "Safe" fr "Safe"]
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Account" fr "Compte"]
+	graph [en "Graph" fr "Graphe"]
+
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	
+	accounts [en "Users" fr "Utilisateurs"]
+	secrets [en "Secrets" fr "Secrets"]
+	permissions [en "Folders" fr "Répertoires"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Folders usage" fr "Usage des répertoires"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Safe details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>safe uid</li>
+ * </ul>
+ * </span>
+ */
+bwf_cavaultDetailsDialog = Dialog {
+	title:$bwf_cavaultDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	
+	incode = Variable
+	inuid = Variable	
+
+	active_cavault = Variable { initial:False multivalued:False type:Boolean }
+	active_casafe = Variable { initial:False multivalued:False type:Boolean }	
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_secrets = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_dataviz = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Record for concept details
+	vault = Record {
+		view: bwpam_vaultbycode with incode to code unless-empty, inuid to uid unless-empty
+	}
+	
+	TabFolder {
+		border:True
+		layout:Layout { indent: horizontal 0 vertical 6 }
+//		TabItem {
+//			text:$bwf_cavaultDetailsDialogNLS.details
+//			activation-event:Set True to active_detail
+//
+//			TabFolder {
+//				border:False
+				TabItem {
+					text:$bwf_cavaultDetailsDialogNLS.cavault
+					activation-event:Set True to active_cavault, Set True to active_detail
+				
+					IncludeFragment {
+						fragment:fragmentCAVaultFullDetails
+						with value-of vault.uid to inuid, value-of True to incanupdatetags, value-of Eval "active_detail.get() && active_cavault.get()" to inenabled
+					}
+				}
+				TabItem {
+					text:$bwf_cavaultDetailsDialogNLS.accounts
+					activation-event:Set True to active_accounts
+				
+					IncludeFragment {
+						fragment:fragmentCAVaultAccounts
+						with value-of vault.uid  to inuid, value-of True to incanshowdetails, value-of True to incanreconcile, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+					}
+				}				
+				TabItem {
+					text:$bwf_cavaultDetailsDialogNLS.casafe
+					activation-event:Set True to active_casafe
+				
+					IncludeFragment {
+						fragment:fragmentCAVaultSafes
+						with value-of vault.uid to inuid, value-of Eval "active_detail.get() && active_casafe.get()" to inenabled
+					}
+				}				
+				TabItem {
+					text:$bwf_cavaultDetailsDialogNLS.graph
+					activation-event:Set True to active_dataviz
+				
+					IncludeFragment {
+						fragment: bwpam_vault_graph
+						with value-of vault.uid to inuid, value-of False to insecretsonly, value-of Eval "active_detail.get() && active_dataviz.get()" to inenabled
+					}
+				}
+
+				TabItem {
+					text:$bwf_cavaultDetailsDialogNLS.controls
+					activation-event:Set True to active_control
+				
+					IncludeFragment {
+						fragment:fragmentVaultAllControlDefectsList
+						with value-of vault.uid  to inuid, value-of Eval "active_detail.get() && active_cavault.get()" to inenabled
+					}
+				}
+//			}
+//		}
+	}
+}

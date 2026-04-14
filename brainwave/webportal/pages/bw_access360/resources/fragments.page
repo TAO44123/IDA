@@ -1,0 +1,523 @@
+/* Import other pages here */
+import "/webportal/pages/bw_access360/resources/access360_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_fragments/identity/accounts.page"
+import "/webportal/pages/bw_fragments/identity/rights.page"
+import "/webportal/pages/bw_fragments/identity/cacredentials.page"
+import "/webportal/pages/bw_fragments/identity/data.page"
+import "/webportal/pages/bw_fragments/identity/managedresources.page"
+import "/webportal/pages/bw_fragments/identity/tasks.page"
+import "/webportal/pages/bw_fragments/identity/batchedreports.page"
+import "/webportal/pages/bw_fragments/identity/team.page"
+import "/webportal/pages/bw_fragments/identity/entriestorevoke.page"
+import "/webportal/pages/bw_fragments/identity/pendingreviewdashboard.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/delegation/delegation.page"
+
+fragenduser360tab_REVIEW = Constant { type:Integer value:0 }
+fragenduser360tab_REVOKE = Constant { type:Integer value:1 }
+fragenduser360tab_PENDING = Constant { type:Integer value:2 }
+fragenduser360tab_MYACCOUNTS = Constant { type:Integer value:3 }
+fragenduser360tab_MYAPPLICATIONS = Constant { type:Integer value:4 }
+fragenduser360tab_MYSHARES = Constant { type:Integer value:5 }
+// fragenduser360tab_COMPLETEDREVIEWTASKS = Constant { type:Integer value:6 }
+fragenduser360tab_ASYNCREPORTS = Constant { type:Integer value:6 }
+fragenduser360tab_TEAM = Constant { type:Integer value:7 }
+fragenduser360tab_CYBERARK = Constant { type:Integer value:8 }
+fragenduser360tab_MANAGEDRESOURCES = Constant { type:Integer value:9 }
+fragenduser360tab_ANALYTICS = Constant { type:Integer value:10 }
+fragenduser360tab_DELEGATION = Constant { type:Integer value:11 }
+
+/**
+ * Access 360 - End user detail pane
+ * 
+ * @param inuid, Identity uid
+ * @param ininitialtab, optional, to set the initial tab (Cf Constants in this page)
+ * 
+ */
+fragenduser360 = PageFragment {
+	enter-event:
+		StringCase ( inuid ) {
+			when Principal.uid then [
+				Set 1 to inisowner
+			] otherwise [
+				Set 0 to inisowner
+			]
+		}
+	post-render-event:IntCase(ininitialtab) { when >=0 then [Set ininitialtab to tabfolderindex] } 
+
+	/* Parameters here */
+
+	/* Variables here */
+	inuid = Variable { type: String multivalued: False }	
+	inisowner = Variable { type: Integer initial: 0 }	
+	ininitialtab = Variable { type: Integer }
+
+//	nbtasks = Variable { type: Integer private: True }
+	nbtasks = Variable { type: Integer private: True }
+	hasreview = Variable { type: Integer private: True }
+	nbreview = Variable { type: Integer private: True }
+	nbactivereviews = Variable { type: Integer private: True }
+	nbreviewswithtobereviewedentries = Variable { type: Integer private: True }
+	nbrevoke = Variable { type: Integer private: True }
+	nbownedrequests = Variable { type: Integer private: True }
+	nbongoingrequests = Variable { type: Integer private: True }
+	nbmngdresources = Variable { type: Integer private: True }
+	nbmngdcaresources = Variable { type: Integer private: True }
+	nbbatchedReports = Variable { type: Integer private: True }
+	nbanalytics = Variable { type: Integer private: True }
+	nbcacredentials = Variable { type: Integer private: True }
+
+	orgteam_count = Variable { type: Integer private: True }
+	team_count = Variable { type: Integer private: True }
+
+	tab = Variable { private: True }
+	tabfolderindex = Variable { private: True }
+	
+	activePendingtasks = Variable { type: Boolean initial: False private: True multivalued: False }
+	activePendingreview = Variable { type: Boolean initial: False private: True multivalued: False }
+	activefinalizedreview = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeAccounts = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeApplications = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeShares = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeRequests = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeReports = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeTeam = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeResources = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeAnalytics = Variable { type: Boolean initial: False private: True multivalued: False }
+	activeDelegations = Variable { type: Boolean initial: False private: True multivalued: False }
+	
+	/* Datasets and records here */
+	
+	identitydirectorganisation = Record {
+		view: getidentitydetails_byuid_byorgatypecode with
+			inuid to uid
+	}
+
+	identitymanager = Record {
+		view: bwa360_identitymanager with
+			inuid to uid
+	}
+		
+	/* Page content */
+	Grid {
+		columns: GridColumn { width: 300px }, GridColumn { width: grow }, GridColumn 							
+		layout: Layout { grab: horizontal True vertical False }
+		GridRow {
+			GridCell {
+			}
+		}
+		GridRow {
+			GridCell {
+				Text {
+					value: identitydirectorganisation.fullname
+					label: $identitycard.fullname
+					compact: True
+					styling: bigTitleStyle
+				}
+				Text {
+					value: identitydirectorganisation.jobtitledisplayname
+					label: $identitycard.job
+					compact: True
+					styling: bigTitleStyle
+				}
+			}
+			GridCell {
+				Text {
+					value: identitydirectorganisation.orgdisplayname
+					label: $identitycard.orga
+					compact: True
+					styling: bigTitleStyle
+				}
+				Text {
+					value: identitymanager.fullname
+					label: $identitycard.manager
+					compact: True
+					styling: bigTitleStyle
+			    }
+		     }
+			GridCell {
+				Button {
+					hidden:
+						FeaturePredicate Not ( DelegationActive )
+					actions: TerminateDelegation
+					styling: bwf_redcellNG
+					text: $identitycard.terminatedelegation
+					tooltip: $identitycard.terminatedelegationtooltip
+				}
+			} 
+		} // End of Gridrow
+	} // End of Grid
+	// content
+	TabFolder {
+		border: False
+		selected-index:tabfolderindex
+		// 0 review tasks
+		TabItem {
+			text: $enduser360NLS.pendingreview
+			tooltip: $enduser360NLS.tooltip.pendingreview
+			activation-event:
+				Set True to activePendingreview
+			badge: Eval "nbreviewswithtobereviewedentries.get()>0?nbreviewswithtobereviewedentries.get():''"
+			feature: iasreview_license
+			hidden:
+				OrPredicate {
+					Not SameValuePredicate ( inuid, Principal.uid ) 
+					BooleanPredicate ( Eval "!(nbactivereviews.get()>0)")
+				}
+			IncludeFragment ( fragmentIdentityPendingReviewDashboard with
+				value-of activePendingreview to inenabled,											  
+				value-of inuid to inuid,
+				hasreview binds-to outhasentriestoreview,
+				nbactivereviews binds-to outnbactivereviews,
+				nbreviewswithtobereviewedentries binds-to outnbcampaignswithtobereviewedentries,
+				value-of True to inhidecompleted,
+				value-of True to inhidereviewedentries
+			)
+		}
+		// 1 revoke tasks
+		TabItem {
+			text: $enduser360NLS.pendingrevoke
+			tooltip: $enduser360NLS.tooltip.managedrevoketasks
+			badge: Eval "nbrevoke.get()>0?nbrevoke.get():''"
+			feature: iasreview_license
+			hidden:
+				OrPredicate {
+					Not SameValuePredicate ( inuid, Principal.uid ) 
+					IntPredicate ( nbrevoke ) {
+						when =0 then True
+					}
+				}
+			IncludeFragment ( fragmentIdentityEntriesToRevoke with
+				value-of inuid to inuid,
+				nbrevoke binds-to outnbentriestorevoke
+			)
+		}
+		// 2 pending tasks
+		TabItem {
+			text: $enduser360NLS.managedpendingtasks
+			tooltip: $enduser360NLS.tooltip.managedpendingtasks
+			activation-event:
+				Set True to activePendingtasks
+			badge: Eval "nbtasks.get()>0?nbtasks.get():''"
+			hidden:
+			OrPredicate {
+				Not SameValuePredicate(inuid, Principal.uid) 
+				IntPredicate(nbtasks) { when =0 then True }
+			}
+			IncludeFragment ( fragmentIdentityPendingTasks with
+				value-of inuid to inuid,
+				nbtasks binds-to outnbtasks
+			)
+		}		
+		// 3 accounts
+		TabItem {
+			text: $enduser360NLS.tabs.myaccounts.title(inisowner)
+			tooltip: $enduser360NLS.tooltip.accounts
+			activation-event:
+				Set True to activeAccounts
+			IncludeFragment ( fragmentIdentityAccounts360 with
+				value-of inuid to inuid,
+				value-of activeAccounts to inenabled
+			)
+		}
+		// 4 applications
+		TabItem {
+			text: $enduser360NLS.tabs.myapplications.title(inisowner)
+			tooltip: $enduser360NLS.tooltip.applications
+			activation-event:
+				Set True to activeApplications
+			IncludeFragment ( fragmentIdentityRights360 with
+				value-of inuid to inuid,
+				value-of activeApplications to inenabled
+			)
+		}
+		// 5 shares
+		TabItem {
+			text: $enduser360NLS.tabs.mydata.title(inisowner)
+			tooltip: $enduser360NLS.tooltip.myfolders
+			activation-event:
+				Set True to activeShares
+			feature: unstructureddata_license
+			hidden:
+				IntPredicate ( identitydirectorganisation.bwa_identityanalytics_nbshare ) {
+					when >0 then False
+					otherwise True
+				} 
+			IncludeFragment ( fragmentIdentityData360 with
+				value-of inuid to inuid,
+				value-of True to incanchangedepth,
+				value-of activeShares to inenabled
+			)
+		}
+		// on going requests
+		// TODO: hidden for now as we do not have "revoke" buttons available for end users
+//		TabItem {
+//			text: $enduser360NLS.managedrequest
+//			tooltip: $enduser360NLS.tooltip.managedrequest		
+//			activation-event: Set True to activeRequests
+//			badge: Eval "nbongoingrequests.get()>0?nbongoingrequests.get():''"
+//			hidden: 
+//				OrPredicate {
+//					Not SameValuePredicate(inuid, Principal.uid) 
+//					IntPredicate (nbownedrequests) { when =0 then True otherwise False }
+//				}
+//			IncludeFragment (fragmentIdentityCreatedTasks with value-of inuid to inuid, value-of True to inenabled, nbownedrequests binds-to outnbtasks, nbongoingrequests binds-to outnbongoingtasks)
+//		}
+		// 7 async reports
+		TabItem {
+			text: $enduser360NLS.viewreports
+			tooltip: $enduser360NLS.tooltip.viewreports
+			activation-event:
+				Set True to activeReports
+			hidden: 
+				OrPredicate {
+					Not SameValuePredicate ( inuid, Principal.uid ) 
+					IntPredicate ( nbbatchedReports ) {
+						when =0 then True
+					}
+				}
+			IncludeFragment ( fragmentIdentityBatchedReports with
+				value-of True to inenabled,
+				nbbatchedReports binds-to outnbreports
+			)
+		}
+		// 8 team
+		TabItem {
+			text: $enduser360NLS.myteam
+			tooltip: $enduser360NLS.tooltip.myteam
+			activation-event:
+				Set True to activeTeam
+			hidden:
+				Eval "orgteam_count.get()==0 && team_count.get()==0"
+			IncludeFragment ( fragmentIdentityTeamSelection with
+				value-of inuid to inuid,
+				value-of True to incanshowdetails,
+				value-of True to inshowdetailpage,
+				value-of True to incancompare,
+				value-of activeTeam to inenabled,
+				orgteam_count binds-to orgteam_count,
+				team_count binds-to team_count
+			)
+		}
+		// 9 CyberArk Credentials
+		TabItem {
+			text: $enduser360NLS.cacredendials
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden: 
+				OrPredicate {
+					Not SameValuePredicate ( inuid, Principal.uid ) 
+					IntPredicate ( nbcacredentials ) {
+						when =0 then True
+					}
+				}
+			IncludeFragment ( fragmentIdentityCACredentials with
+				value-of inuid to inuid,
+				nbcacredentials binds-to outnbcredentials
+			)
+		}
+		// 10 managed resources
+		TabItem {
+			text: $enduser360NLS.managedresources
+			tooltip: $enduser360NLS.tooltip.managedresources 
+			activation-event:
+				Set True to activeResources
+			hidden: 
+				OrPredicate {
+					Not SameValuePredicate ( inuid, Principal.uid ) 
+					IntPredicate ( nbmngdresources ) {
+						when =0 then True
+					}
+				}
+			IncludeFragment ( fragmentIdentityManagedResources with
+				value-of inuid to inuid,
+				nbmngdresources binds-to outnbresources,
+				value-of True to inincludeorganisations,
+				value-of True to incanshowdetails,
+				value-of True to injumptodetailpage
+			)
+		}
+		// 11 analytics
+		TabItem {
+			text: $enduser360NLS.analytics
+			tooltip: $enduser360NLS.tooltip.analytics
+			activation-event:
+				Set True to activeAnalytics
+			hidden: 
+				IntPredicate ( nbanalytics ) {
+					when =0 then True
+				}
+			IncludeFragment ( fragreports360 with
+				value-of inuid to inuid,
+				nbanalytics binds-to outnbanalytics,
+				value-of True to inenabled
+			)
+		}
+		// 12 delegations
+		TabItem {
+			text: $enduser360NLS.delegations
+			tooltip: $enduser360NLS.tooltip.delegations
+			feature:enduser360_delegationtab
+			activation-event:
+				Set True to activeDelegations
+			IncludeFragment ( fragdelegations360 with
+				value-of inuid to inuid,
+				value-of True to inenabled,
+				value-of True to incanshowdetails
+			)
+		}
+	}
+}/*End of fragment */
+
+fragreports360NLS = NLS {
+	personal [en "Personal" fr "Personnel"] 
+	team [en "My Team" fr "Mon équipe"] 
+	application  [en "Managed Applications" fr "Applications gérées"]
+	account [en "Managed Accounts" fr "Comptes gérés"]
+	folder [en "Managed Folders" fr "Répertoires gérés"]
+	permission  [en "Managed Permissions" fr "Permissions gérées"]
+	repository  [en "Managed Repositories" fr "Référentiels gérés"]
+	share [en "Managed Shares" fr "Partages gérés"]
+	group  [en "Managed Groups" fr "Groupes gérés"]
+	organisation [en "Managed Organizations" fr "Organisations gérées"]
+	empty [en "No Analytics Available" fr "Pas d'analyse disponible"]
+}
+/**
+ * Reports for a given identity
+ * 
+ * @param uid the identity uid
+ */
+fragreports360 = PageFragment {
+
+	/* Parameters here */
+	inuid = Parameter { label: "Concept Uid" type: String hidden: True }
+	inenabled = Variable { initial: True type: Boolean }
+	outnbanalytics = Variable { type: Integer }
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+		
+	personalreports = Dataset {
+		pages: Pages { tags: "my_access360" }
+	}
+	teamreports = Dataset {
+		pages: Pages { tags: "myteam_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_isidentitymanagerTeam360 )
+	}
+	appreports = Dataset {
+		pages: Pages { tags: "myapp_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_isapplicationmanagerTeam360 )
+	}
+	accountreports = Dataset {
+		pages: Pages { tags: "myaccount_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_isaccountmanagerTeam360 )
+	}
+	folderreports = Dataset {
+		pages: Pages { tags: "myfolder_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_isfoldermanagerTeam360 )
+	}
+	permissionreports = Dataset {
+		pages: Pages { tags: "mypermission_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_ispermissionmanagerTeam360 )
+	}
+	repositoryreports = Dataset {
+		pages: Pages { tags: "myrepository_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_isrepositorymanagerTeam360 )
+	}
+	sharereports = Dataset {
+		pages: Pages { tags: "myshare_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_issharemanagerTeam360 )
+	}
+	groupreports = Dataset {
+		pages: Pages { tags: "mygroup_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_isgroupmanagerTeam360 )
+	}
+	orgreports = Dataset {
+		pages: Pages { tags: "myorg_access360" }
+		disabled:
+			Not BooleanPredicate ( UserVariable session_isorganisationmanagerTeam360 )
+	}
+	
+	reports = Dataset {
+		union: Union {
+			datasets:	
+				personalreports discriminator $fragreports360NLS.personal, 
+				teamreports discriminator $fragreports360NLS.team, 
+				appreports discriminator $fragreports360NLS.application, 
+				accountreports discriminator $fragreports360NLS.account, 
+				folderreports discriminator $fragreports360NLS.folder,
+				permissionreports discriminator $fragreports360NLS.permission, 
+				repositoryreports discriminator $fragreports360NLS.repository, 
+				sharereports discriminator $fragreports360NLS.share, 
+				groupreports discriminator $fragreports360NLS.group, 
+				orgreports discriminator $fragreports360NLS.organisation
+			discriminator-column: discr
+		}
+		count-variable: outnbanalytics
+		disabled:
+			Not BooleanPredicate ( inenabled )
+	}
+
+	ConditionalGroup {
+		IntCondition ( Count reports ) {
+			when =0 then [
+				Header {
+					value: $fragreports360NLS.empty
+					styling: bigTitleStyle
+				}
+			] otherwise [
+				TemplateTable {
+					data: reports
+					layout: Layout { grab: horizontal True vertical True }
+					show-filter: True
+					pagination: 10
+					row-height: 100
+					double-click:
+						GoTo Dynamic ( Current type, Current name ) with inuid to uid save-state
+					ImageCell {
+						image: Current largeIcon
+						left: 20
+						top: 30
+						width: 48
+						height: 48
+						on-click:
+							GoTo Dynamic ( Current type, Current name ) with inuid to uid save-state
+					}
+					TextCell {
+						column: title
+						left: 10
+						top: 10
+						width: 900
+						height: 20
+						filterable: True
+						styling: bwf_boldNG
+						on-click:
+							GoTo Dynamic ( Current type, Current name ) with inuid to uid save-state
+					}
+					TextCell {
+						column: description
+						vertical-align: Top
+						horizontal-align: Left
+						styling: bwf_notboldNG
+						filterable: True
+						wrap: True
+						left: 80
+						top: 30
+						width: 900
+						height: 60
+					}
+				}
+			]
+		}
+	}
+}

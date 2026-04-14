@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity EntraID Users" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1756900699943_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1727869837429_1">
+		<Component name="C1727869837429_1" type="discoverysource" x="80" y="74" w="300" h="64" title="CA_Identity_DSUsers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_DSUsers.csv&apos;)}"/>
+		</Component>
+		<Component name="C1727869865064_1" type="account" x="73" y="771" w="300" h="64" title="EntraID Account">
+			<Account key="entraid_uid">
+				<Attribute name="login" attribute="systemname"/>
+				<Attribute name="locked" attribute="locked"/>
+				<Attribute name="username" attribute="displayname"/>
+				<Attribute name="mail" attribute="email"/>
+				<Attribute name="custom1" attribute="serviceinstance"/>
+				<Attribute name="disabled" attribute="disabled"/>
+				<Attribute name="custom3" attribute="serviceinstancelocalized"/>
+				<Attribute name="custom5" attribute="directoryserviceuuid"/>
+				<Attribute name="service" attribute="serviceuser"/>
+				<Attribute name="lastlogindate" attribute="lastlogin"/>
+				<Attribute name="custom6" attribute="status"/>
+			</Account>
+			<Media code="entraid_repo"/>
+			<Manager check="false" report="false"/>
+		</Component>
+		<Component name="C1727870046033_1" type="changefilter" x="74" y="658" w="300" h="64" title="Users parameters">
+			<Actions>
+				<Action name="U1730385624156" action="update" attribute="enabled" newvalue="{ dataset.isEmpty(&apos;enabled&apos;) ? dataset.status.get().equals(&apos;Suspended&apos;) ? true : false : dataset.status.get().equals(&apos;Suspended&apos;) ? true : false }" errorunknown="false"/>
+				<Action name="U1727871060658" action="rename" oldname="enabled" attribute="disabled" errorunknown="false" errorexist="false"/>
+				<Action name="U1732268352411" action="add" attribute="pcloudrepo" type="String" multivalued="false" newvalue="{config.PCloud_reponame}" errorexist="false"/>
+				<Action name="U1756901633648" action="add" attribute="entraid_repo" type="String" multivalued="false" newvalue="{config.EntraID_reponame}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1732091739483_1" type="discoverysource" x="494" y="317" w="300" h="64" title="CA_Identity_Users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_Users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_Users.csv&apos;)}"/>
+		</Component>
+		<Component name="N1733216559530_1" type="note" x="499" y="62" w="300" h="112" title="Collect all users :&#xA;- Join DSUsers with Vault_Users to get the user type (EPVUser)&#xA;- Join with Users to get the usertype and the lastlogindate"/>
+		<Component name="C1736332960676_1" type="changefilter" x="78" y="547" w="300" h="64" title="Convert Date">
+			<Actions function="convertDate"/>
+		</Component>
+		<Component name="C1732091698109_1" type="joinfilter" x="80" y="320" w="300" h="64" title="service - lastlogindate">
+			<Join source="C1732091739483_1" zeroerror="true" zeroevent="FAIL JOIN SERVICE USER"/>
+			<Cache active="true" main="internalname" join="identity_id"/>
+			<Attributes>
+				<Attribute name="A1732092068886" attribute="lastlogin" source="lastlogin" type="String" multivalued="false"/>
+				<Attribute name="A1732092710569" attribute="serviceuser" source="serviceuser" type="Boolean" multivalued="false"/>
+				<Attribute name="A1732095387843" attribute="identity_id" source="identity_id" type="String" multivalued="false"/>
+				<Attribute name="A1736333145967" attribute="status" source="status" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1729850133498_1" source="C1727870046033_1" target="C1727869865064_1" priority="1"/>
+		<Link name="L1732091710306_1" source="C1732091698109_1" target="C1756901360266" priority="1"/>
+		<Link name="L1732091752410_1" source="C1732091739483_1" target="C1732091698109_1" priority="1"/>
+		<Link name="L1736332977609_1" source="C1736332960676_1" target="C1727870046033_1" priority="1"/>
+		<Component name="C1729689320109_2" type="discoverysource" x="493" y="438" w="300" h="64" title="aad_users">
+			<Discovery file="/discovery/bw_ad_azure/aad_users.discovery" datafile="{config.inputfilename}"/>
+		</Component>
+		<Component name="C1756901360266" type="joinfilter" x="79" y="435" w="300" h="64" title="Join entraID account with CA user">
+			<Join source="C1729689320109_2"/>
+			<Cache active="true" join="userprincipalname" main="systemname"/>
+			<Attributes>
+				<Attribute name="A1756901581130" attribute="entraid_uid" source="id" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1756901367508" source="C1756901360266" target="C1736332960676_1" priority="1" expression="{!dataset.isEmpty(&apos;entraid_uid&apos;)}"/>
+		<Link name="L1756901376869" source="C1729689320109_2" target="C1756901360266" priority="1"/>
+		<Link name="L1756902403648" source="C1727869837429_1" target="C1732091698109_1" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="PCloud_reponame"/>
+			<Variable name="EntraID_reponame"/>
+			<Variable name="inputfilename"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

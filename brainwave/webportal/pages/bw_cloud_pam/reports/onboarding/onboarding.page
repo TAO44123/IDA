@@ -1,0 +1,668 @@
+/* Import other pages here */
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+import "/webportal/pages/bw_cloud_pam/credentials/fragments/secretDetails.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+
+/* Nationalized labels here */
+bwpam_onboarding_velocityNLS = NLS {
+	title [en "Onboarding Velocity" fr "Vélocité de l'embarquement"]
+	
+	vault [en 'Vault' fr 'Vault' ]
+	
+	platform [en 'Platform' fr 'Plateforme' ]
+	
+	
+	secrets.title [ en "Credentials" fr "Secrets"]
+	secrets.chart.total [ en "Total of credentials" fr "Total des secrets"]
+	secrets.chart.diff [ en "Changes in the number of credentials over time" fr "Variation du nombre de secrets" ]
+	
+	
+	resources.title [ en "Resources" fr "Ressources"]
+	resources.chart.total [ en "Total of resources" fr "Total des ressources" ]
+	resources.chart.diff [ en "Changes in the number of resources over time" fr "Variation du nombre de ressources"]
+	
+	secretslist.title [ en "Changes in the number of credentials" fr "Variation du nombre de secrets" ]
+	secretslist.subtitle [ en "The list includes all the credentials that were added or removed." fr "La liste contient tous les secrets qui ont été ajoutés ou supprimés."]
+	secretslist.secret [en 'Credential' fr "Secret"]
+	secretslist.safe [en 'Safe' fr "Safe"]
+	secretslist.vault [en 'Vault' fr "Vault"]
+	secretslist.secretlogin [en 'Login' fr "Login"]
+	secretslist.resource [en 'Address' fr "Adresse"]
+	secretslist.status [en "Status" fr "Statut"]
+	secretslist.platform [en 'Platform' fr 'Plateforme' ]
+	
+	resourceslist.title [ en "Changes in the number of resources" fr "Variation du nombre de ressources" ]
+	resourceslist.subtitle [ en "The list includes all the resources that were added or removed." fr "La liste contient toutes les ressources qui ont été ajoutées ou supprimées."]
+	resourceslist.safe [en 'Safe' fr "Safe"]
+	resourceslist.vault [en 'Vault' fr "Vault"]
+	resourceslist.resource [en 'Address' fr "Adresse"]
+	resourceslist.status [en "Status" fr "Statut"]
+	resourceslist.platform [en 'Platform' fr 'Plateforme' ]
+	
+	topplatforms_by_credentials.title [ en "Top platforms with new credentials" fr "Plateformes avec le plus de nouveaux secrets"]
+	topplatforms_by_credentials.comparedetail [ en "From {0} to {1}" fr "Du {0} au {1}"]
+	topplatforms_by_credentials.table.headers.secrets [ en "Credentials" fr "Secrets" ]
+	topplatforms_by_credentials.table.headers.diff [ en "Difference" fr "Différence"]
+	topplatforms_by_credentials.table.headers.platform  [en "Platform" fr "Plateforme" ]
+	
+	topplatforms_by_resources.title [ en "Top platforms with new resources" fr "Plateformes avec le plus de nouvelles ressources"]
+	topplatforms_by_resources.comparedetail [ en "From {0} to {1}" fr "Du {0} au {1}"]
+	topplatforms_by_resources.table.headers.resources [ en "Resources" fr "Ressources" ]
+	topplatforms_by_resources.table.headers.diff [ en "Difference" fr "Différence"]
+	topplatforms_by_resources.table.headers.platform  [en "Platform" fr "Plateforme" ]
+}
+
+bwpam_onboarding_velocity = Page {
+	title: $bwpam_onboarding_velocityNLS.title
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedVault = Variable
+	selectedPlatform = Variable
+	selectedTab = Variable { initial: "secret" }
+	
+	/* Datasets and records here */
+	vaults = Dataset {
+		view: vault_list
+	}
+	
+	platforms = Dataset {
+		view: bwcpam_all_platforms with selectedVault to vault_code
+	}
+	
+	nb_secrets_history_all = Dataset {
+		view: bwpam_nb_secrets_history_all_diff with 
+			selectedVault to vault_code,
+			selectedPlatform to platform_code
+		disabled: Not SameValuePredicate ( selectedTab, "secret" )
+	}
+	
+	nb_secrets_history_total = Dataset {
+		union: Union {
+			datasets: nb_secrets_history_all discriminator $bwpam_onboarding_velocityNLS.secrets.chart.total
+			discriminator-column: categorydisplay	
+		}
+		disabled: Not SameValuePredicate ( selectedTab, "secret" )
+	}
+	
+	nb_secrets_history_velocity = Dataset {
+		union: Union {
+			datasets: nb_secrets_history_all discriminator $bwpam_onboarding_velocityNLS.secrets.chart.diff
+			discriminator-column: categorydisplay
+		}
+		disabled: Not SameValuePredicate ( selectedTab, "secret" )
+	}
+	
+	nb_resources_history_all = Dataset {
+		view: bwpam_nb_resources_history_all_diff with 
+			selectedVault to vault_code,
+			selectedPlatform to platform_code
+		disabled: Not SameValuePredicate ( selectedTab, "resource" )
+	}
+	
+	nb_resources_history_total = Dataset {
+		union: Union {
+			datasets: nb_resources_history_all discriminator $bwpam_onboarding_velocityNLS.resources.chart.total
+			discriminator-column: categorydisplay	
+		}
+		disabled: Not SameValuePredicate ( selectedTab, "resource" )
+	}
+	
+	nb_resources_history_velocity = Dataset {
+		union: Union {
+			datasets: nb_resources_history_all discriminator $bwpam_onboarding_velocityNLS.resources.chart.diff
+			discriminator-column: categorydisplay
+		}
+		disabled: Not SameValuePredicate ( selectedTab, "resource" )
+	}
+	
+	nb_secrets_by_platform = Dataset {
+		view: bwpam_nb_secrets_by_platform_diff with PortalTimeslot.UID to ts , PortalTimeslot.ParentUID to parent_ts, 
+			[PortalTimeslot.UID, PortalTimeslot.ParentUID] to allts, selectedVault to vault_code
+	}
+	
+	nb_secrets_by_platform_top = Record {
+		view: bwpam_nb_secrets_by_platform_diff with PortalTimeslot.UID to ts , PortalTimeslot.ParentUID to parent_ts, 
+			[PortalTimeslot.UID, PortalTimeslot.ParentUID] to allts, selectedVault to vault_code
+	}
+	
+	nb_resources_by_platform = Dataset {
+		view: bwpam_nb_resources_by_platform_diff with PortalTimeslot.UID to ts , PortalTimeslot.ParentUID to parent_ts, 
+			[PortalTimeslot.UID, PortalTimeslot.ParentUID] to allts, selectedVault to vault_code
+	}
+	
+	nb_resources_by_platform_top = Record {
+		view: bwpam_nb_resources_by_platform_diff with PortalTimeslot.UID to ts , PortalTimeslot.ParentUID to parent_ts, 
+			[PortalTimeslot.UID, PortalTimeslot.ParentUID] to allts, selectedVault to vault_code
+	}
+	
+	compare_dates = Record {
+		view: all_timeslots_comparison with [PortalTimeslot.UID, PortalTimeslot.ParentUID] to ts
+	}
+	
+	/* Page content */
+	TabFolder {
+		layout:Layout { indent: horizontal 0 vertical 6 }
+		TabItem {
+			text:$bwpam_onboarding_velocityNLS.secrets.title
+			activation-event: Set "secret" to selectedTab
+			
+			Grid {
+				columns: GridColumn { width: 300 }, GridColumn { width: 300 } , GridColumn { width: grow }
+				layout: Layout { grab: horizontal True vertical False }
+				insets: 10
+				
+				GridRow {
+					GridCell {
+						Combo { 
+							layout: Layout { hint: width 250 grab: horizontal False vertical False }
+							options: Dynamic { data: vaults text: Current displayname value: Current code }
+							variable: selectedVault
+							label: $bwpam_onboarding_velocityNLS.vault
+							allow-none: True                          
+						}
+					
+					}
+					GridCell {
+						Combo { 
+							layout: Layout { hint: width 250 grab: horizontal False vertical False }
+							options: Dynamic { data: platforms text: Current platform value: Current platform }
+							variable: selectedPlatform
+							label: $bwpam_onboarding_velocityNLS.platform
+							allow-none: True                          
+						}
+					
+					}
+				}
+			}
+			Grid {
+				layout: Layout { grab: horizontal True vertical True }
+				columns: GridColumn { width: grow 2 }, GridColumn { width: grow 1 }
+				insets: 0
+				gap: 0
+				
+				GridRow {
+					height: grow
+					GridCell {
+						Grid {
+							layout: Layout { grab: horizontal True vertical True }
+							columns: GridColumn { width: grow }
+							insets: 0
+							gap: 0
+							
+							GridRow {
+								GridCell {
+									Group {
+										border:True
+										title: $bwpam_onboarding_velocityNLS.secrets.chart.diff
+										IncludeHTMLWidget {
+											template: multibarChart
+											layout: Layout { grab: horizontal True vertical True }
+											datasets: nb_secrets_history_velocity ( uid, date, diff_nb_secrets, categorydisplay, categorydisplay ) 
+												to chartdata ( code, label, count ,  categorycode, category )
+											bindings:
+												value-of True to beginAtZero,
+												value-of "#1565c0" to customColors,
+												value-of False to maintainAspectRatio,
+												value-of 10 to datasetMinSize,
+												value-of "top" to legendPosition,
+												value-of "right" to yAxesPosition,
+												value-of 60 to yAxesWidth,
+												value-of 80 to yAxesSuggestedMax
+											widget-events: {
+												when onclick then [
+													Dialog bwpam_onboarding_velocity_secrets_list ( Current code to timeslotuid, selectedVault to vault_code, selectedPlatform to platform_code )
+												]
+											}
+												
+											
+										}
+									}
+								}
+							}
+							GridRow {
+								GridCell {
+									Group {
+										border:True
+										title: $bwpam_onboarding_velocityNLS.secrets.chart.total
+										IncludeHTMLWidget {
+											template: multilineChart
+											layout: Layout { grab: horizontal True vertical True }
+											datasets: nb_secrets_history_total ( uid, date, nb_secrets, categorydisplay, categorydisplay ) 
+												to chartdata ( code, label, count, categorycode, category )
+											bindings:
+												value-of True to beginAtZero,
+												value-of "#00796b" to customColors,
+												value-of False to maintainAspectRatio,
+												value-of 10 to datasetMinSize,
+												value-of "top" to legendPosition,
+												value-of "right" to yAxesPosition,
+												value-of 60 to yAxesWidth,
+												value-of True to xAxesOffset,
+												value-of "start" to fill,
+												value-of 80 to yAxesSuggestedMax
+											
+										}
+									}
+								}
+							}
+						}
+					}
+					GridCell {
+						Group {
+							title: $bwpam_onboarding_velocityNLS.topplatforms_by_credentials.title
+							IncludeHTMLWidget {
+								layout: Layout { grab: horizontal True vertical True }
+								template: doughnutChart
+								datasets: nb_secrets_by_platform ( platform, platform, diff ) to chartdata ( label, code , count )
+								hidden: IntPredicate ( nb_secrets_by_platform_top.diff ) { when >0 then False otherwise True }
+								bindings: 
+									value-of True to showLegend,
+									value-of True to tooltipShowPercent,
+									value-of False to showOther,
+									value-of 8 to nbMaxElements,
+									value-of "right" to legendPosition,
+									value-of Constant contrastedPalette to customColors
+								widget-events: {
+									when onclick then [
+										Dialog bwpam_onboarding_velocity_secrets_list ( PortalTimeslot.UID to timeslotuid, selectedVault to vault_code, Current code to platform_code )
+									]
+								}
+							}
+							Text {
+								value: $bwpam_onboarding_velocityNLS.topplatforms_by_credentials.comparedetail ( compare_dates.^from, compare_dates.^to)
+								compact: True
+							}
+							Table {
+								data: nb_secrets_by_platform
+								layout: Layout { grab: horizontal True vertical True }
+								Column {
+									column: platform
+									width: 100%
+									sortable: True
+									header: $bwpam_onboarding_velocityNLS.topplatforms_by_credentials.table.headers.platform
+								}
+								Column {
+									column: nb_secrets
+									width: 40%
+									sortable: True
+									header: $bwpam_onboarding_velocityNLS.topplatforms_by_credentials.table.headers.secrets
+									
+								}
+								Column {
+									column: diff
+									width: 40%
+									sortable: True
+									header: $bwpam_onboarding_velocityNLS.topplatforms_by_credentials.table.headers.diff
+									
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		TabItem {
+			text:$bwpam_onboarding_velocityNLS.resources.title
+			activation-event: Set "resource" to selectedTab
+			
+			Grid {
+				columns: GridColumn { width: 300 }, GridColumn { width: 300 } , GridColumn { width: grow }
+				layout: Layout { grab: horizontal True vertical False }
+				insets: 10
+				
+				GridRow {
+					GridCell {
+						Combo { 
+							layout: Layout { hint: width 250 grab: horizontal False vertical False }
+							options: Dynamic { data: vaults text: Current displayname value: Current code }
+							variable: selectedVault
+							label: $bwpam_onboarding_velocityNLS.vault
+							allow-none: True                          
+						}
+					
+					}
+					GridCell {
+						Combo { 
+							layout: Layout { hint: width 250 grab: horizontal False vertical False }
+							options: Dynamic { data: platforms text: Current platform value: Current platform }
+							variable: selectedPlatform
+							label: $bwpam_onboarding_velocityNLS.platform
+							allow-none: True                          
+						}
+					
+					}
+				}
+			}
+			Grid {
+				layout: Layout { grab: horizontal True vertical True }
+				columns: GridColumn { width: grow 2 }, GridColumn { width: grow 1 }
+				insets: 0
+				gap: 0
+				
+				GridRow {
+					height: grow
+					GridCell {
+						Grid {
+							layout: Layout { grab: horizontal True vertical True }
+							columns: GridColumn { width: grow }
+							insets: 0
+							gap: 0
+							
+							GridRow {
+								GridCell {
+									Group {
+										border:True
+										title: $bwpam_onboarding_velocityNLS.resources.chart.diff
+										IncludeHTMLWidget {
+											template: multibarChart 
+											layout: Layout { grab: horizontal True vertical True }
+											datasets: nb_resources_history_velocity ( uid, date, diff_nb_resources, categorydisplay, categorydisplay ) 
+												to chartdata ( code, label, count ,  categorycode, category )
+											bindings:
+												value-of True to beginAtZero,
+												value-of "#1565c0" to customColors,
+												value-of False to maintainAspectRatio,
+												value-of 10 to datasetMinSize,
+												value-of "top" to legendPosition,
+												value-of "right" to yAxesPosition,
+												value-of 60 to yAxesWidth,
+												value-of 80 to yAxesSuggestedMax
+											widget-events: {
+												when onclick then [
+													Dialog bwpam_onboarding_velocity_resources_list ( Current code to timeslotuid, selectedVault to vault_code, selectedPlatform to platform_code )
+												]
+											}
+
+
+										}
+									}
+								}
+							}
+							GridRow {
+								GridCell {
+									Group {
+										border:True
+										title: $bwpam_onboarding_velocityNLS.resources.chart.total
+										IncludeHTMLWidget {
+											template: multilineChart
+											layout: Layout { grab: horizontal True vertical True }
+											datasets: nb_resources_history_total ( uid, date, nb_resources, categorydisplay, categorydisplay ) 
+												to chartdata ( code, label, count, categorycode, category )
+											bindings:
+												value-of True to beginAtZero,
+												value-of "#00796b" to customColors,
+												value-of False to maintainAspectRatio,
+												value-of 10 to datasetMinSize,
+												value-of "top" to legendPosition,
+												value-of "right" to yAxesPosition,
+												value-of 60 to yAxesWidth,
+												value-of True to xAxesOffset,
+												value-of "start" to fill,
+												value-of 80 to yAxesSuggestedMax
+											
+										}
+									}
+								}
+							}
+						}
+					}
+					GridCell {
+						Group {
+							title: $bwpam_onboarding_velocityNLS.topplatforms_by_resources.title
+							IncludeHTMLWidget {
+								layout: Layout { grab: horizontal True vertical True }
+								template: doughnutChart
+								datasets: nb_resources_by_platform ( platform, platform, diff ) to chartdata ( label, code , count )
+								hidden: IntPredicate ( nb_resources_by_platform_top.diff ) { when >0 then False otherwise True }
+								bindings: 
+									value-of True to showLegend,
+									value-of True to tooltipShowPercent,
+									value-of False to showOther,
+									value-of 8 to nbMaxElements,
+									value-of "right" to legendPosition,
+									value-of Constant contrastedPalette to customColors
+								widget-events: {
+									when onclick then [
+										Dialog bwpam_onboarding_velocity_resources_list ( PortalTimeslot.UID to timeslotuid, selectedVault to vault_code, Current code to platform_code )
+									]
+								}
+							}
+							Text {
+								value: $bwpam_onboarding_velocityNLS.topplatforms_by_resources.comparedetail ( compare_dates.^from, compare_dates.^to)
+								compact: True
+							}
+							Table {
+								data: nb_resources_by_platform
+								layout: Layout { grab: horizontal True vertical True }
+								Column {
+									column: platform
+									width: 100%
+									sortable: True
+									header: $bwpam_onboarding_velocityNLS.topplatforms_by_resources.table.headers.platform
+								}
+								Column {
+									column: nb_resources
+									width: 40%
+									sortable: True
+									header: $bwpam_onboarding_velocityNLS.topplatforms_by_resources.table.headers.resources
+									
+								}
+								Column {
+									column: diff
+									width: 40%
+									sortable: True
+									header: $bwpam_onboarding_velocityNLS.topplatforms_by_resources.table.headers.diff
+									
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+bwpam_onboarding_velocity_secrets_list = Dialog {
+	title: $bwpam_onboarding_velocityNLS.secretslist.title
+	height: 600
+	width: 1200
+
+	vault_code = Variable
+	platform_code = Variable
+	timeslotuid = Variable
+	outsecretuid = Variable
+	outsafecode = Variable
+	
+	resource_list = Dataset {
+		view: bwpam_nb_secrets_history_list_diff with vault_code to vault_code, platform_code to platform_code
+		timeslot: timeslotuid
+	}
+
+	Group {
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: $bwpam_onboarding_velocityNLS.secretslist.subtitle
+			compact: True
+		}
+	}
+	Group {
+		Table {
+			data:resource_list
+			layout:Layout { grab: horizontal True vertical True }
+			show-count:True
+			show-filter:True
+			configurable:True
+
+			Column {
+				column:uid
+				header:$bwpam_onboarding_velocityNLS.secretslist.secret
+				hidden: True
+				selection: outsecretuid
+			}
+			Column {
+				column:safecode
+				header:$bwpam_onboarding_velocityNLS.secretslist.safe
+				hidden: True
+				selection: outsafecode
+			}			
+			Column {
+				column:displayname
+				header:$bwpam_onboarding_velocityNLS.secretslist.secret
+				sortable:True
+				filterable:True
+				width:100%				
+			}
+			Column {
+				column:custom1
+				header:$bwpam_onboarding_velocityNLS.secretslist.secretlogin
+				sortable:True
+				filterable:True
+				width:100%			
+			}			
+			Column {
+				column:custom2
+				header:$bwpam_onboarding_velocityNLS.secretslist.resource
+				sortable:True
+				filterable:True
+				width:100%
+			}
+			Column {
+				column:custom3
+				header:$bwpam_onboarding_velocityNLS.secretslist.platform
+				sortable:True
+				filterable:True
+				width:100%
+			}
+			Column {
+				column:safedisplayname
+				header:$bwpam_onboarding_velocityNLS.secretslist.safe
+				sortable:True
+				filterable:True
+				width:100%
+			}
+			Column {
+				column:vaultdisplayname
+				header:$bwpam_onboarding_velocityNLS.secretslist.vault
+				sortable:True
+				filterable:True
+				width:100%
+			}
+			Column {
+				column: status
+				text: Transform Current status using bwf_trendStatusColumn
+				header:$bwpam_onboarding_velocityNLS.secretslist.status
+				image: TemplateImageSelection ( Current status ) using bwf_trendStatusColumn
+				sortable:True
+				filterable:True
+				width:100%
+			}
+		}
+	}
+}
+
+bwpam_onboarding_velocity_resources_list = Dialog {
+	title: $bwpam_onboarding_velocityNLS.resourceslist.title
+	height: 600
+	width: 1200
+
+	vault_code = Variable
+	platform_code = Variable
+	timeslotuid = Variable
+	
+	resource_code = Variable
+	resource_timeslotuid = Variable
+
+	resource_list = Dataset {
+		view: bwpam_nb_resources_history_list_diff with vault_code to vault_code, platform_code to platform_code
+		timeslot: timeslotuid
+	}
+
+	resource_detail_list = Dataset {
+		view: bwpam_resources_detail_list with vault_code to vault_code, platform_code to platform_code, resource_code to resource_code
+		timeslot: resource_timeslotuid
+		disabled: StringPredicate(resource_code) { when IsEmpty then True otherwise False }
+	}
+
+	Group {
+		layout: Layout { grab: horizontal True vertical False }
+		Text {
+			value: $bwpam_onboarding_velocityNLS.resourceslist.subtitle
+			compact: True
+		}
+	}
+	Flow {
+		disposition:Horizontal
+		Group {
+			layout:Layout { grab: horizontal True vertical True }
+			Table {
+				data:resource_list
+				layout:Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+	
+				Column {
+					column:trenduid
+					header:$bwpam_onboarding_velocityNLS.secretslist.secret
+					hidden:True
+					selection:resource_timeslotuid
+				}
+				Column {
+					column:resource
+					header:$bwpam_onboarding_velocityNLS.resourceslist.resource
+					sortable:True
+					filterable:True
+					width:100%
+					selection:resource_code
+				}
+				Column {
+					column: status
+					text: Transform Current status using bwf_trendStatusColumn
+					header:$bwpam_onboarding_velocityNLS.resourceslist.status
+					image: TemplateImageSelection ( Current status ) using bwf_trendStatusColumn
+					sortable:True
+					filterable:True
+					width:100px
+				}
+			}
+		}
+		Group {
+			Table {
+				data:resource_detail_list
+				layout:Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+	
+				Column {
+					column:platform
+					header:$bwpam_onboarding_velocityNLS.resourceslist.platform
+					sortable:True
+					filterable:True
+					width:100%
+				}
+				Column {
+					column:safedisplayname
+					header:$bwpam_onboarding_velocityNLS.resourceslist.safe
+					sortable:True
+					filterable:True
+					width:100%
+				}
+				Column {
+					column:displayname
+					header:$bwpam_onboarding_velocityNLS.resourceslist.vault
+					sortable:True
+					filterable:True
+					width:100%
+				}
+			}
+		}
+	}
+}

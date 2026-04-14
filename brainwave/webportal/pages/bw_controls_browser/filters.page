@@ -1,0 +1,523 @@
+/* Import other pages here */
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/sharedfolder/details/sharedfolderDetails.page"
+import "/webportal/pages/bw_fragments/share/details/shareDetails.page"
+import "/webportal/pages/bw_controls_browser/resources/variables.page"
+import "/webportal/pages/bw_controls_browser/resources/mappings.page"
+import "/webportal/pages/bw_controls_browser/resources/icons.page"
+import "/webportal/pages/bw_cloud_pam/subscription/safepickers.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Filters for the control browser. Display a selection of control filtration method and can be expanded easily
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>entities</b> (Out) A multivalued string containing the entity to filter the controls on</li>
+ * <li><b>onlyWithDiscrepancies</b> (Out) A boolean indicating if the browser should display controls without discrepancies</li>
+ * <li><b>riskLevel</b> (Out) The risk level threshold to display a control</li>
+ * <li><b>applicationType</b> (Out) A multivalued he type of application to fetch (shares or classic applications)</li>
+ * <li><b>permissionType</b> (Out) A multivalued he type of permission to fetch (sharedfolders or classic permission)</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_filters = PageFragment {
+
+	/* Variables here */
+	typeControl = Variable { type: String multivalued: True initial: [] }
+	accountFilter = Variable { type: Boolean initial: False }
+	applicationFilter = Variable { type: Boolean initial: False }
+	assetFilter = Variable { type: Boolean initial: False }
+	groupFilter = Variable { type: Boolean initial: False }
+	identityFilter = Variable { type: Boolean initial: False }
+	organizationFilter = Variable { type: Boolean initial: False }
+	permissionFilter = Variable { type: Boolean initial: False }
+	folderFilter = Variable { type: Boolean initial: False }
+	shareFilter = Variable { type: Boolean initial: False }
+	rightsFilter = Variable { type: Boolean initial: False }
+	folderRightsFilter = Variable { type: Boolean initial: False }
+	safeFilter = Variable { type: Boolean initial: False }
+	vaultFilter = Variable { type: Boolean initial: False }
+	credentialFilter = Variable { type: Boolean initial: False }
+
+	/* Datasets and records here */
+	riskLevel = Dataset {
+		values: [(Value->0),(Value->1),(Value->2),(Value->3),(Value->4),(Value->5)]
+	}
+	
+	clearFilters = NamedAction (
+		Unset accountFilter,
+		Unset applicationFilter,
+		Unset assetFilter,
+		Unset groupFilter,
+		Unset identityFilter,
+		Unset organizationFilter,
+		Unset permissionFilter,
+		Unset folderFilter,
+		Unset shareFilter,
+		Unset rightsFilter,
+		Unset folderRightsFilter,
+		Unset safeFilter,
+		Unset vaultFilter,
+		Unset credentialFilter
+	)
+	
+	/* Page content */
+	Flow {
+		disposition: Horizontal
+		Group {
+			margins: All 0
+			title: $bw_control_browser_filters.type
+			Flow {
+				disposition: Vertical
+				Grid {
+					columns: GridColumn {}, GridColumn { width: grow 1 }, GridColumn {}, GridColumn { width: grow 1 }, GridColumn {}, GridColumn { width: grow 1 }
+					layout: Layout {grab: horizontal True vertical True}
+					GridRow {
+						GridCell {
+							Checkbox {
+								variable: accountFilter
+								modify-event:
+									BooleanCase ( accountFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Account to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Account from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.account
+										width:16				
+									}
+									width: Fill
+								}
+								value: $account.concept
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable: applicationFilter
+								modify-event:
+									BooleanCase ( applicationFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Application to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Application from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.application
+										width:16				
+									}
+									width: Fill
+								}
+								value: $application.concept
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable: safeFilter
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								modify-event:
+									BooleanCase ( safeFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Safe to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Safe from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								decorator: Decorator {
+									before: Image {
+										image: %safeimage_16.safe
+										width:16				
+									}
+									width: Fill
+								}
+								value: $cyberark.safe
+								compact: True
+							}
+						}
+					}
+					GridRow {
+						GridCell {
+							Checkbox {
+								variable: groupFilter
+								modify-event:
+									BooleanCase ( groupFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Group to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Group from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.group
+										width:16				
+									}
+									width: Fill
+								}
+								value: $group.concept
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable: identityFilter
+								modify-event:
+									BooleanCase ( identityFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Identity to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Identity from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.identity
+										width:16				
+									}
+									width: Fill
+								}
+								value: $identity.concept
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable: vaultFilter
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								modify-event:
+									BooleanCase ( vaultFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Vault to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Vault from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								decorator: Decorator {
+									before: Image {
+										image: %safeimage_16.vault
+										width:16				
+									}
+									width: Fill
+								}
+								value: $cyberark.vault
+								compact: True
+							}
+						}
+					}
+					GridRow {
+						GridCell {
+							Checkbox {
+								variable: organizationFilter
+								modify-event:
+									BooleanCase ( organizationFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Organisation to typeControl,
+											MultivaluedAdd Constant _Organization to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Organisation from typeControl,
+											MultivaluedRemove Constant _Organization from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.organisation
+										width:16				
+									}
+									width: Fill
+								}
+								value: $organisation.concept
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable: permissionFilter
+								modify-event:
+									BooleanCase ( permissionFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Permission to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Permission from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.permission
+										width:16				
+									}
+									width: Fill
+								}
+								value: $permission.concept
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable: credentialFilter
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								modify-event:
+									BooleanCase ( credentialFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Credential to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Credential from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								feature: All(pam_license, Any(governance_license, compliance_license))
+								decorator: Decorator {
+									before: Image {
+										image: %safeimage_16.credentials
+										width:16				
+									}
+									width: Fill
+								}
+								value: $cyberark.credential
+								compact: True
+							}
+						}
+					}
+					GridRow {
+						GridCell {
+							Checkbox {
+								variable: folderFilter
+								feature: unstructureddata_license
+								modify-event:
+									BooleanCase ( folderFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Folder to typeControl,
+											MultivaluedAdd Constant _Sharedfolder to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Folder from typeControl,
+											MultivaluedRemove Constant _Sharedfolder from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								feature: unstructureddata_license
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.folder
+										width:16				
+									}
+									width: Fill
+								}
+								value: $bwf_permissionDetailsFragmentFilesystemNLS.permission
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable: shareFilter
+								feature: unstructureddata_license
+								modify-event:
+									BooleanCase ( shareFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Filesystem to typeControl,
+											MultivaluedAdd Constant _Share to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Filesystem from typeControl,
+											MultivaluedRemove Constant _Share from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								feature: unstructureddata_license
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.share
+										width:16				
+									}
+									width: Fill
+								}
+								value: $bwf_applicationDetailsFragmentFilesystemNLS.share
+								compact: True
+							}
+						}
+					}
+					GridRow {
+						GridCell {
+							Checkbox {
+								variable: rightsFilter
+								modify-event:
+									BooleanCase ( rightsFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Right to typeControl,
+											MultivaluedAdd Constant _Rights to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Right from typeControl,
+											MultivaluedRemove Constant _Rights from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.right
+										width:16				
+									}
+									width: Fill
+								}
+								value: $bw_control_browser.rights
+								compact: True
+							}
+						}
+						GridCell {
+							Checkbox {
+								feature: unstructureddata_license
+								variable: folderRightsFilter
+								modify-event:
+									BooleanCase ( folderRightsFilter ) {
+										when True then [
+											MultivaluedAdd Constant _FolderRight to typeControl
+										] when False then [
+											MultivaluedRemove Constant _FolderRight from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								feature: unstructureddata_license
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.folderRight
+										width:16				
+									}
+									width: Fill
+								}
+								value: $bw_control_browser.folderRights
+								compact: True
+							}
+						}
+					}
+					GridRow {
+						hidden:True
+						GridCell {
+							Checkbox {
+								hidden: True
+								variable: assetFilter
+								modify-event:
+									BooleanCase ( assetFilter ) {
+										when True then [
+											MultivaluedAdd Constant _Asset to typeControl
+										] when False then [
+											MultivaluedRemove Constant _Asset from typeControl
+										]
+									}
+							}
+						}
+						GridCell {
+							Text {
+								hidden:True
+								decorator: Decorator {
+									before: Image {
+										image: %concept_16.asset
+										width:16				
+									}
+									width: Fill
+								}
+								value: $asset.concept
+								compact:True
+							}
+						}
+					}
+				}
+				Group {
+					Button {
+						image: %collection_16.delete
+						text: $bw_control_browser_filters.clear
+						presentation: Link
+						layout: Layout { align: horizontal End vertical Center }
+						actions:
+							Unset typeControl,
+							ExecuteNamedAction clearFilters
+						tooltip: $bw_control_browser_filters.clear.tooltip
+					}
+				}
+			}
+		}
+		Group {
+			title: $bw_control_browser_filters.filters
+			layout: Layout { grab: vertical True horizontal True }
+			Flow {
+				disposition: Horizontal
+				Group {
+					Checkbox {
+						variable: UserVariable bwcb_onlyWithDiscrepancies
+						text: $bw_control_browser_filters.onlyDiscrepancies
+					}
+					Text {
+						value: $bw_control_browser_filters.riskThreshold
+						compact: True
+					}
+					Group {
+						layout: Layout { grab: horizontal False vertical False }
+						Combo {
+							options:
+								Dynamic {
+									data: riskLevel
+									value: Current Value
+									text: Current Value
+								}
+							variable: UserVariable bwcb_riskLevel
+							layout: Layout { grab: horizontal False vertical False }
+						}
+					}
+				}
+			}
+		}	
+	}
+}

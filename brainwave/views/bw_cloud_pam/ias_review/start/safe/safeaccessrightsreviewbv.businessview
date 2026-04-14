@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwir_safeaccessrightsreviewbv" displayname="safe access rights review">
+	<Definition scriptfile="/views/bw_cloud_pam/ias_review/start/safe/safeaccessrightsreviewbv.javascript" name="D1665588440718">
+		<Component type="innerview" x="30" y="10" w="589" h="64" name="C1665588440718" title="safe all access rights review (filtered by account tag if needed)">
+			<InnerView name="bwir_safeallbookingaccessrightsreview">
+				<Param name="F1665591582067" viewparam="filterbypermissiontag" viewparamvalue="{param.filterbypermissiontag}"/>
+				<Param name="F1665591595561" viewparam="filterbyaccounttag" viewparamvalue="{param.filterbyaccounttag}"/>
+				<Param name="F1665591606509" viewparam="safelist" viewparamvalue="{param.safelist}"/>
+				<Param name="F1758636523779" viewparam="ruleuid" viewparamvalue="{param.ruleuid}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1665591643396" expression="dataset.key.get()" comment="Remove duplicated lines in case of several line managers for a single individual" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Component name="C1665592012685" type="scriptview" x="306" y="277" w="300" h="50" title="filter orphaned accounts" enable="{param.includeorphanaccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1665594046405" expression="dataset.isEmpty(&apos;reconuid&apos;)" comment="remove orphaned users" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1665592033143" type="scriptview" x="30" y="400" w="302" h="114" title="filter EPV user accounts" enable="{param.includeuseraccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1665593990044" expression="dataset.UserType.get().equalsIgnoreCase(&apos;EPVUser&apos;)" type="Exclude" comment="remove user accounts"/>
+			</FilterList>
+		</Component>
+		<Link name="L1665592033868" source="C1665592033143" target="C1665592012685" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1665592058800" type="scriptview" x="652" y="297" w="300" h="50" title="filter leaver accounts" enable="{param.includeleaveraccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1665594080872" expression="!dataset.isEmpty(&apos;reconnoownercode&apos;) &amp;&amp; dataset.reconnoownercode.get().equalsIgnoreCase(&apos;leave&apos;)" comment="remove leaver users" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1665592059033" source="C1665592012685" target="C1665592058800" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1665593706976" type="scriptview" x="532" y="438" w="300" h="50" title="filter AIM accounts" enable="{param.includetechaccounts.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1665594114473" expression="dataset.UserType.get().equalsIgnoreCase(&apos;AIMAccount&apos;)" comment="filtrer tech users" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1665593707442" source="C1665592058800" target="C1665593706976" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1665593867739" type="joinview" x="715" y="478" w="300" h="50" title="add safe owner">
+			<InnerView name="bwir_safeaccesssafeownerbv">
+				<Param name="F1665648561498" viewparam="safelist" viewparamvalue="{param.safelist}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.safeuid.get()}" key2="{dataset.safeuid.get()}"/>
+		</Component>
+		<Component name="C1665593879361" type="scriptview" x="492" y="712" w="300" h="50" title="set reviewer">
+			<Script onscriptread="setreviewer"/>
+			<ExcludeList>
+				<Exclude name="defaultreviewerfullname"/>
+				<Exclude name="defaultreviewerhrcode"/>
+				<Exclude name="defaultreviewermail"/>
+				<Exclude name="defaultrevieweruid"/>
+			</ExcludeList>
+		</Component>
+		<Component name="C1665593881863" type="scriptview" x="544" y="646" w="300" h="50" title="filter for one reviewer if needed" enable="{!param.isEmpty(&apos;filterbyreviewer&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1665649108974" expression="!dataset.isEmpty(&apos;revieweruid&apos;) &amp;&amp; param.filterbyreviewer.get().equals(dataset.revieweruid.get())" type="Include" comment="Filter the results for one reviewer only"/>
+			</FilterList>
+		</Component>
+		<Link name="L1665593882266" source="C1665593879361" target="C1665593881863" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1665594878291" type="scriptview" x="645" y="715" w="300" h="50" title="do not take latest review status if identity position changed since then" enable="{param.includelatestreviewstatus.get().equals(&apos;1&apos;)}">
+			<Script onscriptread="checkIdentityPosition"/>
+		</Component>
+		<Component name="C1665594885488" type="scriptview" x="471" y="731" w="300" h="50" title="filter if already reviewed" enable="{param.includelatestreviewstatus.get().equals(&apos;1&apos;) &amp;&amp; param.filterifalreadyreviewed.get().equals(&apos;1&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1665595012300" expression="!dataset.isEmpty(&apos;reviewstatus&apos;)" type="Exclude" comment="filter if the entry has already been reviewed in the timeframe"/>
+			</FilterList>
+		</Component>
+		<Link name="L1665594886013" source="C1665594878291" target="C1665594885488" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1665594887461" source="C1665594885488" target="C1665593867739" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1665595235847" type="joinview" x="415" y="890" w="300" h="50" title="get default reviewer infos if needed" enable="{!param.isEmpty(&apos;defaultrevieweruid&apos;)}">
+			<InnerView name="bw_access360r_applicationdefaultreviewer">
+				<Param name="F1665648891080" viewparam="uid" viewparamvalue="{param.defaultrevieweruid.get()}"/>
+			</InnerView>
+			<Join jointype="inner" key1="{dataset.defkey.get()}" key2="{dataset.defkey.get()}"/>
+		</Component>
+		<Link name="L1665595236719" source="C1665593867739" target="C1665595235847" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1665595238559" source="C1665595235847" target="C1665593879361" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1670333557491" type="scriptview" x="30" y="290" w="299" h="114" title="filter Booking accounts" enable="{param.includebookingusers.get().equals(&apos;0&apos;)}">
+			<FilterList>
+				<Filter name="F1670333780972" expression="dataset.UserType.get().equalsIgnoreCase(&apos;Booking&apos;)" comment="Exclude Booking Accounts" type="Exclude"/>
+			</FilterList>
+			<Script onscriptread="read"/>
+		</Component>
+		<Link name="L1670333559410" source="C1670333557491" target="C1665592033143" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1670333945353" type="joinview" x="30" y="70" w="632" h="114" title="safe effective access rights review (filtered by account tag if needed)">
+			<InnerView name="bwir_safeaccessrightsreview">
+				<Param name="F1670334037924" viewparam="filterbyaccounttag" viewparamvalue="{param.filterbyaccounttag}"/>
+				<Param name="F1670334060606" viewparam="filterbypermissiontag" viewparamvalue="{param.filterbypermissiontag}"/>
+				<Param name="F1670334082082" viewparam="safelist" viewparamvalue="{param.safelist}"/>
+				<Param name="F1758640197494" viewparam="ruleuid" viewparamvalue="{param.ruleuid.get()}"/>
+			</InnerView>
+			<Join jointype="full" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<FilterList>
+				<Filter name="F1670334520211" expression="dataset.key.get()" comment="Remove duplicated lines in case of several line managers for a single individual" type="Deduplicate"/>
+			</FilterList>
+			<ViewComputedAttribute name="UserType" displayname="User Type" type="String" expression="dataset.isEmpty(&apos;RawUserType&apos;)?&quot;Booking&quot;:dataset.RawUserType.get()"/>
+			<ViewComputedAttribute name="rightlabel" displayname="Right Label" type="String" expression="dataset.accountlogin.get()+&apos; (&apos;+&apos;type: &apos;+(dataset.isEmpty(&apos;UserType&apos;)?&quot;Other&quot;:dataset.UserType.get())+(dataset.isEmpty(&apos;identityfullname&apos;)?&apos;)&apos;:(&apos;, id: &apos;+dataset.identityfullname.get()+&apos;)&apos;))+&apos; on safe &apos;+dataset.safedisplayname.get()+&apos; (&apos;+dataset.permissiondisplayname.get()+&apos;)&apos;+&apos; in vault &apos;+dataset.vaultdisplayname.get()"/>
+		</Component>
+		<Link name="L1670333948612" source="C1665588440718" target="C1670333945353" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1670494665919" type="scriptview" x="486" y="170" w="300" h="50" title="filter Built-In accounts" enable="{param.includebuiltinusers.get().equals(&apos;0&apos;)}">
+			<Script onscriptread="read"/>
+			<FilterList>
+				<Filter name="F1670494876698" expression="dataset.UserType.get().equalsIgnoreCase(&apos;Built-InAdmins&apos;)" type="Exclude" comment="Exclude Built-In Accounts"/>
+			</FilterList>
+		</Component>
+		<Link name="L1670494670748" source="C1670333945353" target="C1670494665919" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1670494674393" source="C1670494665919" target="C1670333557491" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1689095485562" type="joinview" x="378" y="848" w="300" h="50" title="get latest review status">
+			<InnerView name="bwaccess360r_safeaccessrightslastreview">
+				<Param name="F1689095597912" viewparam="applicationlist" viewparamvalue="{param.safelist}"/>
+				<Param name="F1689095620318" viewparam="filterminimumreviewdate" viewparamvalue="{param.filterminimumreviewdate.get()}"/>
+				<Param name="F1689095634602" viewparam="includelatestreviewstatus" viewparamvalue="{param.includelatestreviewstatus.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+		</Component>
+		<Link name="L1689095486197" source="C1665593706976" target="C1689095485562" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1689095498896" source="C1689095485562" target="C1665594878291" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewSort name="sort" attribute1="reviewerfullname" attribute2="identityfullname" attribute3="safedisplayname" attribute4="permissiondisplayname"/>
+	<ViewParam name="includeuseraccounts" displayname="include user accounts" type="String" defaultvalue="1">
+		<Value name="V1665751551307_1" data="1"/>
+	</ViewParam>
+	<ViewParam name="includeorphanaccounts" displayname="include orphan accounts" defaultvalue="1" type="String">
+		<Value name="V1665751561839_2" data="1"/>
+	</ViewParam>
+	<ViewParam name="includetechaccounts" displayname="include tech accounts" defaultvalue="1" type="String">
+		<Value name="V1665934387677_3" data="1"/>
+	</ViewParam>
+	<ViewParam name="includeleaveraccounts" displayname="include leaver accounts" defaultvalue="1" type="String">
+		<Value name="V1665751589726_4" data="1"/>
+	</ViewParam>
+	<ViewParam name="includebookingusers" displayname="include booking users" defaultvalue="1" type="String">
+	</ViewParam>
+	<ViewParam name="filterbypermissiontag" displayname="filter by permission tag" type="String"/>
+	<ViewParam name="includelatestreviewstatus" displayname="include latest review status" defaultvalue="1" type="String">
+		<Value name="V1689091614562_1" data="1"/>
+	</ViewParam>
+	<ViewParam name="filterifalreadyreviewed" displayname="filter if already reviewed in the timeframe" defaultvalue="0" type="String">
+		<Value name="V1689091625154_2" data="0"/>
+	</ViewParam>
+	<ViewParam name="defaultrevieweruid" displayname="default reviewer uid" type="String">
+	</ViewParam>
+	<ViewParam name="forcesafeownerasreviewer" displayname="force safe owner as reviewer" defaultvalue="1" type="String">
+		<Value name="V1689092259833_8" data="1"/>
+	</ViewParam>
+	<ViewParam name="filterbyaccounttag" displayname="filter by account tag" type="String"/>
+	<ViewParam name="filterminimumreviewdate" displayname="filter minimum review date" type="String">
+		<Value name="V1689092927563_9" data="20230412180559"/>
+	</ViewParam>
+	<ViewParam name="filterbyreviewer" displayname="filter by reviewer uid" type="String"/>
+	<ViewParam name="safelist" displayname="safe list" type="String">
+		<Value name="V1689092133204_3" data="FINANCE_APPLICAT_1688543217408_23156"/>
+		<Value name="V1689092148941_4" data="FINANCE_OBSIDIAN_1687884992525_904005"/>
+		<Value name="V1689092161617_5" data="FINANCE_ORACLE_D_1687884992539_904050"/>
+		<Value name="V1689092175906_6" data="WINDOWS_DOMAIN_S_1687884992536_904044"/>
+	</ViewParam>
+	<ViewParam name="forcedefaultreviewerasreviewer" displayname="forcedefaultreviewerasreviewer" defaultvalue="0" type="String">
+		<Value name="V1668071766352_13" data="0"/>
+	</ViewParam>
+	<ViewParam name="forcesafeownerforallotheraccounts" displayname="forcesafeownerforallotheraccounts" defaultvalue="0" type="String">
+		<Value name="V1665752132899_7" data="0"/>
+	</ViewParam>
+	<ViewParam name="forcehimselfasreviewer" displayname="forcehimselfasreviewer" defaultvalue="0" type="String">
+		<Value name="V1665752166363_9" data="0"/>
+	</ViewParam>
+	<ViewParam name="includebuiltinusers" displayname="include built-in users" type="String" defaultvalue="0">
+		<Value name="V1689092199846_7" data="0"/>
+	</ViewParam>
+	<ViewParam name="ruleuid" displayname="ruleuid"/>
+</View>

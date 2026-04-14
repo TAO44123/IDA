@@ -1,0 +1,536 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/workflow/bw_delegations/delegationSharedResources.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/workflow/bw_delegations/deleteDelegation.page"
+
+/**
+ * Delegations for a given identity
+ * 
+ * @param uid the identity uid
+ */
+fragdelegations360 = PageFragment {
+
+	/* Parameters here */
+	inuid = Parameter { type: String hidden: True }
+	
+	/* Variables here */	
+	show_inactive = Variable { type: Boolean initial: False }
+	inenabled = Variable { initial: True type: Boolean }
+	incanshowdetails = Variable { type: Boolean initial: False }
+	selected_delegation = Variable { type: Integer }
+	selected_delegator = Variable { type: String }
+	selected_delegator_fullname = Variable { type: String }
+	selected_delegate = Variable { type: String }
+	selected_delegate_fullname = Variable { type: String }
+	selected_delegation_starDate = Variable { type: Date }
+	selected_delegation_endDate = Variable { type: Date }
+	selected_delegation_comment = Variable { type: String }
+	selected_active = Variable { type: Boolean }
+	selected_enabled = Variable { type: Boolean }
+	// Counter
+	nbDelegations = Variable { type: Integer initial: 0 }
+	
+	/* Datasets and records here */
+		
+	delegations = Dataset {
+		view: br_delegationslist_filter with
+			inuid to delegatorUid,
+			LowerCase show_inactive to show_inactive
+		// Cache can lead to incorrect results
+		disable-cache: True
+		count-variable: nbDelegations
+	}
+	
+	goDelegatorDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(
+					selected_delegator to inuid, 
+					True to inshowowner,
+					True to inshowposition
+				)
+			] when False then [ ]
+		}
+	)
+	
+	goDelegateDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(
+					selected_delegate to inuid, 
+					True to inshowowner,
+					True to inshowposition
+				)
+			] when False then [ ]
+		}
+	)
+	
+	/* Page content */
+	ButtonGroup {
+		uniform: True
+		Button {
+			actions:
+				Dialog fragmentIdentityCreateDelegation,
+				ReloadData (delegations)
+			text: $delegations_NLS.delegation_create.short
+			tooltip: $delegations_NLS.delegation_create
+			image:"16/famfamfam_silk_icons_v013/add_black.png"
+			feature: delegation_self_create
+		}
+		Button {
+			actions:
+				Dialog fragmentIdentityModifyDelegation (
+					selected_delegation to delegationRecordUid
+				),
+				ReloadData (delegations)
+			text: $delegations_NLS.delegation_edit.short
+			tooltip: $delegations_NLS.delegation_edit
+			image:"16/famfamfam_silk_icons_v013/pencil.png"
+			feature: delegation_self_edit
+			disabled:
+				OrPredicate {
+					IntPredicate(selected_delegation) {
+						when InvalidInteger then True
+					}
+					Not BooleanPredicate(selected_active)
+				}
+		}
+		Button {
+			actions:
+				Dialog deleteDelegation(
+					selected_delegation to delegationRecordUid,
+					selected_delegate to selected_delegate,
+					selected_delegate_fullname to selected_delegate_fullname,
+					selected_delegator to selected_delegator,
+					selected_delegator_fullname to selected_delegator_fullname,
+					selected_delegation_starDate to selected_delegation_starDate,
+					selected_delegation_endDate to selected_delegation_endDate,
+					selected_delegation_comment to selected_delegation_comment
+				), 
+				Flash Information $delegations_NLS.delegation_deleted,
+				ReloadData(delegations)
+			text: $delegations_NLS.delegation_delete.short
+			tooltip: $delegations_NLS.delegation_delete
+			image:"16/famfamfam_silk_icons_v013/delete.png"
+			feature: delegation_self_delete
+			disabled:
+				OrPredicate {
+					IntPredicate(selected_delegation) {
+						when InvalidInteger then True
+					}
+					Not BooleanPredicate(selected_active)
+				}
+		}
+		Button {
+			text: $delegations_NLS.delegation_refresh
+			tooltip: $delegations_NLS.delegation_refresh.tt
+			image:"16/famfamfam_silk_icons_v013/arrow_refresh.png"
+			actions:
+				ReloadData ( delegations )
+		}
+	}
+	Separator { }
+	Checkbox {
+		variable: show_inactive
+		label: $delegations_NLS.show_inactive
+	}
+	// Debug
+	Group {
+		layout: Layout { grab: horizontal True vertical False }
+		hidden: True
+		Text {
+			value: nbDelegations
+			label: "nbDelegations"
+			compact: True
+		}
+	}
+	// End debug
+	ConditionalGroup {
+		IntCondition ( nbDelegations ) {
+			when =0 then [
+				Header {
+					value: $delegations_NLS.empty
+					styling: bigTitleStyle
+				}
+			] otherwise [
+				Table {
+					data: delegations
+					double-click:
+						Dialog fragmentIdentityModifyDelegation (
+							selected_delegation to delegationRecordUid
+						),
+						ReloadData (delegations)
+					layout: Layout {
+						grab: horizontal True vertical True
+					}
+					show-count: True
+					show-filter: True
+					configurable: True
+					persist-configuration: True
+					persist-configuration-key: "delegations"
+					Column {
+						column: recorduid
+						hidden: True
+						selection: selected_delegation
+					}
+					Column {
+						column: delegatoruid
+						hidden: True
+						selection: selected_delegator
+					}
+					Column {
+						column: delegateeuid
+						hidden: True
+						selection: selected_delegate
+					}
+					Column {
+						column: delegatorfullname
+						header: $delegations_NLS.delegator_title
+						filterable: True
+						sortable: True
+						width: 20%
+						image: "16/audit/identity_16.png"
+						text: Concat ( "    ", Current delegatorfullname )
+						actions: ExecuteNamedAction goDelegatorDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						selection: selected_delegator_fullname
+					}
+					Column {
+						column: label
+						header: $delegations_NLS.label
+						filterable: True
+						sortable: True
+						width: 30%
+					}
+					Column {
+						column: delegateefullname
+						header: $delegations_NLS.delegate_title
+						filterable: True
+						sortable: True
+						width: 20%
+						image: "16/audit/identity_16.png"
+						text: Concat ( "    ", Current delegateefullname )
+						actions: ExecuteNamedAction goDelegateDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						selection: selected_delegate_fullname
+					}
+					Column {
+						column: begindate
+						header: $delegations_NLS.delegation_startdate
+						text: Date(Current begindate).value( $delegations_NLS.date.short )
+						tooltip: Date(Current begindate).value( $delegations_NLS.date.long )
+						sortable: True
+						width: 120px
+						align: Center
+						selection: selected_delegation_starDate
+					}
+					Column {
+						column: enddate
+						header: $delegations_NLS.delegation_enddate
+						text: Transform Date(Current enddate).value( $delegations_NLS.date.short ) using endDateMapping
+						tooltip: Transform Date(Current enddate).value( $delegations_NLS.date.long ) using endDateMapping
+						sortable: True
+						width: 120px
+						align: Center
+						selection: selected_delegation_endDate
+					}
+					Column {
+						column: active
+						header: $delegations_NLS.delegation_active
+						text: Transform Current active using delegationStatus
+						width: 80px
+						align: Center
+						selection: selected_active
+						initially-masked: True
+					}
+					Column {
+						column: _enabled
+						header: $delegations_NLS.delegation_enabled
+						text: Transform Current _enabled using booleanDisplayMapping
+						width: 80px
+						align: Center
+						selection: selected_enabled
+					}
+					Column {
+						column: comment
+						hidden: True
+						selection: selected_delegation_comment
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentIdentityCreateDelegation = Dialog {
+	title: $createDelegation_NLS.title
+	mixins: workflowDefaultMixin
+	height: 400
+	width: 500
+	enter-event:
+		Set Constant USERROLE to selectedRoles,
+		TransferData availableProcDef (processDefinitionKey) to (task.processDefinitions)
+	buttons: [
+		OkButton {
+			disabled:
+				OrPredicate {
+					StringPredicate ( task.delegate ) {
+						when IsEmpty then True
+					}
+					IntPredicate Size ( selectedRoles ) {
+						when = 0 then True
+					}
+					Not BooleanPredicate ( valid )
+					// The delegatee must be different from delegator
+					SameValuePredicate ( Principal.uid, task.delegate )
+				}
+			actions:
+				Confirm $createDelegation_NLS.complete.confirm, 
+				Unset task.roles,
+				MultivaluedAdd selectedRoles to task.roles,
+				Set Principal.uid to task.delegator,
+				TaskComplete task wait-end timeout-seconds 30
+		}
+		CancelButton
+	]
+	
+	valid = Variable { type: Boolean initial: True }
+	
+	selectedAllRolesFlag = Variable { type: Boolean initial: False }
+	selectedRoles = Variable { type: String multivalued: True }
+	
+	task = TaskRecord (create "br_createSelfDelegation")
+
+	delegateRecord = Record(workflow_identitydisplayname with task.delegate to uid)
+	
+	availableRoles = Dataset {
+		roles: Roles
+		excludes:
+			StringPredicate ( Current role ) {
+				when Constant TSEXTENDEDACCESSROLE then True
+			}
+	}
+	
+	availableProcDef = Dataset {
+		process-definitions: ProcessDefinitionFilter {
+			all-definitions: True
+			show-technical: False
+			show-not-browsable: True
+		}
+	}
+	
+	Text {
+		label: Label {
+			value:Concat($delegations_NLS.delegate_title,"*")
+			layout: Layout {hint: width 120}
+		}
+		value: delegateRecord.displayname
+		mixins: workflowTextWithCommandMixin
+		commands:
+			Command { 
+				actions:
+					Dialog identityPicker (
+						task.delegate from outUid,
+						task.delegate_fullname from outDisplayname
+					), 
+					Set Concat ( $delegations_NLS.label_default,delegateRecord.displayname ) to task.label
+				icon: "16/audit/identity_16.png"
+			}
+		tooltip: $delegations_NLS.delegate_tooltip
+	}
+	Edit {
+		label: $delegations_NLS.label
+		variable: task.label
+		tooltip: $delegations_NLS.label_tooltip
+	}
+	Checkbox {
+		variable: selectedAllRolesFlag
+		label: $delegations_NLS.selected_all_roles
+		tooltip: $delegations_NLS.selected_all_roles_tooltip
+		modify-event:
+			BooleanCase (selectedAllRolesFlag) {
+				when False then [
+					Set Constant USERROLE to selectedRoles
+				]
+				when True then [
+					TransferData availableRoles (role) to (selectedRoles)
+				]
+			}
+		hidden: IntPredicate (Count availableRoles) {
+					when =1 then True
+					otherwise False
+				}
+	}
+	DateTime {
+		type: Date
+		label: Concat($delegations_NLS.delegation_startdate,"*")
+		variable: task.beginDate
+		format: "yyyyMMddHHmmss"
+		date-before: Date(task.endDate, Constant DATEFORMAT)
+		validity: valid
+	}
+	DateTime {
+		type: Date
+		label: $delegations_NLS.delegation_enddate
+		variable: task.endDate
+		format: "yyyyMMddHHmmss"
+		allow-none: True
+		date-after: Date(task.beginDate, Constant DATEFORMAT)
+		validity: valid
+	}
+	Edit {
+		label: $delegations_NLS.comment
+		variable: task.comment
+		multi-lines: True
+		tooltip: $delegations_NLS.comment_tooltip		
+		layout: Layout {
+			grab: horizontal True vertical False
+			hint: height 100
+		}
+	}
+	Header {
+		value: $delegations_NLS.mandatoryfields
+	}	
+}
+
+fragmentIdentityModifyDelegation = Dialog {
+	title: $modifyDelegation_NLS.title
+	mixins: workflowDefaultMixin
+	height: 400
+	width: 500
+	enter-event:
+		Set delegationRecordUid to task.delegationRecordUid,
+		Set delegationRecord.label to task.label,
+		Set Date ( delegationRecord.begindate ).value( Constant DATEFORMAT ) to task.beginDate,
+		Set Date ( delegationRecord.enddate ).value( Constant DATEFORMAT ) to task.endDate,
+		Set delegationRecord.comment to task.comment,
+		Set Split delegationRecord.rolelist using "," remove-empty to selectedRoles,
+		IntCase (SizeOf selectedRoles) {
+			when = 1 then [
+				Set False to selectedAllRolesFlag
+			]
+			otherwise [
+				Set True to selectedAllRolesFlag
+			]
+		}
+		,
+		TransferData availableProcDef (processDefinitionKey) to (task.processDefinitions),
+		Set delegationRecord.delegateeuid to task.delegate,
+		Set delegationRecord.delegatoruid to task.delegator
+	buttons: [
+		OkButton {
+			disabled:
+				OrPredicate {
+					IntPredicate Size ( selectedRoles ) {
+						when = 0 then True
+					}
+					Not BooleanPredicate ( valid )
+					// The delegatee must be different from delegator
+					SameValuePredicate ( Principal.uid, task.delegate )
+				}
+			actions:
+				Confirm $modifyDelegation_NLS.complete.confirm, 
+				Unset task.roles,
+				MultivaluedAdd selectedRoles to task.roles,
+				Set delegationRecord.delegateeuid to task.delegate,
+				Set delegationRecord.delegateefullname to task.delegate_fullname,
+				TaskComplete task wait-end timeout-seconds 30
+		}
+		CancelButton
+	]
+		
+	
+	delegationRecordUid = Variable { type: Integer } 
+	
+	valid = Variable { type: Boolean initial: True }
+	
+	selectedAllRolesFlag = Variable { type: Boolean initial: False }
+ 	selectedRoles = Variable { type: String multivalued: True }
+	
+	task = TaskRecord (create "br_modifySelfDelegation")
+
+	delegationRecord = Record(br_delegationInfo with delegationRecordUid to recordUid)
+	
+	delegateRecord = Record(workflow_identitydisplayname with delegationRecord.delegateeuid to uid)
+	
+	availableRoles = Dataset {
+		roles: Roles
+		excludes:
+			StringPredicate ( Current role ) {
+				when Constant TSEXTENDEDACCESSROLE then True
+			}
+	}
+	
+	availableProcDef = Dataset {
+		process-definitions: ProcessDefinitionFilter {
+			all-definitions: True
+			show-technical: False
+			show-not-browsable: True
+		}
+	}
+	
+	Text {
+		label: Label {
+			value:$delegations_NLS.delegate_title
+			layout: Layout {hint: width 120}
+		}
+		value: delegateRecord.displayname
+		mixins: workflowTextWithCommandMixin
+		tooltip: $delegations_NLS.delegate_tooltip
+	}
+	Edit {
+		label: $delegations_NLS.label
+		variable: task.label
+		tooltip: $delegations_NLS.label_tooltip
+	}
+	Checkbox {
+		variable: selectedAllRolesFlag
+		label: $delegations_NLS.selected_all_roles
+		tooltip: $delegations_NLS.selected_all_roles_tooltip
+		modify-event:
+			BooleanCase (selectedAllRolesFlag) {
+				when False then [
+					Set Constant USERROLE to selectedRoles
+				]
+				when True then [
+					TransferData availableRoles (role) to (selectedRoles)
+				]
+			}
+		hidden: IntPredicate (Count availableRoles) {
+			when =1 then True
+			otherwise False
+		}
+	}
+	DateTime {
+		type: Date
+		label: $delegations_NLS.delegation_startdate
+		variable: task.beginDate
+		format: "yyyyMMddHHmmss"
+		date-before: Date(task.endDate, Constant DATEFORMAT)
+		validity: valid
+	}
+	DateTime {
+		type: Date
+		label: $delegations_NLS.delegation_enddate
+		variable: task.endDate
+		format: "yyyyMMddHHmmss"
+		allow-none: True
+		date-after: Date(task.beginDate, Constant DATEFORMAT)
+		validity: valid
+	}
+	Edit {
+		label: $delegations_NLS.comment
+		variable: task.comment
+		multi-lines: True
+		layout: Layout {
+			grab: horizontal True vertical False
+			hint: height 150
+		}
+		tooltip: $delegations_NLS.comment_tooltip
+	}
+}
+

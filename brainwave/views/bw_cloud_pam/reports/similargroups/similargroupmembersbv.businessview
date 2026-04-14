@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwcdpamr_repository_similargroupmembersbv" displayname="simular group members with threshold">
+	<Definition scriptfile="/views/bw_cloud_pam/reports/similargroups/similargroupmembersbv.javascript" name="D1594046006890">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1594046006890" title="similar group members">
+			<InnerView name="bwcdpamr_repository_similargroupmembers">
+				<Param name="F1594046064178" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1594048793719" viewparam="nbmembersThreshold" viewparamvalue="{param.nbmembersThreshold.get()}"/>
+				<Param name="F1613413114077" viewparam="codefilter" viewparamvalue="{param.codefilter.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1594046132268" expression="!param.isEmpty(&apos;threshold&apos;) &amp;&amp; (param.threshold.get()&gt;dataset.similarity.get())" type="Exclude"/>
+				<Filter name="F1594046283122" expression="dataset.grp1uid.get() == dataset.grp2uid.get()" type="Exclude"/>
+				<Filter name="F1594106377703" expression="param.dedup.get()?dataset.key.get():(dataset.grp1uid.get()+dataset.grp2uid.get())" comment="dedup if needed" type="Deduplicate"/>
+			</FilterList>
+			<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.grp1uid.get()&lt;dataset.grp2uid.get()?(dataset.grp1uid.get()+dataset.grp2uid.get()):(dataset.grp2uid.get()+dataset.grp1uid.get())"/>
+		</Component>
+		<Component name="C1620833839067" type="joinview" x="728" y="243" w="300" h="50" title="Only CyberArk access">
+			<InnerView name="similargroupcaaccess" prefix="ca_">
+				<Param name="F1620835853732" viewparam="type" viewparamvalue="{param.accesstype.get()}"/>
+				<Param name="F1620836639510" viewparam="vault" viewparamvalue="{param.vault.get()}"/>
+			</InnerView>
+			<Join jointype="inner" key1="{dataset.grp1uid.get()}" key2="{dataset.ca_uid.get()}"/>
+		</Component>
+		<Link name="L1620833839228" source="C1594046006890" target="C1620833839067" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1620833839067_1" type="joinview" x="733" y="257" w="300" h="50" title="Only CyberArk access">
+			<InnerView name="similargroupcaaccess" prefix="ca2_">
+				<Param name="F1620835853732" viewparam="type" viewparamvalue="{param.accesstype.get()}"/>
+				<Param name="F1620836639510" viewparam="vault" viewparamvalue="{param.vault.get()}"/>
+			</InnerView>
+			<Join jointype="inner" key1="{dataset.grp2uid.get()}" key2="{dataset.ca2_uid.get()}"/>
+		</Component>
+		<Link name="L1620837932605" source="C1620833839067" target="C1620833839067_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1594105921657_1" data="ACME_1591082659017_2055"/>
+	</ViewParam>
+	<ViewParam name="threshold" displayname="threshold" type="Integer" defaultvalue="80"/>
+	<ViewParam name="nbmembersThreshold" displayname="nbmembersThreshold" type="Integer" defaultvalue="20"/>
+	<ViewParam name="dedup" displayname="dedup" type="Boolean" defaultvalue="false"/>
+	<ViewSort name="sort" attribute1="similarity" direction1="DESC" attribute2="nbaccount" direction2="DESC"/>
+	<ViewParam name="codefilter" displayname="codefilter" type="String"/>
+	<ViewParam name="accesstype" displayname="accesstype"/>
+	<ViewParam name="vault" displayname="vault"/>
+</View>

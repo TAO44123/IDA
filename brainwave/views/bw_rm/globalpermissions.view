@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwrm_globalpermissions" errorifempty="false" distinct="false" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="permission" displayname="globalpermissions" notes="" begindate="" enddate="">
+	<ViewParam name="minIdentities" displayname="min identities">
+		<Value name="0" data="500"/>
+	</ViewParam>
+	<ViewParam name="directOnly" displayname="direct only" defaultvalue="1">
+		<Value name="0" data="1"/>
+	</ViewParam>
+	<ViewSort name="sort" attribute1="1580136965087_491" direction1="DESC"/>
+	<ViewAttribute name="A1543834771820_394" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1543834774165_395" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1543834776427_396" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1543834820148_434" attribute="permissiontype" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1543834826112_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="Role"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1543843123227_508" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+		<ViewAttribute name="A1543843132478_509" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1543843134624_510" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewJoin name="J1444123675408_8870" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permissioninfo">
+		<ViewAttribute name="1544785925526_2243" attribute="description" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewJoin name="J1580136923819_484" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="right">
+		<ViewAttribute name="A1580136929696_485" attribute="indirect" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.directOnly.get() == &apos;1&apos;">
+			<ViewAttributeFilter name="F1580136991092_0" operation="isFalse" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewJoin name="J1580136942052_486" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+			<ViewAttribute name="1580136956266_488" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1543835317166_0" operation="isNull" ignoreifempty="false"/>
+				<ViewAttributeFilter name="F1543835322051_1" operation="isFalse" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewJoin name="J1543835361331_470" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="identityreconciliation">
+				<ViewAttribute name="1580136965087_491" attribute="recorduid" alias="nbidentities" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="true">
+					<ViewAttributeFilter name="F1543835407409_0" reference="minIdentities" operation="ge" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

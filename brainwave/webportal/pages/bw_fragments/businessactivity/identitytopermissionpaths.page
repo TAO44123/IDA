@@ -1,0 +1,256 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+fragmentBusinessIdentityToPermissionPathsNLS = NLS {
+	title [en "Assignments paths" fr "Chemins d'assignation"]
+	descr [en "All sub-permissions assignments path to {0} for {1}" fr "Ensemble des chemins d''assignations de {0} pour {1}"]
+	detail [
+		en "Click to display the associated account(s)."
+		de "Cliquez pour afficher le ou les comptes d'accès associés"
+	]
+}
+
+fragmentBusinessPermissionPathsNLS = NLS {
+	title [en "Sub-permissions paths" fr "Arborescence des permissions"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the permissions paths from an identity to a given permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inpermissionuid </b>the permission uid</li>
+ * <li><b>inidentityuid </b>the identity uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessIdentityToPermissionPathsDialog = Dialog {
+	title:$fragmentBusinessIdentityToPermissionPathsNLS.title
+	buttons:OkButton
+	width:800
+	height:600
+	
+	inidentityuid = Variable
+	inpermissionuid = Variable
+
+	IncludeFragment (fragmentBusinessIdentityToPermissionPaths with value-of inidentityuid to inidentityuid, value-of inpermissionuid to inpermissionuid, value-of True to inenabled)	
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the permissions paths from an identity to a given permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inpermissionuid </b>the permission uid</li>
+ * <li><b>inidentityuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessIdentityToPermissionPaths = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inidentityuid = Variable
+	inpermissionuid = Variable
+	inenabled = Variable { type:Boolean initial: True } 
+
+	
+	identity = Record {
+		view: br_identityDetail with inidentityuid to uid
+	}
+	permission = Record {
+		view: br_permissionDetail with inpermissionuid to uid
+	}
+	paths = HierarchicalData {
+		view: bwf_findirectidentitypaths with
+			inidentityuid to identityuid,
+			inpermissionuid to permissionuid 
+		connect:parent permissionuid to child parentpermissionuid
+		initial:parentpermissionuid IsNull
+		disabled:
+			Not BooleanPredicate(inenabled)
+	}
+	
+	Header {
+		value:$fragmentBusinessIdentityToPermissionPathsNLS.descr(permission.displayname, identity.fullname)
+	}
+	Tree {
+		data:paths
+		expand-level:3
+		show-filter:True
+		layout:Layout {
+			grab: horizontal True vertical True
+		}
+		
+		Column {
+			column:permissioncode
+			header:$permission.code
+			width:200px
+			filterable:True
+			actions:Dialog fragmentBusinessIdentityToPermissionPathsAccountDialog(inidentityuid to inidentityuid, Current permissionuid to inpermissionuid)
+			tooltip:$fragmentBusinessIdentityToPermissionPathsNLS.detail
+		}
+		Column {
+			column:permissiondisplayname
+			header:$permission.displayname
+			filterable:True
+			width:300px
+			actions:Dialog fragmentBusinessIdentityToPermissionPathsAccountDialog(inidentityuid to inidentityuid, Current permissionuid to inpermissionuid)
+			tooltip:$fragmentBusinessIdentityToPermissionPathsNLS.detail
+		}
+		Column {
+			column:permissionpermissiontype
+			header:$permission.permissiontype
+			width:100px
+		}
+	}
+}
+
+fragmentBusinessIdentityToPermissionPathsAccountDialogNLS = NLS {
+	descr [
+		fr "Permission {0} assignée à {1} au travers du/des compte(s) suivant(s)"
+		en "Permission {0} assigned to {1} through the following account(s)"
+	]
+}
+fragmentBusinessIdentityToPermissionPathsAccountDialog = Dialog {
+	title:$account.concept
+	buttons:OkButton
+	width:780
+	height:400
+
+	inidentityuid = Variable
+	inpermissionuid = Variable
+
+	identity = Record {
+		view:br_identityDetail with inidentityuid to uid
+	}
+	permission = Record {
+		view:br_permissionDetail with inpermissionuid to uid
+	}
+	
+	accounts = Dataset {
+		view:bwf_bapermissionidentityaccounts with inidentityuid to identityuid, inpermissionuid to permissionuid
+	}
+
+	Header {
+		value:$fragmentBusinessIdentityToPermissionPathsAccountDialogNLS.descr(permission.displayname, identity.fullname)
+	}
+
+	Table {
+		data:accounts
+		layout: Layout { grab:horizontal True vertical True }
+		
+		Column {
+			column:login
+			header:$account.login
+			sortable:True
+			width:100px
+		}
+		Column {
+			column:username
+			header:$account.username
+			sortable:True
+			width:160px
+		}
+		Column {
+			column:lastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			width:120px
+		}
+		Column {
+			column:repositorydisplayname
+			header:$repository.concept
+			sortable:True
+			width:160px
+		}
+	
+	
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the permissions paths for a given permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inpermissionuid </b>the permission uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessPermissionPathsDialog = Dialog {
+	title:$fragmentBusinessPermissionPathsNLS.title
+	buttons:OkButton
+	width:800
+	height:600
+	
+	inpermissionuid = Variable
+
+	IncludeFragment (fragmentBusinessPermissionPaths with value-of inpermissionuid to inpermissionuid, value-of True to inenabled)	
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the permissions paths for a given permission
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inpermissionuid </b>the permission uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessPermissionPaths = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inpermissionuid = Variable
+	inenabled = Variable { type:Boolean initial: True } 
+
+	
+	permission = Record {
+		view: br_permissionDetail with inpermissionuid to uid
+	}
+	paths = HierarchicalData {
+		view: bwf_bafpermissionpaths with inpermissionuid to uid 
+		connect:parent permissionuid to child parentpermissionuid
+		initial:parentpermissionuid IsNull
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inpermissionuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+//	Header {
+//		value:$fragmentBusinessIdentityToPermissionPathsNLS.descr(permission.displayname, identity.fullname)
+//	}
+	Tree {
+		data:paths
+		expand-level:3
+		show-filter:True
+		layout:Layout {
+			grab: horizontal True vertical True
+		}
+		
+		Column {
+			column:permissioncode
+			header:$permission.code
+			width:200px
+			filterable:True
+		}
+		Column {
+			column:permissiondisplayname
+			header:$permission.displayname
+			width:300px
+			filterable:True
+		}
+		Column {
+			column:permissionpermissiontype
+			header:$permission.permissiontype
+			width:100px
+		}
+	}
+}

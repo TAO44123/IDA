@@ -1,0 +1,366 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/businessactivity/identitytopermissionpaths.page"
+
+fragmentBusinessActivityDefinitionNLS = NLS {
+	empty [en "Select an activity in the list" fr "Sélectionnez une activité dans la liste"]
+	description [en "description" fr "description"]
+	lexpression [en "logical expression" fr "expression logique"]
+	ipermissions [en "Involved permissions" fr "Permissions concernées"]
+	for [en "Business Activity definition for {0}. Assigned permissions are in bold in the list" fr "Définition de l''activité métier pour {0}. Les permissions assignées sont en gras dans la liste"]
+	assigned [en "Assigned to" fr "Assignée à"]
+	
+	operator [en "Operator" fr "Opérateur"]
+	order [en "Order" fr "Ordre"]
+	oacode [en "Auth Obj code" fr "Code obj auth"]
+	oaname [en "Auth Obj name" fr "Nom obj auth"]
+	oatype [en "Auth Obj type" fr "Type obj auth"]
+	oaapp [en "Auth Obj Application" fr "Application obj auth"]
+	ba [en "Business activity" fr "Activité métier"]
+	tooltip [en "This tile presents the definition of a given business activity\nthe definition consists of the required conditions for an account to be considered as elligible for the business activity\nplease refer to the documentation for more information"
+			 fr "Cette tuile présente la définition d'une activité métier\ncette définition consiste à présenter pour un compte les conditions nécessaires et suffisantes pour obtenir cette activité métier\nveuillez vous référer à la documentation pour plus d'informations"
+			]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the definition of a business activities (sub permissions, ...)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inidentityuid </b>optional, used to highlight the provided identity permissions in the list</li>
+ * <li><b>inpermissionuid </b>optional, used to highlight the subpermissions of the provided permission</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessActivityDefinition = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	intype = Variable {multivalued: True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inidentityuid = Variable { multivalued:False type:String }
+	inpermissionuid = Variable { multivalued:False type:String }
+	
+	selectedActivity = Variable { private:True }
+	selectedPermission = Variable { private:True }
+	selectedassigned = Variable { private:True }
+
+	identity = Record {
+		view: br_identityDetail with inidentityuid to uid
+		disabled:
+			Not BooleanPredicate ( inenabled )
+	}
+	permission = Record {
+		view: br_permissionDetail with inpermissionuid to uid
+		disabled:
+			Not BooleanPredicate ( inenabled )
+	}
+	tree = HierarchicalData {
+		roots-view: bwf_baactivity with inuid to uid
+		children-view:bwf_bachildactivities
+		attribute:uid
+		parameter:parentuid
+		max-level: 5
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	expression = Record {
+		view: bwf_baexpression with selectedActivity to uid
+		disabled:
+			Not BooleanPredicate ( inenabled )
+	}
+	content = Dataset {
+		view: bwf_bacontent with
+			selectedActivity to uid,
+			inidentityuid to identityuid,
+			inpermissionuid to permissionuid
+		disabled:
+			Not BooleanPredicate(inenabled)
+	}
+
+	goDetails = NamedAction (
+		StringCase(inidentityuid) {
+			when IsEmpty then [
+					Dialog fragmentBusinessPermissionPathsDialog(selectedPermission to inpermissionuid, inpermissionuid to inrootpermissionuid)
+			]
+			otherwise [
+				BooleanCase(selectedassigned) {
+					when True then [
+						Dialog fragmentBusinessIdentityToPermissionPathsDialog(inidentityuid to inidentityuid, selectedPermission to inpermissionuid)
+					]
+					when False then [
+					]
+				}
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentBusinessActivityDefinitionNLS.for(NonEmpty(identity.fullname, permission.displayname))
+		hidden:
+			AndPredicate {
+				StringPredicate(inidentityuid) { when IsEmpty then True otherwise False }
+				StringPredicate(inpermissionuid) { when IsEmpty then True otherwise False }
+			}
+	}
+	Splitter {
+		disposition:Horizontal
+		size:33%
+		Group {
+				Tree {
+					data:tree
+					layout:Layout { grab:horizontal True vertical True }
+					expand-level:2
+					configurable:True
+					persist-configuration:True
+				
+					Column {
+						column:uid
+						selection:selectedActivity
+						hidden:True
+					}
+					Column {
+						column:code
+						initially-masked:True
+						header:$permission.code
+					}
+					Column {
+						column:displayname
+						width:100%
+						header:$fragmentBusinessActivityDefinitionNLS.ba
+					}
+					Column {
+						column:permissiontype
+						initially-masked:True
+						header:$permission.permissiontype
+					}
+					Column {
+						column:activityoperator
+						initially-masked:True
+						header:$fragmentBusinessActivityDefinitionNLS.operator
+					}
+					Column {
+						column:activityorder
+						initially-masked:True
+						header:$fragmentBusinessActivityDefinitionNLS.order
+					}
+				}
+		}
+		ConditionalGroup {
+			StringCondition(selectedActivity) {
+				when IsEmpty then [
+					Header {
+						value:$fragmentBusinessActivityDefinitionNLS.empty
+						styling:bigTitleStyle
+					}				
+				]
+				otherwise [
+					ConditionalGroup {
+						StringCondition(expression.expression) {
+							when IsEmpty then [
+								Table {
+									data:content
+									layout:Layout { grab: horizontal True vertical True }
+									configurable:True
+									show-count:True
+									show-filter:True
+									enable-markup:True
+									label:Label {
+										break:True
+										value:$fragmentBusinessActivityDefinitionNLS.ipermissions
+									}
+								
+									Column {
+										column:uid
+										hidden:True
+										selection:selectedPermission
+									}
+									Column {
+										column:assigned
+										selection:selectedassigned
+										text:Transform Current assigned using booleanDisplayMappingAlwaysShow
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.assigned
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:code
+										header:$permission.code
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+										actions:ExecuteNamedAction goDetails
+										//actions-disabled:StringPredicate(inidentityuid) { when IsEmpty then True otherwise False }
+									}
+									Column {
+										column:displayname
+										width:100%
+										header:$permission.displayname
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+										actions:ExecuteNamedAction goDetails
+										//actions-disabled:StringPredicate(inidentityuid) { when IsEmpty then True otherwise False }
+									}
+									Column {
+										column:permissiontype
+										initially-masked:True
+										header:$permission.permissiontype
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:appdisplayname
+										initially-masked:True
+										header:$application.concept
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:activityoperator
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.operator
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:activityorder
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.order
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjcode
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oacode
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjdisplayname
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oaname
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjpermissiontype
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oatype
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjappdisplayname
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oaapp
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+								}
+							]
+							otherwise [
+								Text {
+									label:Label {
+										break:True
+										value:$fragmentBusinessActivityDefinitionNLS.lexpression
+									}
+									value:expression.expression
+								}
+								Table {
+									data:content
+									layout:Layout { grab: horizontal True vertical True }
+									configurable:True
+									show-count:True
+									show-filter:True
+									enable-markup:True
+									label:Label {
+										break:True
+										value:$fragmentBusinessActivityDefinitionNLS.ipermissions
+									}
+								
+									Column {
+										column:uid
+										hidden:True
+										selection:selectedPermission
+									}
+									Column {
+										column:assigned
+										selection:selectedassigned
+										text:Transform Current assigned using booleanDisplayMappingAlwaysShow
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.assigned
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:code
+										header:$permission.code
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+										actions:ExecuteNamedAction goDetails
+										actions-disabled:StringPredicate(inidentityuid) { when IsEmpty then True otherwise False }
+									}
+									Column {
+										column:displayname
+										width:100%
+										header:$permission.displayname
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+										actions:ExecuteNamedAction goDetails
+										actions-disabled:StringPredicate(inidentityuid) { when IsEmpty then True otherwise False }
+									}
+									Column {
+										column:permissiontype
+										initially-masked:True
+										header:$permission.permissiontype
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:appdisplayname
+										initially-masked:True
+										header:$application.concept
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:activityoperator
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.operator
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:activityorder
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.order
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjcode
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oacode
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjdisplayname
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oaname
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjpermissiontype
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oatype
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+									Column {
+										column:authobjappdisplayname
+										initially-masked:True
+										header:$fragmentBusinessActivityDefinitionNLS.oaapp
+										styling:BooleanStyling(Current assigned) { when True then bold when False then text }
+									}
+								}
+							]
+						}
+					}
+				]
+			}
+		}
+	}
+}

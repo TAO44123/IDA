@@ -1,0 +1,176 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_access360/reports/teamaccounts.page"
+
+/* Nationalized labels here */
+teamaccounts360csNLS = NLS {
+	title [en "Team accounts analysis" fr "Analyse des comptes d''accès de l'équipe"]
+	dyntitle [en "Team accounts analysis for {0}" fr "Analyse des comptes d''accès de l''équipe de {0}"]
+	privileged [en "privileged" fr "privilégié"]
+	description [
+		en "This report lists the accounts of the team members in a form of a pivot table. Only active accounts are taken into account. It is possible to choose to display only the direct team or the whole team. It is possible to filter the results to display only the differences compared to a given date. It is possible to modify the columns or export the results by right clicking on the table."
+		fr "Ce rapport liste les comptes d'accès des membres de l'équipe sous la forme d'un tableau croisé dynamique. Seuls les comptes actifs sont pris en compte. Il est possible de choisir d'afficher seulement l'équipe directe ou toute l'équipe. Il est possible de filtrer les résultats pour n'afficher que les différences par rapport à une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant un clic droit sur le tableau."
+	]
+}
+
+teamaccounts360csdetail = Page {
+	title: $teamaccounts360csNLS.title
+	description: $teamaccounts360csNLS.description
+	tags: "identityext" priority 200, "byuid" , "analytics", "operationalmanager"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_teamaccountscs
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page teamaccounts360cs with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+teamaccounts360cshp = Page {
+	title: $teamaccounts360csNLS.title
+	description: $teamaccounts360csNLS.description
+	tags: "myteam_access360" priority 2
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwa360_teamaccountscs
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page teamaccounts360cs with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+teamaccounts360cs = Page {
+	title: $teamaccounts360csNLS.title
+	dynamic-title: $teamaccounts360csNLS.dyntitle(identity.fullname)
+	description: $teamaccounts360csNLS.description
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	enter-event:IntCase(teamsize.count) { when > NonEmpty(ConfigurationVariable "access360_crosstabteamlimit", Constant session_indirectTeam360NLS_threshold) then [ Set False to UserVariable session_indirectTeam360, Set True to indirectTeam360_disabled  ] }
+	feature:bwa360_teamaccountscs
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	indirectTeam360_disabled = Variable { initial:False }
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:br_identityDetail with uid to uid
+	}
+	
+	teamsize = Record {
+		view:enduser360_teamsize with uid to uid
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	teamaccounts = Dataset {
+		view:enduser360_teamaccountscs with uid to uid, UserVariable session_indirectTeam360 to indirectteam,UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_indirectTeam360
+					label:$session_indirectTeam360NLS.label
+					tooltip:$session_indirectTeam360NLS.tooltiplimit(NonEmpty(ConfigurationVariable "access360_crosstabteamlimit", Constant session_indirectTeam360NLS_threshold))
+					disabled:BooleanPredicate(indirectTeam360_disabled)
+				}
+				
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:teamaccounts
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:120px  grab: horizontal True vertical True}
+					columns:Dim {value:repositorydisplayname header:$repository.concept} 
+					rows:
+						Dim {value:orguid label:orgshortname header:$porganisation.shortname initially-masked:True},
+						Dim {value:orguid label:orgdisplayname header:$organisation.concept},
+						Dim {value:jobtitleuid label:jobtitledisplayname header:$identity.jobtitledisplayname initially-masked:True},
+						Dim {value:internal header:$identity.internal initially-masked:True},
+						Dim {value:uid label:fullname header:$identity.concept} 
+					cell-content:CellContent {text: Current accountlogin tooltip: Current accountlogin align:Left cluster-value:'X' styling:StringStyling(Current status) { when 'New' then tactimeline_highlightnew360 when 'Removed' then tactimeline_highlightremoved360}}
+				
+				}
+			}
+		}	
+	}
+}

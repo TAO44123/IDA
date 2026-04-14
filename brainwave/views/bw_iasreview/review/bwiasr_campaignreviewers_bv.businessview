@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwiasr_campaignreviewers_bv" displayname="bwiasr campaignreviewers bv">
+	<Definition scriptfile="/views/bw_iasreview/review/bwiasr_campaignreviewers_bv.javascript" name="D1722928787773">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1722928787772" title="Retrieve campaign reviewers">
+			<InnerView name="bwiasr_campaignreviewers_list">
+				<Param name="F1722929044455" viewparam="campaignid" viewparamvalue="{param.campaignid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1722928816135" type="joinview" x="322" y="262" w="300" h="50" title="Nb of not reviewed entries">
+			<InnerView name="bwaccess360r_applicationreviewers" prefix="notreviewed_">
+				<Param name="F1722928997204" viewparam="filterNotFinalizedOnly" viewparamvalue="true"/>
+				<Param name="F1722929031802" viewparam="campaignid" viewparamvalue="{param.campaignid.get()}"/>
+				<Param name="F1722929007952" viewparam="filterbyreviewstatus" viewparamvalue="to be reviewed¶reassign"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.notreviewed_uid.get()}"/>
+			<ExcludeList>
+				<Exclude name="notreviewed_nbentries"/>
+				<Exclude name="notreviewed_fullname"/>
+				<Exclude name="notreviewed_hrcode"/>
+				<Exclude name="notreviewed_mail"/>
+				<Exclude name="notreviewed_uid"/>
+			</ExcludeList>
+			<ViewComputedAttribute name="_notreviewed_nbentries" type="Integer" expression="! dataset.isEmpty(&quot;notreviewed_nbentries&quot;) ? dataset.notreviewed_nbentries.get() : 0" displayname="Not reviewed entries number computed"/>
+		</Component>
+		<Link name="L1722928816345" source="C1722928787772" target="C1722928816135" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1722928816135_1" type="joinview" x="336" y="277" w="300" h="50" title="Nb of reviewed entries">
+			<InnerView name="bwaccess360r_applicationreviewers" prefix="reviewed_">
+				<Param name="F1722928997204" viewparam="filterNotFinalizedOnly" viewparamvalue="true"/>
+				<Param name="F1722929007952" viewparam="filterbyreviewstatus" viewparamvalue="ok¶revoke¶update"/>
+				<Param name="F1722929031802" viewparam="campaignid" viewparamvalue="{param.campaignid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.reviewed_uid.get()}"/>
+			<ExcludeList>
+				<Exclude name="reviewed_fullname"/>
+				<Exclude name="reviewed_hrcode"/>
+				<Exclude name="reviewed_mail"/>
+				<Exclude name="reviewed_nbentries"/>
+				<Exclude name="reviewed_uid"/>
+			</ExcludeList>
+			<ViewComputedAttribute name="_reviewed_nbentries" displayname="Reviewed entries number" type="Integer" expression="! dataset.isEmpty(&quot;reviewed_nbentries&quot;) ? dataset.reviewed_nbentries.get() : 0"/>
+			<FilterList>
+				<Filter name="F1722937685441" expression="dataset._notreviewed_nbentries.get() == 0 &amp;&amp; dataset._reviewed_nbentries.get() == 0" comment="Exclude tasks with all entries signed off" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1722929116639" source="C1722928816135" target="C1722928816135_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="campaignid" displayname="Campaign ID" type="Integer">
+		<Value name="V1722929166363_1" data="70"/>
+	</ViewParam>
+</View>

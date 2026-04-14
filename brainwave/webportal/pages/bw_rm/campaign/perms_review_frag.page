@@ -1,0 +1,68 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details.page"
+import "/webportal/pages/bw_fragments/permission/accounts.page"
+import "/webportal/pages/bw_fragments/permission/perorg.page"
+import "/webportal/pages/bw_rm/permission_review_frag.page"
+
+rm_permcomments = PageFragment {
+  
+	inenabled = Variable {type: Boolean initial:True }
+
+     selectedPermission = Variable{ }
+     
+     permwithreviews = Dataset {
+       view: rm_allpermreview
+       disabled: Not BooleanPredicate(inenabled)
+     }
+     	 
+	 /* fragment content */
+     Splitter {
+       size: 60%
+       disposition:Horizontal
+       
+       Group {
+       
+	         Table {
+	         	  data: permwithreviews
+			      label: Label{ value: $bwrm_permcomments_NLS.permscomments.label break: True} 
+			      layout: Layout { grab: horizontal True vertical True }
+			      show-filter: True			      
+			      configurable: True
+			      show-count: True	
+			      commands: Commands {
+			          position: After
+				      Command{
+				        actions: ReloadData(permwithreviews)
+				        text: $bw_rm_reviewNLS.refresh
+				       icon:"16/famfamfam_silk_icons_v013/arrow_refresh.png"
+				      }	
+			      }      
+			      Column {column: perm_uid hidden: True selection: selectedPermission } 
+			      Column {column: perm_displayname header:  $bwrm_permcomments_NLS.permscomments.name.header width: 150px sortable: True filterable:True }	      
+			      Column {column: app_displayname header: $bwrm_permcomments_NLS.permscomments.application.header width: 110px sortable: True filterable: True}
+			      Column {column: perm_description header:  $bwrm_permcomments_NLS.description width: 200px filterable:True}  
+			      Column {column: comment header:  $bwrm_permcomments_NLS.annotation width: 100% }  
+			      Column {column: author_fullname header:  $bwrm_permcomments_NLS.author sortable:True }  
+			      Column {column: comment_date header: $bwrm_permcomments_NLS.date align: Right width: 140px sortable:True }  			      
+		     }	    	     
+       }
+       
+       TabFolder {
+	           position: Bottom  
+	          TabItem {
+	            text: $bw_rm_reviewNLS.detail.permission.general
+	             IncludeFragment ( fragmentPermissionDetails with selectedPermission binds-to inuid, inenabled binds-to inenabled)
+	          }
+	          TabItem {
+	            text: $bwrm_permcomments_NLS.permcomment.tab
+	             IncludeFragment ( fragmentPermissionReview with selectedPermission binds-to inuid , inenabled binds-to inenabled)
+	          }
+	  }
+       
+            	
+   } 
+}

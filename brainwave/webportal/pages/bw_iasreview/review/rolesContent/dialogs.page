@@ -1,0 +1,44 @@
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+
+bwaccess360_rolesContentReview_roles = NLS {
+	title [en "Roles details" fr "Détails des Rôles"]
+}
+
+bwaccess360_rolesContentReview_roles = Dialog {
+	title: $bwaccess360_rolesContentReview_roles.title
+	width: 1280
+	height: 600
+	buttons:
+		OkButton {
+			actions: 
+				StringCase ( selectedstatus ) {
+					when Not IsEmpty then [
+						Set selectedrole to outrole,
+						MultivaluedAdd selectedstatus to outstatus
+					]
+				}
+		}
+
+	incampaignid = Variable { type: String }
+	selectedrole = Variable { type: String }
+	selectedstatus = Variable { type: String }
+	outrole = Variable { type: String }
+	outstatus = Variable { type: String multivalued: True }
+	
+	data = Dataset {
+		view: bwaccess360_rolesContentReviewRolesStatsForcampaign with
+			incampaignid to campaignid
+	}
+	
+	IncludeHTMLWidget {
+		template: multibarChart
+		datasets: data(perm_uid, perm_displayname, reviewstatus, reviewstatus, nb) to chartdata(code, label, categorycode, category, count)
+		layout: Layout { grab: horizontal True vertical True }
+		bindings: 
+			value-of False to maintainAspectRatio,
+			value-of Constant neutralPalette to customColors,
+			value-of 'top' to legendPosition,
+			value-of True to isHorizontal,
+			value-of True to isStacked
+	}
+}

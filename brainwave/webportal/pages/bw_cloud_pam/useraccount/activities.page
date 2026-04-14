@@ -1,0 +1,47 @@
+
+import "/webportal/pages/bw_cloud_pam/useraccount/search.page"
+import "/webportal/pages/bw_cloud_pam/useraccount/details.page"
+
+Activity {
+	concept: Account
+	kind: Search
+	discriminator: CAusers
+	priority:5000	
+	to: Page CAuseraccountSearchPage
+}
+
+Activity {
+	concept: Account
+	kind: Detail
+	discriminator: CAusers	
+	priority:5000
+	to: Page CAuseraccountDetailsPageDispatcher
+}
+
+/**
+ * Redirect to the right activity depending on the account repository family
+ */
+CAuseraccountDetailsPageDispatcher = Page {
+	title: ''
+	conditional-redirect:
+		// test to avoid infinite loops...
+		ConditionalRedirect {
+			condition: BooleanPredicate(paramFirstTime) target:Activity Account (CAusers) Detail with 
+														paramAccountUid to paramAccountUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														False to paramFirstTime
+		},
+		ConditionalRedirect {
+			// fall back to the default detail page 
+			condition: Not BooleanPredicate(paramFirstTime) target:Page CAuseraccountDetailsPage with-current-parameters
+		}
+	
+	
+	paramAccountUid = Parameter {type: String hidden: True mandatory: True}
+	paramSearchMode = Parameter {type: Boolean hidden: True	default: False}
+	paramInitialIndex = Parameter {type: Integer hidden: True}
+	paramFirstTime = Parameter {type: Boolean hidden: True mandatory:False default:True}
+
+	account = Record { view: br_accountDetail with paramAccountUid to uid }
+}

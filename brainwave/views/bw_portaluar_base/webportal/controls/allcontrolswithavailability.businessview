@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwcontrol_allcontrolswithavailability" displayname="All controls with availability">
+	<Definition scriptfile="/views/bw_portaluar_base/webportal/controls/allcontrolswithavailability.javascript" name="D1589964119176">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1589964119174" title="Read all controls from ledger">
+			<InnerView name="bwcontrol_allexecutedcontrols"/>
+		</Component>
+		<Component name="C1589964213684" type="joinview" x="925" y="251" w="300" h="50" title="Check if control is available">
+			<InnerView name="bwcontrol_allavailablecontrols" prefix="available_"/>
+			<Join jointype="left" key1="{dataset.controlcode.get()}" key2="{dataset.available_controlcode.get()}"/>
+			<ViewComputedAttribute name="isavailable" displayname="isavailable" type="Boolean" expression="!dataset.isEmpty(&apos;available_controlcode&apos;)"/>
+		</Component>
+		<Link name="L1589964213793" source="C1589964119174" target="C1589964213684" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1589968954234" type="joinview" x="753" y="274" w="300" h="50" title="Get current executions">
+			<InnerView name="bwcontrol_ongoingexecutions" prefix="ongoing_"/>
+			<Join key1="{dataset.available_controlid.get()}" key2="{dataset.ongoing_controlid.get()}" jointype="full"/>
+		</Component>
+		<Link name="L1589968954317" source="C1589964213684" target="C1589968954234" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1589969338074" type="scriptview" x="961" y="243" w="300" h="50" title="Status">
+			<Script onscriptread="read"/>
+			<Attributes>
+				<Attribute name="A1589969392212" attribute="status" type="String" multivalued="false"/>
+				<Attribute name="A1589970968022" attribute="lastexecutiondate" type="Date" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Component name="C1589970905036" type="joinview" x="856" y="296" w="300" h="50" title="Last Exec">
+			<InnerView name="bwcontrol_lastexecutions" prefix="last_"/>
+			<Join key1="{dataset.available_controlid.get()}" key2="{dataset.last_controlid.get()}" jointype="left"/>
+		</Component>
+		<Link name="L1589970905209" source="C1589968954234" target="C1589970905036" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1589970905541" source="C1589970905036" target="C1589969338074" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewSort name="sort" attribute1="isavailable" direction1="DESC" attribute2="controlentity"/>
+	<ViewParam name="defaultdate" displayname="Default date" type="Date"/>
+</View>

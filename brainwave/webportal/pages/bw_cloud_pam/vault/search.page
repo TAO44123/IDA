@@ -1,0 +1,508 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+import "/webportal/pages/resources/constants.page"
+
+import "/webportal/pages/bw_cloud_pam/resources/icons.page"
+
+
+cavaultSearchPageNLS = NLS {
+	title [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	vault [en "Vault" fr "Vault"]
+	safe [en "Safe" fr "Safe"]
+	table.columns.vaultname [ en "CyberArk Vault" fr "Vault CyberArk" ]
+	metrics_nb_secrets [en '# Credentials' fr "Secrets"]
+	metrics_nb_resources [en '# Resources\n(Address)' fr "Ressources\n(Adresses)"]
+	metrics_nb_platforms [en '# Platforms' fr "Plateformes"]
+	metrics_nb_other_users [en '# non EPV and non AIM Users' fr "Utilisateurs non APV et non AIM"]
+	metrics_nb_epv_users [en '# EPV Users' fr "Utilisateurs de type EPV"]
+	metrics_nb_app_users [en '# Application Users (AIM)' fr "Utilisateurs de type application (AIM)"]
+	metrics_nb_cyberark_users [en '# Internal CyberArk Users' fr "Utilisateurs internes CyberArk"]
+	metrics_nb_builtin_users [en '# Default Built-in CyberArk Users' fr "Utilisateurs CyberArk présents par défaut"]
+	metrics_nb_users [en '# Users' fr "Utilisateurs"]
+	metrics_nb_cpm_failed [en '# Credentials with Failed CPM' fr "Secrets avec CPM en échec"]
+	metrics_nb_cpm_active [en '# Credentials with Active CPM' fr "Secrets avec CPM actif"]
+	metrics_nb_cpm_inactive [en '# Credentials without Active CPM' fr "Secrets sans CPM actif"]
+	metrics_nb_identities [en '# Identities' fr "Identités"]
+	metrics_nb_contractors [en '# Contractors' fr "Prestataires"]
+	metrics_nb_admin_auditor [en '# Admin/Audit Users' fr "Administrateurs/auditeurs"]
+	metrics_nb_users_get_credentials [en '# Users with credential access' fr "Utilisateurs avec accès aux secrets"]
+	metrics_nb_safe_cpm_inactive [en '# Safe with credentials without CPM' fr "Safes avec secrets sans CPM"]
+	metrics_nb_resources_cpm_inactive [en '# Resources without CPM' fr "Ressources sans CPM"]
+	metrics_nb_safes [en '# Safes' fr "Safes"]
+}
+
+cavaultSearchPage_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+
+cavaultSearchPage_withtrends = UserVariable {
+		initial:False
+		type:Boolean
+		persistent:True
+}
+
+cavaultSearchPage = Page {
+	title: $cavaultSearchPageNLS.title
+	tags: "ca_vault" , "conceptsearch" priority 250
+	icon: %pam_cyberark_concepts_32.vault
+	large-icon: %pam_cyberark_concepts_48.vault
+	description: $cavaultSearchPageNLS.title
+		
+	initialUid = Parameter {
+		type: String
+		hidden: True
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	cavaultSearch = SearchDefinition {
+		entity: CAVault
+		simple-mode-rule: brpam_cavault_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedVaultUid = Variable {
+		type: String
+	}
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	cavaultanalytics = Dataset {
+		pages: Pages{tags: "ca_vault" and "searchresults" }
+		count-variable:nbanalytics
+	}
+	
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+	
+	cavaultData = Dataset {
+		search: Search {
+			definition: cavaultSearch
+			view: brpam_cavault_searchpoint_trend with ["ca_vault"] to applicationtype, reftimeslot.timeslotuid to reftimeslotuid, UserVariable cavaultSearchPage_withtrends to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	cavaultData_count = Dataset {
+		search: Search {
+			definition: cavaultSearch
+			view: brpam_cavault_searchpoint_trend with ["ca_vault"] to applicationtype, reftimeslot.timeslotuid to reftimeslotuid, False to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	
+	
+	goDetails = NamedAction (
+		GoTo Activity CAVault Detail with selectedVaultUid to paramVaultUid
+	)
+	
+	// Search section
+	Group {
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		SearchEdition {
+			definition: cavaultSearch
+			layout: Layout { grab: horizontal True vertical False }
+			simple-mode-columns: 2
+			simple-mode-layout: SimpleModeLayout {
+				vault { label: $cavaultSearchPageNLS.vault }
+			}
+		}
+	}
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: cavaultData
+//					show-count: True
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex
+			selection-index: initialIndex
+			page-size:1000
+			show-count-button: True				
+			
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedVaultUid
+			}
+			
+			Column {
+				column: displayname
+				sortable:True
+				header: $cavaultSearchPageNLS.table.columns.vaultname
+				width: 100%
+				
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			
+			Column {
+				column: isnew
+				text:Transform Current isnew using booleanDisplayMapping
+				header: $searchlabel.isnew
+				width: 100px
+				styling:BooleanStyling(Current isnew) { when True then cavaultSearchPage_highlightnew when False then default }				
+				initially-masked: True
+			}
+
+			Column {
+				column:bw_pam_vaultmetrics_nb_safes
+				text:Transform Current bw_pam_vaultmetrics_nb_safes using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_safes
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_safes).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_safes-current.prev_bw_pam_vaultmetrics_nb_safes") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_safes using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_safes using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_secrets
+				text:Transform Current bw_pam_vaultmetrics_nb_secrets using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_secrets
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_secrets).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_secrets-current.prev_bw_pam_vaultmetrics_nb_secrets") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_secrets using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_secrets using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_resources
+				text:Transform Current bw_pam_vaultmetrics_nb_resources using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_resources
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_resources).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_resources-current.prev_bw_pam_vaultmetrics_nb_resources") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_resources using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_resources using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_platforms
+				text:Transform Current bw_pam_vaultmetrics_nb_platforms using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_platforms
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_platforms).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_platforms-current.prev_bw_pam_vaultmetrics_nb_platforms") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_platforms using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_platforms using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_other_users
+				text:Transform Current bw_pam_vaultmetrics_nb_other_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_other_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_other_users).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_other_users-current.prev_bw_pam_vaultmetrics_nb_other_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_other_users using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_other_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_app_users
+				text:Transform Current bw_pam_vaultmetrics_nb_app_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_app_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_app_users).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_app_users-current.prev_bw_pam_vaultmetrics_nb_app_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_app_users using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_app_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_epv_users
+				text:Transform Current bw_pam_vaultmetrics_nb_epv_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_epv_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_epv_users).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_epv_users-current.prev_bw_pam_vaultmetrics_nb_epv_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_epv_users using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_epv_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_users
+				text:Transform Current bw_pam_vaultmetrics_nb_users using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_users).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_users-current.prev_bw_pam_vaultmetrics_nb_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_users using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_cpm_failed
+				text:Transform Current bw_pam_vaultmetrics_nb_cpm_failed using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_cpm_failed
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_cpm_failed).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_cpm_failed-current.prev_bw_pam_vaultmetrics_nb_cpm_failed") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_cpm_failed using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_cpm_failed using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_cpm_active
+				text:Transform Current bw_pam_vaultmetrics_nb_cpm_active using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_cpm_active
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_cpm_active).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_cpm_active-current.prev_bw_pam_vaultmetrics_nb_cpm_active") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_cpm_active using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_cpm_active using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_cpm_inactive
+				text:Transform Current bw_pam_vaultmetrics_nb_cpm_inactive using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_cpm_inactive
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_cpm_inactive).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_cpm_inactive-current.prev_bw_pam_vaultmetrics_nb_cpm_inactive") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_cpm_inactive using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_cpm_inactive using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_identities
+				text:Transform Current bw_pam_vaultmetrics_nb_identities using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_identities
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_identities).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_identities-current.prev_bw_pam_vaultmetrics_nb_identities") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_identities using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_identities using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_contractors
+				text:Transform Current bw_pam_vaultmetrics_nb_contractors using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_contractors
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_contractors).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_contractors-current.prev_bw_pam_vaultmetrics_nb_contractors") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_contractors using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_contractors using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_admin_auditor
+				text:Transform Current bw_pam_vaultmetrics_nb_admin_auditor using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_admin_auditor
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_admin_auditor).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_admin_auditor-current.prev_bw_pam_vaultmetrics_nb_admin_auditor") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_admin_auditor using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_admin_auditor using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_users_get_credentials
+				text:Transform Current bw_pam_vaultmetrics_nb_users_get_credentials using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_users_get_credentials
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_users_get_credentials).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_users_get_credentials-current.prev_bw_pam_vaultmetrics_nb_users_get_credentials") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_users_get_credentials using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_users_get_credentials using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_safe_cpm_inactive
+				text:Transform Current bw_pam_vaultmetrics_nb_safe_cpm_inactive using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_safe_cpm_inactive
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_safe_cpm_inactive).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_safe_cpm_inactive-current.prev_bw_pam_vaultmetrics_nb_safe_cpm_inactive") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_safe_cpm_inactive using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_safe_cpm_inactive using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_vaultmetrics_nb_resources_cpm_inactive
+				text:Transform Current bw_pam_vaultmetrics_nb_resources_cpm_inactive using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$cavaultSearchPageNLS.metrics_nb_resources_cpm_inactive
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_vaultmetrics_nb_resources_cpm_inactive).equals('null')?956487965:current.bw_pam_vaultmetrics_nb_resources_cpm_inactive-current.prev_bw_pam_vaultmetrics_nb_resources_cpm_inactive") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_vaultmetrics_nb_resources_cpm_inactive using mayBeNullMapping, Transform Current prev_bw_pam_vaultmetrics_nb_resources_cpm_inactive using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+		}
+	}
+
+		Grid {
+			columns:GridColumn,GridColumn { width: grow }
+			layout: Layout { grab:horizontal True vertical False hint: height 38 }
+			GridRow {
+				GridCell {
+					Checkbox {
+						variable:UserVariable cavaultSearchPage_withtrends
+						text:$search.showkpitrends
+					}
+				}			
+				GridCell {
+					/*
+					Button {
+						actions: IntCase(Count cavaultData_count)	{
+										when > NonEmpty(ConfigurationVariable "search_share_analyticserrorthreshold", Constant search_share_analyticserrorthreshold) then [
+											Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_share_analyticserrorthreshold", Constant search_share_analyticserrorthreshold))
+										]
+										when > NonEmpty(ConfigurationVariable "search_share_analyticswarningthreshold", Constant search_share_analyticswarningthreshold) then [
+											Confirm $search.analyticswarningthreshold(Count cavaultanalytics),
+											GoTo Page cavaultSearchAnalyticsPage with  SerializeSearch cavaultSearch to search
+												
+										]
+										otherwise [
+											GoTo Page cavaultSearchAnalyticsPage with  SerializeSearch cavaultSearch to search
+										]
+									}
+						text:$search.applyanalytics
+						tooltip:$search.applyanalyticstooltip
+						image:%report_16.analytics
+						feature:sharesearch_analytics
+						disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+					}
+				
+					Button {
+						actions:	TransferData cavaultData(uid) to (uids), 
+									Dialog fragmentApplicationBulkAddTag(uids to uids),
+									Flash $search.flashaddingatag
+						text:$search.addingatag
+						image:%collection_16.tag
+					}
+					Button {
+						actions:	TransferData cavaultData(uid) to (uids), 
+									Dialog fragmentApplicationBulkRemoveTag(uids to uids, SerializeSearch cavaultSearch to applicationSearch),
+									Flash $search.flashremovingatag
+						text:$search.removingatag
+						image:%collection_16.tag
+					}
+					
+					Button {
+						actions:	TransferData cavaultData(uid) to (uids), 
+									Dialog fragmentApplicationBulkRemoveAllTags(uids to uids),
+									Flash $search.flashremovingalltag
+						text:$search.removingalltag
+						image:%collection_16.tag
+					}
+					* */
+				}
+			}
+		}
+	}
+
+
+
+cavaultSearchAnalyticsPage = Page {
+	title:$search.applyanalytics
+
+	search = SearchDefinition {
+		entity: CAVault
+		simple-mode-rule: brpam_cavault_simple_search
+	}
+
+	analytics = Dataset {
+		pages: Pages{tags: "ca_vault" and "searchresults" }
+	}
+
+	ConditionalGroup {
+		IntCondition(Count analytics) {
+			when =0 then [
+				Header {
+					value:$search.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:analytics
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:$search.back
+			image:%browsing_16.back
+		}
+	}
+}

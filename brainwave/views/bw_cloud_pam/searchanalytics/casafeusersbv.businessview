@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_casafeusers_bv" displayname="Safe Users with Trends">
+	<Definition scriptfile="/views/bw_cloud_pam/searchanalytics/casaferightsbv.javascript" name="D1671547845990">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1671547845989" title="safe users">
+			<InnerView name="bwpam_casafeusers">
+				<Param name="F1671643837330" viewparam="includebuiltin" viewparamvalue="{param.includebuiltin.get()}"/>
+			</InnerView>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Component name="C1671547870952" type="trendview" x="883" y="291" w="300" h="50" title="Trend" enable="{!param.isEmpty(&apos;comparisontimeslot&apos;)}">
+			<Trend timeslot="{param.comparisontimeslot.get()}" key="{dataset.key.get()}" comparing_column="val" include_removed="true" trend_column_name="status"/>
+			<FilterList>
+				<Filter name="F1671548127077" expression="param.excluderemoved.get() &amp;&amp; &quot;Removed&quot;.equals(dataset.status.get())" comment="remove Removed" type="Exclude"/>
+				<Filter name="F1671548143494" expression="param.excludesimilar.get() &amp;&amp; &quot;Identical&quot;.equals(dataset.status.get())" comment="remove Similar" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1671642061595" type="joinview" x="1305" y="309" w="300" h="50" title="safe effective users">
+			<InnerView name="bwpam_casafeeffectiveusers">
+				<Param name="F1671643854210" viewparam="includebuiltin" viewparamvalue="{param.includebuiltin.get()}"/>
+			</InnerView>
+			<ViewComputedAttribute name="UserType" displayname="UserType" type="String" expression="dataset.isEmpty(&apos;RawUserType&apos;)?&quot;Booking&quot;:dataset.RawUserType.get()"/>
+			<Join jointype="full" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+		</Component>
+		<Link name="L1671642061927" source="C1671547845989" target="C1671642061595" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1671642062134" source="C1671642061595" target="C1671547870952" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="comparisontimeslot" displayname="comparisontimeslot"/>
+	<ViewParam name="excluderemoved" displayname="exclude removed"/>
+	<ViewParam name="excludesimilar" displayname="exclude similar"/>
+	<ViewParam name="includebuiltin" displayname="includebuiltin"/>
+</View>

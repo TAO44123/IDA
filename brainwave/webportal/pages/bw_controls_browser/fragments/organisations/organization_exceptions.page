@@ -1,0 +1,125 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Build and display the tables of a designed control exceptions for organizations
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlCode</b> (in) the designed control control code</li>
+ * <li><b>hasExceptions</b> (out) a integer holding the number of root causes for the control</li>
+ * <li><b>selectedOrganizationUid</b> (out) the selected organization UID</li>
+ * <li><b>selectedOrganizationUids</b> (out) the selected organizations UIDs</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_organization_exceptions = PageFragment {
+	
+	/* Variables here */
+	controlCode = Variable { type: String }
+	nbExceptions = Variable { type: Integer }
+	selectedOrganisationUid = Variable { type: String }
+	selectedOrganisationUids = Variable { type: String multivalued: True }
+	
+	/* Datasets and records here */
+	exceptions = Dataset {
+		view: bw_control_browser_organization_exceptions with
+			controlCode to controlcode
+		count-variable: nbExceptions
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	goDetails = NamedAction (
+		Dialog bwf_organisationDetailsDialog (
+			selectedOrganisationUid to inuid,
+			True to inshowaccounts,
+			True to inshowaccountsfororganisation,
+			True to inshowapplications,
+			True to inorganisationuid, 
+			True to inshowcontrols,
+			True to inshowshares,
+			True to inshowACLs,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowmanagers
+		)
+	)
+	
+	reload = NamedAction (
+		ReloadData ( exceptions )
+	)
+	
+	/* Page content */
+	Table {
+		data: exceptions
+		show-filter: True
+		show-count: True
+		hide-header: False
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+		configurable: True
+		persist-configuration: True
+		persist-configuration-key: "bw_control_browser_organization_exceptions"
+		checkboxes:
+			uid to selectedOrganisationUids
+		Column {
+			column: uid
+			hidden: True
+			selection: selectedOrganisationUid
+		}
+		Column {
+			column: shortname
+			header: $organisation.shortname
+			width: 100%
+			sortable: True
+			filterable: True
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: displayname
+			header: $organisation.displayname
+			width: 100%
+			sortable:True
+			filterable: True
+			initially-masked: False
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: code
+			header: $organisation.code
+			width: 100%
+			sortable:True
+			filterable: True
+			initially-masked: True
+			actions: ExecuteNamedAction goDetails
+		}
+		Column {
+			column: ctrl_validfromdate
+			header: $controlexception.fromdate
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: ctrl_validuntildate
+			header: $controlexception.untildate
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+		Column {
+			column: ctrl_reason
+			header: $controlexception.^reason
+			sortable: True
+			filterable: True
+			width: 100%
+		}
+	}
+}

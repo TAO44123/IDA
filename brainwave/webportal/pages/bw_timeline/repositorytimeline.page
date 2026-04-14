@@ -1,0 +1,389 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_timeline/timelinenls.page"
+
+import "/webportal/pages/bw_timelinewidget/timeline.page"
+
+/* Nationalized labels here */
+repositorytimelineNLS = NLS {
+	title [en "Repository timeline" fr "Evolutions du référentiel"]
+	dyntitle [en "{0} timeline" fr "Evolutions de {0}"]
+	manager [en "{0} as {1}" fr "{0} en tant que {1}"]
+	joborg [en "{0} in {1}" fr "{0} chez {1}"]
+	share [en "Share" fr "Partage"]
+	folder [en "Data" fr "Données"]
+	accountsanddirectgroups [en "Accounts and direct groups" fr "Comptes et groupes directs"]
+
+	number_groups [en "Groups" fr "Groupes"]
+	number_active_accounts [en "Active Accounts" fr "Comptes Actifs"]
+	number_active_service_accounts [en "Service Accounts" fr "Comptes de Service"]
+
+	description [
+		en "This report presents the evolutions that have occurred over time. The timeline presents the different timeslots as well as the major events that occurred at each loading. It is possible to select a date to display the details of the identified changes. It is also possible to select a time range by pressing the Ctrl key and clicking on two dates in the timeline."
+		fr "Ce rapport présente les évolutions survenues au fil du temps. la timeline présente les différents points de chargement ainsi que les evenements majeurs survenus à chaque chargement. Il est posible de sélectionner une date pour afficher le détail des changements identifiés. Il est aussi posible de sélectionner une page de temps en appuyant sur la touche Ctrl et en cliquant sur deux dates dans la timeline."
+	]	
+}
+
+repositorytimeline_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+repositorytimeline_highlightremoved = Style {
+	foreground:white
+	background:Color red
+}
+
+repositorytimeline_highlightmodified = Style {
+	foreground:white
+	background:Color RGB(255, 128, 0)
+}
+
+repositorytimelinepicker = Dialog {
+	title:$timelineNLS.selecttimeslot
+	width:640
+	height:200
+	buttons:[OkButton CancelButton]
+	
+	selectedTimeslot = Variable
+	
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+
+	Combo {
+		variable:selectedTimeslot
+		
+		options:Dynamic {
+			data:timeslots
+			text:Concat (Current displayname, ' (', Current commitdate, ')')
+			value:Current uid
+		}
+	}
+
+}
+
+repositorytimeline = Page {
+	title: $repositorytimelineNLS.title
+	dynamic-title: $repositorytimelineNLS.dyntitle(repository.displayname)
+	description:$repositorytimelineNLS.description
+	tags: "repository" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwt_repositorytimeline
+	
+	uid = Parameter {
+		label:"Concept Uid"
+		type:String
+		hidden:True
+		mandatory:True
+	}
+	initialTimeslot = Parameter { default:PortalTimeslot.UID }
+
+	/* Parameters here */
+	currentTimeslot = Variable
+	refTimeslot = Variable
+
+	selectedRepository = Variable
+	selectedApplication = Variable
+	selectedShare = Variable
+	
+	currentTab = Variable {initial:0}
+	
+	showonlydiffperms = Variable {initial:True}
+	showonlydiffaccounts = Variable {initial:True}
+	showonlydiffrights = Variable {initial:True}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+	previoustimeslot = Record {
+		view:bwt_previoustimeslot with currentTimeslot to uid
+	}
+	reftimeslot = Record {
+		view:bwt_timeslot with refTimeslot to uid
+	}
+
+	repository = Record {
+		view:br_repositoryDetail with uid to uid
+		timeslot:currentTimeslot
+	}
+	
+	nbgroups = Record {
+		view: br_repositoryDetail_nbgroups with repository.recorduid to recorduid
+		timeslot:currentTimeslot
+	}
+	
+	nbactiveaccounts = Record {
+		view: br_repositoryDetail_nbactiveaccounts with repository.recorduid to recorduid
+		timeslot:currentTimeslot
+	}
+
+	nbactiveserviceaccounts = Record {
+		view: br_repositoryDetail_nbactiveaccounts with repository.recorduid to recorduid, True to serviceaccount
+	}
+
+	repositorymanagers = Dataset {
+		view:bwt_repositorymanagers with uid to uid
+		timeslot:currentTimeslot
+	}
+
+	repositorygroups = Dataset {
+		view:bwt_repositorygroups with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:nbdirectaccounts
+			timeslot:refTimeslot
+			status-column-name:status
+			difference-column-name:diff
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=0 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffperms)
+		}
+	}
+
+	repositoryaccounts = Dataset {
+		view:bwt_repositoryaccounts with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:nbdirectgroups
+			timeslot:refTimeslot
+			status-column-name:status
+			difference-column-name:diff
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=1 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffaccounts)
+		}
+	}
+
+	repositoryaccountsandgroups = Dataset {
+		view:bwt_repositoryaccountsandgroups with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+			difference-column-name:diff
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=2 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffrights)
+		}
+	}
+
+	timeline = Dataset {
+		view:bwt_repositorycomputechanges with uid to uid
+	}
+
+	/* Page content */
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical False hint:height 130 }
+		label:Label {break:True}
+		template: timeline
+		datasets:timeline(previoustimeslotuid, timeslotuid, previoustimeslotcommitdate, timeslotcommitdate, label, description, group) to chartdata(from_timeslotuid,  to_timeslotuid, from_ts, to_ts, label, description, group)
+		bindings:
+			value-of True to navigationButtons,
+			value-of "background" to itemType
+		widget-events: {
+			when onclick then [
+				Set Current to_timeslotuid to currentTimeslot, Set Current from_timeslotuid to refTimeslot  
+			]
+		}
+	}
+	
+	ConditionalGroup {
+		StringCondition(currentTimeslot) {
+		when IsEmpty then [
+			Header {
+				value:$timelineNLS.help
+			}
+		]
+		otherwise [
+			TabFolder {
+				TabItem {
+					text:$repository.concept
+
+					Text {
+						label:$repository.code
+						compact:True
+						value:repository.code
+					}
+					Text {
+						label:$repository.displayname
+						compact:True
+						value:repository.displayname
+					}
+					Text {
+						label: $repositorytimelineNLS.number_active_accounts
+						value: Transform nbactiveaccounts.count using nullToZeroMapping
+						compact:True
+					}
+					
+					Text {
+						label: $repositorytimelineNLS.number_active_service_accounts
+						value: Transform nbactiveserviceaccounts.count using nullToZeroMapping
+						compact:True
+					}
+					Text {
+						label: $repositorytimelineNLS.number_groups
+						value: Transform nbgroups.count using nullToZeroMapping
+						compact:True
+					}
+					Text {
+						label:$manager.concept
+						iterate-on:repositorymanagers
+						compact:True
+						value: $repositorytimelineNLS.manager(Current fullname, Current expertisedomaindisplayname)
+					}
+				}
+				TabItem {
+					text:$group.concept
+					activation-event:Set 0 to currentTab
+	
+					Checkbox {
+						variable:showonlydiffperms
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:repositorygroups
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then repositorytimeline_highlightnew when 'Removed' then repositorytimeline_highlightremoved when 'Modified' then repositorytimeline_highlightmodified } }
+						Column {sortable:True initially-masked:True filterable:True width:320px header:$group.code column:code}
+						Column {sortable:True filterable:True width:200px header:$group.displayname column:displayname}
+						Column {filterable:True width:300px header:$group.comment column:comment}
+						Column {initially-masked:True filterable:True width:160px header:$group.grouptype column:grouptype}
+						Column {initially-masked:True filterable:True width:160px header:$group.creationdate column:creationdate}
+						Column {initially-masked:True filterable:True width:160px header:$group.modificationdate column:modificationdate}
+						Column {initially-masked:True filterable:True width:160px header:$timelineNLS.modificationby column:lastmodifiedby}
+						Column {sortable:True filterable:True width:100px header:'nb accounts' column:nbdirectaccounts text:Concat(Current nbdirectaccounts, ' (', Current diff, ')')  image:IntImageSelection(Current diff) {when>0 then "16/indicators/high1blue.png" when <0 then "16/indicators/low1blue.png" } }
+					}			
+				}
+				TabItem {
+					text:$account.concept
+					activation-event:Set 1 to currentTab
+				
+					Checkbox {
+						variable:showonlydiffaccounts
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:repositoryaccounts
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then repositorytimeline_highlightnew when 'Removed' then repositorytimeline_highlightremoved when 'Modified' then repositorytimeline_highlightmodified }}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.identifier column:identifier}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.login column:login}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.givenname column:givenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.surname column:surname}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.username column:username}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.mail column:mail}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.service column:service}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$reconciliation.noownercode column:noownercode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.creationdate column:creationdate}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.lastlogindate column:lastlogindate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.expiredate column:expiredate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordlastsetdate column:passwordlastsetdate}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.nextpwdchangedate column:nextpwdchangedate}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordcantchange column:passwordcantchange}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.passwordnotrequired column:passwordnotrequired}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.dontexpirepassword column:dontexpirepassword}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.notnormalaccount column:privilegedaccount}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.locked column:locked}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.hrcode column:identityhrcode}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.givenname column:identitygivenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.surname column:identitysurname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.fullname column:identityfullname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$pidentity.mail column:identitymail}
+
+						Column {sortable:True filterable:True width:140px header:'nb direct groups' column:nbdirectgroups text:Concat(Current nbdirectgroups, ' (', Current diff, ')') image:IntImageSelection(Current diff) {when>0 then "16/indicators/high1blue.png" when <0 then "16/indicators/low1blue.png" }}
+					}
+				}
+				TabItem {
+					text:$repositorytimelineNLS.accountsanddirectgroups
+					activation-event:Set 2 to currentTab
+
+					Checkbox {
+						variable:showonlydiffrights
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+					
+					Table {
+						data:repositoryaccountsandgroups
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then repositorytimeline_highlightnew when 'Removed' then repositorytimeline_highlightremoved when 'Modified' then repositorytimeline_highlightmodified }}
+						Column {sortable:True initially-masked:True filterable:True width:320px header:$pgroup.code column:groupcode}
+						Column {sortable:True filterable:True width:200px header:$pgroup.displayname column:groupdisplayname}
+						Column {filterable:True initially-masked:True width:300px header:$pgroup.comment column:groupcomment}
+						Column {filterable:True initially-masked:False width:100px header:$repository.concept column:grouprepositorydisplayname}
+
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.identifier column:identifier}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.login column:login}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.givenname column:givenname}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.surname column:surname}
+						Column {initially-masked:False sortable:True filterable:True width:160px header:$account.username column:username}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.mail column:mail}
+						Column {initially-masked:True sortable:True filterable:True width:160px header:$account.lastlogindate column:lastlogindate}
+					}
+				}
+			}
+		]
+		}
+	}
+}
+

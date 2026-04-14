@@ -1,0 +1,1108 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/businessactivity/details/businessActivityDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+fragmentBusinessActivitySoDdefectNLS = NLS {
+	empty [en "No SoD problems for this Business Activity" fr "Pas de problèmes de SoD pour cette activité métier"]
+	description [en "description" fr "description"]
+	lexpression [en "logical expression" fr "expression logique"]
+	ipermissions [en "Involved permissions" fr "Permissions concernées"]
+	for [en "SoD problems for {0}" fr "Problèmes de SoD pour {0}"]
+	
+	activity1code [en "1st activity code" fr "1ere activité code"]
+	activity1name [en "1st activity" fr "1ere activité"]
+	activity2code [en "2nd activity code" fr "2eme activité code"]
+	activity2name [en "2nd activity" fr "2eme activité"]
+
+	risklevel [en "risk level" fr "niveau de risque"]
+	riskinfo [en "risk info" fr "informations sur le risque"]
+	controldescription [en "control description" fr "description du contrôle"]
+	riskdescription [en "risk description" fr "description du risque"]
+	mitigation [en "suggested mitigation" fr "remédiation suggérée"]
+
+	showdetails [en "Show selected control defect risks details" fr "Afficher les détails du défaut de contrôle sélectionné"]
+	
+	controlcode [en "Control code" fr "Code contrôle"]
+	controlname [en "Control name" fr "Nom contrôle"]
+	
+	tooltip [en "This tile presents SoD defects for a given business activity\ndepending on the context it can either presents all the SoD defects found for this business activity\nor restrict its results to a given identity\nyou can right-clic on the table to show/hide additional information\nyou can also ask for risk details information for a given defect"
+			 fr "Cette tuile présente la liste des problèmes de SoD pour une activité métier donnée\nen fonction du contexte, elle peut soit afficher l'ensemble des problèmes de SoD trouvés pour cette activité métier\nou restreindre ses résultats à une identité donnée\nvous pouvez faire un clic droit sur la table pour afficher des colonnes supplémentaires\nvous pouvez aussi afficher des informations sur les risques associés à un problème donné"
+			]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the SoD defects identity list associated with a business activity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inidentityuid </b>the identity uid, optional (to filter SoD results for a given identity only)</li>
+ * <li><b>inapplicationuid </b>the application uid, optional (to display identity application details in SoD defects)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable details option (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbdefects </b>the number of defects found</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessActivitySoDdefect = PageFragment {
+	feature:sod_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inidentityuid = Variable
+	inapplicationuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outnbdefects = Variable
+	
+	selectedIdentity = Variable 
+	selectedcontroldescription = Variable
+	selectedriskdescription = Variable
+	selectedmitigation = Variable
+
+	showriskdetails = Variable { type:Boolean initial:False }
+	
+	currentbauid = Variable
+	currentiduid = Variable
+	
+	content = Dataset {
+		view: bwf_basodDefects with
+			inuid to uid,
+			inidentityuid to identityuid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		count-variable: outnbdefects
+	}
+	
+	identity = Record {
+		view: br_identityDetail with inidentityuid to uid
+		disabled:
+			Not BooleanPredicate(inenabled)
+	}
+
+	goBusinessActivityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_businessActivityDetailsDialog(currentbauid to inuid,
+												NonEmpty(inidentityuid, currentiduid) to inidentityuid,
+												False to inshowaccounts,
+												False to inshowperorg,
+												False to inshowperjob,
+												False to inshowsoddefects,
+												False to inshowcontrols,
+												False to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(NonEmpty(inidentityuid, currentiduid) to inuid,
+												Eval "!inapplicationuid.isEmpty()" to inshowapplications,
+												inapplicationuid to inapplicationuids
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	ConditionalGroup {
+		IntCondition(Count content) {
+			when =0 then [
+				Header {
+					value:$fragmentBusinessActivitySoDdefectNLS.empty
+					styling:bigTitleStyle
+				}				
+			]
+			otherwise [
+				ConditionalGroup {
+					StringCondition(inidentityuid) { 
+						when IsEmpty then [
+							Grid {
+								columns:GridColumn,GridColumn,GridColumn
+								GridRow {
+									height:grow
+									GridCell {
+										span:3									
+						
+										Checkbox {
+											variable:showriskdetails
+											text:$fragmentBusinessActivitySoDdefectNLS.showdetails
+											hidden:Not BooleanPredicate(incanshowdetails)
+										}
+										Table {
+											data:content
+											layout:Layout { grab: horizontal True vertical True }
+											configurable:True
+											show-count:True
+											show-filter:True
+											disabled:StringPredicate(inidentityuid) { when Not IsEmpty then True }
+										
+											Column {
+												column:risklevel
+												sortable:True
+												width:96px
+												header:$fragmentBusinessActivitySoDdefectNLS.risklevel
+												image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+											}
+											Column {
+												column:controlcode
+												header:$fragmentBusinessActivitySoDdefectNLS.controlcode
+												initially-masked:True
+											}
+											Column {
+												column:controldisplayname
+												header:$fragmentBusinessActivitySoDdefectNLS.controlname
+												initially-masked:True
+											}
+											Column {
+												column:key1code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1code
+												filterable:True
+												sortable:True
+												actions:Set Current identityuid to currentiduid, Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key1displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current identityuid to currentiduid, Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2code
+												filterable:True
+												sortable:True
+												actions:Set Current identityuid to currentiduid, Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current identityuid to currentiduid, Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+						
+											Column {
+												column:identityuid
+												hidden:True
+												selection:selectedIdentity
+											}
+											Column {
+												column:identityhrcode
+												header:$identity.hrcode
+												filterable:True
+												sortable:True
+												actions:Set Current identityuid to currentiduid, ExecuteNamedAction goIdentityDetails
+											}
+											Column {
+												column:identityfullname
+												header:$identity.fullname
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current identityuid to currentiduid, ExecuteNamedAction goIdentityDetails
+											}
+											Column {
+												column:identitymail
+												header:$identity.mail
+												initially-masked:True
+												filterable:True
+												sortable:True
+											}
+											Column {
+												column:identityinternal
+												header:$identity.internal
+												initially-masked:True
+												filterable:True
+												sortable:True
+											}
+											Column {
+												column:identityactive
+												header:$identity.active
+												initially-masked:True
+												filterable:True
+												sortable:True
+											}
+											Column {
+												column:controldescription
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.controldescription
+												selection:selectedcontroldescription
+											}
+											Column {
+												column:riskinfo
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.riskinfo
+												selection:selectedriskdescription
+											}
+											Column {
+												column:suggestedmitigation
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.mitigation
+												selection:selectedmitigation
+											}
+										}
+									}								
+								}
+								GridRow {
+									height:120
+									hidden:Not BooleanPredicate(showriskdetails)
+									GridCell {
+										Text {
+											value:selectedcontroldescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.controldescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedriskdescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.riskdescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedmitigation
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.mitigation break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+								}
+							}
+						]
+						otherwise [
+							Header {
+								value:$fragmentBusinessActivitySoDdefectNLS.for(identity.fullname)
+							}
+							Grid {
+								columns:GridColumn,GridColumn,GridColumn
+								GridRow {
+									height:grow
+									GridCell {
+										span:3									
+						
+										Checkbox {
+											variable:showriskdetails
+											text:$fragmentBusinessActivitySoDdefectNLS.showdetails
+											hidden:Not BooleanPredicate(incanshowdetails)
+										}
+										Table {
+											data:content
+											layout:Layout { grab: horizontal True vertical True }
+											configurable:True
+											show-count:True
+											show-filter:True
+											disabled:StringPredicate(inidentityuid) { when IsEmpty then True }
+									
+											Column {
+												column:risklevel
+												sortable:True
+												width:96px
+												header:$fragmentBusinessActivitySoDdefectNLS.risklevel
+												image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+											}
+											Column {
+												column:controlcode
+												header:$fragmentBusinessActivitySoDdefectNLS.controlcode
+												initially-masked:True
+											}
+											Column {
+												column:controldisplayname
+												header:$fragmentBusinessActivitySoDdefectNLS.controlname
+												initially-masked:True
+											}
+											Column {
+												column:key1code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1code
+												filterable:True
+												sortable:True
+												actions:Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key1displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2code
+												filterable:True
+												sortable:True
+												actions:Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:controldescription
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.controldescription
+												selection:selectedcontroldescription
+											}
+											Column {
+												column:riskinfo
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.riskinfo
+												selection:selectedriskdescription
+											}
+											Column {
+												column:suggestedmitigation
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.mitigation
+												selection:selectedmitigation
+											}
+										}
+									}								
+								}
+								GridRow {
+									height:120
+									hidden:Not BooleanPredicate(showriskdetails)
+									GridCell {
+										Text {
+											value:selectedcontroldescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.controldescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedriskdescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.riskdescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedmitigation
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.mitigation break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+								}
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentBusinessActivityCoreModelSoDdefectNLS = NLS {
+	tooltip [en "This tile presents core model SoD defects for a given business activity\nIt means permission whom content raise SoD conflicts"
+			 fr "Cette tuile présente la liste des problèmes de SoD au niveau modèle pour une activité métier donnée\nEn d'autres termes, les permissions dont le contenu contient des problèmes de SoD"
+			]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the SoD defects permission list associated with a business activity (core model problems)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inpermisionuid </b>the identity uid, optional (to filter SoD results for a given permission only)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable details option (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbdefects </b>the number of defects found</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessActivityCoreModelSoDdefect = PageFragment {
+	feature:sod_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inpermissionuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outnbdefects = Variable
+	
+	selectedPermission = Variable 
+	selectedcontroldescription = Variable
+	selectedriskdescription = Variable
+	selectedmitigation = Variable
+
+	showriskdetails = Variable { type:Boolean initial:False }
+	
+	currentbauid = Variable
+	currentpermuid = Variable
+	
+	permission = Record {
+		view: br_permissionDetail with inpermissionuid to uid
+	}
+	
+	content = Dataset {
+		view: bwf_permissioncoremodelsoddefects with
+			inuid to uid,
+			inpermissionuid to permissionuid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		count-variable: outnbdefects
+	}
+	
+	goBusinessActivityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_businessActivityDetailsDialog(currentbauid to inuid,
+												selectedPermission to inpermissionuid,
+												False to inshowperorg,
+												False to inshowperjob
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(NonEmpty(inpermissionuid, currentpermuid) to inuid
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	ConditionalGroup {
+		IntCondition(Count content) {
+			when =0 then [
+				Header {
+					value:$fragmentBusinessActivitySoDdefectNLS.empty
+					styling:bigTitleStyle
+				}				
+			]
+			otherwise [
+				ConditionalGroup {
+					StringCondition(inpermissionuid) { 
+						when IsEmpty then [
+							Grid {
+								columns:GridColumn,GridColumn,GridColumn
+								GridRow {
+									height:grow
+									GridCell {
+										span:3									
+						
+										Checkbox {
+											variable:showriskdetails
+											text:$fragmentBusinessActivitySoDdefectNLS.showdetails
+											hidden:Not BooleanPredicate(incanshowdetails)
+										}
+										Table {
+											data:content
+											layout:Layout { grab: horizontal True vertical True }
+											configurable:True
+											show-count:True
+											show-filter:True
+											disabled:StringPredicate(inpermissionuid) { when Not IsEmpty then True }
+										
+											Column {
+												column:risklevel
+												sortable:True
+												width:96px
+												header:$fragmentBusinessActivitySoDdefectNLS.risklevel
+												image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+											}
+											Column {
+												column:controlcode
+												header:$fragmentBusinessActivitySoDdefectNLS.controlcode
+												initially-masked:True
+											}
+											Column {
+												column:controldisplayname
+												header:$fragmentBusinessActivitySoDdefectNLS.controlname
+												initially-masked:True
+											}
+											Column {
+												column:key1code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1code
+												filterable:True
+												sortable:True
+												actions:Set Current permissionuid to currentpermuid, Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key1displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current permissionuid to currentpermuid, Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2code
+												filterable:True
+												sortable:True
+												actions:Set Current permissionuid to currentpermuid, Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current permissionuid to currentpermuid, Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+						
+											Column {
+												column:permissionuid
+												hidden:True
+												selection:selectedPermission
+											}
+											Column {
+												column:permissioncode
+												header:$permission.code
+												filterable:True
+												sortable:True
+												width:140px
+												actions:Set Current permissionuid to currentpermuid, ExecuteNamedAction goPermissionDetails
+											}
+											Column {
+												column:permissiondisplayname
+												header:$permission.displayname
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current permissionuid to currentpermuid, ExecuteNamedAction goPermissionDetails
+											}
+											Column {
+												column:permissionpermissiontype
+												header:$permission.permissiontype
+												initially-masked:True
+												filterable:True
+												sortable:True
+											}
+											Column {
+												column:applicationdisplayname
+												header:$application.concept
+												filterable:True
+												sortable:True
+												width:120px
+											}
+										}
+									}								
+								}
+								GridRow {
+									height:120
+									hidden:Not BooleanPredicate(showriskdetails)
+									GridCell {
+										Text {
+											value:selectedcontroldescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.controldescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedriskdescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.riskdescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedmitigation
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.mitigation break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+								}
+							}
+						]
+						otherwise [
+							Header {
+								value:$fragmentBusinessActivitySoDdefectNLS.for(permission.displayname)
+							}
+							Grid {
+								columns:GridColumn,GridColumn,GridColumn
+								GridRow {
+									height:grow
+									GridCell {
+										span:3									
+						
+										Checkbox {
+											variable:showriskdetails
+											text:$fragmentBusinessActivitySoDdefectNLS.showdetails
+											hidden:Not BooleanPredicate(incanshowdetails)
+										}
+										Table {
+											data:content
+											layout:Layout { grab: horizontal True vertical True }
+											configurable:True
+											show-count:True
+											show-filter:True
+											disabled:StringPredicate(inpermissionuid) { when IsEmpty then True }
+									
+											Column {
+												column:risklevel
+												sortable:True
+												width:96px
+												header:$fragmentBusinessActivitySoDdefectNLS.risklevel
+												image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+											}
+											Column {
+												column:controlcode
+												header:$fragmentBusinessActivitySoDdefectNLS.controlcode
+												initially-masked:True
+											}
+											Column {
+												column:controldisplayname
+												header:$fragmentBusinessActivitySoDdefectNLS.controlname
+												initially-masked:True
+											}
+											Column {
+												column:key1code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1code
+												filterable:True
+												sortable:True
+												actions:Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key1displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity1name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2code
+												initially-masked:True
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2code
+												filterable:True
+												sortable:True
+												actions:Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:key2displayname
+												header:$fragmentBusinessActivitySoDdefectNLS.activity2name
+												filterable:True
+												sortable:True
+												width:100%
+												actions:Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+											}
+											Column {
+												column:controldescription
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.controldescription
+												selection:selectedcontroldescription
+											}
+											Column {
+												column:riskinfo
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.riskinfo
+												selection:selectedriskdescription
+											}
+											Column {
+												column:suggestedmitigation
+												hidden:True
+												header:$fragmentBusinessActivitySoDdefectNLS.mitigation
+												selection:selectedmitigation
+											}
+										}
+									}								
+								}
+								GridRow {
+									height:120
+									hidden:Not BooleanPredicate(showriskdetails)
+									GridCell {
+										Text {
+											value:selectedcontroldescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.controldescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedriskdescription
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.riskdescription break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+									GridCell {
+										Text {
+											value:selectedmitigation
+											layout:Layout {grab:horizontal True vertical True}
+											label:Label {value:$fragmentBusinessActivitySoDdefectNLS.mitigation break:True }
+											hidden:Not BooleanPredicate(showriskdetails)
+											lines:5
+										}									
+									}								
+								}
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentBusinessActivityOrganisationSoDdefectNLS = NLS {
+	directfilter [en "Accounts whom owners are direct members of {0}" fr "Comptes dont les membres sont des membres directs de {0}"]
+	subfilter [en "Accounts whom owners are direct or indirect members of {0}" fr "Comptes dont les membres sont des membres directs ou indirects de {0}"]
+	tooltip [en "This tile presents SoD defects for a given business activity and organisation\nit presents all the SoD defects found for this business activity within the organisation\nyou can also ask for risk details information for a given defect"
+			 fr "Cette tuile présente la liste des problèmes de SoD pour une activité métier et une organisation données\nelle affiche l'ensemble des problèmes de SoD trouvés pour cette activité métier et cette organisation\nvous pouvez faire un clic droit sur la table pour afficher des colonnes supplémentaires\nvous pouvez aussi afficher des informations sur les risques associés à un problème donné"
+			]
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the SoD defects identity list associated with a business activity for a given organisation
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the permission uid</li>
+ * <li><b>inorganisationuid </b>the organisation uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable details option (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbdefects </b>the number of defects found</li>
+ * </ul>
+ * </span>
+ */
+fragmentBusinessActivityOrganisationSoDdefect = PageFragment {
+	feature:sod_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+
+	outnbdefects = Variable
+	
+	selectedIdentity = Variable 
+	selectedcontroldescription = Variable
+	selectedriskdescription = Variable
+	selectedmitigation = Variable
+
+	showriskdetails = Variable { type:Boolean initial:False }
+
+	currentbauid = Variable	
+	currentiduid = Variable	
+	
+	content = Dataset {
+		view: bwf_baorganisationsodDefects with
+			inuid to uid,
+			inorganisationuid to organisationuid,
+			inonlydirectselection to directonly
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		count-variable: outnbdefects
+	}
+	
+	organisation = Record {
+		view: br_organisationDetail with inorganisationuid to uid
+	}
+
+	goBusinessActivityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_businessActivityDetailsDialog(currentbauid to inuid,
+												currentiduid to inidentityuid,
+												False to inshowaccounts,
+												False to inshowperorg,
+												False to inshowperjob,
+												False to inshowsoddefects,
+												False to inshowcontrols,
+												False to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(currentiduid to inuid,
+												True to inshowapplications,
+												True to inshowaccounts,
+												True to inshowbusinessactivities,
+												True to inshowcontrols,
+												True to inshowoverallocated,
+												True to inshowposition,
+												True to inshowdecisionhistory,
+												True to inshowrisks,
+												True to inshowshares,
+												True to inshowtheoretical,
+												True to inshowusages
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentBusinessActivityOrganisationSoDdefectNLS.directfilter(organisation.displayname)
+		hidden:Not BooleanPredicate(inonlydirectselection)
+	}
+	Header {
+		value:$fragmentBusinessActivityOrganisationSoDdefectNLS.subfilter(organisation.displayname)
+		hidden:BooleanPredicate(inonlydirectselection)
+	}
+	ConditionalGroup {
+		IntCondition(Count content) {
+			when =0 then [
+				Header {
+					value:$fragmentBusinessActivitySoDdefectNLS.empty
+					styling:bigTitleStyle
+				}				
+			]
+			otherwise [
+				Grid {
+					columns:GridColumn,GridColumn,GridColumn
+					GridRow {
+						height:grow
+						GridCell {
+							span:3									
+			
+							Checkbox {
+								variable:showriskdetails
+								text:$fragmentBusinessActivitySoDdefectNLS.showdetails
+								hidden:Not BooleanPredicate(incanshowdetails)
+							}
+							Table {
+								data:content
+								layout:Layout { grab: horizontal True vertical True }
+								configurable:True
+								show-count:True
+								show-filter:True
+							
+								Column {
+									column:risklevel
+									sortable:True
+									width:96px
+									header:$fragmentBusinessActivitySoDdefectNLS.risklevel
+									image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+								}
+								Column {
+									column:controlcode
+									header:$fragmentBusinessActivitySoDdefectNLS.controlcode
+									initially-masked:True
+								}
+								Column {
+									column:controldisplayname
+									header:$fragmentBusinessActivitySoDdefectNLS.controlname
+									initially-masked:True
+								}
+								Column {
+									column:key1code
+									initially-masked:True
+									header:$fragmentBusinessActivitySoDdefectNLS.activity1code
+									filterable:True
+									sortable:True
+									actions:Set Current identityuid to currentiduid, Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+								}
+								Column {
+									column:key1displayname
+									header:$fragmentBusinessActivitySoDdefectNLS.activity1name
+									filterable:True
+									sortable:True
+									width:100%
+									actions:Set Current identityuid to currentiduid, Set Current key1uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+								}
+								Column {
+									column:key2code
+									initially-masked:True
+									header:$fragmentBusinessActivitySoDdefectNLS.activity2code
+									filterable:True
+									sortable:True
+									actions:Set Current identityuid to currentiduid, Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+								}
+								Column {
+									column:key2displayname
+									header:$fragmentBusinessActivitySoDdefectNLS.activity2name
+									filterable:True
+									sortable:True
+									width:100%
+									actions:Set Current identityuid to currentiduid, Set Current key2uid to currentbauid, ExecuteNamedAction goBusinessActivityDetails
+								}
+			
+								Column {
+									column:identityuid
+									hidden:True
+									selection:selectedIdentity
+								}
+								Column {
+									column:identityhrcode
+									header:$identity.hrcode
+									filterable:True
+									sortable:True
+									actions:Set Current identityuid to currentiduid, ExecuteNamedAction goIdentityDetails
+								}
+								Column {
+									column:identityfullname
+									header:$identity.fullname
+									filterable:True
+									sortable:True
+									width:100%
+									actions:Set Current identityuid to currentiduid, ExecuteNamedAction goIdentityDetails
+								}
+								Column {
+									column:identitymail
+									header:$identity.mail
+									initially-masked:True
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:identityinternal
+									header:$identity.internal
+									initially-masked:True
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:identityactive
+									header:$identity.active
+									initially-masked:True
+									filterable:True
+									sortable:True
+								}
+								Column {
+									column:controldescription
+									hidden:True
+									header:$fragmentBusinessActivitySoDdefectNLS.controldescription
+									selection:selectedcontroldescription
+								}
+								Column {
+									column:riskinfo
+									hidden:True
+									header:$fragmentBusinessActivitySoDdefectNLS.riskinfo
+									selection:selectedriskdescription
+								}
+								Column {
+									column:suggestedmitigation
+									hidden:True
+									header:$fragmentBusinessActivitySoDdefectNLS.mitigation
+									selection:selectedmitigation
+								}
+							}
+						}								
+					}
+					GridRow {
+						height:120
+						hidden:Not BooleanPredicate(showriskdetails)
+						GridCell {
+							Text {
+								value:selectedcontroldescription
+								layout:Layout {grab:horizontal True vertical True}
+								label:Label {value:$fragmentBusinessActivitySoDdefectNLS.controldescription break:True }
+								hidden:Not BooleanPredicate(showriskdetails)
+								lines:5
+							}									
+						}								
+						GridCell {
+							Text {
+								value:selectedriskdescription
+								layout:Layout {grab:horizontal True vertical True}
+								label:Label {value:$fragmentBusinessActivitySoDdefectNLS.riskdescription break:True }
+								hidden:Not BooleanPredicate(showriskdetails)
+								lines:5
+							}									
+						}								
+						GridCell {
+							Text {
+								value:selectedmitigation
+								layout:Layout {grab:horizontal True vertical True}
+								label:Label {value:$fragmentBusinessActivitySoDdefectNLS.mitigation break:True }
+								hidden:Not BooleanPredicate(showriskdetails)
+								lines:5
+							}									
+						}								
+					}
+				}
+			]
+		}
+	}
+}

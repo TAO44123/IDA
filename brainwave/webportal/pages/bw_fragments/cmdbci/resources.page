@@ -1,0 +1,227 @@
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+
+bwfCmdbciDetailsManager_Dialog_NLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel process creation?" fr "Annuler la création du processus ?"]
+	complete.buttontext [en "Start process" fr "Initier le processus"]
+	complete.confirm [en "Start process?" fr "Démarrer le processus ?"]
+	complete.flashmessage [en "Process started" fr "Processus démarré"]
+	title [en "Add a new CMDB CI manager" fr "Ajouter un nouveau responsable d''élément CMDB"]
+	removetitle [en "Remove CMDB CI manager" fr "Supprimer le responsable d''élément CMDB"]
+	dynamictitle [en "Update CMDB CI manager for \"{0}\"" fr "Mettre à jour le reponsable de l''élément CMDB \"{0}\""]
+	managerhrcode [en "Current manager HR code" fr "Matricule du responsable actuel"]
+	managerfullname [en "Current manager fullname" fr "Nom du responsable actuel"]
+	newmanagerconfirm [en "Are you sure that you want to add {0} {1} as the {2} of the {3} CMDB CI?" fr "Êtes-vous sûr de vouloir ajouter {0} {1} en tant que {2} de l''élément CMDB {3}?"]
+	newmanagerremove [en "Are you sure that you want to remove {0} {1} as the {2} of the {3} CMDB CI?" fr "Êtes-vous sûr de vouloir supprimer {0} {1} en tant que {2} de l''élément CMDB {3}?"]
+	confirmupdate [en "Your request has been received successfully" fr "Votre demande a bien été prise en compte"]
+	removeupdate [en "Your request has been received successfully" fr "Votre demande a bien été prise en compte"]
+	
+	setmanager [en "Set a manager for this CMDB CI" fr "Assigner un responsable pour cet élément CMDB"]
+	removemanager [en "Remove the current manager" fr "Supprimer le responsable actuel"]
+	
+	manageraudittrail [en "View change history" fr "Voir l'historique des modifications"]
+
+	question [en "What do you want to do?" fr "Que voulez-vous faire ?"]	
+	changeinprogress [en "A change request is already in progress. Changes are disabled until the current request is complete" fr "Une demande de changement est déja en cours. Les demandes de changements sont désactivés tant que la demande est en cours"]
+	
+	managertype [en "Manager type" fr "Type de responsable"]
+}
+
+
+/**
+ * Add cmdbci manager
+ * 
+ */
+bwfCmdbciDetailsAddManager_Dialog = Dialog {
+	title: $bwfCmdbciDetailsManager_Dialog_NLS.title
+	buttons:[ 
+				OkButton {
+						disabled:StringPredicate(newmanagerUid) { when IsEmpty then True otherwise False }
+						actions:
+							Confirm $bwfCmdbciDetailsManager_Dialog_NLS.newmanagerconfirm( Transform newManager.hrcode using mayBeNullMapping, newManager.fullname, Transform newManagertype using bwfManagerTypeMapping, cmdbci.displayname),
+							Set newManagertype to task.managertype,
+							Set paramCmdbciUid to task.cmdbci,
+							Set newmanagerUid to task.manager,
+							Set newcomment to task.comments,
+							Set delegation to task.delegation,
+							Set _priority to task.delegationpriority,
+							Set _reason to task.delegationreason,
+							Set Date(startdate).valueLDAP to task.delegationbegindate,
+							Set Date(enddate).valueLDAP to task.delegationenddate,
+							Set 'create' to task.action,
+							TaskComplete task wait-end,
+							Flash Information $bwfCmdbciDetailsManager_Dialog_NLS.confirmupdate
+						}
+				CancelButton
+			]
+	width:800
+	height:430
+	
+	/* Parameters here */
+	paramCmdbciUid = Variable {type:String multivalued:False}
+
+	newManagertype = Variable {type:String multivalued:False initial:'businessowner' private:True}
+	newmanagerUid = Variable {type:String multivalued:False private:True}
+	newcomment = Variable {type:String multivalued:False private:True initial:' '}
+
+	delegation = Variable {type:Boolean multivalued:False private:True initial:False}
+	_priority = Variable {type:Integer multivalued:False private:True initial:0}
+	_reason = Variable {type:String multivalued:False private:True initial:' '}
+	startdate = Variable {type:Date multivalued:False private:True initial:Date.value}
+	enddate = Variable {type:Date multivalued:False private:True initial:Date.offset(10 years).value}
+	
+	/* Datasets and records here */
+	// Record for concept details
+	cmdbci = Record {
+		view: bwf_cmdbciDetail with paramCmdbciUid to uid
+	}
+	
+	newManager = Record {
+		view: br_identityDetail with newmanagerUid to uid
+	}
+
+	task = TaskRecord (create "bwf_updatecmdbcimanager")
+	
+	
+	/* Page content */
+	
+	Header {
+		value:$bwfCmdbciDetailsManager_Dialog_NLS.title
+		styling:bigTitleStyle
+	}
+	Separator {
+	}
+	Combo {
+		label:$bw_fragment_updateownerNLS.managertype
+		variable:newManagertype
+		layout:Layout { grab:horizontal False vertical False hint:width 160 }
+		options:Static {
+			Option {
+				text:$bw_fragment_updateownerNLS.businessowner
+				value:'businessowner'
+			}
+			Option {
+				text:$bw_fragment_updateownerNLS.technicalowner
+				value:'technicalowner'
+			}
+			Option {
+				text:$bw_fragment_updateownerNLS.reviewer
+				value:'areviewer'
+			}
+		}
+	}
+	Text {
+		label:$bw_fragment_updateownerNLS.manager
+		value:newManager.fullname
+		layout:Layout { grab:horizontal False vertical False hint:width 260 }
+		commands: Command {	
+				actions:Dialog identityPicker(newmanagerUid from outUid)
+            	icon:%concept_16.manager
+            	tooltip:$bw_fragment_updateownerNLS.managertooltip
+           }
+	}
+	Edit {
+		label:$bw_fragment_updateownerNLS.comments
+		variable:newcomment
+	}
+		Checkbox {
+			variable:delegation
+			label:$bw_fragment_updateownerNLS.delegatedmanager
+			tooltip:$bw_fragment_updateownerNLS.delegatedmanagertooltip
+			text:$bw_fragment_updateownerNLS.isdelegated
+		}
+	Group {
+		title:$bw_fragment_updateownerNLS.delegationdetails
+		Edit {
+			variable:_reason
+			label:$bw_fragment_updateownerNLS._reason
+			tooltip:$bw_fragment_updateownerNLS._reasontooltip
+			disabled:Not BooleanPredicate(delegation)
+		}
+		Spinner {
+			variable:_priority
+			label:$bw_fragment_updateownerNLS._priority
+		layout:Layout { grab:horizontal False vertical False hint:width 130 }
+			tooltip:$bw_fragment_updateownerNLS._prioritytooltip
+			minimum:0
+			maximum:9
+			disabled:Not BooleanPredicate(delegation)
+		}
+		/*
+		DateTime {
+			variable:startdate
+			layout:Layout { grab:horizontal False vertical False hint:width 160 }
+			label:$bw_fragment_updateownerNLS.begindate
+			type:Date
+			tooltip:$bw_fragment_updateownerNLS.begindatetooltip
+			disabled:Not BooleanPredicate(delegation)
+		}	
+		DateTime {
+			variable:enddate
+			layout:Layout { grab:horizontal False vertical False hint:width 160 }
+			label:$bw_fragment_updateownerNLS.enddate
+			tooltip:$bw_fragment_updateownerNLS.enddatetooltip
+			type:Date
+			disabled:Not BooleanPredicate(delegation)
+		}
+		*
+		*/
+	}
+}
+
+/**
+ * Remove application manager
+ * 
+ */
+bwfCmdbciDetailsRemoveManager_Dialog = Dialog {
+	title: $bwfCmdbciDetailsManager_Dialog_NLS.removetitle
+	buttons:[ 	OkButton (
+						Set paramManagerLinkRecorduid to task.managerlink,
+						Set paramCmdbciUid to task.cmdbci,
+						Set 'delete' to task.action,
+						TaskComplete task wait-end,
+						Flash Information $bwfCmdbciDetailsManager_Dialog_NLS.removeupdate
+				)
+				CancelButton 
+			]
+	width:600
+	height:200
+	
+	/* Parameters here */
+	paramCmdbciUid = Variable {type:String multivalued:False}
+	paramManagerUid = Variable {type:String multivalued:False}
+	paramManagerTypeCode = Variable {type:String multivalued:False initial:'businessowner'}
+	paramManagerLinkRecorduid = Variable {type:Integer multivalued:False}
+
+	/* variables here */
+	newmanagerUid = Variable {type:String multivalued:False}
+
+	task = TaskRecord (create "bwf_updatecmdbcimanager")
+
+	manager = Record {
+		view:br_identityDetail with paramManagerUid to uid
+	}
+	managertype = Record {
+		view:bwf_managertype with paramManagerTypeCode to expertisedomaincode
+	} 
+	cmdbci = Record {
+		view:bwf_cmdbciDetail with paramCmdbciUid to uid
+	} 
+
+	Text {
+		value:$bwfCmdbciDetailsManager_Dialog_NLS.newmanagerremove(Transform manager.hrcode using mayBeNullMapping, manager.fullname, Transform paramManagerTypeCode using bwfManagerTypeMapping, cmdbci.displayname)
+		lines: 2
+		layout: Layout { hint: height 120 }
+		compact:True
+	}
+
+} 
+

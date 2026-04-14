@@ -1,0 +1,247 @@
+LAST_RECON_TICKET = UserVariable { initial: 0 }
+LAST_MGR_TICKET = UserVariable { initial: 0 }
+LAST_PERMINFO_TICKET = UserVariable { initial: 0 }
+
+bwcdrm_cube_kpis_manager = PageFragment {
+
+   post-render-event: ExecuteNamedAction _doInit
+   periodic-actions: PeriodicAction {
+     actions: ExecuteNamedAction doCheckOrphanAccounts
+        , ExecuteNamedAction doCheckUpdateOrgsNoManager
+        , ExecuteNamedAction doCheckPermNoDoc
+     label: "check new tickets for scope"
+     period: 10
+   }
+   
+	in_scopeOrganisations = Variable { multivalued: True}	
+	in_scopePermRule = Variable
+	in_scopePermRuleEditCounter = Variable 
+
+   in_timeslotUID = Variable 
+   in_enable_cube = Variable { type: Boolean initial: False }
+   in_enable_scope = Variable { type: Boolean  initial: False}
+    
+	// kpi cube
+	out_nb_cubeOrgs= Variable { type: Integer } 
+	out_nb_cubeApps= Variable { type: Integer } 
+	out_nb_cubeIdentities= Variable { type: Integer } 
+	out_nb_cubePermissions= Variable { type: Integer } 
+	out_nb_cubeAccounts= Variable { type: Integer } 
+	out_nb_cubeRights= Variable { type: Integer }
+	out_nb_cubeIdentities_ext= Variable { type: Integer } 
+	out_prc_cubeIdentities_ext= Variable { type: Integer } 
+	out_nb_cubeIdentities_noorg= Variable { type: Integer } 
+	out_nb_cubeAccounts_orphan= Variable { type: Integer } 
+	out_nb_cubeOrgs_nomgr= Variable { type: Integer } 
+	out_nb_cubePerm_nodoc= Variable { type: Integer } 
+	
+		// kpis scope
+	out_nb_scopeOrgs= Variable { type: Integer } 
+	out_nb_scopePerms= Variable { type: Integer } 
+	out_nb_scopeIdentities= Variable { type: Integer } 	
+	out_nb_scopeIdentities_ext= Variable { type: Integer } 
+	out_nb_scopeAccounts= Variable { type: Integer } 
+	out_nb_scopeAccounts_orphan= Variable { type: Integer } 
+	out_nb_scopeOrgs_nomgr= Variable { type: Integer } 
+	out_nb_scopePerm_nodoc= Variable { type: Integer } 
+	
+/* Cube dataset */
+	cubeStats = Record {
+	  view: bwcdrm_cube_stats_md timeslot: in_timeslotUID 
+	  disabled: Eval "!in_enable_cube.get()"
+	}
+	
+	/* variable datasets */
+	cubeAccount_orphan = Dataset {
+	  view: bwcdrm_accounts_orphan timeslot: in_timeslotUID  
+	 // enable-cache: True
+	  count-variable: out_nb_cubeAccounts_orphan
+	  disabled: Eval "!in_enable_cube.get()"	  
+	}
+		
+	cubeAllorgs_nomanager = Dataset {
+	  view: bwcdrm_allorgs_nomanager timeslot: in_timeslotUID
+	//  enable-cache: True  
+	  count-variable: out_nb_cubeOrgs_nomgr
+	  disabled: Eval "!in_enable_cube.get()"
+	}
+
+	cubePerms_nodoc = Dataset {
+	  view: bwcdrm_perms_nodoc timeslot: in_timeslotUID  
+	 // enable-cache: True
+	  count-variable: out_nb_cubePerm_nodoc
+	  disabled: Eval "!in_enable_cube.get()"
+	}
+		
+	/* scope datasets */
+	// actual orgs, maybe be different from SCOPE list , if items are not found 
+	scopeOrganisations = Dataset {
+		view: bwcdrm_scope_orgs with in_scopeOrganisations to orgUids
+		count-variable: out_nb_scopeOrgs
+		disabled: Eval "!in_enable_scope.get()"
+	}
+	
+	lastactivecampaign = Record {
+		view:bwcrm_campaigns with "True" to active unless-empty
+	}
+		
+	scopePermissions = Dataset {
+      view: bwrm_permissions_inrules with in_scopePermRule to permRules, in_scopePermRuleEditCounter to inc
+      count-variable: out_nb_scopePerms
+      disabled: Eval "!in_enable_scope.get()"
+    }	
+    
+   scopeIdentities = Dataset {
+      view: bwcdrm_scope_identities with in_scopeOrganisations to orgUids
+      enable-cache: True
+      count-variable: out_nb_scopeIdentities
+      disabled: Eval "!in_enable_scope.get()"
+    }
+    
+    scopeIdentitiesExt = Dataset {
+      view: bwcdrm_scope_identities_ext with in_scopeOrganisations to orgUids
+      count-variable: out_nb_scopeIdentities_ext
+      disabled: Eval "!in_enable_scope.get()"
+    }		
+    
+	/* variable datasets */
+	scopeAccount = Dataset {
+	  view: bwcdrm_scope_accounts with in_scopePermRule to permRules, in_scopePermRuleEditCounter to inc
+	  enable-cache: True
+	  count-variable: out_nb_scopeAccounts
+	  disabled: Eval "!in_enable_scope.get()"	  
+	}
+	
+	scopeAccount_orphan = Dataset {
+	  view: bwcdrm_scope_accounts_orphan with in_scopePermRule to permRules , in_scopePermRuleEditCounter to inc
+	  enable-cache: True
+	  count-variable: out_nb_scopeAccounts_orphan 
+	  disabled: Eval "!in_enable_scope.get()"	  
+	}
+		
+	scopeAllorgs_nomanager = Dataset {
+	  view: bwcdrm_scope_orgs_nomgr with in_scopeOrganisations to orgUids
+	  enable-cache: True  
+	  count-variable: out_nb_scopeOrgs_nomgr
+	  disabled: Eval "!in_enable_scope.get()"
+	}
+
+	scopePerms_nodoc = Dataset {
+	  view: bwcdrm_scope_perms_nodoc with in_scopePermRule to permRules , in_scopePermRuleEditCounter to inc 
+	  enable-cache: True
+	  count-variable: out_nb_scopePerm_nodoc
+	  disabled: Eval "!in_enable_scope.get()"
+	}
+    
+    /* check datasets */
+    
+    newReconTicket = Record {
+	  view: bwcdrm_checknewticket with UserVariable LAST_RECON_TICKET to lastnumber, "RECONCILIATION" to tickettype
+	}
+	
+	newOrgManagerTicket = Record {
+	  view: bwcdrm_checknewticket with UserVariable LAST_MGR_TICKET to lastnumber, "ORGANISATIONMANAGER" to tickettype
+	}	
+	
+	newPermDocTicket = Record {
+	  view: bwcdrm_checknewticket with UserVariable LAST_PERMINFO_TICKET to lastnumber, "SHAREDFOLDERMETADATA" to tickettype
+	}
+	
+	
+
+doCheckOrphanAccounts = NamedAction (
+  If in_enable_scope [
+	 ReloadData (newReconTicket),
+	  IntCase( newReconTicket.ticketnumber){
+	    when >= 0 then [
+	      Set newReconTicket.ticketnumber to UserVariable LAST_RECON_TICKET
+	    //  ,ReloadData( cubeAccount_orphan)
+	      ,ReloadData( scopeAccount_orphan)
+	     // , Flash Concat( "New recon:", UserVariable LAST_RECON_TICKET)
+	    ]
+	  }    
+  ]
+ 
+)
+
+doCheckUpdateOrgsNoManager = NamedAction (
+  If in_enable_scope [
+	  ReloadData (newOrgManagerTicket),
+	  IntCase( newOrgManagerTicket.ticketnumber){
+	    when >= 0 then [
+	      Set newOrgManagerTicket.ticketnumber to UserVariable LAST_MGR_TICKET
+	    //  ,ReloadData( cubeAllorgs_nomanager)
+	      ,ReloadData( scopeAllorgs_nomanager)
+	     // , Flash Concat( "New org manager :", UserVariable LAST_RECON_TICKET)
+	   ]
+	  } 
+  ] 
+)
+
+doCheckPermNoDoc = NamedAction (
+	If in_enable_scope [
+	  ReloadData (newPermDocTicket),
+	  IntCase( newPermDocTicket.ticketnumber){
+	    when >= 0 then [
+	      Set newPermDocTicket.ticketnumber to UserVariable LAST_PERMINFO_TICKET
+	    //  , ReloadData( cubePerms_nodoc)
+	      , ReloadData( scopePerms_nodoc)
+	     // , Flash Concat( "New perm doc :", UserVariable LAST_PERMINFO_TICKET)
+	   ]
+	  } 
+  ]
+)	
+   
+_doInit = NamedAction (
+	
+      // cube 	
+      Set cubeStats.nb_orgs to out_nb_cubeOrgs
+	   , Set cubeStats.nb_identities to out_nb_cubeIdentities
+	   , Set cubeStats.nb_apps to out_nb_cubeApps
+	   , Set cubeStats.nb_permissions to out_nb_cubePermissions
+	   , Set cubeStats.nb_accounts to out_nb_cubeAccounts
+	   , Set cubeStats.nb_rights to out_nb_cubeRights	
+	   , Set cubeStats.nb_identities_ext to out_nb_cubeIdentities_ext
+	   , Set cubeStats.prc_identities_ext to out_prc_cubeIdentities_ext
+	   , Set cubeStats.nb_identities_noorg to out_nb_cubeIdentities_noorg
+	   
+ )
+
+/* DEBUG AREA  */
+	 
+	//   uncomment for debug 
+/*Text { value: UserVariable LAST_RECON_TICKET label: "Last Recon Ticket"}
+Text { value: UserVariable LAST_MGR_TICKET label: "Last Org Manager Ticket"}
+Text { value: UserVariable LAST_PERMINFO_TICKET label: "Last Perm info Ticket"}
+ 
+Text { value: in_enable_cube label: 'enable cube'}
+Text { value: cubeStats.nb_orgs label: 'nb_cubeOrgs'}
+Text { value: out_nb_cubeApps label: 'nb_cubeApps'}
+Text { value: out_nb_cubeIdentities label: 'nb_cubeIdentities'}
+Text { value: out_nb_cubePermissions label: 'nb_cubePermissions'}
+Text { value: out_nb_cubeAccounts label: 'nb_cubeAccounts'}
+Text { value: out_nb_cubeRights label: 'nb_cubeRights'}
+Text { value: out_nb_cubeIdentities_ext label: 'nb_cubeIdentities_ext'}
+Text { value: out_prc_cubeIdentities_ext label: 'prc_cubeIdentities_ext'}
+Text { value: out_nb_cubeIdentities_noorg label: 'nb_cubeIdentities_noorg'}
+Text { value: out_nb_cubeAccounts_orphan label: 'nb_cubeAccounts_orphan'}
+Text { value: out_nb_cubeOrgs_nomgr label: 'nb_cubeOrgs_nomgr'}
+Text { value: out_nb_cubePerm_nodoc label: 'nb_cubePerm_nodoc'}
+
+// scope
+Text { value: in_enable_scope label: 'enable scope'}
+Text { value: out_nb_scopeOrgs label: 'nb_scopeOrgs'}
+Text { value: out_nb_scopeIdentities label: 'nb_scopeIdentities'}
+Text { value: out_nb_scopePerms label: 'nb_scopePerms'}
+Text { value: out_nb_scopeIdentities_ext label: 'nb_scopeIdentities_ext'}
+Text { value: out_nb_scopeAccounts_orphan label: 'nb_scopeAccounts_orphan'}
+Text { value: out_nb_scopeOrgs_nomgr label: 'nb_scopeOrgs_nomgr'}
+Text { value: out_nb_scopePerm_nodoc label: 'nb_scopePerm_nodoc'} 
+*/
+
+
+} 
+
+
+
+  

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwaccess360_reviewsandremediation" prefix="review" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketreview" displayname="applicationaccessrightsforcampaign" notes="">
+	<ViewParam name="campaignid" displayname="campaign id" type="String"/>
+	<ViewParam name="revieweruid" displayname="reviewer uid" type="String"/>
+	<ViewParam name="filterbyreviewstatus" displayname="filter by review status" type="String"/>
+	<ViewParam name="filterbyapplications" displayname="filterbyapplications" type="String"/>
+	<ViewParam name="filterbyremediationstatus" displayname="filterbyremediationstatus" type="String"/>
+	<ViewParam name="filterbyclosedstatus" displayname="filterbyclosedstatus" type="String"/>
+	<ViewParam name="minus90days" displayname="minus90days" type="Integer" defaultvalue="{(new Date()).add(&apos;d&apos;,-90).getTime()/(1000*3600*24)}"/>
+	<ViewParam name="filterolderthan90days" displayname="filterolderthan90days" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="remediationclosed" displayname="remediationclosed" type="String"/>
+	<ViewParam name="currenttimeslot" displayname="current timeslot" type="String"/>
+	<ViewParam name="filterbylogins" displayname="filterbylogins" type="String"/>
+	<ViewParam name="minus7day" displayname="minus7day" type="Integer" defaultvalue="{(new Date()).add(&apos;d&apos;,-7).getTime()/(1000*3600*24)}"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1647869749741_774" attribute="status" operator="or" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1626445051749_0" reference="filterbyreviewstatus" operation="in" ignoreifempty="true"/>
+	</ViewAttribute>
+	<ViewAttribute name="1647869749742_775" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1647869749743_776" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1647869749743_777" attribute="actorfullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1647869749743_778" attribute="actiondate" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1626349948708_454" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketaction">
+		<ViewJoin name="J1626349950948_455" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+			<ViewAttribute name="1647869749744_779" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1626620234166_0" operation="in" ignoreifempty="false">
+					<Value name="0" data="ADHOC_UAR"/>
+					<Value name="1" data="ADHOC_REMEDIATION"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+			<ViewAttribute name="1647869749745_780" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1630309887906_0" reference="campaignid" operation="eq" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewJoin name="J1626348416358_424" prefix="reviewer" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="actor">
+		<ViewAttribute name="1647869749747_781" attribute="fullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1647869749747_782" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1626350257910_0" reference="revieweruid" operation="eq" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewAttribute name="1647869749747_783" attribute="hrcode" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1647869749748_784" attribute="mail" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewJoin name="J1627204958525_2042" prefix="remediation" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="remediations">
+		<ViewJoin name="J1627204971882_2043" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketAction">
+			<ViewJoin name="J1627204974792_2044" prefix="remediation" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+				<ViewAttribute name="1647869749752_785" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1647869749752_786" attribute="status" operator="or" removedfromprojection="false" globalfilter="false">
+					<ViewAttributeFilter name="F1627205055057_0" reference="filterbyremediationstatus" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="1647869749752_787" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1647869749753_788" attribute="actiondate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1647869749753_789" attribute="custom2" alias="remediationclosed" operator="or" removedfromprojection="false" globalfilter="false">
+					<ViewAttributeFilter name="F1628267912216_0" reference="remediationclosed" operation="eq" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="1647869749755_790" attribute="custom3" alias="remediationtype" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1647869749759_792" attribute="custom2" alias="remediationclosed" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1627477170869_0" reference="filterbyclosedstatus" operation="eq" ignoreifempty="true">
+						<Value name="0" data=""/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+				<ViewAttribute name="1647869749761_793" attribute="custom4" alias="timeslot" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1629737982856_0" reference="currenttimeslot" operation="lt" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="1647869749763_794" attribute="actoruid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1647869749763_795" attribute="actorfullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1655297802597_6562" attribute="custom5" alias="remediationitsmticketnumber" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1655297805223_6565" attribute="custom8" alias="remediationitsmlink" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1655739418055_1446" attribute="custom7" alias="remediationinstance" displayname="remediationinstance" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewAttribute name="1647869749763_796" attribute="submissiondate" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1647869749765_797" attribute="submissionday" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.filterolderthan90days.get()">
+			<ViewAttributeFilter name="F1628236179480_0" reference="minus90days" operation="gt" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="1671276497746_1516" attribute="submissionday" operator="or" removedfromprojection="true" globalfilter="false" enabled="&quot;active7days&quot;.equals(param.filterbyclosedstatus.get())">
+			<ViewAttributeFilter name="F1628180181663_0" reference="minus7day" operation="lt" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewAttribute name="A1647869787460_798" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1647870535757_799" attribute="custom4" alias="reviewtype" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewNote name="N1655297821579_6566" displayname="custom1 : printable label&#xA;custom2: 0 = ticket open, 1 = ticket closed, done, 2 = ticket closed, cancel&#xA;custom3: embedded / itsm&#xA;custom4: timeslotuid when the last remediation ticket update has been made&#xA;custom5&#x9;External reference (Displayable Ticket Number)&#xA;custom6&#x9;External reference (internal infos)&#xA;custom7&#x9;External system instance&#xA;custom8&#x9;External system hyperlink" x="711" y="754" width="486" height="300"/>
+</View>

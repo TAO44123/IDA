@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa360_rolessodproblems" displayname="rolessodproblems">
+	<Definition scriptfile="views/bw_access360/portalreports/control/sod/matrixkeypair.javascript" name="D1557922742047">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1557922742047" title="sod problems 1 per roles">
+			<InnerView name="bwa360_rolessodproblems1">
+				<Param name="F1557922950303" viewparam="role_uid" viewparamvalue="{param.roleuid}"/>
+				<Param name="F1646734991555" viewparam="applicationuid" viewparamvalue="{param.applicationuid.get()}"/>
+				<Param name="F1646910533988" viewparam="minimumRiskLevel" viewparamvalue="{param.minimumRiskLevel.get()}"/>
+				<Param name="F1758018850985" viewparam="ownedPermissionsOnly" viewparamvalue="{param.ownedPermissionsOnly.get()}"/>
+				<Param name="F1758018857090" viewparam="permissionOwnerUid" viewparamvalue="{param.permissionOwnerUid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1557922781033" type="unionview" x="689" y="184" w="300" h="50" title="sod problems 2 per roles">
+			<InnerView name="bwa360_rolessodproblems2">
+				<Param name="F1557922961118" viewparam="role_uid" viewparamvalue="{param.roleuid}"/>
+				<Param name="F1646735003732" viewparam="applicationuid" viewparamvalue="{param.applicationuid.get()}"/>
+				<Param name="F1646910541002" viewparam="minimumRiskLevel" viewparamvalue="{param.minimumRiskLevel.get()}"/>
+				<Param name="F1758018865729" viewparam="ownedPermissionsOnly" viewparamvalue="{param.ownedPermissionsOnly.get()}"/>
+				<Param name="F1758019347706" viewparam="permissionOwnerUid" viewparamvalue="{param.permissionOwnerUid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="sodproblems1" secondary_discriminator="sodproblems2" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1557922781216" source="C1557922742047" target="C1557922781033" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1757667285885" type="joinview" x="350" y="316" w="300" h="50" enable="{param.sodmatrixuid.get()!=null}" title="filter on sod matrix">
+			<InnerView name="bwa360_rolesodproblemsmatrix">
+				<Param name="F1757667735617" viewparam="uid" viewparamvalue="{param.sodmatrixuid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.controldisplayname.get()}" key2="{dataset.permission_pair_controldisplayname.get()}"/>
+			<FilterList>
+				<Filter name="F1757667767077" expression="dataset.matrix_uid.get()==null" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1757667286135" source="C1557922781033" target="C1757667285885" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="roleuid" displayname="roleuid"/>
+	<ViewParam name="applicationuid" displayname="applicationuid"/>
+	<ViewParam name="minimumRiskLevel" displayname="minimumRiskLevel" type="Integer"/>
+	<ViewParam name="sodmatrixuid" displayname="sodmatrixuid" type="String"/>
+	<ViewParam name="permissionOwnerUid" displayname="permissionOwnerUid" type="String">
+	</ViewParam>
+	<ViewParam name="ownedPermissionsOnly" displayname="ownedPermissionsOnly" type="Boolean">
+	</ViewParam>
+</View>

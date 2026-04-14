@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="safevault_access_dormant_accounts" prefix="account_" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="safe access dormant accounts" notes="" begindate="" enddate="">
+	<ViewParam name="datelimit" displayname="datelimit" defaultvalue="{ new Date( new Date().getTime() - ((config.dormant_accounts_nbdays != &quot;&quot; ? parseInt(config.dormant_accounts_nbdays) : 180) * (24*60*60*1000) ) ).toLDAPString() }"/>
+	<ViewParam name="type" displayname="type">
+		<Value name="0" data="safe"/>
+	</ViewParam>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1617916031409_3769" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1617916031432_3771" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1617379773761_1" operation="isFalse" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1617379782310_1" operation="isNull" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="1617916031435_3773" attribute="login" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1620218499229_898" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="bw_pam_userrefaccount_join_metadatavalue">
+		<ViewJoin name="J1620218504642_899" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+			<ViewAttribute name="A1620218527848_900" attribute="lastlogindate" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1620218529959_0" reference="datelimit" operation="lt" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewJoin name="J1617380037217_3195" prefix="perm_safe_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.type.get()== &quot;safe&quot;" join="permissionright">
+		<ViewJoin name="J1617196756304_408" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="1736980840336_578" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1736980840336_579" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1666715132456_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="ca_safe"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="1736980840336_580" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1736980840336_581" attribute="code" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1617196699998_0" operation="eq" ignoreifempty="false">
+				<Value name="0" data="useAccounts"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1617380037217_3195" prefix="perm_vault_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.type.get()== &quot;vault&quot;" join="permissionright">
+		<ViewJoin name="J1617196756304_408" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="1736980852749_586" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1666715113403_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="ca_vault"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="1736980852749_587" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewAttribute name="1753808869805_535" attribute="custom6" operator="or" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1753808784882_0" operation="notIn" ignoreifempty="false">
+			<Value name="0" data="Not Invited"/>
+			<Value name="1" data="Suspended"/>
+		</ViewAttributeFilter>
+		<ViewAttributeFilter name="F1757430503036_1" operation="isNull" ignoreifempty="false"/>
+	</ViewAttribute>
+</View>

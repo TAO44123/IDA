@@ -1,0 +1,182 @@
+import "/webportal/pages/bw_iasreview/nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_iasreview/dialogs/missingReviewers.page"
+import "/webportal/pages/bw_iasreview/resources.page"
+import "/webportal/pages/bw_iasreview/review/application/accessrightsreviewcampaignstatus.page"
+
+/**
+ * Display a warning if there are missing reviewers
+ * i.e. people with tickets assigned to them that are not in the latest timeslot
+ * Those tickets need to be reassigned 
+ */
+bw_ias_review_missingReviewers = PageFragment {
+	// Should be launched from the caller page using an ExecuteFragmentNamedAction.checkMissingAccountables
+//	enter-event:
+//		ExecuteNamedAction checkMissingAccountables
+	
+	campaignTicketLogRecordUid = Variable { type: Integer }
+	enabled = Variable { type: Boolean initial: False }
+	
+	// List of missing accountables
+	missingAccountables = Variable { type: String multivalued: True }
+	// List of missing responsibles
+	missingResponsibles = Variable { type: String multivalued: True }
+	// List of missing reviewers (accountables + responsibles)
+	missingReviewers = Variable { type: String multivalued: True }
+	
+	// The two timeslots we need to compare reviewers with
+	// Campaign timeslot
+	campaignTs = Variable { type: String }
+	// Latest timeslot
+	latestTs = Variable { type: String }
+	// Check if the campaign stick to a timeslot (but it does not matter : if reviewers are gone, they won't be able to connect to the portal !)
+	stickToTimeslot = Variable { type: Boolean }
+	// Filter on missing entries reviewers (accountables + responsibles)
+	filterMissingReviewers = Variable { type: Boolean initial: False }
+	// Source page (to have distinct actions depending on where this widget is used
+	// Review status -> dialog with the list of missing reviewers
+	// Entries to review -> filter on entries with missing reviewers
+	source = Variable { type: String }
+	// Active tab in the review management page
+	activeTab = Variable { type: String }
+	
+	campaign = Record {
+		view: bwaccess360_accessreviewcampaigns with
+			campaignTicketLogRecordUid to campaignid,
+			"bw_ias_review_missingReviewers" to caller
+	}
+	
+	missingAccountables = Dataset {
+		view: bwa_review_reviewersList_accountable with
+			campaignTicketLogRecordUid to campaignTicketLogRecordUid
+		timeslot: latestTs
+		includes:
+			StringPredicate ( Current acc_idt_uid ) {
+				when IsEmpty then True
+			}
+		disabled:
+			Not BooleanPredicate ( enabled )
+	}
+	
+	missingResponsibles = Dataset {
+		view: bwa_review_reviewersList_responsible with
+			campaignTicketLogRecordUid to campaignTicketLogRecordUid
+		timeslot: latestTs
+		includes:
+			StringPredicate ( Current res_idt_uid ) {
+				when IsEmpty then True
+			}
+		disabled:
+			Not BooleanPredicate ( enabled )
+	}
+	
+	lastTimeslot = Record {
+		view: bwa_review_latestTimeslot
+	}
+	
+	updateTimeslots = NamedAction (
+		Set campaign.stickytimeslot to stickToTimeslot,
+		Set campaign.timeslotuid to campaignTs,
+		Set lastTimeslot.uid to latestTs
+	)
+	
+	missingAccountables = NamedAction (
+		TransferData missingAccountables ( accountableuid ) to ( missingAccountables )
+	)
+	
+	missingResponsibles = NamedAction (
+		TransferData missingResponsibles ( actoruid ) to ( missingResponsibles )
+	)
+	
+	missingReviewers = NamedAction (
+		MultivaluedAdd missingAccountables to missingReviewers,
+		MultivaluedAdd missingResponsibles to missingReviewers,
+		MultivaluedDistinct missingReviewers
+	)
+	
+	// Responsibles + accountables
+	checkMissingReviewers = NamedAction (
+		ExecuteNamedAction updateTimeslots,
+		ExecuteNamedAction missingAccountables,
+		ExecuteNamedAction missingResponsibles,
+		ExecuteNamedAction missingReviewers
+	)
+	
+	// Reviewers (responsibles + accountables)
+	Grid {
+		columns:
+			GridColumn {},
+			GridColumn {},
+			GridColumn {}
+		hidden:
+			IntPredicate ( SizeOf missingReviewers ) {
+				when = 0 then True
+			}
+		GridRow {
+			GridCell {
+				Group {
+					Text {
+						value: $bw_ias_review_missingReviewers.missingReviewersWarning.nb( SizeOf missingReviewers )
+						tooltip: $bw_ias_review_missingReviewers.missingReviewersTt
+						compact: True
+						styling: warningFieldStyle
+						align: Left
+						layout: Layout { align: horizontal Beginning vertical Center grab: horizontal True vertical False hint: minimal: width 300 }
+					}
+				}
+			}
+			GridCell {
+				ButtonGroup {
+					align: Center
+					uniform: True
+					Button {
+						text: $bw_ias_review_missingReviewers.show
+						tooltip: $bw_ias_review_missingReviewers.showTt.reviewers
+						image: "16/famfamfam_silk_icons_v013/application_view_columns.png"
+						presentation: Link
+						actions:
+							Dialog bw_ias_review_missingReviewers(
+								missingReviewers to missingReviewers,
+								campaignTs to campaignTs
+							)
+					}
+				}
+			}
+			GridCell {
+				ConditionalGroup {
+					StringCondition ( source ) {
+						when Constant bw_ias_review_missingReviewers_sourceStatus then [
+							ButtonGroup {
+								align: Center
+								uniform: True
+								Button {
+									text: $bw_ias_review_missingReviewers.filter
+									tooltip: $bw_ias_review_missingReviewers.filterTt
+									image: "16/famfamfam_silk_icons_v013/magnifier.png"
+									presentation: Link
+									actions:
+										Set True to filterMissingReviewers,
+										Set Constant tabIndex_EntriesToReview to activeTab
+								}
+							}
+						] otherwise [
+							Checkbox {
+								text: $bw_ias_review_missingReviewers.filter
+								tooltip: $bw_ias_review_missingReviewers.filterTt
+								variable: filterMissingReviewers
+								modify-event:
+									StringCase( source ) {
+										when Constant bw_ias_review_missingReviewers_sourceStatus then [
+											Set True to filterMissingReviewers,
+											Set Constant tabIndex_EntriesToReview to activeTab
+										]								
+									}
+							}
+						]
+					}
+				}
+			}
+		}
+	}
+}

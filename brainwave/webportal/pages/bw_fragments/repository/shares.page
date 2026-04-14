@@ -1,0 +1,211 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+
+fragmentRepositorySharesNLS = NLS {
+	noownercode [en "Technical account" fr "Compte technique"]
+	pdescription [en "Permission description" fr "Description de la permission"]
+	share [en "Share" fr "Partage"]
+	sharecode [en "Share code" fr "Code du partage"]
+	sharefamily [en "Share family" fr "Famille de partage"]
+	folder [en "Folder" fr "Répertoire"]
+	folderdepth [en "Folder depth" fr "Profondeur arborescence"]
+	aclonlylabel [en 'Display only folders with ACLs' fr 'Afficher seulement les partages avec des ACLs']
+	empty [en "Repository accounts don't have access to shares" fr "Les comptes de ce référentiel n'ont pas d'accès à des partages"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository shares
+ * (if at least one active account have access to a share, the share appears in this list)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outshareuid </b>the share uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryShares = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outshareuid = Variable
+
+	selectedFamily = Variable { type: String }
+	selectedApplication = Variable { type: String }
+
+	families = Dataset {
+		view: bwf_repositoryfsrightsfamily with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		excludes:
+			StringPredicate ( Current applicationfamily ) {
+				when IsEmpty then True
+			}
+	}
+
+	applications = Dataset {
+		view: bwf_repositoryfsrightsapplication with
+			inuid to uid,
+			selectedFamily to family unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	shares = Dataset {
+		view: bwf_repositoryshares with
+			inuid to uid,
+			selectedFamily to family unless-empty
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outshareuid to inuid,
+													True to inshowperjob,
+													True to inshowperorg
+												  )
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Grid {
+		columns: GridColumn, GridColumn, GridColumn, GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical False hint: height 32 }
+		GridRow {
+			GridCell {
+				Combo {
+					variable: selectedFamily
+					allow-none: True
+					label: $fragmentRepositorySharesNLS.sharefamily
+					layout: Layout { hint: width 120 }
+					options:
+						Dynamic {
+							data: families
+							text: Current applicationfamily
+							value: Current applicationfamily
+						}
+					disabled:
+						IntPredicate ( Count families ) {
+							when < 1 then True
+						}
+				}	
+			}
+			GridCell {
+			}
+			GridCell {
+			}
+			GridCell {
+			}
+		}
+	}
+	ConditionalGroup {
+		IntCondition(Count shares) {
+			when =0 then [
+				Header {
+					value:$fragmentRepositorySharesNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:shares
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+
+					Column {
+						column:applicationuid
+						hidden:True
+						selection:outshareuid
+					}
+			
+					Column {
+						column:applicationapplicationfamily
+						header:$fragmentRepositorySharesNLS.sharefamily
+						sortable:True
+						filterable:True
+						width:128px
+					}
+					Column {
+						column:applicationcode
+						header:$fragmentRepositorySharesNLS.sharecode
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+						
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:applicationdisplayname
+						header:$fragmentRepositorySharesNLS.share
+						sortable:True
+						filterable:True
+						width:100%
+
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}	
+}

@@ -1,0 +1,79 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+selfrevokepepermrequest_startNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel process creation ?" fr "Annuler la création du processus ?"]
+	//complete.buttontext [en "Start process" fr "Initier le processus"]
+	complete.buttontext [en "Confirm" fr "Confirmer"]
+	complete.confirm [en "Start process ?" fr "Démarrer le processus ?"]
+	complete.flashmessage [en "Process started" fr "Processus démarré"]
+	title [en "Start" fr "Start"]
+	_permission [en "permission" fr "permission"]
+}
+
+
+selfrevokepermrequest_start = Page {
+	title: $selfrevokepepermrequest_startNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	
+	/* variables here */
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord (create "revoke_access_perm_request")
+	
+	permissionDataset = Dataset {
+		view: workflow_permissiondisplayname_all
+	}
+	
+	
+	/* Page content */
+	MultiEdit {
+		label: $selfrevokepepermrequest_startNLS._permission
+		
+		add-dialog: permissionPicker(task.permission to inExcludedUidList) returning outUid
+		Element {
+			variable: task.permission
+			filterable: True
+			display: Display {
+				data: permissionDataset match uid
+				value: Current displayname
+			}
+		}
+	}
+		
+	Group {
+		title: $selfrevokepepermrequest_startNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		ButtonGroup {
+			Button { 
+				text: $selfrevokepepermrequest_startNLS.cancel.buttontext
+				actions: Confirm $selfrevokepepermrequest_startNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: False
+				
+				text: $selfrevokepepermrequest_startNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $selfrevokepepermrequest_startNLS.complete.confirm, TaskComplete task, Flash Information $selfrevokepepermrequest_startNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+}
+

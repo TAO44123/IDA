@@ -1,0 +1,185 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/businessactivity/details/businessActivityDetails.page"
+
+fragmentOrganisationBusinessActivitiesNLS = NLS {
+	directonly [en "only this organisation" fr "seulement cette organisation"]
+	description [en "Description" fr "Description"]
+	empty [en "Identity doesn't have business activities" fr "Cette identité n'a pas d'activités métier"]
+	nbidentity [en "Nb identities" fr "Nb identités"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the organisation business activities
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails</b> activate/deactivate business activity details list through GUI</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationBusinessActivities = PageFragment {
+	feature:sod_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inonlydirectselection = Variable { multivalued:False }
+	outactivityuid = Variable
+	outactivitycode = Variable
+	outactivityname = Variable
+	
+	/* Datasets here */
+	data = Dataset {
+		view: bwf_organisationbusinessactivitieswprb with
+			inuid to uid,
+			inonlydirectselection to directonly
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: trend
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_businessActivityDetailsDialog(outactivityuid to inuid,
+												False to inshowaccounts,
+												True to inshoworganisationaccounts,
+												True to inshowperorg,
+												True to inshowperjob,
+												False to inshowsoddefects,
+												True to inshoworganisationsoddefects,
+												False to inshowcontrols,
+												False to inshowdecisionhistory,
+												inuid to inorganisationuid,
+												inonlydirectselection to inonlydirectselection
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Checkbox {
+		variable:inonlydirectselection
+		text:$fragmentOrganisationBusinessActivitiesNLS.directonly
+		tooltip:$bwfOrganisation.directonlytooltip
+	}
+	ConditionalGroup {
+		IntCondition(Count data) {
+			when =0 then [
+				Header {
+					value:$fragmentOrganisationBusinessActivitiesNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:data
+					layout:Layout {grab:horizontal True vertical True}
+					configurable:True
+					show-filter:True
+					show-count:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+				
+					Column {
+						column:uid
+						hidden:True
+						selection:outactivityuid
+					}
+					
+					Column {
+						column: hasproblem
+						text:''
+						header: ''
+						width: 28px
+						sortable: True
+						image:TemplateImageSelection(Current hasproblem) using bwf_warning
+					}
+
+					Column {
+						column:code
+						sortable:True
+						filterable:True
+						initially-masked:True
+						header:$permission.code
+						selection:outactivitycode
+						width:260px
+					}
+					
+					Column {
+						column:displayname
+						sortable:True
+						filterable:True
+						header:$permission.displayname
+						selection:outactivityname
+						width:100%
+						
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:description
+						sortable:True
+						filterable:True
+						initially-masked:True
+						header:$fragmentOrganisationBusinessActivitiesNLS.description
+						width:100%
+					}
+					Column {
+						column:trend
+						text:Transform Current trend using bwf_defaultsTo0
+						align:Right
+						sortable:True
+						header:$fragmentOrganisationBusinessActivitiesNLS.nbidentity
+						width:110px
+					}
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}																
+				}
+			]
+		}
+	}
+}

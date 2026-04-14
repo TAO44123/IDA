@@ -1,0 +1,304 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/sharedfolder/rightsInfos.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+fragmentGroupFSRightsNLS = NLS {
+	description [en "Description" fr "Description"]
+	alias [en "Alias" fr "Alias"]
+	slevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sreason [en "Sensitivity Reason" fr "Raison de sensibilité"]
+	lastmodifiedby [en "Last modified by" fr "Dernière modification par"]
+	lastmodificationdate [en "Last modification date" fr "Date de dernière modification"]
+	action [en "Full rights" fr "Ensemble des droits"]
+	basic [en "Rights" fr "Droits"]
+	directory [en "Directory" fr "Répertoire"]
+	
+	sharecode [en "Share code" fr "Code du partage"]
+	sharedisplayname [en "Share name" fr "Nom du partage"]
+	sharetype [en "Share type" fr "Type de partage"]
+	
+	permissiontype [en "Type" fr "Type"]
+	permissioncode [en "Path" fr "Chemin"]
+	permissiondisplayname [en "Name" fr "Nom"]
+
+	empty [en "Does not grant access to shares" fr "Ne donne pas accès à des partages"]
+	folderdepth [en "Folder depth" fr "Profondeur arborescence"]
+
+	trends [en "Changes" fr "Changements"]
+}
+
+fragmentGroupFSRightsPermissionType = StringMapping {
+	when 'D' then $fragmentGroupFSRightsNLS.directory
+	otherwise 'File'
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * List all group filesystem rights in a form of a Table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>group uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types (set to D by default)</li>
+ * <li><b>inapplicationtypes </b>optional, multivalued filtering of the permission types (set to Filesystem by default)</li>
+ * <li><b>inapplicationuids </b>optional, multivalued filtering on some applications only</li>
+ * <li><b>infolderdepth </b>optional, integer value, folder depth (3 by default)</li>
+ * <li><b>incanchangedepth </b>optional, integer value, can change folder depth (False by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to show folder details (False by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outSelectedpermissionuid </b>selected permission uid</li>
+ * <li><b>outSelectedpermissioncode </b>selected permission code</li>
+ * <li><b>outSelectedpermissionname </b>selected permission name</li>
+ * <li><b>outSelectedapplicationname </b>selected application name</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupAllFSRightsList = PageFragment {
+	feature:unstructureddata_license
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inpermissiontypes = Variable { multivalued:True type:String initial:['D'] }
+	inapplicationtypes = Variable { multivalued:True type:String initial:['Filesystem'] }
+	inapplicationuids= Variable { multivalued:True type:String }
+	infolderdepth = Variable { multivalued:False type:Integer initial:3 }
+	incanchangedepth = Variable { multivalued:False type:Boolean initial:False }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	
+	outSelectedpermissionuid = Variable
+	outSelectedpermissioncode = Variable
+	outSelectedpermissionname = Variable
+	outSelectedapplicationuid = Variable
+	outSelectedapplicationname = Variable
+	
+	/* Datasets here */
+	rights = Dataset {
+		view: bwf_groupallfsrights with
+			inuid to uid,
+			inpermissiontypes to permissiontypes unless-empty, 
+			inapplicationtypes to applicationtypes unless-empty, 
+			inapplicationuids to applicationuids unless-empty,
+			infolderdepth to maxdepth unless-empty
+		trend: Trend {
+		 	join-column:permissionuid
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	showShareDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when False then [ ]
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outSelectedapplicationuid to inuid, True to inshowperorg, True to inshowperjob)
+			]
+		}
+	)
+
+	showFolderDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when False then [ ]
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outSelectedpermissionuid to inuid, True to inshowacls, True to inshowperorg, True to inshowperjob)
+			]
+		}
+	)
+
+	Combo {
+		variable:infolderdepth
+		label:$fragmentGroupFSRightsNLS.folderdepth
+		hidden:Not BooleanPredicate(incanchangedepth)
+		layout: Layout { hint:width 200 }
+		options:Static {
+			Option { value:1 text:"<=1" }
+			Option { value:2 text:"<=2" }
+			Option { value:3 text:"<=3" }
+			Option { value:4 text:"<=4" }
+			Option { value:5 text:"<=5" }
+			Option { value:6 text:"<=6" }
+			Option { value:7 text:"<=7" }
+			Option { value:8 text:"<=8" }
+			Option { value:9 text:"<=9" }
+		}
+	}							
+	ConditionalGroup {
+		IntCondition(Count rights) {
+			when =0 then [
+				Header {
+					value:$fragmentGroupFSRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:rights
+					configurable:True
+					show-count:True
+					show-filter:True
+					layout:Layout {grab: horizontal True vertical True }
+					label: Label { break: True }
+					persist-configuration:True
+					
+					Column {
+						column:permissionuid
+						selection:outSelectedpermissionuid
+						hidden:True
+					}	
+					Column {
+						column:rightaction
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.action
+						width:96px
+					}	
+					Column {
+						column:right
+						sortable:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.basic
+						width:64px
+						actions:Dialog bwf_SharedFolderRightsInfosDialog
+					}	
+					Column {
+						column:permissioncode
+						sortable:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.permissioncode
+						width:100%
+						selection:outSelectedpermissioncode
+						actions:ExecuteNamedAction showFolderDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}	
+					Column {
+						column:permissiondisplayname
+						sortable:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.permissiondisplayname
+						width:160px
+						initially-masked:True
+						selection:outSelectedpermissionname
+						actions:ExecuteNamedAction showFolderDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}	
+					Column {
+						column:permissiondescription
+						sortable:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.description
+						width:160px
+						initially-masked:True
+					}	
+					Column {
+						column:permissionalias
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.alias
+						width:128px
+					}	
+					Column {
+						column:permissionsensitivitylevel
+						sortable:True
+						initially-masked:True
+						header:$fragmentGroupFSRightsNLS.slevel
+						width:96px
+					}	
+					Column {
+						column:permissionsensitivityreason
+						sortable:True
+						initially-masked:True
+						header:$fragmentGroupFSRightsNLS.sreason
+						width:128px
+					}	
+					Column {
+						column:permissiontype
+						text:Transform Current permissiontype using fragmentGroupFSRightsPermissionType
+						sortable:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.permissiontype
+						width:96px
+						initially-masked:True
+					}	
+					Column {
+						column:permissionlastmodifiedby
+						sortable:True
+						initially-masked:True
+						header:$fragmentGroupFSRightsNLS.lastmodifiedby
+						width:128px
+					}	
+					Column {
+						column:permissionlastmodifydate
+						text:DateLDAP(Current permissionlastmodifydate).value
+						sortable:True
+						header:$fragmentGroupFSRightsNLS.lastmodificationdate
+						width:160px
+						initially-masked:True
+					}	
+					Column {
+						column:applicationuid
+						hidden: True
+						selection:outSelectedapplicationuid
+					}
+					Column {
+						column:applicationcode
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.sharecode
+						width:128px
+						actions:ExecuteNamedAction showShareDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}	
+					Column {
+						column:applicationdisplayname
+						sortable:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.sharedisplayname
+						width:128px
+						selection:outSelectedapplicationname
+						actions:ExecuteNamedAction showShareDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}	
+					Column {
+						column:applicationtype
+						sortable:True
+						initially-masked:True
+						filterable:True
+						header:$fragmentGroupFSRightsNLS.sharetype
+						width:128px
+					}	
+					Column {
+						column: trends
+						header: $fragmentGroupFSRightsNLS.trends
+						text:Transform Current trends using bwf_trendStatusColumn
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}

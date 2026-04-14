@@ -1,0 +1,42 @@
+import "/webportal/pages/workflow/bw_delegations/delegationSharedResources.page"
+
+deleteDelegation = Dialog {
+	title: $deleteDelegation_NLS.title
+	height: 150
+	buttons: [
+		OkButton {
+			actions:
+				Set delegationRecordUid to task.delegationRecordUid,
+				Set selected_delegate to task.delegate,
+				Set selected_delegate_fullname to task.delegate_fullname,
+				Set selected_delegator to task.delegator,
+				Set selected_delegator_fullname to task.delegator_fullname,
+				Set Date ( selected_delegation_starDate ).valueLDAP to task.beginDate,
+				Set Date ( selected_delegation_endDate ).valueLDAP to task.endDate,
+				Set selected_delegation_comment to task.comment,
+				TaskComplete task wait-end timeout-seconds 30
+			disabled:
+				IntPredicate ( delegationRecordUid ) {
+					when InvalidInteger then True
+				}
+		}
+		CancelButton
+	]
+	
+	delegationRecordUid = Variable {
+		type: Integer
+	}
+	selected_delegator = Variable { type: String }
+	selected_delegator_fullname = Variable { type: String }
+	selected_delegate = Variable { type: String }
+	selected_delegate_fullname = Variable { type: String }
+	selected_delegation_starDate = Variable { type: Date }
+	selected_delegation_endDate = Variable { type: Date }
+	selected_delegation_comment = Variable { type: String }
+	
+	task = TaskRecord(create "br_deleteDelegation")
+	
+	Header {
+		value: $deleteDelegation_NLS.confirmation
+	}
+}

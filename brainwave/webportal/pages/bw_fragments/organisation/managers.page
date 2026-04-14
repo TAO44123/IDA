@@ -1,0 +1,372 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/resources/audittrail.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+
+fragmentOrganisationManagersNLS = NLS {
+	directonly [en "only this organization" fr "seulement cette organisation"]
+	hierarchy [en "Organization Hierarchy" fr "hiérarchie des organisations"]
+	employeetype [en "Employee type" fr "Type de contrat"]
+	direct [en "Direct" fr "Direct"]
+	jobandorgs [en "{0} in {1}" fr "{0} au sein de {1}"]
+	jobandorganisation [en "Job and Organization" fr "Métier et organisation"]
+	addowner [en "Add a new organization manager" fr "Ajout d'un nouveau responsable d'organisation"]
+//	deleteowner [en "Delete selected application owner" fr "Suppression du responsable d'application sélectionné"]
+	deleteowner [en "Delete organization manager" fr "Suppression du responsable d'organisation"]
+	auditowner [en "Organization managerupdates audit trail" fr "Piste d'audit des changements de reponsable d'organisation"]
+}
+
+isDirectOnlyMapping = StringMapping{
+	when "directonly" then True
+	otherwise False 
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation managers
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails</b> optional, boolean value, can show manager details (false by default)</li>
+ * <li><b>incanupdateowners</b> optional, boolean value, can update organisation managers (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationManagers = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+	inonlydirectselection = Variable { multivalued:False }
+	outidentityuid = Variable
+	
+	selectedManager = Variable { private:True }
+	selectedManagerLink = Variable { private: True }
+	selectedExpertiseDomain = Variable { private:True }
+	
+	selectedDirect = Variable
+
+	/* Datasets and records here */	
+	managers = Dataset {
+		view: bwf_org_managers with
+			inuid to uid unless-empty,
+			inonlydirectselection to directonly
+		
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	selectedManager = Record {
+		view: bwf_identitydetails with outidentityuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	selectedManagerOrgsandJobs = Dataset {
+		view: bwf_identityorgandjobs with outidentityuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	/* Page content */
+	
+	Flow {
+		disposition:Horizontal
+		Group {
+			Checkbox {
+				variable:inonlydirectselection
+				text:$fragmentOrganisationManagersNLS.directonly
+				tooltip:$bwfOrganisation.directonlytooltip
+			}
+			Table {
+				data: managers
+				layout: Layout { grab: horizontal True vertical True }
+				configurable: True
+				persist-configuration: True
+				show-count: True
+				double-click: ExecuteNamedAction goDetails
+				commands:Commands { position: After orientation: Vertical
+						Command{	
+								actions:Dialog bwfOrganisationDetailsAddManager_Dialog(	selectedManager to paramManagerUid, 
+																							selectedExpertiseDomain to paramManagerType, 
+																							inuid to paramOrganisationUid),
+										ReloadData (managers)
+	                        	icon:%concept_16.manager
+	                        	disabled:
+	                        	OrPredicate {
+	                        		Not BooleanPredicate(incanupdateowners)
+	                        	}
+	                        	feature:organisationdetails_updatemanager
+	                        	tooltip:$fragmentOrganisationManagersNLS.addowner
+	                       }
+						Command{	
+								actions:Dialog bwfOrganisationDetailsRemoveManager_Dialog(	outidentityuid to paramManagerUid, 
+																							selectedExpertiseDomain to paramManagerTypeCode,
+																							selectedManagerLink to paramManagerLinkRecorduid, 
+																							inuid to paramOrganisationUid),
+										ReloadData (managers)
+	                        	icon:%status_16.delete
+	                        	disabled:
+		                        	OrPredicate {
+		                        		Not BooleanPredicate(incanupdateowners)
+		                        		Not BooleanPredicate(selectedDirect)
+	                        		}
+	                        	feature:organisationdetails_updatemanager 
+	                        	tooltip:$fragmentOrganisationManagersNLS.deleteowner
+	                       }
+						Command{	
+								actions:Dialog bwf_entityDetailsManagerAuditDialog("Organisation" to type, inuid to entity)
+	                        	icon:%browsing_16.information 
+	                        	disabled:
+		                        	OrPredicate {
+		                        		Not BooleanPredicate(incanupdateowners)
+		                        	}
+	                        	feature:organisationdetails_updatemanager 
+	                        	tooltip:$fragmentOrganisationManagersNLS.auditowner
+	                       }
+	                  }
+				
+				Column {
+					column:direct
+					hidden:True
+					selection:selectedDirect
+				}
+				Column { 
+					column: hrcode 
+					header: $identity.hrcode 
+					width: 120px 
+					actions: ExecuteNamedAction goDetails
+					actions-disabled: Not BooleanPredicate(incanshowdetails)
+					tooltip: $search_page.showdetails
+					sortable:True
+				}
+				Column { 
+					column: fullname 
+					header: $identity.fullname 
+					width: 100% 
+					actions: ExecuteNamedAction goDetails
+					actions-disabled: Not BooleanPredicate(incanshowdetails)
+					tooltip: $search_page.showdetails
+					sortable:True
+				}
+				Column { 
+					column: middlename 
+					header: $identity.middlename 
+					initially-masked: True 
+					sortable:True
+				}
+				Column { 
+					column: internal 
+					text: Transform Current internal using booleanDisplayMapping 
+					header: $identity.internal 
+					initially-masked: True 
+					sortable:True
+				}
+				Column { 
+					column: givenname 
+					header: $identity.givenname 
+					initially-masked: True 
+					actions: ExecuteNamedAction goDetails
+					actions-disabled: Not BooleanPredicate(incanshowdetails)
+					tooltip: $search_page.showdetails
+					sortable:True
+				}
+				Column { 
+					column: surname 
+					header: 
+					$identity.surname 
+					initially-masked: True 
+					actions: ExecuteNamedAction goDetails
+					actions-disabled: Not BooleanPredicate(incanshowdetails)
+					tooltip: $search_page.showdetails
+					sortable:True
+				}
+				Column { 
+					column: mail 
+					header: $identity.mail 
+					initially-masked: True 
+					actions: ExecuteNamedAction goDetails
+					actions-disabled: Not BooleanPredicate(incanshowdetails)
+					tooltip: $search_page.showdetails
+					sortable:True
+				}
+				Column { 
+					column: phone 
+					header: $identity.phone 
+					initially-masked: True 
+					sortable:True
+				}
+				Column { 
+					column: titledisplayname 
+					header: $identity.titledisplayname 
+					initially-masked: True 
+					sortable:True
+				}
+				Column { 
+					column: employeetypecode 
+					header: $identity.employeetypecode 
+					initially-masked: True 
+					sortable:True
+				}
+				Column { 
+					column: employeetypedisplayname 
+					header: $identity.employeetypedisplayname 
+					initially-masked: True 
+					sortable:True
+				}
+				Column { 
+					column: expertisedomaincode 
+					hidden:True 
+					selection: selectedExpertiseDomain
+				}
+				Column { 
+					column: expertisedomaindisplayname
+					text:Transform Current expertisedomaincode using bwfManagerTypeMapping 
+					header: $identity.expertisedomaindisplayname 
+					initially-masked: False 
+					sortable:True
+					width:200px
+				}
+
+
+				Column { 
+					column: organisationcode
+					header: $porganisation.code 
+					initially-masked: True
+					sortable:True
+				}
+				Column { 
+					column: organisationshortname
+					header: $porganisation.shortname
+					initially-masked: True
+					sortable:True
+				}
+				Column { 
+					column: organisationdisplayname
+					header: $organisation.concept 
+					initially-masked: False
+					sortable:True
+					width:200px
+				}
+
+
+				Column { 
+					column: uid 
+					hidden: True 
+					selection: outidentityuid 
+				}
+
+				Column {
+					column:comment
+					header:$bwfManagement.comment
+					styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+					initially-masked:True
+					sortable:True
+				}
+				Column {
+					column:delegation
+					header:$bwfManagement.delegated
+					styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+					initially-masked:True
+					sortable:True
+				}
+				Column {
+					column:delegationreason
+					header:$bwfManagement.^reason
+					styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+					initially-masked:True
+					sortable:True
+				}
+				Column {
+					column:_priority
+					header:$bwfManagement.^priority
+					styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+					initially-masked:True
+					sortable:True
+				}
+				Column {
+					column:startdate
+					header:$bwfManagement.startdate
+					styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+					initially-masked:True
+					sortable:True
+				}
+				Column {
+					column: managerLinkRecorduid
+					hidden: True 
+					selection: selectedManagerLink
+				}
+				Column {
+					column:enddate
+					header:$bwfManagement.enddate
+					styling:BooleanStyling(Current active) { when False then errorStyle when True then default}
+					initially-masked:True
+					sortable:True
+				}
+						
+				Column {
+					column: trends
+					header: $bw_fragment.trends
+					text:Transform Current trends using bwf_trendStatusColumn 
+					styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+					image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+					tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+					sortable: True
+					filterable: True
+					width: 10%
+				}	
+			}
+		}
+	}
+}

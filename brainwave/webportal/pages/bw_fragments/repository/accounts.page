@@ -1,0 +1,1859 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/resources/constants.page"
+
+import "/webportal/pages/bw_comparison/account_comparison.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+
+fragmentRepositoryAccountsNLS = NLS {
+	noownercode [en "technical account" fr "compte technique"]
+	nbgroups [en "Nb groups" fr "Nb groupes"]
+	nbdirectgroups [en "Nb direct \ngroups" fr "Nb groupes \ndirects"]
+	hidedisabled [en "Hide disabled accounts" fr "Masquer les comptes désactivés"]
+	comparewith [en "compare {0} with ..." fr "comparer {0} avec ..."]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected repository accounts
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the repository uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>optional, boolean value, true to enable button to show details (false by default)</li>
+ * <li><b>incancompare </b>optional, boolean value, true to enable comparison button (false by default), forced to False if more than bwf_accountCanCompareThreshold accounts </li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>incanshowdisabled</b>, optional boolean, can show/hide disabled accounts, false by default</li>
+ * <li><b>inhidedisabled</b>, optional boolean, hide disabled accounts, true by default</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentRepositoryAccounts = PageFragment {
+	enter-event:IntCase(repository.bwa_repositoryanalytics_nbaccount) { when >Constant bwf_accountCanCompareThreshold then [ Set False to incancompare ] }
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	incanreconcile = Variable { type:Boolean initial:False }
+	incanshowdisabled = Variable { type:Boolean initial:False }
+	incancompare = Variable { type:Boolean initial:False }
+	inhidedisabled = Variable { type:Boolean initial:True }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	wgselectedUids = Variable { type: String multivalued: True}
+	wogselectedUids = Variable { type: String multivalued: True}
+	compareFrom = Variable { type: String multivalued: False}
+	compareTo = Variable { type: String multivalued: True}
+
+	repository = Record {
+		view: bwf_repositoryDetail with inuid to uid
+//		 disabled:Not BooleanPredicate(inenabled)
+	}
+
+	accounts_wgroups_comparison = Dataset {
+		view: bwf_repositoryaccounts with
+			inuid to uid,
+			inhidedisabled to hideDisabled
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:bwa_accountanalytics_nbgroup
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate(inenabled)
+				Not BooleanPredicate(incancompare)
+				IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when =0 then True }
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	accounts_wgroups_nocomparison = Dataset {
+		view: bwf_repositoryaccounts with
+			inuid to uid,
+			inhidedisabled to hideDisabled
+		trend: Trend {
+		 	join-column:uid
+		 	status-column-name:trends
+			value-column:bwa_accountanalytics_nbgroup
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate(inenabled)
+				BooleanPredicate(incancompare)
+				IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when =0 then True }
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	accounts_wogroups_comparison = Dataset {
+		view: bwf_repositoryaccounts with
+			inuid to uid,
+			inhidedisabled to hideDisabled
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate(inenabled)
+				Not BooleanPredicate(incancompare)
+				IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then True }
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			 }
+	}
+	accounts_wogroups_nocomparison = Dataset {
+		view: bwf_repositoryaccounts with
+			inuid to uid,
+			inhidedisabled to hideDisabled
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate(inenabled)
+				BooleanPredicate(incancompare)
+				IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then True }
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	comparisonAccount = Record {
+		view: br_accountDetail with compareFrom to uid
+		disabled:
+			StringPredicate(compareFrom) { when IsEmpty then True }
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												incanreconcile to incanreconcile,
+												True to inshowowner,
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowusages,
+												True to inshowcontrols,
+												True to inshowdecisionhistory
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		BooleanCondition(incancompare) {
+			when True then [
+				Grid {
+					columns:GridColumn { width:200 },GridColumn { width:200 },GridColumn { width:grow }
+					layout:Layout { grab: horizontal True vertical False }
+					GridRow {
+						GridCell {
+							Button { // with groups
+								actions:
+									Set ElementAt 1 of wgselectedUids to compareFrom,
+									Set wgselectedUids to compareTo,
+									MultivaluedRemove compareFrom from compareTo,
+									GoTo Page bwc_account_comparison with compareFrom to uid, compareTo to uids  save-state 
+								text:$fragmentRepositoryAccountsNLS.comparewith(NonEmpty(comparisonAccount.login,' '))
+								disabled:IntPredicate(SizeOf wgselectedUids) { when <2 then True otherwise False }
+								presentation:Button
+								hidden:IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when =0 then True otherwise False } 
+							}
+							Button { // without groups
+								actions:
+									Set ElementAt 1 of wogselectedUids to compareFrom,
+									Set wogselectedUids to compareTo,
+									MultivaluedRemove compareFrom from compareTo,
+									GoTo Page bwc_account_comparison with compareFrom to uid, compareTo to uids  save-state 
+								text:$fragmentRepositoryAccountsNLS.comparewith(NonEmpty(comparisonAccount.login,' '))
+								disabled:IntPredicate(SizeOf wogselectedUids) { when <2 then True otherwise False }
+								presentation:Button
+								hidden:IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then True otherwise False } 
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:inhidedisabled
+								text:$fragmentRepositoryAccountsNLS.hidedisabled
+								hidden:Not BooleanPredicate(incanshowdisabled)
+							}
+						}
+						GridCell {
+						
+						}
+					}
+				
+				}
+			
+				ConditionalGroup {
+					IntCondition(repository.bwa_repositoryanalytics_nbgroup) {
+						when >0 then [
+							Table {
+								data:accounts_wgroups_comparison
+								layout:Layout {grab: horizontal True vertical True}
+								configurable:True
+								show-count:True
+								show-filter:True
+								persist-configuration:True
+								//double-click:ExecuteNamedAction goDetails
+								checkboxes:uid to wgselectedUids
+								checkboxes-changed-event:Set ElementAt 1 of wgselectedUids to compareFrom
+								disabled:
+								OrPredicate {
+									IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then False otherwise True }							
+									Not BooleanPredicate(incancompare)
+								}							
+								
+								Column {
+									column:uid
+									hidden:True
+									selection:outaccountuid
+								}
+								
+						
+								Column {
+									column: login
+									header: $account.login
+									width: 100%
+									sortable: True
+									filterable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+															
+									initially-masked: False
+								}
+								Column {
+									column: username
+									header: $account.username
+									width: 100%
+									sortable: True
+									filterable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+									
+									initially-masked: False
+								}
+								Column {
+									column: lastlogindate
+									header: $account.lastlogindate
+									width: 100%
+									sortable: True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_hrcode
+									header: $pidentity.hrcode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_fullname
+									header: $pidentity.fullname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identifier
+									header: $account.identifier
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: profile
+									header: $account.profile
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: givenname
+									header: $account.givenname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: surname
+									header: $account.surname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: employeenumber
+									header: $account.employeenumber
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: mail
+									header: $account.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: managerdata
+									header: $account.managerdata
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: creationdate
+									header: $account.creationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordlastsetdate
+									header: $account.passwordlastsetdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: expiredate
+									header: $account.expiredate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: nextpwdchangedate
+									header: $account.nextpwdchangedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: service
+									header: $account.service
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: disabled
+									header: $account.disabled
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: locked
+									header: $account.locked
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: logincount
+									header: $account.logincount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: badpasswordcount
+									header: $account.badpasswordcount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordnotrequired
+									header: $account.passwordnotrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordcantchange
+									header: $account.passwordcantchange
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: privilegedaccount
+									header: $account.privilegedaccount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: dontexpirepassword
+									header: $account.dontexpirepassword
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordexpired
+									header: $account.passwordexpired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: smartcardrequired
+									header: $account.smartcardrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: groupchanged
+									header: $account.groupchanged
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: permissionchanged
+									header: $account.permissionchanged
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_noownercode
+									header: $preconciliation.noownercode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reconciliationdate
+									header: $preconciliation.reconciliationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_description
+									header: $preconciliation.description
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_comment
+									header: $preconciliation.comment
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reliability
+									header: $preconciliation.reliability
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_rulename
+									header: $preconciliation.rulename
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_leavedate
+									header: $preconciliation.leavedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_mail
+									header: $pidentity.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_active
+									header: $pidentity.active
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_internal
+									header: $pidentity.internal
+									width: 100%
+									sortable: True
+															
+									initially-masked: True
+								}
+								Column {
+									column:identity_bwa_identityanalyticsdata_joborg
+									initially-masked:True
+									filterable:True
+									sortable:True
+									header:$pidentity.joborg
+									width:160px
+								}
+						
+						
+								Column {
+									column: bwa_accountanalytics_nbdirectgroup
+									text:Transform Current bwa_accountanalytics_nbdirectgroup using bwf_defaultsTo0
+									align:Right
+									header: $fragmentRepositoryAccountsNLS.nbdirectgroups
+									sortable: True
+									width: 10%
+									}												
+								Column {
+									column: bwa_accountanalytics_nbgroup
+									text:Transform Current bwa_accountanalytics_nbgroup using bwf_defaultsTo0
+									align:Right
+									header: $fragmentRepositoryAccountsNLS.nbgroups
+									sortable: True
+									width: 10%
+									}												
+						
+									Column {
+										column:bwa_accountanalytics_riskrank
+										align:Right
+										sortable:True
+										header:$bwf_accountNLS.riskrank
+										width:120px
+										initially-masked:True
+									}
+									Column {
+										column:bwa_accountanalytics_maxrisklevel
+										sortable:True
+										header:$bwf_accountNLS.maxrisk
+										image:TemplateImageSelection(Current bwa_accountanalytics_maxrisklevel) using bwf_accountriskimage
+										width:120px
+										initially-masked:True
+									}
+									Column {
+										column:bwa_accountanalytics_nbrisks
+										text:Transform Current bwa_accountanalytics_nbrisks using bwf_defaultsTo0
+										align:Right
+										sortable:True
+										header:$bwf_accountNLS.nbrisk
+										width:120px
+										initially-masked:True
+									}
+						
+						
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+						otherwise [
+							Table {
+								data:accounts_wogroups_comparison
+								layout:Layout {grab: horizontal True vertical True}
+								configurable:True
+								show-count:True
+								show-filter:True
+								//double-click:ExecuteNamedAction goDetails
+								checkboxes:uid to wogselectedUids
+								checkboxes-changed-event:Set ElementAt 1 of wogselectedUids to compareFrom
+								disabled:
+								OrPredicate {
+									IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then True otherwise False }							
+									Not BooleanPredicate(incancompare)
+								}							
+								
+								Column {
+									column:uid
+									hidden:True
+									selection:outaccountuid
+								}
+								
+						
+								Column {
+									column: login
+									header: $account.login
+									width: 100%
+									sortable: True
+									filterable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+															
+									initially-masked: False
+								}
+								Column {
+									column: username
+									header: $account.username
+									width: 100%
+									sortable: True
+									filterable:True
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+									tooltip: $search_page.showdetails
+									
+									initially-masked: False
+								}
+								Column {
+									column: lastlogindate
+									header: $account.lastlogindate
+									width: 100%
+									sortable: True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_hrcode
+									header: $pidentity.hrcode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_fullname
+									header: $pidentity.fullname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identifier
+									header: $account.identifier
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: profile
+									header: $account.profile
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: givenname
+									header: $account.givenname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: surname
+									header: $account.surname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: employeenumber
+									header: $account.employeenumber
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: mail
+									header: $account.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: managerdata
+									header: $account.managerdata
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: creationdate
+									header: $account.creationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordlastsetdate
+									header: $account.passwordlastsetdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: expiredate
+									header: $account.expiredate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: nextpwdchangedate
+									header: $account.nextpwdchangedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: service
+									header: $account.service
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: disabled
+									header: $account.disabled
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: locked
+									header: $account.locked
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: logincount
+									header: $account.logincount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: badpasswordcount
+									header: $account.badpasswordcount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordnotrequired
+									header: $account.passwordnotrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordcantchange
+									header: $account.passwordcantchange
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: privilegedaccount
+									header: $account.privilegedaccount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: dontexpirepassword
+									header: $account.dontexpirepassword
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordexpired
+									header: $account.passwordexpired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: smartcardrequired
+									header: $account.smartcardrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: permissionchanged
+									header: $account.permissionchanged
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_noownercode
+									header: $preconciliation.noownercode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reconciliationdate
+									header: $preconciliation.reconciliationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_description
+									header: $preconciliation.description
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_comment
+									header: $preconciliation.comment
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reliability
+									header: $preconciliation.reliability
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_rulename
+									header: $preconciliation.rulename
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_leavedate
+									header: $preconciliation.leavedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_mail
+									header: $pidentity.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_active
+									header: $pidentity.active
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_internal
+									header: $pidentity.internal
+									width: 100%
+									sortable: True
+															
+									initially-masked: True
+								}
+								Column {
+									column:identity_bwa_identityanalyticsdata_joborg
+									initially-masked:True
+									filterable:True
+									sortable:True
+									header:$pidentity.joborg
+									width:160px
+								}
+						
+									Column {
+										column:bwa_accountanalytics_riskrank
+										align:Right
+										sortable:True
+										header:$bwf_accountNLS.riskrank
+										width:120px
+										initially-masked:True
+									}
+									Column {
+										column:bwa_accountanalytics_maxrisklevel
+										sortable:True
+										header:$bwf_accountNLS.maxrisk
+										image:TemplateImageSelection(Current bwa_accountanalytics_maxrisklevel) using bwf_accountriskimage
+										width:120px
+										initially-masked:True
+									}
+									Column {
+										column:bwa_accountanalytics_nbrisks
+										text:Transform Current bwa_accountanalytics_nbrisks using bwf_defaultsTo0
+										align:Right
+										sortable:True
+										header:$bwf_accountNLS.nbrisk
+										width:120px
+										initially-masked:True
+									}
+							}
+						]
+					}
+				
+				}
+			]
+			when False then [
+				Grid {
+					columns:GridColumn { width:200 },GridColumn { width:200 },GridColumn { width:grow }
+					layout:Layout { grab: horizontal True vertical False }
+					GridRow {
+						GridCell {
+							Checkbox {
+								variable:inhidedisabled
+								text:$fragmentRepositoryAccountsNLS.hidedisabled
+								hidden:Not BooleanPredicate(incanshowdisabled)
+							}
+						}
+						GridCell {
+						}
+						GridCell {
+						
+						}
+					}
+				
+				}
+
+
+				ConditionalGroup {
+					IntCondition(repository.bwa_repositoryanalytics_nbgroup) {
+						when >0 then [
+							Table {
+								data:accounts_wgroups_nocomparison
+								layout:Layout {grab: horizontal True vertical True}
+								configurable:True
+								show-count:True
+								show-filter:True
+								//double-click:ExecuteNamedAction goDetails
+								disabled:
+								OrPredicate {
+									IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then False otherwise True }							
+									BooleanPredicate(incancompare)
+								}
+																
+								Column {
+									column:uid
+									hidden:True
+									selection:outaccountuid
+								}
+								
+						
+								Column {
+									column: login
+									header: $account.login
+									width: 100%
+									sortable: True
+									filterable:True
+															
+									initially-masked: False
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+								}
+								Column {
+									column: username
+									header: $account.username
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+								}
+								Column {
+									column: lastlogindate
+									header: $account.lastlogindate
+									width: 100%
+									sortable: True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_hrcode
+									header: $pidentity.hrcode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_fullname
+									header: $pidentity.fullname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identifier
+									header: $account.identifier
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: profile
+									header: $account.profile
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: givenname
+									header: $account.givenname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: surname
+									header: $account.surname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: employeenumber
+									header: $account.employeenumber
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: mail
+									header: $account.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: managerdata
+									header: $account.managerdata
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: creationdate
+									header: $account.creationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordlastsetdate
+									header: $account.passwordlastsetdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: expiredate
+									header: $account.expiredate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: nextpwdchangedate
+									header: $account.nextpwdchangedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: service
+									header: $account.service
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: disabled
+									header: $account.disabled
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: locked
+									header: $account.locked
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: logincount
+									header: $account.logincount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: badpasswordcount
+									header: $account.badpasswordcount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordnotrequired
+									header: $account.passwordnotrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordcantchange
+									header: $account.passwordcantchange
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: privilegedaccount
+									header: $account.privilegedaccount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: dontexpirepassword
+									header: $account.dontexpirepassword
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordexpired
+									header: $account.passwordexpired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: smartcardrequired
+									header: $account.smartcardrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: groupchanged
+									header: $account.groupchanged
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: permissionchanged
+									header: $account.permissionchanged
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_noownercode
+									header: $preconciliation.noownercode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reconciliationdate
+									header: $preconciliation.reconciliationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_description
+									header: $preconciliation.description
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_comment
+									header: $preconciliation.comment
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reliability
+									header: $preconciliation.reliability
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_rulename
+									header: $preconciliation.rulename
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_leavedate
+									header: $preconciliation.leavedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_mail
+									header: $pidentity.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_active
+									header: $pidentity.active
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_internal
+									header: $pidentity.internal
+									width: 100%
+									sortable: True
+															
+									initially-masked: True
+								}
+								Column {
+									column:identity_bwa_identityanalyticsdata_joborg
+									initially-masked:True
+									filterable:True
+									sortable:True
+									header:$pidentity.joborg
+									width:160px
+								}
+						
+						
+								Column {
+									column: bwa_accountanalytics_nbdirectgroup
+									text:Transform Current bwa_accountanalytics_nbdirectgroup using bwf_defaultsTo0
+									align:Right
+									header: $fragmentRepositoryAccountsNLS.nbdirectgroups
+									sortable: True
+									width: 10%
+									}												
+								Column {
+									column: bwa_accountanalytics_nbgroup
+									text:Transform Current bwa_accountanalytics_nbgroup using bwf_defaultsTo0
+									align:Right
+									header: $fragmentRepositoryAccountsNLS.nbgroups
+									sortable: True
+									width: 10%
+									}												
+						
+									Column {
+										column:bwa_accountanalytics_riskrank
+										align:Right
+										sortable:True
+										header:$bwf_accountNLS.riskrank
+										width:120px
+										initially-masked:True
+									}
+									Column {
+										column:bwa_accountanalytics_maxrisklevel
+										sortable:True
+										header:$bwf_accountNLS.maxrisk
+										image:TemplateImageSelection(Current bwa_accountanalytics_maxrisklevel) using bwf_accountriskimage
+										width:120px
+										initially-masked:True
+									}
+									Column {
+										column:bwa_accountanalytics_nbrisks
+										text:Transform Current bwa_accountanalytics_nbrisks using bwf_defaultsTo0
+										align:Right
+										sortable:True
+										header:$bwf_accountNLS.nbrisk
+										width:120px
+										initially-masked:True
+									}
+						
+						
+								Column {
+									column: trends
+									header: $bw_fragment.trends
+									text:Transform Current trends using bwf_trendStatusColumn 
+									styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+									image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+									tooltip:$bwf_trendStatusColumnNLS.tooltip
+			
+									sortable: True
+									filterable: True
+									width: 10%
+								}												
+							}
+						]
+						otherwise [
+							Table {
+								data:accounts_wogroups_nocomparison
+								layout:Layout {grab: horizontal True vertical True}
+								configurable:True
+								show-count:True
+								show-filter:True
+								//double-click:ExecuteNamedAction goDetails
+								disabled:
+								OrPredicate {
+									IntPredicate(repository.bwa_repositoryanalytics_nbgroup) { when >0 then True otherwise False }							
+									BooleanPredicate(incancompare)
+								}
+								
+								Column {
+									column:uid
+									hidden:True
+									selection:outaccountuid
+								}
+								
+						
+								Column {
+									column: login
+									header: $account.login
+									width: 100%
+									sortable: True
+									filterable:True
+															
+									initially-masked: False
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+								}
+								Column {
+									column: username
+									header: $account.username
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+									actions: ExecuteNamedAction goDetails
+									actions-disabled: Not BooleanPredicate(incanshowdetails)
+								}
+								Column {
+									column: lastlogindate
+									header: $account.lastlogindate
+									width: 100%
+									sortable: True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_hrcode
+									header: $pidentity.hrcode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identity_fullname
+									header: $pidentity.fullname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: False
+								}
+								Column {
+									column: identifier
+									header: $account.identifier
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: profile
+									header: $account.profile
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: givenname
+									header: $account.givenname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: surname
+									header: $account.surname
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: employeenumber
+									header: $account.employeenumber
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: mail
+									header: $account.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: managerdata
+									header: $account.managerdata
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: creationdate
+									header: $account.creationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordlastsetdate
+									header: $account.passwordlastsetdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: expiredate
+									header: $account.expiredate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: nextpwdchangedate
+									header: $account.nextpwdchangedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: service
+									header: $account.service
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: disabled
+									header: $account.disabled
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: locked
+									header: $account.locked
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: logincount
+									header: $account.logincount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: badpasswordcount
+									header: $account.badpasswordcount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordnotrequired
+									header: $account.passwordnotrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordcantchange
+									header: $account.passwordcantchange
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: privilegedaccount
+									header: $account.privilegedaccount
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: dontexpirepassword
+									header: $account.dontexpirepassword
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: passwordexpired
+									header: $account.passwordexpired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: smartcardrequired
+									header: $account.smartcardrequired
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: permissionchanged
+									header: $account.permissionchanged
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_noownercode
+									header: $preconciliation.noownercode
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reconciliationdate
+									header: $preconciliation.reconciliationdate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_description
+									header: $preconciliation.description
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_comment
+									header: $preconciliation.comment
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_reliability
+									header: $preconciliation.reliability
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_rulename
+									header: $preconciliation.rulename
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: recon_leavedate
+									header: $preconciliation.leavedate
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_mail
+									header: $pidentity.mail
+									width: 100%
+									sortable: True
+									filterable:True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_active
+									header: $pidentity.active
+									width: 100%
+									sortable: True
+									
+									initially-masked: True
+								}
+								Column {
+									column: identity_internal
+									header: $pidentity.internal
+									width: 100%
+									sortable: True
+															
+									initially-masked: True
+								}
+								Column {
+									column:identity_bwa_identityanalyticsdata_joborg
+									initially-masked:True
+									filterable:True
+									sortable:True
+									header:$pidentity.joborg
+									width:160px
+								}
+								Column {
+									column:bwa_accountanalytics_riskrank
+									text:Transform Current bwa_accountanalytics_riskrank using bwf_defaultsTo0
+									align:Right
+									sortable:True
+									header:$bwf_accountNLS.riskrank
+									width:120px
+									initially-masked:True
+								}
+								Column {
+									column:bwa_accountanalytics_maxrisklevel
+									sortable:True
+									header:$bwf_accountNLS.maxrisk
+									image:TemplateImageSelection(Current bwa_accountanalytics_maxrisklevel) using bwf_accountriskimage
+									width:120px
+									initially-masked:True
+								}
+								Column {
+									column:bwa_accountanalytics_nbrisks
+									text:Transform Current bwa_accountanalytics_nbrisks using bwf_defaultsTo0
+									align:Right
+									sortable:True
+									header:$bwf_accountNLS.nbrisk
+									width:120px
+									initially-masked:True
+								}
+							}
+						]
+					}
+				}
+			]		
+		}
+	}
+}

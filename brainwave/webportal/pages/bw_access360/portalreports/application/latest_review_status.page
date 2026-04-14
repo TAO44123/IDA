@@ -1,0 +1,344 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/decisionhistory.page"
+import "/webportal/pages/bw_fragments/account/details.page"
+
+access360r_latest_review_status = NLS {
+	title [en "Accounts rights latest review status" fr "Dernier statut de revue des droits des comptes"]
+	description [en "Check the latest review status of the access rights of this application" fr "Vérifier les derniers statuts de revue des droits d'accès à cette application"]
+	latestReviewStatus [en "Review status" fr "Statut de revue"]
+	detail [en "Details" fr "Détails"]
+	generateReport [en "Generate report" fr "Générer le rapport"]
+	generateReportTt [en "Generate report (PDF, XLSX)" fr "Générer le rapport (PDF, XLSX)"]
+	status [en "Status" fr "Statut"]
+	comment [en "Comment" fr "Commentaire"]
+	reviewer [en "Reviewer" fr "Réviseur"]
+	task.enddate [en "Task end date" fr "Fin de tâche"]
+	campaign.code [en "Campaign code" fr "Code de campagne"]
+	campaign.description [en "Campaign description" fr "Description de campagne"]
+	campaign.owner [en "Campaign owner" fr "Propriétaire de campagne"]
+	campaign.startDate [en "Start date" fr "Date de début"]
+	campaign.endDate [en "End date" fr "Date de fin"]
+	campaign.type [en "Type" fr "Type"]
+	selectFirst.item [en "Select an item first" fr "Sélectionnez une entrée"]
+	decisionHistory [ en "Decisions history" fr "Décisions de revue" ]
+}
+
+// Application's rights latest review status (if any)
+access360r_app_rights_latest_review_status = Report {
+	title: $access360r_latest_review_status.title
+	report: "/reports/bw_access360/app_rights_latest_review_status.rptdesign" with
+		app_uid to app_uid
+	
+	app_uid = Parameter {
+		type: String
+		mandatory: True
+	}
+}
+
+access360r_review_status_icons = StringImageTemplate {
+	when "ok" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "revoke" then "16/famfamfam_silk_icons_v013/delete.png"
+	when "update" then "16/famfamfam_silk_icons_v013/pencil.png"
+	when "reset" then "16/famfamfam_silk_icons_v013/arrow_undo.png"
+	otherwise "16/famfamfam_silk_icons_v013/help.png"
+}
+
+access360r_latest_review_status = Page {
+	title: $access360r_latest_review_status.title
+	description: $access360r_latest_review_status.description 
+	tags: "application" priority 333, "byuid" priority 333
+	icon: "16/details/analytics_16.png"
+	large-icon: "48/details/analytics_48.png"
+	feature: bwa_applicationlatestreviewstatus
+	
+	/* Parameters here */
+	uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	// Selection
+	selectedKey = Variable { type: String }
+	selectedAccountUid = Variable { type: String }
+	selectedIdentityUid = Variable { type: String }
+	selectedPermissionUid = Variable { type: String }
+	// Enable fragments (performance)
+	accountDetailEnabled = Variable { type: Boolean initial: True }
+	decisionHistoryEnabled = Variable { type: Boolean initial: False }
+	// Stats
+	nbItems = Variable { type: Integer initial: 0 }
+	
+	/* Datasets and records here */
+	latest_status = Dataset {
+		view: bwa360_latest_review_status with
+			uid to app_uid
+		disabled:
+			StringPredicate ( uid ) {
+				when IsEmpty then True
+			}
+		count-variable: nbItems
+	}
+	
+	accountDetail = NamedAction (
+		Dialog bwf_accountDetailsDialog(
+			selectedAccountUid to inuid, 
+			True to incanreconcile,
+			True to inshowowner,
+			False to inshowgroups,
+			True to inshowapplications,
+			False to inshowshares,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			uid to inapplicationuids
+		)
+	)
+	
+	permissionDetail = NamedAction (
+		Dialog bwf_permissionDetailsDialog(
+			selectedPermissionUid to inuid,
+			True to inshowperjob,
+			True to inshowperorg
+		)
+	)
+	
+	identityDetail = NamedAction (
+		Dialog bwf_identityDetailsDialog(
+			selectedIdentityUid to inuid,
+			True to inshowaccounts,
+			True to inshowapplications,
+			True to inshowposition,
+			True to inshowshares,
+			True to inshowtheoretical,
+			True to inshowbusinessactivities,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowoverallocated,
+			True to inshowusages
+		)
+	)
+	
+	/* Page content */
+	Splitter {
+		disposition: Horizontal
+		size: 60%
+		Group {
+			title: $access360r_latest_review_status.latestReviewStatus
+			layout: Layout { grab: horizontal True vertical True }
+			ButtonGroup {
+				align: Left
+				uniform: True
+				Button {
+					text: $access360r_latest_review_status.generateReport
+					tooltip: $access360r_latest_review_status.generateReportTt
+					image: "16/audit/white/report.png"
+					actions:
+						GoTo Report access360r_app_rights_latest_review_status with
+							uid to app_uid
+					disabled:
+						IntPredicate ( nbItems ) {
+							when < 1 then True
+						}
+				}
+			}
+			Table {
+				data: latest_status
+				layout: Layout { grab: horizontal True vertical True }
+				show-count: True
+				show-filter: True
+				configurable: True
+				persist-configuration: True
+				persist-configuration-key: "access360r_latest_review_status"
+				Column {
+					column: acc_login
+					header: $paccount.login
+					filterable: True
+					sortable: True
+					width: 100%
+					actions:
+						ExecuteNamedAction accountDetail
+				}
+				Column {
+					column: _key
+					hidden: True
+					selection: selectedKey
+				}
+				Column {
+					column: acc_uid
+					hidden: True
+					selection: selectedAccountUid
+				}
+				Column {
+					column: idt_uid
+					hidden: True
+					selection: selectedIdentityUid
+				}
+				Column {
+					column: perm_uid
+					hidden: True
+					selection: selectedPermissionUid
+				}
+				Column {
+					column: acc_username
+					header: $paccount.username
+					filterable: True
+					sortable: True
+					width: 100%
+					actions:
+						ExecuteNamedAction accountDetail
+				}
+				Column {
+					column: idt_fullname
+					header: $pidentity.fullname
+					filterable: True
+					sortable: True
+					width: 100%
+					actions:
+						ExecuteNamedAction identityDetail
+				}
+				Column {
+					column: perimetercode
+					header: $right.perimetercode
+					filterable: True
+					sortable: True
+					width: 100%
+					initially-masked: True
+				}
+				Column {
+					column: perimeterdisplayname
+					header: $right.perimeterdisplayname
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: perm_code
+					header: $ppermission.code
+					filterable: True
+					sortable: True
+					width: 100%
+					initially-masked: True
+					actions:
+						ExecuteNamedAction permissionDetail
+				}
+				Column {
+					column: perm_displayname
+					header: $ppermission.displayname
+					filterable: True
+					sortable: True
+					width: 100%
+					actions:
+						ExecuteNamedAction permissionDetail
+				}
+				Column {
+					column: rs_ticket_status
+					header: $access360r_latest_review_status.status
+					filterable: True
+					sortable: True
+					width: 100%
+					image: TemplateImageSelection ( Current rs_ticket_status ) using access360r_review_status_icons
+				}
+				Column {
+					column: rs_ticket_comment
+					header: $access360r_latest_review_status.comment
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: rs_ticket_actorfullname
+					header: $access360r_latest_review_status.reviewer
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: rs_task_enddate
+					header: $access360r_latest_review_status.task.enddate
+					text: SubString(10) NonEmpty(Date ( Current rs_task_enddate ).value, "            ")
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: rs_campaign_code
+					header: $access360r_latest_review_status.campaign.code
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: rs_campaign_description
+					header: $access360r_latest_review_status.campaign.description
+					filterable: True
+					sortable: True
+					width: 100%
+					initially-masked: True
+				}
+				Column {
+					column: rs_campaign_ownerfullname
+					header: $access360r_latest_review_status.campaign.owner
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: rs_master_submissiondate
+					header: $access360r_latest_review_status.campaign.startDate
+					text: NonEmpty(SubString(10) Date ( Current rs_master_submissiondate ).value, "            ")
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: rs_master_closedate
+					header: $access360r_latest_review_status.campaign.endDate
+					text: SubString(10) NonEmpty(Date ( Current rs_master_closedate ).value,"            ")
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+				Column {
+					column: rs_master_tickettype
+					header: $access360r_latest_review_status.campaign.type
+					filterable: True
+					sortable: True
+					width: 100%
+				}
+			}
+		}
+		Group {
+			title: $access360r_latest_review_status.detail
+			ConditionalGroup {
+				StringCondition ( selectedKey ) {
+					when IsEmpty then [
+						Text {
+							value: $access360r_latest_review_status.selectFirst.item
+							compact: True
+						}
+					] otherwise [
+						TabFolder {
+							TabItem {
+								text: $account.concept
+								IncludeFragment ( fragmentAccountDetails with
+									value-of selectedAccountUid to inuid,
+									value-of accountDetailEnabled to inenabled
+								)
+							}
+							TabItem {
+								text: $access360r_latest_review_status.decisionHistory
+								activation-event:
+									Set True to decisionHistoryEnabled
+								IncludeFragment ( fragmentAccountDecisionHistory with
+									value-of selectedAccountUid to inuid,
+									value-of decisionHistoryEnabled to inenabled
+								)
+							}
+						}
+					]
+				}
+			}
+		}
+	}
+}

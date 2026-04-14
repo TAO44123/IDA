@@ -1,0 +1,297 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+/* Nationalized labels here */
+access360r_application_accountgroups360NLS = NLS {
+	title [en "Accounts groups list" fr "Liste des groupes et des comptes"]
+	dyntitle [en "{0} accounts groups list" fr "Liste des groupes et des comptes pour {0}"]
+	description [
+		en "This report lists the accounts groups of the application. Only groups granting application permissions are taken into account. It is possible to identify only the changes made since a given date. The columns displayed are configurable and the results can be exported, right click on the table to do so."
+		fr "Ce rapport liste les comptes et les groupes de l'application. Seuls les groupes donnant accès à des permissions applicatives sont pris en compte. Il est possible d'identifier uniquement les changements réalisés depuis une date donnée. Les colonnes affichées sont configurables et les résultats exportables, faites un clic droit sur le tableau pour cela."
+	]
+}
+
+aartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+aartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+aarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsEmpty then ''
+	when IsNull then ''
+	otherwise current
+}
+
+access360r_application_accountgroups360 = Page {
+	title: $access360r_application_accountgroups360NLS.title
+	dynamic-title: $access360r_application_accountgroups360NLS.dyntitle(application.displayname)
+	description:$access360r_application_accountgroups360NLS.description
+	tags: "application" priority 100, "byuid" , "browsing"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature: bwa_applicationaccountgroups
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+	uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	onlydirectrights = Variable { initial:True type:Boolean }
+	
+	outidentityuid = Variable
+	outgroupuid = Variable
+	outaccountuid = Variable
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	application = Record {
+		view:bwf_applicationDetail with uid to uid
+	}
+
+	accountsgroups = Dataset {
+		view:bwaccess360r_application_accountsgroups_bv with uid to uid, UserVariable session_comparisonTimeslotTeam360 to dummy, UserVariable session_comparisonTimeslotTeam360 to comparisontimeslot unless-empty, UserVariable session_exclRemoved to excluderemoved, UserVariable session_exclSimilar to excludesimilar
+	}
+	
+	managedapps = Dataset {
+		view:enduser360_managedapplications with uid to uid
+	}
+	
+	/* Page content */
+
+	showAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(
+			outaccountuid to inuid,
+			uid to inapplicationuids,
+			True to inshowowner,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory
+		)
+	)
+
+	showGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(
+			outgroupuid to inuid,
+			True to inshowapplications,
+			False to inshowaccounts,
+			True to inshowperjob,
+			True to inshowperorg,
+			uid to inapplicationuids
+		)
+	)
+
+	showIdentityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(
+			outidentityuid to inuid,
+			uid to inapplicationuids,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowtheoretical,
+			True to inshowposition,
+			True to inshowdecisionhistory
+		)
+	)
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				PaginatedTable {
+					data:accountsgroups
+					layout:Layout {grab: horizontal True vertical True }
+					page-size:1000
+					//show-count:True
+					show-filter:True
+					configurable:True
+					persist-configuration:True
+					persist-configuration-key:uid
+					show-count-button: True
+					
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then aartimeline_highlightnew360 when 'Removed' then aartimeline_highlightremoved360 when 'Invalid' then aartimeline_highlightremoved360 } text:Transform Current status using aarmapping360 }
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerhrcode
+						header:$identity.hrcode
+						actions:ExecuteNamedAction showIdentityDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerfullname
+						header:$identity.fullname
+						width:160px
+						actions:ExecuteNamedAction showIdentityDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownermail
+						header:$identity.mail
+						width:160px
+						actions:ExecuteNamedAction showIdentityDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerinternal
+						header:$identity.internal
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerarrivaldate
+						header:$identity.arrivaldate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:ownerdeparturedate
+						header:$identity.departuredate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:orgdisplayname
+						header:$organisation.department
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:login
+						header:$account.login
+						actions:ExecuteNamedAction showAccountDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:username
+						header:$paccount.username
+						width:160px
+						actions:ExecuteNamedAction showAccountDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:lastlogindate
+						header:$account.lastlogindate
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:noownercode
+						header:$preconciliation.noownercode
+						initially-masked:True
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:repositorydisplayname
+						header:$repository.concept
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:groupcode
+						header:$pgroup.code
+						initially-masked:True
+						width:160px
+						actions:ExecuteNamedAction showGroupDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:groupdisplayname
+						header:$pgroup.displayname
+						width:160px
+						actions:ExecuteNamedAction showGroupDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:groupdescription
+						header:'description'
+						width:160px
+						initially-masked:True
+						actions:ExecuteNamedAction showGroupDetails
+					}
+					Column {
+						column:uid
+						selection:outaccountuid
+						hidden:True
+					}
+					Column {
+						column:groupuid
+						selection:outgroupuid
+						hidden:True
+					}
+					Column {
+						column:owneruid
+						selection:outidentityuid
+						hidden:True
+					}
+				}
+			}
+		}	
+	}
+}

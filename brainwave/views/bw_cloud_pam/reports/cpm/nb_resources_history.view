@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpam_nb_resources_history" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="asset" displayname="nb resources history" notes="">
+	<ViewParam name="vault_code" displayname="vault_code"/>
+	<ViewParam name="platform_code" displayname="platform_code"/>
+	<ViewComputedAttribute name="timeslot_date" displayname="timeslot_date" type="String" expression="dataset.timeslotcommitdate.get().toLDAPString().substring(0,4) + &apos;-&apos; + dataset.timeslotcommitdate.get().toLDAPString().substring(4,6) + &apos;-&apos; + dataset.timeslotcommitdate.get().toLDAPString().substring(6,8)"/>
+	<ViewSort name="sort" attribute1="A1629011006877_521"/>
+	<ViewAttribute name="A1627547139503_2446" attribute="categorycode" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1627547155583_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="ca_secret"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1628622000671_772" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="! param.isEmpty(&apos;vault_code&apos;)" join="safe_to_secrets_join1_metadata">
+		<ViewJoin name="J1628622031114_773" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewJoin name="J1664971936797_931" prefix="vault_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+				<ViewAttribute name="1664983521287_1941" attribute="code" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1664972342580_0" reference="vault_code" operation="eq" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1629011006877_521" attribute="timeslotuid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1629011010357_522" attribute="timeslotcommitdate" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1629011011037_523" attribute="timeslotcommitday" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1629011312234_547" attribute="custom2" alias="nb_resources" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1629094881234_464" attribute="custom3" alias="nb_platforms" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="1637145871733_598" attribute="custom2" operator="and" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1637145045204_0" operation="isNotNull" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1637145061734_1" operation="ilike" ignoreifempty="false">
+			<Value name="0" data="_%"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="1638545381345_555" attribute="custom3" operator="or" removedfromprojection="true" globalfilter="false" enabled="!param.isEmpty(&apos;platform_code&apos;)">
+		<ViewAttributeFilter name="F1638538555815_0" reference="platform_code" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+</View>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwcontrol_atypicalrights" displayname="atypicalrights">
+	<Definition scriptfile="views/bw_standard_controls/atypicalrights.javascript" name="D1589540902010" description="This business view spot atypical access rights by performing peer group analysis at a &quot;direct organisation&quot; level&#xA;you can fine tune the analysis perimeter with &#xA;- analysisthreshold (minimal # of direct members of org for the org to be considered)&#xA;- alertthreshold (% of assignments under which this access right is considered atypical in the organisation)">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1589540902010" title="identity rights">
+			<InnerView name="bwcontrol_identityrightsallocnotchanged">
+				<Param name="F1589541594892" viewparam="analysisthreshold" viewparamvalue="{param.analysisthreshold.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1589541273852" type="joinview" x="681" y="199" w="300" h="50" title="grab only atypical rights">
+			<InnerView name="bwcontrol_atypicalperms">
+				<Param name="F1589541605422" viewparam="analysisthreshold" viewparamvalue="{param.analysisthreshold.get()}"/>
+				<Param name="F1589541751807" viewparam="alertthreshold" viewparamvalue="{param.alertthreshold.get()}"/>
+			</InnerView>
+			<Join jointype="inner" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<ExcludeList>
+				<Exclude name="orgcode"/>
+				<Exclude name="orguid"/>
+				<Exclude name="key"/>
+				<Exclude name="nbidentity"/>
+				<Exclude name="permuid"/>
+				<Exclude name="orgbwa_control_organisation_nbdirectmembers"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1700037318300" source="C1589540902010" target="C1589541273852" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="analysisthreshold" displayname="analysis threshold" type="Integer" defaultvalue="10"/>
+	<ViewParam name="alertthreshold" displayname="alert threshold" type="Integer" defaultvalue="5"/>
+</View>

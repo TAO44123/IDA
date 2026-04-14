@@ -1,0 +1,213 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/account/details.page"
+import "/webportal/pages/bw_fragments/account/owner.page"
+import "/webportal/pages/bw_fragments/account/groups.page"
+import "/webportal/pages/bw_fragments/account/serverrights.page"
+import "/webportal/pages/bw_fragments/account/controls.page"
+import "/webportal/pages/bw_fragments/account/usages.page"
+import "/webportal/pages/bw_fragments/account/decisionhistory.page"
+import "/webportal/pages/bw_fragments/custom/accountExtendedDetails.page"
+import "/webportal/pages/bw_fragments/account/cyberarkrights.page"
+
+/* Nationalized labels here */
+pamuserDetailsNLS = NLS {
+	title [en "User Details" fr "Détails de l''utilisateur"]
+
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "User" fr "Compte utilisateur"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	groups [en "Groups" fr "Groupes"]
+	infrastructure [en "Servers" fr "Serveurs"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	cyberark.vault [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	cyberark.safe [en "CyberArk Safes" fr "Safes CyberArk"]
+	cyberark.graph [en "CyberArk Graph" fr "Graphe CyberArk"]
+}
+
+bwpam_userDetailsDialog = Dialog {
+	title: $pamuserDetailsNLS.title
+	
+	width:1366
+	height:720
+	buttons:OkButton
+	enter-event: 	Set account.bwa_accountanalytics_nbdirectgroup to nbgroups,
+					IntCase(account.bwa_accountanalytics_nbdirectinfrastructureright) { when >0 then [ Set True to hasinfrastructurerights ] },
+					IntCase(account.bwa_accountanalytics_nbdirectright) { when >0 then [ Set True to hasrights ] },
+					IntCase(account.bwa_accountanalytics_nbusage) { when >0 then [ Set True to hasusages ] }
+	
+	inuid = Variable
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowowner = Variable { type:Boolean initial:True }
+	inshowgroups = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowACLs = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+
+	inapplicationuids = Variable { type:String multivalued:True }
+	insharedfolderuid = Variable { type:String multivalued:True }
+	inshareuids = Variable { type:String multivalued:True }
+	inpermissiontypes = Variable { type:String multivalued:True }
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+	inaclonly = Variable { multivalued:False type:Boolean initial:False }
+	
+	nbdefects = Variable { private:True }
+	nbgroups = Variable { private:True }
+	hasinfrastructurerights = Variable { private:True initial:False }
+	hasrights = Variable { private:True initial:False }
+	hasusages = Variable { private:True initial:False }
+	nbcavaults = Variable
+	nbcasafes = Variable
+	
+	showextended = Variable { private:True initial:False }
+
+	grouptype = Variable { private:True }
+
+	active_account = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_owner = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_infrastructure = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	active_cavaults = Variable { initial:False multivalued:False type:Boolean }
+	active_casafes = Variable { initial:False multivalued:False type:Boolean }
+	active_cagraph = Variable { initial:False multivalued:False type:Boolean }
+	
+	account = Record {
+		view: bwf_accountDetail with inuid to uid
+	}
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$pamuserDetailsNLS.account
+			activation-event: Set True to active_account
+			
+			IncludeFragment (fragmentAccountFullDetails with value-of inuid to inuid, value-of active_account to inenabled )
+		}
+		TabItem  {
+			text:$pamuserDetailsNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentAccountExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem  {
+			text:$pamuserDetailsNLS.owner
+			hidden:Not BooleanPredicate(inshowowner)
+			activation-event: Set True to active_owner
+			
+			IncludeFragment (fragmentAccountOwnerFull with value-of inuid to inuid,  incanreconcile binds-to inenablemanualreconciliation, value-of active_owner to inenabled )
+		}
+		TabItem  {
+			text:$pamuserDetailsNLS.groups
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowgroups)
+					StringPredicate(nbgroups) { when IsEmpty then True }
+					IntPredicate(nbgroups) { when >0 then False otherwise True }
+				}
+			activation-event: Set True to active_groups
+
+			IncludeFragment (fragmentAccountGroupsSelection with value-of inuid to inuid, value-of active_groups to inenabled )
+		}	
+		TabItem {
+			text: $pamuserDetailsNLS.cyberark.vault
+			activation-event:Set True to active_cavaults
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:
+				OrPredicate {
+					IntPredicate(nbcavaults) { when >0 then False otherwise True }
+					StringPredicate (nbcavaults) { when IsEmpty then True }
+				}
+			IncludeFragment {
+				fragment:fragmentAccountCAVaultsRights
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_cavaults.get()" to inenabled,
+				nbcavaults binds-to nbvaults
+				}
+			}
+		TabItem {
+			text: $pamuserDetailsNLS.cyberark.safe
+			activation-event:Set True to active_casafes
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:
+				OrPredicate {
+					IntPredicate(nbcasafes) { when >0 then False otherwise True }
+					StringPredicate (nbcasafes) { when IsEmpty then True }
+				}
+			IncludeFragment {
+				fragment:fragmentAccountCASafesRights
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_casafes.get()" to inenabled,
+				nbcasafes binds-to nbsafes
+			}
+		}
+		TabItem {
+			text: $pamuserDetailsNLS.cyberark.graph
+			activation-event:Set True to active_cagraph
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:
+				AndPredicate {
+					OrPredicate {
+						IntPredicate(nbcavaults) { when >0 then False otherwise True }
+						StringPredicate (nbcavaults) { when IsEmpty then True }
+					}
+				OrPredicate {
+					IntPredicate(nbcasafes) { when >0 then False otherwise True }
+					StringPredicate (nbcasafes) { when IsEmpty then True }
+				}
+			}
+			IncludeFragment {
+				fragment:fragmentAccountCAGraphRights360
+				with value-of inuid to inuid, value-of nbcasafes to innbsafes, value-of Eval "active_access.get() && active_cagraph.get()" to inenabled
+			}
+		}			
+		TabItem  {
+			text:$pamuserDetailsNLS.infrastructure
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowapplications)
+					Not BooleanPredicate(hasinfrastructurerights)
+				}
+			activation-event: Set True to active_infrastructure
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			
+			IncludeFragment (fragmentAccountServerRightsList with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_infrastructure to inenabled, inapplicationuids binds-to inapplicationuids )
+		}
+		TabItem  {
+			text:$pamuserDetailsNLS.usages
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowusages)
+					Not BooleanPredicate(hasusages)
+				}
+			activation-event: Set True to active_usages
+			
+			IncludeFragment (fragmentAccountUsages with 	value-of inuid to inuid, 
+																	value-of True to incanshowdetails, 
+																	value-of active_usages to inenabled )
+		}
+		TabItem  {
+			text:$pamuserDetailsNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentAccountControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$pamuserDetailsNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentAccountDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}
+}

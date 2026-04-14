@@ -1,0 +1,157 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+bw_puar_auditlogsNLS = NLS {
+	title [en "Audit Logs" fr "Audit logs"]
+	action [en "Action" fr "action"]
+	submission [en "Submission Date" fr "soumis le"]
+	due [en "Due Date" fr "attendu pour le"]
+	close [en "Close Date" fr "fait le"]
+	status [en "Status" fr "statut"]
+	issuer [en "Issuer" fr "par"]
+	ticket [en "Ticket Number" fr "nb ticket"]
+
+	onlyafter [en "Only Events After" fr "Evenements avant"]
+	onlybefore [en "Only Events Before" fr "Evenements après"]
+	filterstatus [en "Filter by Status" fr "Filtrer par statut"]
+	filterissuer [en "Filter by Issuer" fr "Filtrer par acteur"]
+}
+
+bw_puar_auditlogs = Page {
+	title: $bw_puar_auditlogsNLS.title
+	icon:%report_32.log
+	large-icon:%report_48.log
+	tags: "admin"
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	filter_status = Variable
+	filter_issuer = Variable { multivalued:True }
+	filter_datebefore = Variable { initial:Date.offset(1 days).valueLDAP  }
+	filter_dateafter = Variable { initial:Date.offset(-90 days).valueLDAP  }
+	
+	/* Datasets and records here */
+	auditlogs = Dataset {
+		view:br_auditlogs with filter_dateafter to dateafter unless-empty, filter_datebefore to datebefore unless-empty, filter_issuer to issuer unless-empty, filter_status to status unless-empty
+	}
+	auditlogstatus = Dataset {
+		view:br_auditlogstatus
+	}
+	auditlogissuers = Dataset {
+		view:br_auditlogissuers
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn { width:120px },GridColumn { width:120px },GridColumn { width:160px },GridColumn { width:grow }
+		layout:Layout { grab: horizontal True vertical False hint:height 100 } 
+		GridRow {
+			height:80px
+			GridCell {
+				DateTime {
+					variable:filter_dateafter
+					label:Label { break:True value:$bw_puar_auditlogsNLS.onlyafter }
+					type:Date
+					format:"yyyyMMddhhmmss"
+				}
+			}		
+			GridCell {
+				DateTime {
+					variable:filter_datebefore
+					label:Label { break:True value:$bw_puar_auditlogsNLS.onlybefore }
+					type:Date
+					format:"yyyyMMddhhmmss"
+				}
+			}		
+			GridCell {
+				Combo {
+					variable:filter_status
+					allow-none:True
+					label:Label { break:True value:$bw_puar_auditlogsNLS.filterstatus }
+					options:Dynamic {
+						data:auditlogstatus
+						text:Current status
+						value:Current status
+					}
+				}
+			}		
+			GridCell {
+				Combo {
+					variable:filter_issuer
+					allow-none:True
+					multi-selection:True
+					label:Label { break:True value:$bw_puar_auditlogsNLS.filterissuer }
+					options:Dynamic {
+						data:auditlogissuers
+						text:Current identityfullname
+						value:Current identityuid
+					}
+				}
+			}		
+		}
+	}
+
+
+	Table {
+		data:auditlogs
+		layout:Layout { grab:horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		configurable:True
+		persist-configuration:True
+	
+		Column {
+			column:tickettype
+			text:Concat(Current tickettype, '_', Current ticketnumber)
+			width:200px
+			sortable:True
+			header:$bw_puar_auditlogsNLS.ticket
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:submissiondate
+			width:160px
+			sortable:True
+			header:$bw_puar_auditlogsNLS.submission
+		}
+		Column {
+			column:title
+			width:100%
+			sortable:True
+			filterable:True
+			header:$bw_puar_auditlogsNLS.action
+		}
+		Column {
+			column:duedate
+			width:160px
+			sortable:True
+			header:$bw_puar_auditlogsNLS.due
+			initially-masked:True
+		}
+		Column {
+			column:closedate
+			width:160px
+			sortable:True
+			header:$bw_puar_auditlogsNLS.close
+			initially-masked:True
+		}
+		Column {
+			column:status
+			width:100px
+			sortable:True
+			header:$bw_puar_auditlogsNLS.status
+		}
+		Column {
+			column:identityfullname
+			sortable:True
+			filterable:True
+			width:240px
+			actions:Dialog bwf_identityDetailsDialog(Current identityuid to inuid, True to inshowposition)
+			header:$bw_puar_auditlogsNLS.issuer
+		}
+	}
+}

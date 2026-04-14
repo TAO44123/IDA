@@ -1,0 +1,192 @@
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+
+//  Scheduling Fragment
+dsm_cfg_schedule = PageFragment { 
+
+   mixins: defaultPage
+   post-render-event: ExecuteNamedAction doInit
+   //events
+   // changed :  mapping has changed 
+    edit = Variable { type: Boolean}
+    outCanNext = Variable { type: Boolean  }
+    hasScript = Variable { type: Boolean }     
+    scheduling = Variable
+    _scheduling = Variable  // running value   
+    frequency = Variable // D W M S N
+    hour = Variable { initial: 0}
+    minute = Variable { initial: 0}
+    dow = Variable
+    dom = Variable  
+    
+    cronValid = Variable { type: Boolean } 
+   	 	 
+	doInit = NamedAction (
+	  Set scheduling to _scheduling,
+	  ExecuteNamedAction updateFields,	  
+	  ExecuteNamedAction doUpdateCanNext
+	) 
+	
+	doSelectFrequency = NamedAction (
+	 // init cron for selected frequency 
+	  StringCase( frequency){
+	    when "D" then [ Set "0 0 * * *" to _scheduling]
+	    when "W" then [ Set "0 0 * * 0" to _scheduling]
+	    when "M" then [ Set "0 0 1 * *" to _scheduling]
+	    when "N" then [ Set "" to _scheduling]
+	    when "S" then [ Set "* * * * *" to _scheduling]
+	  },
+	  ExecuteNamedAction updateFields
+	)
+	
+	updateFields = NamedAction (
+	    Call parseCron ( _scheduling to cron, frequency from frequency, hour from hour , minute from minute, dow from dow, dom from dom)
+	)
+	
+	updateScheduling = NamedAction (
+	  Set @computeCron( frequency to frequency, hour to hour, minute to minute, dom to dom, dow to dow, _scheduling to cron) to _scheduling
+	)
+	 
+	doUpdateCanNext = NamedAction (
+	   Set cronValid to outCanNext, 
+	   FireFragmentEvent "changed"
+	)   
+	  
+	doCommitNext = NamedAction (
+	    
+	    Set _scheduling to scheduling
+	) 
+	 
+	ConditionalGroup { 
+	  layout: Layout { hint: width 400 height 200 indent: horizontal 20 vertical 10 }
+	  BooleanCondition(hasScript){
+	    when True then [	  
+			Combo {
+			  label: $dsm_sched_NLS.label_frequency
+			  variable: frequency
+			  modify-event: ExecuteNamedAction doSelectFrequency
+			  options: Static {
+			    Option {text: $dsm_sched_NLS.frequency.notscheduled value: "N" }
+			    Option {text: $dsm_sched_NLS.frequency.daily value: "D" }
+			    Option {text: $dsm_sched_NLS.frequency.weekly value: "W" }
+			    Option {text: $dsm_sched_NLS.frequency.monthly value: "M" }
+			    Option {text: $dsm_sched_NLS.frequency.special value: "S" }
+			  }
+			} 
+			ConditionalGroup {
+			  StringCondition( frequency) {
+			    when "D" then [  
+			      IncludeFragment { fragment: bwdsm_timePicker with hour binds-to hour, minute  binds-to minute inline: True
+			        fragment-events: { when "changed" then [ ExecuteNamedAction updateScheduling ] }
+			      }	      	      
+			    ]
+			    when "W" then [
+			      Combo {
+			        label: $dsm_sched_NLS.label_dayOfWeek
+			        variable: dow
+			        modify-event: ExecuteNamedAction updateScheduling
+			        options: Static {
+			          Option { value: 0 text: $dsm_sched_NLS.dow.^sunday}
+			          Option { value: 1 text: $dsm_sched_NLS.dow.^monday}
+			          Option { value: 2 text: $dsm_sched_NLS.dow.^tuesday}
+			          Option { value: 3 text: $dsm_sched_NLS.dow.^wednesday}
+			          Option { value: 4 text: $dsm_sched_NLS.dow.^thursday}
+			          Option { value: 5 text: $dsm_sched_NLS.dow.^friday}
+			          Option { value: 6 text: $dsm_sched_NLS.dow.^saturday}
+			        }
+			      }
+			      IncludeFragment { fragment: bwdsm_timePicker with hour binds-to hour, minute  binds-to minute inline: True 
+			        fragment-events: { when "changed" then [ ExecuteNamedAction updateScheduling ] }
+			      }
+			    ]
+			    when "M" then [
+			      Combo {
+			        label: $dsm_sched_NLS.label_dayOfMonth
+			        variable: dom
+			        modify-event: ExecuteNamedAction updateScheduling
+			        options: Static {
+			          Option { value: "1" text: $dsm_sched_NLS.dom_1}
+			          Option { value: "L" text: $dsm_sched_NLS.dom_L}
+			          Option { value: "2" text: $dsm_sched_NLS.dom_2 }
+			          Option { value: "3" text: $dsm_sched_NLS.dom_3 }
+			          Option { value: "4" text: $dsm_sched_NLS.dom_4 }
+			          Option { value: "5" text: $dsm_sched_NLS.dom_5 }
+			          Option { value: "6" text: $dsm_sched_NLS.dom_6 }
+			          Option { value: "7" text: $dsm_sched_NLS.dom_7 }
+			          Option { value: "8" text: $dsm_sched_NLS.dom_8 }
+			          Option { value: "9" text: $dsm_sched_NLS.dom_9 }
+			          Option { value: "10" text: $dsm_sched_NLS.dom_10 }
+			          Option { value: "11" text: $dsm_sched_NLS.dom_11 }
+			          Option { value: "12" text: $dsm_sched_NLS.dom_12 }
+			          Option { value: "13" text: $dsm_sched_NLS.dom_13 }
+			          Option { value: "14" text: $dsm_sched_NLS.dom_14 }
+			          Option { value: "15" text: $dsm_sched_NLS.dom_15 }
+			          Option { value: "16" text: $dsm_sched_NLS.dom_16 }
+			          Option { value: "17" text: $dsm_sched_NLS.dom_17 }
+			          Option { value: "18" text: $dsm_sched_NLS.dom_18 }
+			          Option { value: "19" text: $dsm_sched_NLS.dom_19 }
+			          Option { value: "20" text: $dsm_sched_NLS.dom_20 }
+			          Option { value: "21" text: $dsm_sched_NLS.dom_21 }
+			          Option { value: "22" text: $dsm_sched_NLS.dom_22 }
+			          Option { value: "23" text: $dsm_sched_NLS.dom_23 }
+			          Option { value: "24" text: $dsm_sched_NLS.dom_24 }
+			          Option { value: "25" text: $dsm_sched_NLS.dom_25 }
+			          Option { value: "26" text: $dsm_sched_NLS.dom_26 }
+			          Option { value: "27" text: $dsm_sched_NLS.dom_27 }
+			          Option { value: "28" text: $dsm_sched_NLS.dom_28 }
+			          Option { value: "29" text: $dsm_sched_NLS.dom_29 }
+			          Option { value: "30" text: $dsm_sched_NLS.dom_30 }
+			          Option { value: "31" text: $dsm_sched_NLS.dom_31 }		          	                  
+			        }
+			      }
+			      IncludeFragment { fragment: bwdsm_timePicker with hour binds-to hour, minute  binds-to minute inline: True 
+			        fragment-events: { when "changed" then [ ExecuteNamedAction updateScheduling ] }
+			      }
+			    ]
+			    when "S" then [
+			        Edit {
+							variable: _scheduling
+							match: "[0-9LW#,\\-\\*\\?\\/ ]*"
+							label: $dsm_sched_NLS.label_exp
+							modify-event: ExecuteNamedAction doUpdateCanNext
+							validity: cronValid
+							tooltip: $dsm_sched_NLS.label_exp_TT
+							hidden: Eval "frequency.get() != 'S' "
+						}
+			    ]
+			  }
+			}
+			Text {
+				value: @cronDescriptionString( _scheduling to cron)
+				label: $dsm_sched_NLS.label_description
+			}
+		]
+		when False then [
+		  Text {
+		    value: $dsm_sched_NLS.message_noschedule
+		    lines: 4
+		  }
+		]
+	}
+	 
+  }
+	 
+}
+
+bwdsm_timePicker = PageFragment {
+  hour = Variable { }
+  minute = Variable { }
+  Grid {
+   fill: None
+  	columns: GridColumn{ width: 100 },GridColumn{ width: 100 }
+  	GridRow {
+  		GridCell {
+  			Spinner { variable: hour minimum: 0 maximum: 23 label: $dsm_sched_NLS.label_time_hour modify-event: FireFragmentEvent "changed" }
+  		}
+  		GridCell {
+  			Spinner { variable: minute minimum: 0 maximum: 59 label: ":" modify-event: FireFragmentEvent "changed" }
+  		}       		
+  	}	
+  }
+}

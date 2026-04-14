@@ -1,0 +1,236 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/details_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/workflow_mixins.page"
+
+import "/webportal/pages/bw_cloud_pam/vault/fragments/details.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/accounts.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/safes.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/controls.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/rights.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/perorg.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/perjob.page"
+
+import "/webportal/pages/bw_cloud_pam/resources/pam_fragments.page"
+
+cavaultDetailsPageNLS = NLS {
+	title [en "CyberArk Vault Details" fr "Détails du vault CyberArk" ]
+	dynamictitle [en "CyberArk Vault Details {0}" fr "Détails du vault CyberArk {0}" ]
+
+	cavault [en "Vault" fr "Vault"]
+	details [en "Details" fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Accounts" fr "Comptes"]
+	access [en "Access" fr "Accès"]
+	dataviz [en "Graph" fr "Graphe"]
+
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	directgroups [en "Direct groups list" fr "Liste des groupes directs"]
+	allgroups [en "Direct and indirect groups list" fr "Liste des groupes directs et indirects"]
+	groupshierarchy [en "Groups hierarchy" fr "Hierarchie des groupes"]
+	model [en "Security Model" fr "Modèle de sécurité"]
+	theoretical [en "Granted rights" fr "Droits assignés"]
+	businessactivities [en "Business Activities" fr "Activités Métier"]
+	overallocated [en "Overallocated rights" fr "Droits suralloués"]
+	
+	accounts [en "Users" fr "Utilisateurs"]
+	safes [en "Safes" fr "Safes"]
+	permissions [en "Folders" fr "Répertoires"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Folders usage" fr "Usage des répertoires"]
+	oorigin [en "Organizations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+
+}
+
+cavaultDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (ca_vault)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity CAVault Detail with applicationUid.uid to paramVaultUid }
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: CAVault
+		mandatory: True
+	}
+	
+	applicationUid = Record {
+		view: br_applicationDetail_uid with recorduid to recorduid
+	}
+}
+
+cavaultDetailsPage = Page {
+	title: $cavaultDetailsPageNLS.title
+	dynamic-title: $cavaultDetailsPageNLS.dynamictitle(application.displayname)
+	mixins: detailsPage
+	enter-event: 	IntCase(application.bwa_applicationanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+					IntCase(application.bwa_applicationanalytics_nbdirectaccountright) { when >0 then [ Set True to hasrights ] },
+					IntCase(application.bwa_applicationanalytics_nbdirectidentityright) { when >0 then [ Set True to hasidentityrights ] }
+	
+	// Parameters Here
+	paramVaultUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedVaultUid = Variable {
+		type: String
+		initial: paramVaultUid
+	}
+
+	nbdefects = Variable 
+	nboverallocated = Variable
+	nbdecision = Variable
+	hasrights = Variable { initial:False }
+	hasidentityrights = Variable { initial:False }	
+	hasusages = Variable { initial:False }
+
+	showextended = Variable { initial:False }
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	active_cavault = Variable { initial:False multivalued:False type:Boolean }
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_safes = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_dataviz = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Record for concept details
+	application = Record {
+		view: bwf_applicationDetail with selectedVaultUid to uid
+	}
+
+	// Start of the Layout based on a 1-column Grid
+	Grid {
+		columns: GridColumn { width: grow }							
+		layout: Layout { grab: horizontal True vertical True }
+		// Row for the Navigator
+
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$cavaultDetailsPageNLS.details
+						activation-event:Set True to active_detail
+
+						TabFolder {
+							border:False
+							TabItem {
+								text:$cavaultDetailsPageNLS.cavault
+								activation-event:Set True to active_cavault
+							
+								IncludeFragment {
+									fragment:fragmentCAVaultFullDetails
+									with value-of selectedVaultUid to inuid, value-of True to incanupdatetags, value-of Eval "active_detail.get() && active_cavault.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cavaultDetailsPageNLS.accounts
+								activation-event:Set True to active_accounts
+							
+								IncludeFragment {
+									fragment:fragmentCAVaultAccounts
+									with value-of selectedVaultUid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cavaultDetailsPageNLS.safes
+								activation-event:Set True to active_safes
+							
+								IncludeFragment {
+									fragment:fragmentCAVaultSafes
+									with value-of selectedVaultUid to inuid, value-of Eval "active_detail.get() && active_safes.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cavaultDetailsPageNLS.dataviz
+								activation-event:Set True to active_dataviz
+								hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+								IncludeFragment {
+									fragment: bwpam_vault_graph
+									with selectedVaultUid binds-to inuid, value-of False to insecretsonly, value-of Eval "active_detail.get() && active_dataviz.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$cavaultDetailsPageNLS.access
+						activation-event:Set True to active_access
+						hidden:
+							AndPredicate {
+								Not BooleanPredicate(hasrights)
+							}
+					 
+						TabFolder {
+							border:False
+							TabItem {
+								text:$cavaultDetailsPageNLS.rights
+								hidden:Not BooleanPredicate(hasrights)
+								activation-event:Set True to active_rights
+							
+								IncludeFragment {
+									fragment:fragmentVaultRights
+									with value-of selectedVaultUid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile,  value-of Eval "active_access.get() && active_rights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cavaultDetailsPageNLS.oorigin
+								hidden: OrPredicate {
+									Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+									Not BooleanPredicate(hasidentityrights)
+									}
+								activation-event:Set True to active_perorg
+							
+								IncludeFragment {
+									fragment:fragmentVaultPerOrg
+									with value-of selectedVaultUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perorg.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$cavaultDetailsPageNLS.jorigin
+								hidden:OrPredicate {
+									Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+									Not BooleanPredicate(hasidentityrights)
+									}
+								activation-event:Set True to active_perjob
+							
+								IncludeFragment {
+									fragment:fragmentVaultPerJob
+									with value-of selectedVaultUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perjob.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$cavaultDetailsPageNLS.controls
+						activation-event:Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						IncludeFragment {
+							fragment:fragmentVaultAllControlDefectsList
+							with value-of selectedVaultUid to inuid, value-of True to incanshowdetails, nbdefects binds-to outnbdefects, value-of True to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

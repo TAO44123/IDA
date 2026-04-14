@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="a360s_identityctrl_bv" displayname="identityctrl_bv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/identity/identityaccounts_bv.javascript" name="D1612722433445">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1612722433444" title="identity controls">
+			<InnerView name="access360r_identityctrl">
+				<Param name="F1617349050735" viewparam="controls" viewparamvalue="{param.controls}"/>
+				<Param name="F1617350769999" viewparam="controlscope" viewparamvalue="{param.controlscope}"/>
+				<Param name="F1617351764259" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1609940829081_1" type="trendview" x="341" y="281" w="300" h="50" title="trend" enable="{!param.isEmpty(&apos;comparisontimeslot&apos;)}">
+			<Trend key="{dataset.key.get()}" comparing_column="val" trend_column_name="status" include_removed="true" timeslot="{param.comparisontimeslot.get()}"/>
+			<FilterList>
+				<Filter name="F1632469207337" expression="param.excluderemoved.get() &amp;&amp; &quot;Removed&quot;.equals(dataset.status.get())" comment="remove Removed" type="Exclude"/>
+				<Filter name="F1632469247757" expression="param.excludesimilar.get() &amp;&amp; &quot;Identical&quot;.equals(dataset.status.get())" comment="remove Similar" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1617349066888" type="unionview" x="664" y="155" w="300" h="50" title="identity accounts controls">
+			<InnerView name="access360r_identityaccountctrl">
+				<Param name="F1617349093968" viewparam="controls" viewparamvalue="{param.controls}"/>
+				<Param name="F1617350775774" viewparam="controlscope" viewparamvalue="{param.controlscope}"/>
+				<Param name="F1617351779309" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="prim" secondary_discriminator="sec" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1617349067011" source="C1612722433444" target="C1617349066888" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1617349067169" source="C1617349066888" target="C1609940829081_1" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="comparisontimeslot" displayname="comparisontimeslot"/>
+	<ViewParam name="controls" displayname="controls"/>
+	<ViewSort name="sort" attribute1="identityfullname" attribute2="controldisplayname"/>
+	<ViewParam name="controlscope" displayname="controlscope"/>
+	<ViewParam name="minimumrisklevel" displayname="minimumrisklevel"/>
+	<ViewParam name="excluderemoved" displayname="exclude removed" type="Boolean"/>
+	<ViewParam name="excludesimilar" displayname="exclude similar" type="Boolean"/>
+</View>

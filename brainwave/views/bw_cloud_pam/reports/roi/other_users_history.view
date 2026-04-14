@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpam_other_users_history" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="account" displayname="bultin users history" notes="" begindate="" enddate="">
+	<ViewParam name="vault_code" displayname="vault_code"/>
+	<ViewParam name="type" displayname="type"/>
+	<ViewComputedAttribute name="user_type" displayname="user_type" type="String" expression="param.isEmpty(&apos;type&apos;) ? &apos;Other&apos; : param.type.get()"/>
+	<ViewComputedAttribute name="timeslot_date" displayname="timeslot_date" type="String" expression="dataset.timeslotcommitdate.get().toLDAPString().substring(0,4) + &apos;-&apos; + dataset.timeslotcommitdate.get().toLDAPString().substring(4,6) + &apos;-&apos; + dataset.timeslotcommitdate.get().toLDAPString().substring(6,8)"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1627325327938_446" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1627324085441_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="0"/>
+		</ViewAttributeFilter>
+		<ViewAttributeFilter name="F1627324112839_1" operation="isNull" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="1627325335430_448" attribute="recorduid" alias="nb_users" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1627324127869_424" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+		<ViewAttribute name="1627329024068_763" attribute="repositorytype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1627324140281_0" operation="in" ignoreifempty="false">
+				<Value name="0" data="ca_vault"/>
+				<Value name="1" data="ca_safe"/>
+				<Value name="2" data="CDS"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewAttribute name="1638366773102_7667" attribute="code" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1634400023425_0" reference="vault_code" operation="eq" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewAttribute name="1627329100897_778" attribute="custom4" operator="and" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1638367615162_0" operation="notIn" ignoreifempty="false">
+			<Value name="0" data="Built-InAdmins"/>
+			<Value name="1" data="EPVUser"/>
+			<Value name="2" data="AIMAccount"/>
+			<Value name="3" data="CyberArkServiceUser"/>
+		</ViewAttributeFilter>
+		<ViewAttributeFilter name="F1638431822590_1" operation="isNotNull" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1638431856006_2" operation="ilike" ignoreifempty="false">
+			<Value name="0" data="_%"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="A1627329654954_828" attribute="timeslotuid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1627329657104_829" attribute="timeslotcommitdate" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1627465044652_1031" attribute="timeslotcommitday" operator="or" removedfromprojection="false" globalfilter="false"/>
+</View>

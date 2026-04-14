@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bw_controls_browser_get_app_discrepancies_on_control" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="application" displayname="get app discrepancies on control" notes="" begindate="" enddate="">
+	<ViewParam name="controlCode" displayname="Control code" type="String">
+		<Value name="0" data="4216f781-4af4-4502-baae-08f0f66e10f7"/>
+	</ViewParam>
+	<ViewParam name="managed" displayname="Is managed" type="Boolean"/>
+	<ViewParam name="sensitivity" displayname="Is sensitive" type="Boolean"/>
+	<ViewParam name="getRootCause" displayname="Get root causes (permissions)" type="Boolean"/>
+	<ViewParam name="includedApplicationUid" displayname="Included application(s) uid(s)" type="String"/>
+	<ViewParam name="includedRootcauseUid" displayname="Included permission(s) uid(s)" type="String"/>
+	<ViewParam name="useExceptions" displayname="Set to True to take exceptions into account" type="Boolean"/>
+	<ViewParam name="repo_uid" displayname="Repository Uid(s)" type="String"/>
+	<ViewParam name="tags" displayname="Tag(s)" type="String"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1598872500590_2138" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controldiscrepancy">
+		<ViewJoin name="J1598872503575_2140" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controllog">
+			<ViewAttribute name="A1598872505950_2141" attribute="controlcode" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1598872516726_0" reference="controlCode" operation="eq" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewJoin name="J1600864034305_881" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="(!param.isEmpty( &apos;getRootCause&apos; )) &amp;&amp; param.getRootCause.get()" join="controlrootcause">
+			<ViewJoin name="J1600864040654_882" prefix="perm_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+				<ViewJoin name="J1600864043231_883" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+					<ViewAttribute name="A1600864250091_886" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="A1600864251177_887" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				</ViewJoin>
+				<ViewAttribute name="A1600864246776_884" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1600864248128_885" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false">
+					<ViewAttributeFilter name="F1602745973969_0" reference="includedRootcauseUid" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="A1602065146115_16711" attribute="permissiontype" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewJoin name="J1598872501726_2139" prefix="exc_" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="!param.isEmpty( &apos;useExceptions&apos; ) &amp;&amp; param.useExceptions.get()" join="controlexception">
+		<ViewAttribute name="A1599060390532_3201" attribute="controlcode" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1599060489589_0" reference="controlCode" operation="eq" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1599060438629_3206" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="true">
+			<ViewAttributeFilter name="F1599060501206_0" operation="isNull" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1598872616575_2153" prefix="repository_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+		<ViewAttribute name="A1602064758717_16691" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16692" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1667918519627_0" reference="repo_uid" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1602064758717_16693" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16694" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16695" attribute="media" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16696" attribute="extractDate" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16697" attribute="extractday" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16698" attribute="type" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16699" attribute="repositorytype" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16700" attribute="repositoryfamily" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16701" attribute="importaction" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064758717_16702" attribute="deletedaction" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewJoin name="J1598877849948_2184" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="applicationinfo">
+		<ViewAttribute name="A1598877858181_2185" attribute="sensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="A1602064806281_16704" attribute="sensitivityreason" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064806281_16705" attribute="description" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064806281_16706" attribute="category" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064806281_16707" attribute="sensitivityreasonorigin" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064806281_16708" attribute="descriptionorigin" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1602064806281_16709" attribute="categoryorigin" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewAttribute name="A1602064714337_16679" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16680" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1602745992546_0" reference="includedApplicationUid" operation="in" ignoreifempty="true"/>
+	</ViewAttribute>
+	<ViewAttribute name="A1602064714337_16681" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16682" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16683" attribute="applicationtype" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16684" attribute="applicationfamily" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16685" attribute="opendoor" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16686" attribute="compilationmodel" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16687" attribute="fstype" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16688" attribute="repositoryrecorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16689" attribute="importaction" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1602064714337_16690" attribute="deletedaction" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1667918499283_1338" attribute="bwa_applicationtags_tag" operator="or" removedfromprojection="true" globalfilter="true">
+		<ViewAttributeFilter name="F1667918504125_0" reference="tags" operation="in" ignoreifempty="true"/>
+	</ViewAttribute>
+</View>

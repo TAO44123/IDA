@@ -1,0 +1,150 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+revokeaccessrequestrepositoryNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel current edition ?" fr "Annuler l'édition en cours ?"]
+	complete.buttontext [en "Confirm" fr "Confirmer"]
+	complete.confirm [en "Complete current task ?" fr "Terminer la tâche en cours ?"]
+	complete.flashmessage [en "Task completed" fr "Tâche terminée"]
+	title [en "request to revoke a repository access account" fr "Demande de révocation d'un compte d'accés au référentiel"]
+	_requestername [en "requester name" fr "requester name"]
+	_organisationcode [en "Organisation code" fr "Code de l'organisation"]
+	_organisationname [en "Organisation display name" fr "Nom de l'organisation"]
+	_emailrequester [en "Adresse mail" fr "Email"]
+	_approvalstatus [en "approval status" fr "approval status"]
+	approvalstatus.value0 [en "approve" fr "approve"]
+	approvalstatus.value1 [en "deny" fr "deny"]
+}
+
+
+approvalaccessrequestrepository = Page {
+	title: $revokeaccessrequestrepositoryNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	taskId = Parameter {
+		type: String
+		mandatory: True
+	}
+	
+	/* variables here */
+	/* variables here */
+	organisationCode =  Variable{type: String}
+	organisationName =  Variable{type: String}
+	
+	/* Datasets and records here */
+	task = TaskRecord(taskId)
+	
+	
+	/* Page content */
+	
+	repositoryDataset = Dataset {
+		view: accsbyidentity with task.repository to acc_uid
+	}
+	
+	organisation = Record {
+	    view: getidentityorganisations with task.requester to uid
+	}   
+	
+	
+	emailrequester = Record {
+		view: emailbyidentity with task.requester to uid
+	}  
+	
+	Flow {
+
+    disposition: Vertical
+    	
+	Group { 
+	//layout: Layout{hint:height 100}
+	title: "Requester"
+	Text {
+		label: $revokeaccessrequestrepositoryNLS._requestername
+		value: task.requestername
+	}
+	
+	Text {
+		label: $revokeaccessrequestrepositoryNLS._organisationcode
+		value: organisation.code
+	}
+	
+	Text {
+		label: $revokeaccessrequestrepositoryNLS._organisationname
+		value: organisation.displayname
+	}
+	
+	Text {
+		label: $revokeaccessrequestrepositoryNLS._emailrequester
+		value: emailrequester.ident_mail
+		// commands: Command {actions: Set emailrequester.ident_mail to task.email_requester}
+	}
+	
+	}
+	
+	
+	Group {
+	title: "Account/Repository"
+	MultiEdit {
+		
+		hide-remove: True
+		Element {
+			variable: task.repository
+			filterable: True
+			display: Display {
+				data: repositoryDataset match acc_uid
+				value: Current acc_login 
+			}
+		}
+	}
+	}
+	
+	
+	Group {
+		title: $revokeaccessrequestrepositoryNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		Combo {
+		label: Concat($revokeaccessrequestrepositoryNLS._approvalstatus,"*")
+		variable: task.approvalstatus
+		options: Static {
+			Option {
+				value: "approve"
+				text: $revokeaccessrequestrepositoryNLS.approvalstatus.value0
+			}
+			Option {
+				value: "deny"
+				text: $revokeaccessrequestrepositoryNLS.approvalstatus.value1
+			}
+		  }
+	    }
+	
+		ButtonGroup {
+			Button { 
+				text: $revokeaccessrequestrepositoryNLS.cancel.buttontext
+				actions: Confirm $revokeaccessrequestrepositoryNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: StringPredicate (task.approvalstatus) { when IsEmpty then True }
+				
+				text: $revokeaccessrequestrepositoryNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $revokeaccessrequestrepositoryNLS.complete.confirm, Set emailrequester.ident_mail to task.email_requester,TaskComplete task, Flash Information $revokeaccessrequestrepositoryNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	} // End of group
+  } // End of flow
+}
+

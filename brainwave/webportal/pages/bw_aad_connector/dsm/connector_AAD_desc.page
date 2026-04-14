@@ -1,0 +1,113 @@
+ds_azuread_NLS = NLS {
+  title [ en "Azure Active Directory" fr "Azure Active Directory" ]
+  description [ 
+    en "Collects Azure AD account and group information through a query to the Azure domain"
+    fr "Collecte les informations sur les comptes et groupes Azure AD via une requête vers le domaine Azure"]
+  label_login [ 
+  	en "application ID"
+  	fr "ID d'application (client)"]
+  label_login_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation." 
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_token [ 
+  	en "Secret client"
+  	fr "Client secret"]
+  label_token_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_tenant [ 
+  	en "Tenant ID"
+  	fr "ID du client"]
+  label_tenant_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+}
+
+ds_azure_ad = Page {
+	title: $ds_azuread_NLS.title
+	tags: "bwds_connector" , "live" , "csv", "microsoft", "azure"
+	description: $ds_azuread_NLS.description
+	icon: "/bw_aad_connector/L/azure-active-directory-small.png"
+	large-icon: "/bw_aad_connector/XL/azure-active-directory-big.png"
+	metadata: ( 	    
+	    category -> "infrastructure", 
+	    family -> "API",
+	    collector -> "bw_aad_connector",
+	    action ->"azuread",
+	    destPathVar -> "aad_sourceFolder",
+	    filePattern -> "*.csv",
+	    hasMapping -> False,
+	    multiFile -> True  
+	 )
+}
+
+/* config dynamic fragment */
+
+azuread_params = Constant { value: "login,token,tenant" }
+
+deserializeOptions_adp = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant azuread_params }
+  options = Input
+  login = Output { }
+  token = Output { }
+  tenant = Output { }
+}
+
+serializeOptions_adp = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant azuread_params }
+  secretnames = Input { default: "token"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+
+  login = Input { }
+  token = Input { }
+  tenant = Input { }
+}
+
+
+ds_azure_ad_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  // custom
+  login = Variable {}
+  token = Variable
+  tenant = Variable
+  
+   doInit = NamedAction(
+     Call deserializeOptions_adp ( options to options, login from login, token from token , tenant from tenant )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_adp ( dsname to secretdsname, 
+          login to login, token to token , tenant to tenant   ) to options
+   )
+   
+  Edit { 
+     label: $ds_azuread_NLS.label_login
+     variable: login
+     not-empty:True
+     tooltip: $ds_azuread_NLS.label_login_TT
+  }
+  Edit { 
+     label: $ds_azuread_NLS.label_token
+     variable: token
+     not-empty:True
+     password-mode: True
+     tooltip: $ds_azuread_NLS.label_token_TT
+  }
+  Edit { 
+     label: $ds_azuread_NLS.label_tenant
+     variable: tenant
+     not-empty:True
+     tooltip: $ds_azuread_NLS.label_tenant_TT
+  } 
+  
+}
+
+
+

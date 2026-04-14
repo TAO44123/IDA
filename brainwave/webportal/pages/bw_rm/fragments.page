@@ -1,0 +1,88 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+rm_role_detail = PageFragment {
+
+    rolecode_in = Variable 
+
+	roleDetails = Record {
+		view:bwpm_roledetails_md with rolecode_in to rolecode
+	}
+	
+		roleContentPermissions = Dataset {
+		view:bwpm_getrolepermissions_md with rolecode_in to rolecode
+	}
+
+	roleContentIdentities = Dataset {
+		view:bwpm_getroleidentities_md with rolecode_in to rolecode 
+	}
+	
+     Text {
+		value: roleDetails.name
+		tooltip: $permminingNLS.rolename
+		styling: StylingTemplateSelection(roleDetails.color) using bw_role_styling
+    }
+	Text {
+		value:roleDetails.description
+		tooltip: $permminingNLS.roledesc
+	}
+	Table {
+		data:roleContentPermissions
+		layout:Layout {grab: horizontal True vertical True}
+		configurable: True
+		hidden:  Eval "rolecode_in.isEmpty()" 		
+		label:Label {
+			align:Left
+			break:True
+			value: $permminingNLS.permrole
+		}
+		Column {
+			column:displayname
+			header:  $permminingNLS.perm
+			width:100%
+			sortable:True
+		}
+		Column {
+			column:applicationdisplayname
+			header:  $permminingNLS.app
+			width:100%
+			sortable:True
+		}
+		Column {
+			column:code
+			header:  $permminingNLS.permcode
+			initially-masked: True
+			width:100%
+			sortable:True
+		}
+	}
+	Table {
+		data:roleContentIdentities
+		configurable:True
+		layout:Layout {grab: horizontal True vertical True}
+		hidden: Eval "rolecode_in.isEmpty()" 
+		label:Label {
+			align:Left
+			break:True
+			value:$permminingNLS.peoplerole
+		}
+		Column {
+			column:hrcode
+			width:100%
+			sortable:True
+			initially-masked:True
+		}
+		Column {
+			column:fullname
+			width:100%
+			sortable:True
+		}
+		Column {
+			column:mail
+			width:100%
+			sortable:True
+			initially-masked:True
+		}
+	}
+}

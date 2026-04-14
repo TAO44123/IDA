@@ -1,0 +1,451 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/control/details/controlDetails.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+
+disabledStyle = Style {
+	italic: True
+	foreground: gray
+}
+
+bw_controlExecutionStatus = NLS {
+	executing [en "Executing" fr "En cours"]
+	done [en "Completed" fr "Terminé"]
+	na [en "Not availalbe" fr "Non disponible"]
+}
+
+// Values used in allcontrolswithavailability.javascript
+bw_controlExecutionStatus_executing = Constant { type: String value: "Executing"}
+bw_controlExecutionStatus_done = Constant { type: String value: "Done" }
+
+// Control execution status mapping
+bw_controlExecutionStatus = StringMapping {
+	when Constant bw_controlExecutionStatus_executing then $bw_controlExecutionStatus.executing
+	when Constant bw_controlExecutionStatus_done then $bw_controlExecutionStatus.done
+	otherwise current
+}
+
+/* Nationalized labels here */
+controlsmanagerExecuteDialogNLS = NLS {
+	title [ en "Execute Control Manually" fr "Exécution Manuelle de Contrôles"]
+	confirm [en "Are you sure you want to launch an execution of this control?" fr "Êtes-vous sûr de vouloir exécuter ce contrôle ?"]
+	error [ en "Control cannot be executed, the control might not be part of the project" fr "Le contrôle ne peut pas ne pas être exécuté, le contrôle ne fait pas partie du projet"]
+	done [en "Control execution has been scheduled" fr "L'exécution du contrôle a été programmée"]
+	warn [en "The KPIs will not be updated (discrepancies)" fr "Les indicateurs ne seront pas mis à jour (nombre d'écarts)"]
+	warnTt [en "A new timeslot is required to update the KPIs" fr "Un nouveau chargement est requis pour mettre à jour les indicateurs"]
+}
+
+controlsmanagerExecuteDialog = Dialog {
+	title: $controlsmanagerExecuteDialogNLS.title
+	buttons: [
+		CancelButton
+		OkButton {
+			actions:
+				Set incontrolid to executeondemand.controlid,
+				Set incontrolcode to executeondemand.controlCode,
+				Set incontroldisplayname to executeondemand.controldisplayname,
+				TaskComplete executeondemand wait-end timeout-seconds 30 timeout-actions [
+					Flash $controlsmanagerExecuteDialogNLS.done
+				]
+		}
+	]
+	
+	incontrolcode = Variable { type: String }
+	incontrolid = Variable { type: String }
+	incontroldisplayname = Variable { type: String }
+	
+	executeondemand = TaskRecord ( create "controlexecutionondemand" )
+	
+	currentControl = Record {
+		view: bwf_controldetails with
+			incontrolcode to controlcode
+	}
+	
+	Text {
+		value: $controlsmanagerExecuteDialogNLS.confirm
+		compact: True
+	}
+	Text {
+		value: $controlsmanagerExecuteDialogNLS.warn
+		tooltip: $controlsmanagerExecuteDialogNLS.warnTt
+		compact: True
+		styling: warningFieldStyle
+	}
+	Group {
+		title: $controlresult.concept
+		Text {
+			label: $controlresult.controlentity
+			value: currentControl.controlentity
+			compact: True
+			hidden:
+				StringPredicate ( incontrolcode ) {
+					when IsEmpty then True
+				}
+		}
+		Text {
+			label: $controlresult.controldisplayname
+			value: currentControl.controldisplayname
+			compact: True
+		}
+	}
+}
+
+controlsmanagerAddControlDialogNLS = NLS {
+	title [ en "Add a new control" fr "Ajouter un nouveau contrôle" ]
+	add [en "Add" fr "Ajouter"]
+	done [en "Control execution has been scheduled" fr "L'exécution du contrôle a été programmée"]
+	filename [en "File name" fr "Nom du fichier"]
+	non [en "No new control available" fr "Aucun nouveau contrôle disponible"]
+}
+
+controlsmanagerAddControlDialog = Dialog {
+	title: $controlsmanagerAddControlDialogNLS.title
+	width: 800
+	height: 600
+	buttons: [
+		CancelButton
+		OkButton {
+			actions: 
+				Set selectedControl to executeondemand.controlid,
+				Set selectedControlCode to executeondemand.controlCode,
+				Set selectedDisplayname to executeondemand.controldisplayname,
+				TaskComplete executeondemand wait-end timeout-seconds 2 timeout-actions [
+					Flash $controlsmanagerAddControlDialogNLS.done
+				]
+			disabled:
+				StringPredicate ( selectedControl ) {
+					when IsEmpty then True
+				}
+		}
+	]
+	
+	selectedControl = Variable { type: String }
+	selectedControlCode = Variable { type: String }
+	selectedDisplayname = Variable { type: String }
+	nbAvailableControls = Variable { type: Integer }
+	
+	executeondemand = TaskRecord ( create "controlexecutionondemand" )
+	
+	newcontrols = Dataset {
+		view: bwcontrol_availablenewcontrols
+		count-variable: nbAvailableControls
+	}
+	
+	ConditionalGroup {
+		IntCondition ( nbAvailableControls ) {
+			when <1 then [
+				Text {
+					value: $controlsmanagerAddControlDialogNLS.non
+					compact: True
+				}
+			] otherwise [
+				Text {
+					value: $controlsmanagerExecuteDialogNLS.warn
+					tooltip: $controlsmanagerExecuteDialogNLS.warnTt
+					compact: True
+					styling: warningFieldStyle
+				}
+				Group {
+					Table {
+						data: newcontrols
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-filter: True
+						show-count: True
+						Column {
+							column: new_controlcode
+							header: $controlresult.controlcode
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked: True
+							selection: selectedControlCode
+						}
+						Column {
+							column: new_controlid
+							header: $controlresult.concept
+							width: 100%
+							sortable: True
+							filterable: True
+							initially-masked: True
+							selection: selectedControl
+						}
+						Column {
+							column: new_displayname
+							header: $controlresult.controldisplayname
+							width: 100%
+							sortable: True
+							filterable: True
+							selection: selectedDisplayname
+						}
+						Column {
+							column: new_filename
+							header: $controlsmanagerAddControlDialogNLS.filename
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+					}
+				}
+			]
+		}
+	}
+}
+
+bw_controlsmanager_admin = NLS {
+	title [en "Manage Controls Execution" fr "Gérer l'exécution des contrôles" ]
+	description [en "Manage Controls Execution" fr "Gérer l'exécution des contrôles" ]
+	status [en "Status" fr "Statut"]
+	lastexecutiondate [en "Last Execution" fr "Dernière exécution"]
+	showControldDetails [en "Show control details" fr "Afficher les détails du contrôle"]
+	executeControl [en "Execute control" fr "Exécuter le contrôle"]
+	addControl [en "Add a control" fr "Ajouter un contrôle"]
+}
+
+bw_controlsmanager_admin_actions = PageFragment {
+	
+	selectedcontrolcode = Variable { type: String }
+	selectedcontrolid = Variable { type: String }
+	selectedcontrolisvailable = Variable { type: Boolean }
+	selectedcontroldisplayname = Variable { type: String }
+	updateRequired = Variable { type: Boolean initial: False }
+	
+	goDetails = NamedAction (
+		Dialog bwf_controlDetailsDialog ( selectedcontrolcode to incontrolcode )
+	)
+	
+	goExecuteControl = NamedAction (
+		Set True to updateRequired,
+		BooleanCase ( selectedcontrolisvailable ) {
+			when True then [ 
+				Dialog controlsmanagerExecuteDialog (
+					selectedcontrolcode to incontrolcode,
+					selectedcontrolid to incontrolid,
+					selectedcontroldisplayname to incontroldisplayname
+				),
+				FireFragmentEvent "reload"
+			]
+			when False then [
+				Message Error $controlsmanagerExecuteDialogNLS.error
+			]
+		}
+	)
+	
+	goAddControl = NamedAction (
+		Set True to updateRequired,
+		Dialog controlsmanagerAddControlDialog,
+		FireFragmentEvent "reload" 
+	)
+}
+
+bw_controlsmanager_admin = Page {
+	title: $bw_controlsmanager_admin.title
+	description: $bw_controlsmanager_admin.description
+	// tags: "admin" // hidden as it is replaced by the control browser
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedcontrolcode = Variable { type: String }
+	selectedcontrolid = Variable { type: String }
+	selectedcontrolisvailable = Variable { type: Boolean }
+	selectedcontroldisplayname = Variable { type: String }
+	availableControlCodes = Variable { type: String multivalued: True }
+	updateRequired = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	allcontrols = Dataset {
+		view: bwcontrol_allcontrolswithavailability with
+			Date (ValidatedTimeslot.CommitDate).valueLDAP to defaultdate
+		timeslot: ValidatedTimeslot.UID
+	}
+	
+	reload = NamedAction (
+		ReloadData ( allcontrols )	
+	)
+	
+	/* Page content */
+	// Actions fragment
+	fragmentActions = IncludeFragment {
+		layout: Layout { grab: horizontal False vertical False }
+		fragment: bw_controlsmanager_admin_actions with
+			value-of selectedcontrolcode to selectedcontrolcode,
+			value-of selectedcontrolid to selectedcontrolid,
+			value-of selectedcontroldisplayname to selectedcontroldisplayname,
+			value-of selectedcontrolisvailable to selectedcontrolisvailable,
+			updateRequired binds-to updateRequired
+		fragment-events:
+			{
+				when "reload" then [
+					ExecuteNamedAction reload
+				]
+			}
+	}
+	// Content
+	Table {
+		data: allcontrols
+		layout: Layout { grab: horizontal True vertical True }
+		show-count: True
+		show-filter: True
+		configurable: True
+		double-click:
+			StringCase ( selectedcontrolcode ) {
+				when Not IsEmpty then [
+					ExecuteFragmentNamedAction fragmentActions.goDetails
+				]
+			}
+		commands:
+			Commands {
+				position: After
+				presentation: Icon
+				orientation: Vertical
+				Command {
+					actions:
+						Message "nop"
+					icon: ""
+					disabled: True
+				}
+				Command {
+					actions:
+						ExecuteFragmentNamedAction fragmentActions.goDetails
+					icon: "16/details/info_16.png"
+					tooltip: $bw_controlsmanager_admin.showControldDetails
+					disabled:
+						OrPredicate {
+							StringPredicate ( selectedcontrolcode ) {
+								when IsEmpty then True
+							}
+						}
+				}
+				Command {
+					actions:
+						ExecuteFragmentNamedAction fragmentActions.goExecuteControl
+					icon: "16/famfamfam_silk_icons_v013/control_play.png"
+					tooltip: $bw_controlsmanager_admin.executeControl
+					disabled:
+						OrPredicate {
+							StringPredicate ( selectedcontrolcode ) {
+								when IsEmpty then True
+							}
+						}
+				}
+				Command {
+					actions:
+						ExecuteFragmentNamedAction fragmentActions.goAddControl
+					icon: "16/famfamfam_silk_icons_v013/add.png"
+					tooltip: $bw_controlsmanager_admin.addControl
+				}
+			}
+		Column {
+			column: isavailable
+			hidden: True
+			selection: selectedcontrolisvailable
+		}
+		Column {
+			column: available_controlid
+			header: $controlresult.controlid
+			sortable: True
+			filterable: True
+			selection: selectedcontrolid
+			width: 100px
+		}
+		Column {
+			column: controlcode
+			header: $controlresult.controlcode
+			sortable: True
+			filterable: True
+			initially-masked: True
+			selection: selectedcontrolcode
+			actions: ExecuteFragmentNamedAction fragmentActions.goDetails
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column: controlentity
+			header: $controlresult.controlentity
+			width: 80px
+			sortable: True
+			filterable: True
+			styling: BooleanStyling ( Current isavailable ) {
+				when False then disabledStyle
+				when True then default
+			}
+		}
+		Column {
+			column: controltype 
+			header: $controlresult.controltype
+			text: Transform Current controltype using mapControlType
+			width: 100%
+			sortable: True
+			filterable: True
+			initially-masked: True
+			styling: BooleanStyling ( Current isavailable ) {
+				when False then disabledStyle
+				when True then default
+			}
+		}
+		Column {
+			column: controltagtype
+			header: $controlresult.controltagtype
+			width: 10%
+			sortable: True
+			filterable: True
+			styling: BooleanStyling ( Current isavailable ) {
+				when False then disabledStyle
+				when True then default
+			}
+		}
+		Column {
+			column: controltagscope
+			header: $controlresult.controltagscope
+			width: 10%
+			sortable: True
+			filterable: True
+			styling: BooleanStyling ( Current isavailable ) {
+				when False then disabledStyle
+				when True then default
+			}
+		}
+		Column {
+			column: controltagfamily
+			header: $controlresult.controltagfamily
+			width: 10%
+			sortable: True
+			filterable: True
+			styling: BooleanStyling ( Current isavailable ) {
+				when False then disabledStyle
+				when True then default
+			}
+		}
+		Column {
+			column: controldisplayname
+			header: $controlresult.controldisplayname
+			width: 100%
+			sortable: True
+			filterable: True
+			selection: selectedcontroldisplayname
+			styling: BooleanStyling ( Current isavailable ) {
+				when False then disabledStyle
+				when True then default
+			}
+			actions: ExecuteFragmentNamedAction fragmentActions.goDetails
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column: lastexecutiondate
+			header: $bw_controlsmanager_admin.lastexecutiondate
+			sortable: True
+			filterable: True
+			width: 140px
+		}
+		Column {
+			column: status
+			header: $bw_controlsmanager_admin.status
+			text: Transform Current status using bw_controlExecutionStatus
+			sortable: True
+			filterable: True
+			width: 100px
+		}
+	}
+}

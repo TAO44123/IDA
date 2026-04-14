@@ -1,0 +1,254 @@
+<!doctype html>
+
+<meta charset="utf-8">
+<title>Nested Groups</title>
+
+<script src="d3.min.js"></script>
+<script type="module">
+    import { graphlib, render } from "https://cdn.jsdelivr.net/npm/dagre-d3-es@7.0.11/+esm";
+
+    window.dagreD3 = { graphlib, render };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        init();
+    });
+</script>
+<script src="jquery.min.js"></script>
+<script src="jspdf.umd.min.js"></script>
+<script src="svg2pdf.umd.min.js"></script>
+
+<style id="css">
+	body {
+		font: 300 14px 'Helvetica Neue', Helvetica;
+	}
+
+	.node rect {
+		stroke: #333;
+		fill: #fff;
+	}
+
+	.edgePath path {
+		stroke: #333;
+		fill: none;
+		stroke-width: 1.5px;
+	}
+
+	.svg-container {
+		/*display: inline-block;*/
+		position: relative;
+		vertical-align: top;
+		overflow: hidden;
+		width: 100%
+	}
+
+	.svg-content-responsive {
+		/*display: inline-block;*/
+		position: absolute;
+		left: 0;
+	}
+</style>
+
+<div style="position:relative; top:0px; left:3px;"><button onclick="generatePdf();">Export PDF</button></div>
+<div id="content" class="svg-container"><svg>
+		<g />
+	</svg></div>
+
+
+<script id="js">
+
+	window.g = null;
+
+	function init() {
+
+		// Set container dimensions
+		document.getElementById("content").style.height = (document.documentElement.clientHeight - 25) + "px";
+		document.getElementById("content").style.width = (document.documentElement.clientWidth) + "px";
+
+		// Create a new directed graph
+		window.g = new dagreD3.graphlib.Graph({ compound: false })
+			.setGraph({ rankdir: 'BT', nodesep: '10', ranksep: '100', edgesep: '10' });
+
+		// Retrieve parent group code
+		var grouprecorduid = getParameterByName("grouprecorduid");
+
+		// at init the recorduid may be empty, in which case ignore further processing
+		if (grouprecorduid != null && grouprecorduid != "") {
+			var svg = d3.select("svg"),
+				inner = svg.select("g");
+
+			svg.attr("preserveAspectRatio", "xMinYMin meet")
+				.attr("viewBox", "0 0 600 400")
+				.classed("svg-content-responsive", true);
+
+			var render = new dagreD3.render();
+
+			var zoom = d3.zoom().on("zoom", function (event) {
+				inner.attr("transform", event.transform);
+			});
+			svg.call(zoom);
+
+			// build the graph
+			generateGraphFromGroupToGroup(grouprecorduid, grouprecorduid);
+
+			// Run the renderer
+			render(inner, g);
+
+			// Center the graph
+			// Zoom and scale to fit
+			var graphWidth = g.graph().width;
+			var graphHeight = g.graph().height;
+			var width = document.documentElement.clientWidth - 40;
+			var height = document.documentElement.clientHeight - 20;
+			var zoomScale = Math.min(1, width / graphWidth * 72 / 96, height / graphHeight * 72 / 96);
+
+			var translateX = (width - graphWidth * zoomScale * 1.28) / 3;
+			var translateY = 5;
+
+			svg.call(zoom.transform, d3.zoomIdentity
+				.translate(translateX, translateY)
+				.scale(zoomScale * 72 / 96));
+
+			// values for PDF export
+			window.zoomScale = zoomScale;
+			window.translate = [translateX, translateY];
+			window.zoom = zoom;
+			window.svg = svg;
+		}
+	}
+
+
+	// function to test if an Edge is already defined in the graph
+	function edgeExists(v, w) {
+		var result = false;
+		g.edges().forEach(function (e) {
+			//   if(e.w.indexOf("GROUP338") >=0) console.log("     Edge " + e.v + " -> " + e.w + ": " + JSON.stringify(g.edge(e)));
+			if (e.v == v && e.w == w) {
+				result = true;
+			}
+		});
+		return result;
+	}
+
+	// get WS results and update grph object
+	function generateGraphFromGroupToGroup(grouprecorduid) {
+		//console.log(g.nodes().length + "   " + g.edges().length);
+		var root = loadJSON("../../../ws/results/br_directgroupchildren?grouprecorduid=" + grouprecorduid);
+
+		root.data.forEach(function (node) {
+			g.setNode(node.groupcode, { label: node.groupdisplayname, shape: "rect", rx: 5, ry: 5, style: "stroke: #333; fill: #Ffa" });
+
+			// if the Edge exists, it means we've already been this path. Just discard it.
+			if (node.childgroupcode != null && !edgeExists(node.childgroupcode, node.groupcode)) {
+				g.setNode(node.childgroupcode, { label: node.childgroupdisplayname, shape: "rect", rx: 5, ry: 5, style: "stroke: #333; fill: #Ffa; " });
+				g.setEdge(node.childgroupcode, node.groupcode, { lineInterpolate: 'bundle', arrowheadStyle: "stroke: #333; fill: #f66" });
+
+				// proceed to next level
+				//console.log("grouprecorduid="+grouprecorduid+"    groupcode="+node.groupcode+"   childgroupcode="+node.childgroupcode+"    next level="+node.childgrouprecorduid);
+
+				generateGraphFromGroupToGroup(node.childgrouprecorduid);
+			}
+		});
+	}
+
+
+	// get URL GET parameter by name
+	function getParameterByName(name) {
+		var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+
+		//    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+		// we want the url safe version
+		return (match == null ? "" : match[1]);
+	}
+
+	// Load JSON text from server hosted file and return JSON parsed object
+	function loadJSON(filePath) {
+		// Load json file;
+		var json = loadTextFileAjaxSync(filePath, "application/json");
+		// Parse json
+		return JSON.parse(json);
+	}
+
+	// Load text with Ajax synchronously: takes path to file and optional MIME type
+	function loadTextFileAjaxSync(filePath, mimeType) {
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.open("GET", filePath, false);
+		if (mimeType != null) {
+			if (xmlhttp.overrideMimeType) {
+				xmlhttp.overrideMimeType(mimeType);
+			}
+		}
+		xmlhttp.send();
+		if (xmlhttp.status == 200) {
+			return xmlhttp.responseText;
+		}
+		else {
+			// TODO Throw exception
+			return null;
+		}
+	}
+
+	// Generate and download PDF of the graph
+	function generatePdf() {
+		// PDF document with metadata
+		const doc = new jspdf.jsPDF('l', 'pt', 'a4').setProperties({
+			title: 'Group Nesting',
+			subject: 'Identity GRC Analytics',
+			author: 'Brainwave',
+			keywords: 'brainwave,groups,analytics',
+			creator: 'CGOL'
+		});
+
+		// Clone the SVG for export
+		var tmp = document.getElementById("content");
+		var svg2 = tmp.getElementsByTagName("svg")[0];
+		const svgClone = svg2.cloneNode(true);
+
+		// Apply current transform to the cloned SVG
+		if (window.translate && window.zoomScale) {
+			const g = svgClone.querySelector("g");
+			if (g) g.setAttribute('transform',
+				`translate(${window.translate[0]},${window.translate[1]}) scale(${window.zoomScale * 72 / 96})`);
+		}
+
+		// Add arrow marker for PDF
+		svgClone.innerHTML = `
+        <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" 
+                    markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#f66" stroke="#333"/>
+            </marker>
+        </defs>
+        ${svgClone.innerHTML}`;
+
+		// Apply arrow markers to all paths
+		svgClone.querySelectorAll(".edgePath path").forEach(p => {
+			p.setAttribute("marker-end", "url(#arrow)");
+			p.setAttribute("stroke-width", "1.5px");
+			p.setAttribute("stroke", "#333");
+		});
+
+		// Get title from URL parameter
+		var title = getParameterByName("title");
+		title = decodeURIComponent(title.replace(/\+/g, ' '));
+		if (title == "") { title = "Made with Brainwave" };
+
+		const tempDiv = document.createElement('div');
+		tempDiv.style.cssText = 'position:absolute; visibility:hidden;';
+		tempDiv.appendChild(svgClone);
+		document.body.appendChild(tempDiv);
+
+		// Convert SVG to PDF and save
+		doc.svg(svgClone, {
+			x: 80,
+			y: 80,
+			width: 680,
+			height: 435
+		})
+			.then(() => {
+				doc.setFontSize(8).text(title, 25, 575);
+				doc.save(`graph.pdf`);
+
+				document.body.removeChild(tempDiv);
+			});
+	}
+</script>

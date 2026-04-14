@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<script src="bw_pages.js"></script>
+	<script src="d3.min.js"></script>
+	<title>Treemap Chart</title>
+	<style>
+		body {
+			font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+			margin: auto;
+			position: relative;
+		}
+
+		form {
+			position: absolute;
+			right: 10px;
+			top: 10px;
+		}
+
+		.node {
+			border: solid 1px white;
+			font: 12px sans-serif;
+			line-height: 12px;
+			overflow: hidden;
+			position: absolute;
+			text-indent: 2px;
+		}
+
+		.centered {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			text-align: center;
+		}
+
+		.nodetooltip {
+			font: 12px sans-serif;
+			position: absolute;
+			text-align: center;
+			word-wrap: break-word;
+			white-space: pre;
+			width: 256px;
+			height: 16px;
+			background: #333;
+			color: #ddd;
+			padding: 2px;
+			border: 0px;
+			border-radius: 8px;
+			opacity: 0.9;
+		}
+
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+	<div id="treemap" style="width:100%"></div>
+</body>
+<script>
+	document.documentElement.style.overflow = 'hidden';
+	document.body.scroll = "no";
+
+
+
+	var tooltipPrefix = '';
+	var tooltipSuffix = '';
+	var showLabel = true;
+	var centerLabel = false;
+	var showTooltipLabel = true;
+	var showTooltipValue = true;
+	var sizeStrg = 'count'; // count, reversecount, same
+	var defaultColors = [
+		"#61bd6d",
+		"#54acd2",
+		"#9365b8",
+		"#553982",
+		"#eb6b56",
+		"#75706b",
+		"#f37934",
+		"#475577",
+		"#d1d5d8",
+		"#2969b0"
+	];
+
+	Pages.listenInit(function (varName, initialValue) {
+		if (varName == "tooltipPrefix") {
+			tooltipPrefix = initialValue;
+		}
+		if (varName == "tooltipSuffix") {
+			tooltipSuffix = initialValue;
+		}
+		if (varName == "showLabel") {
+			showLabel = initialValue;
+		}
+		if (varName == "centerLabel") {
+			centerLabel = initialValue;
+		}
+		if (varName == "showTooltipLabel") {
+			showTooltipLabel = initialValue;
+		}
+		if (varName == "showTooltipValue") {
+			showTooltipValue = initialValue;
+		}
+		if (varName == "sizeStrategy") {
+			sizeStrg = initialValue;
+		}
+		if (varName == "customColors") {
+			var colors = initialValue.split(',');
+			defaultColors = colors.slice(0);
+		}
+	});
+
+	function isBright(hex) {
+		hex = hex.substring(1);
+		var r = parseInt(hex.substring(0, 2), 16);
+		var g = parseInt(hex.substring(2, 4), 16);
+		var b = parseInt(hex.substring(4, 6), 16);
+
+		var lum = (0.2126 * r + 0.7152 * g + 0.0722 * b);
+
+		if (lum > 128)
+			return true;
+		else
+			return false;
+
+	}
+	function ColorLuminance(hex, lum) {
+
+		// validate hex string
+		hex = hex.substring(1);
+		hex = String(hex).replace(/[^0-9a-f]/gi, '');
+		if (hex.length < 6) {
+			hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+		}
+		lum = lum || 0;
+
+		// convert to decimal and change luminosity
+		var rgb = "#", c, i;
+		for (i = 0; i < 3; i++) {
+			c = parseInt(hex.substr(i * 2, 2), 16);
+			c = Math.round(Math.min(Math.max(0, c + (c * lum)), 255)).toString(16);
+			rgb += ("00" + c).substr(c.length);
+		}
+
+		return rgb;
+	}
+
+	function sendclickevent(code, label, value) {
+		Pages.sendEvent('onclick', { code: code, label: label, count: value });
+	}
+
+	function createData(rows) {
+		var data = {};
+		data.name = 'root';
+		data.children = [];
+
+		for (index = 0; index < rows.length; index++) {
+			var code = rows[index]["code"];
+			var label = rows[index]["label"];
+			var count = rows[index]["count"];
+			var description = rows[index]["description"];
+
+			var element = {};
+			element.code = code;
+			element.label = label;
+			element.size = count;
+			element.description = description;
+
+			data.children.push(element);
+		}
+
+		return data;
+	}
+
+
+	var data = {};
+	function buildChart(rows) {
+		// clean area
+		d3.select("#treemap").selectAll("*").remove();
+
+		var body = document.body;
+		var html = document.documentElement;
+		var documentwidth = html.clientWidth;
+		var documentheight = html.clientHeight;
+		/*
+		var documentwidth = Math.max( body.scrollWidth, body.offsetWidth, 
+				html.clientWidth, html.scrollWidth, html.offsetWidth );
+		var documentheight = Math.max( body.scrollHeight, body.offsetHeight, 
+						   html.clientHeight, html.scrollHeight, html.offsetHeight );
+*/
+		var margin = { top: 0, right: 0, bottom: 0, left: 0 },
+			width = documentwidth - margin.left - margin.right,
+			height = documentheight - margin.top - margin.bottom;
+
+		const treemap = d3.treemap().size([width, height]);
+
+		if (rows != null)
+			data = createData(rows);
+
+		// add chart
+		const div = d3.select("#treemap").append("div")
+			.style("position", "relative")
+			.style("width", (width + margin.left + margin.right) + "px")
+			.style("height", (height + margin.top + margin.bottom) + "px")
+			.style("left", margin.left + "px")
+			.style("top", margin.top + "px");
+
+		var tooltip = d3.select("body").append("div")
+			.attr("class", "nodetooltip");
+
+		const root = d3.hierarchy(data, (d) => d.children) // order by size
+			.sum(function (d) {
+				if (sizeStrg === 'same')
+					return 1;
+				else if (sizeStrg === 'reversecount')
+					return d.size > 0 ? 1 / d.size : 0; // we consider that size==0 === never display the item
+				else
+					return d.size;
+			});
+
+		const tree = treemap(root);
+
+		const node = div.datum(root).selectAll(".node")
+			.data(tree.leaves())
+			.enter().append("div")
+			.attr("class", showLabel ? centerLabel ? "node centered" : "node" : "node")
+			.attr("onclick", (d, i) => 'sendclickevent("' + d.data.code + '","' + d.data.label + '",' + d.data.size + ')') // should be better to manage this through d3... 
+			.style("left", (d) => d.x0 + "px")
+			.style("top", (d) => d.y0 + "px")
+			.style("width", (d) => Math.max(0, d.x1 - d.x0 - 1) + "px")
+			.style("height", (d) => Math.max(0, d.y1 - d.y0 - 1) + "px")
+			.style("cursor", (d) => "pointer")
+			.style("background", function (d, i, j) {
+				return defaultColors[i % defaultColors.length];
+			})
+			.style("color", function (d, i, j) {
+				var c = defaultColors[i % defaultColors.length];
+				if (isBright(c))
+					return ColorLuminance(c, -1.5);
+				else
+					return ColorLuminance(c, +1.5);
+			})
+			.text((d) => showLabel ? d.data.label : '');
+
+		div.selectAll(".node")
+			.on("mouseover", function (event, d) {
+		        // Display a tooltip with the current size
+		        tooltip.transition().duration(200).style("opacity", .9);
+		        var str = tooltipPrefix+' ';
+		        if(showTooltipLabel)
+		        	str = str+d.data.label+' ';
+		        if(showTooltipValue)
+		        	str = str+d.data.size+' ';
+	        	str = str+tooltipSuffix;
+	        	if ( d.data.description!=null)
+	        		str = d.data.description+' ';
+	        	tooltip.text(str);
+			})
+			.on("mousemove", function (event) {
+				var left = event.pageX - 128;
+				var right = left+256;
+				var top = event.pageY - 28;
+				var bottom = top+16;
+
+				// Ensure the tooltip stays within the viewport
+				if (top < 0) top = 28;
+				if (left < 0) left = 0;
+				if (right > width)
+					left = left - (right - width);
+
+				tooltip.style("left", (left) + "px")
+					.style("top", (top) + "px");
+			})
+			.on("mouseout", function () {
+				tooltip.transition().duration(200).style("opacity", 0);
+			});
+
+		document.getElementById('loading').style.display = 'none';
+	}
+
+	createChart = function () {
+		Pages.fetchDataset("chartdata", function (rows) {
+			buildChart(rows);
+		});
+	};
+
+	var myTimeout = null;
+
+	var fetchInvalidated = function () {
+		Pages.fetchDataset("chartdata", function (rows) {
+			buildChart(rows);
+			myTimeout = null;
+		});
+	};
+
+	Pages.listenToDatasetInvalidation("chartdata", function () {
+		if (myTimeout != null) {
+			clearTimeout(myTimeout);
+			myTimeout = setTimeout(fetchInvalidated, 500);
+			return;
+		}
+		myTimeout = setTimeout(fetchInvalidated, 500);
+	});
+
+	Pages.listenInitDone(function () {
+		createChart();
+
+		Pages.listenTo("sizeStrategy", function (newValue) {
+			sizeStrg = newValue;
+			buildChart(null);
+		});
+
+		d3.select(window).on('resize', function () {
+			buildChart(null);
+		});
+	});
+
+</script>
+
+</html>

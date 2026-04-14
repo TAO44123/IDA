@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity Users" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1727869815883_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1727869837429">
+		<Component name="C1727869837429" type="discoverysource" x="77" y="57" w="300" h="64" title="CA_Identity_DSUsers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_DSUsers.csv&apos;)}"/>
+		</Component>
+		<Component name="C1727869865064" type="account" x="74" y="643" w="300" h="64" title="Internal Accounts">
+			<Account key="internalname">
+				<Attribute name="login" attribute="systemname"/>
+				<Attribute name="locked" attribute="locked"/>
+				<Attribute name="username" attribute="displayname"/>
+				<Attribute name="mail" attribute="email"/>
+				<Attribute name="custom1" attribute="serviceinstance"/>
+				<Attribute name="disabled" attribute="disabled"/>
+				<Attribute name="custom3" attribute="serviceinstancelocalized"/>
+				<Attribute name="custom5" attribute="directoryserviceuuid"/>
+				<Attribute name="custom4" attribute="usertype"/>
+				<Attribute name="custom2" attribute="pcloud_id"/>
+				<Attribute name="service" attribute="serviceuser"/>
+				<Attribute name="lastlogindate" attribute="lastlogindate"/>
+				<Attribute name="custom6" attribute="status"/>
+			</Account>
+			<Media code="_REPOSITORY_CODE_"/>
+			<Manager check="false" report="false"/>
+		</Component>
+		<Component name="C1727870046033" type="changefilter" x="75" y="530" w="300" h="64" title="Users parameters">
+			<Actions>
+				<Action name="U1730385624156" action="update" attribute="enabled" newvalue="{ dataset.isEmpty(&apos;enabled&apos;) ? dataset.status.get().equals(&apos;Suspended&apos;) ? true : false : dataset.status.get().equals(&apos;Suspended&apos;) ? true : false }" errorunknown="false"/>
+				<Action name="U1727871060658" action="rename" oldname="enabled" attribute="disabled" errorunknown="false" errorexist="false"/>
+				<Action name="U1732268352411" action="add" attribute="pcloudrepo" type="String" multivalued="false" newvalue="{config.PCloud_reponame}" errorexist="false"/>
+				<Action name="U1732104633178" action="convertdate" oldname="lastlogin" attribute="lastlogindate" type="Date" multivalued="false" newvalue="d/M/y H:m:s" errorunknown="false" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1729850133498" source="C1727870046033" target="C1727869865064" priority="1"/>
+		<Component name="C1731508350595" type="joinfilter" x="78" y="182" w="300" h="64" title="Join DSUsers with User">
+			<Join source="C1731508364406"/>
+			<Cache active="true" main="systemname" join="username"/>
+			<Attributes>
+				<Attribute name="A1731936340734" attribute="usertype" source="usertype" type="String" multivalued="false" removeduplicates="false"/>
+				<Attribute name="A1756893733779" attribute="pcloud_id" source="vaultuser_id" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1731508359733" source="C1731508350595" target="C1732091698109" priority="1"/>
+		<Component name="C1731508364406" type="discoverysource" x="495" y="180" w="300" h="64" title="CA_Users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_users.discovery" datafile="{config.bw_cyberark_model_sourceFolder}/{config.PCloud_reponame}_users.csv"/>
+		</Component>
+		<Link name="L1731508435749" source="C1731508364406" target="C1731508350595" priority="1"/>
+		<Component name="C1732091698109" type="joinfilter" x="77" y="303" w="300" h="64" title="service - lastlogindate">
+			<Join source="C1732091739483" zeroerror="true" zeroevent="FAIL JOIN SERVICE USER"/>
+			<Cache active="true" main="internalname" join="identity_id"/>
+			<Attributes>
+				<Attribute name="A1732092068886" attribute="lastlogin" source="lastlogin" type="String" multivalued="false"/>
+				<Attribute name="A1732092710569" attribute="serviceuser" source="serviceuser" type="Boolean" multivalued="false"/>
+				<Attribute name="A1732095387843" attribute="identity_id" source="identity_id" type="String" multivalued="false"/>
+				<Attribute name="A1736333145967" attribute="status" source="status" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1732091710306" source="C1732091698109" target="C1736332960676" priority="1"/>
+		<Component name="C1732091739483" type="discoverysource" x="491" y="300" w="300" h="64" title="CA_Identity_Users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_Users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_Users.csv&apos;)}"/>
+		</Component>
+		<Link name="L1732091752410" source="C1732091739483" target="C1732091698109" priority="1"/>
+		<Link name="L1732110983128" source="C1727869837429" target="C1731508350595" priority="1"/>
+		<Component name="N1733216559530" type="note" x="496" y="45" w="300" h="112" title="Collect all users :&#xA;- Join DSUsers with Vault_Users to get the user type (EPVUser)&#xA;- Join with Users to get the usertype and the lastlogindate"/>
+		<Component name="C1736332960676" type="changefilter" x="79" y="419" w="300" h="64" title="Convert Date">
+			<Actions function="convertDate"/>
+		</Component>
+		<Link name="L1736332977609" source="C1736332960676" target="C1727870046033" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname">
+		</Values>
+		<Variables>
+			<Variable name="PCloud_reponame"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

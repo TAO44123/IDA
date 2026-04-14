@@ -1,0 +1,879 @@
+/* Import other pages here */
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dialogs.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+
+readDN = EventService {
+	javascript-file: "/webportal/pages/bw_ad_schema/explorers/explore_bygroup.javascript"
+	javascript-method: readDN
+	
+	dn = Input {  type: String multivalued: False }
+	
+	object_type = Output { type: String multivalued: True }
+	object_dn = Output { type: String multivalued: True }
+	object_displayname = Output { type: String multivalued: True }
+	object_uid = Output { type: String multivalued: True }
+	object_index = Output { type: String multivalued: True }
+	object_parent = Output { type: String multivalued: True }
+	
+}
+
+
+accountIcon16 = IntImageTemplate {
+	when <=0 then  ""
+	when >0 then  "bw_ad_schema/indicators/explorer/key_16.png"
+}
+
+numberLabel = PageFragment {
+	number = Variable 
+	text = Variable 
+	
+	Grid {
+		layout: Layout { grab: horizontal True vertical True }
+		fill:Both
+		columns: GridColumn { width: grow }, GridColumn { width: 80}
+		
+		GridRow {
+			GridCell {
+				Text {
+					value: number
+					mixins: bigNumberMixin
+				}
+			
+			}
+			GridCell {
+				Text { compact: True lines: 2 value: text styling: xsmallLabel 
+					layout: Layout { hint: grab: horizontal True vertical True indent: horizontal 0 vertical 8}
+				 }
+			}
+		}
+	}
+}
+
+notZero = IntMapping {
+	when =0 then ""
+	otherwise current
+}
+
+rootStyle = Style {
+	background: Color RGB (245,245,245)
+}
+
+filterMap = StringMapping {
+	otherwise current prefix '%' suffix '%'
+}
+
+typeMap = StringMapping {
+	when "direct" then $adschema_group_explorer.tabs.identities.labels.type.direct
+	when "indirect" then $adschema_group_explorer.tabs.identities.labels.type.indirect
+}
+
+isDirect = StringMapping {
+	when "direct" then 1
+	otherwise 0
+}
+
+ad_group_explorer = Page {
+	title: $adschema_group_explorer.title
+	dynamic-title: $adschema_group_explorer.dyntitle(repository.displayname)
+	description: $adschema_group_explorer.description
+	mixins: base_pageMixin
+	enter-event: 
+		Set repository.recorduid to selectedDomainRecorduid,
+		StringCase( paramGroupUid ) { when Not IsEmpty then [  
+		Set parameterGroup.displayname to searchFilter, Set searchFilter to applyFilter, ExecuteNamedAction initAll ] }, 
+		TransferData domainperimeterdataset(uid) to ( domainperimeter )
+
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	initialTimeSlotUid = Parameter { default: PageTimeslot.UID hidden: True }
+	paramGroupUid = Parameter {
+		type: String
+	}
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	/* Selection variables */
+	selectedTab = Variable { type: Integer initial: 0 }
+	selectedDomainRecorduid = Variable { type: Integer }
+	selectedGroupUid = Variable { type: String }
+	selectedGroupRecorduid = Variable { type: String initial: -1 }
+	
+	/* Filtering vars */
+	searchFilter = Variable  { type: String }
+	applyFilter = Variable { type: String } 
+	
+	/* First tab vars */
+	objectType = Variable { type: String multivalued: True}
+	objectDn = Variable { type: String multivalued: True}
+	objectDisplayname = Variable { type: String multivalued: True}
+	objectUid = Variable { type: String multivalued: True}
+	objectIndex = Variable { type: String multivalued: True}
+	objectParent = Variable { type: String multivalued: True}
+	
+	/* Second tab vars */
+	selectAll = Variable { type: Integer initial: 0 }
+	selectedAccountUid = Variable { type: String }
+	selectedIdentityUid = Variable { type: String }
+	uids =  Variable {type:String multivalued:True}
+	selectedTimeSlotUid = Variable { type: String }
+	timeNavigatorEnabled = Variable { type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	allDomains = Dataset {
+		view: getdomains with domainperimeter to domains
+	}
+	
+	
+	/* Dataset for Accounts and Identities tab */
+	
+	repository = Record {
+		view:br_repositoryDetail with uid to uid	
+	}
+	directIdentities = Dataset {
+		view: ad_group_identitiesdirect with selectedGroupUid to uid
+		timeslot: selectedTimeSlotUid
+		trend: Trend { 
+			join-column: account_uid
+			exclude-new: False
+			include-removed: False
+			exclude-same: False
+			status-column-name:status
+			timeslot: FromPage (-1) // TODO : should be selectedtimeslot - 1 
+			value-column: trend
+		}
+		disabled: IntPredicate(selectedTab) { when =2 then False otherwise True }  // activate only in selectedTab = 2
+	}
+	
+	indirectIdentities = Dataset {
+		view: ad_group_identitiesindirect with selectedGroupUid to uid
+		timeslot: selectedTimeSlotUid 
+		trend: Trend { 
+			join-column: account_uid
+			exclude-new: False
+			include-removed: False
+			exclude-same: False
+			status-column-name:status
+			timeslot: FromPage (-1)
+			value-column: trend
+		}
+		disabled: IntPredicate(selectedTab) { when =2 then False otherwise True }  // activate only in selectedTab = 2
+	}
+	
+	allIdentities = Dataset {
+		union: Union {
+			datasets: directIdentities discriminator "direct", indirectIdentities discriminator "indirect"
+			discriminator-column: type
+		}
+		disabled: IntPredicate(selectedTab) { when =2 then False otherwise True }  // activate only in selectedTab = 2
+	}
+	timeslots = Dataset { view: explorergettimeslots }
+	
+	
+	// Dataset for identity Reports
+	identityanalytics = Dataset {
+		pages: Pages{tags: "identity" and "byuids" }
+		disabled: IntPredicate(selectedTab) { when =2 then False otherwise True }  // activate only in selectedTab = 2
+	}
+	// Dataset for account Reports
+	accountanalytics = Dataset {
+		pages: Pages{tags: "account" and "byuids" }
+		disabled: IntPredicate(selectedTab) { when =2 then False otherwise True }  // activate only in selectedTab = 2
+	}
+	analytics = Dataset {
+		union:Union{ datasets:identityanalytics discriminator "identity", accountanalytics discriminator "account" discriminator-column: id }
+		disabled: IntPredicate(selectedTab) { when =2 then False otherwise True }  // activate only in selectedTab = 2
+	}
+	
+	
+	
+	/* Dataset for AD tab */
+	containters = Dataset {
+		columns: objectType, objectDn, objectDisplayname, objectUid, objectIndex, objectParent
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	containtesTree = HierarchicalData {
+		dataset: containters 
+		connect: parent objectDn to child objectParent
+		initial: objectParent IsNull
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	
+	directGroups = Dataset {
+		view: ad_group_groupsdirect with selectedGroupRecorduid to grouprecorduid
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	
+	directAccounts = Dataset {
+		view: ad_group_accountsdirect with selectedGroupRecorduid to grouprecorduid
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	
+	indirectGroups = Dataset {
+		view: ad_group_groupsindirect with selectedGroupRecorduid to grouprecorduid
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	
+	indirectAccounts = Dataset {
+		view: ad_group_accountsindirect with selectedGroupRecorduid to grouprecorduid
+		disabled: IntPredicate(selectedTab) { when =1 then False otherwise True }  // activate only in selectedTab = 1
+	}
+	
+	/* For the group tree */
+	groupTree = HierarchicalData {
+		roots-view: ad_groups_root with selectedDomainRecorduid to domainrecorduid
+		children-view: ad_groups_children
+		parameter: parentrecorduid
+		attribute: recorduid
+		disabled: StringPredicate ( applyFilter ) { when IsEmpty then False otherwise True }
+	}
+	
+	groupSearch = Dataset {
+		view: ad_groups_search with  Transform applyFilter using filterMap to filter, selectedDomainRecorduid to domainrecorduid
+		disabled: StringPredicate ( applyFilter ) { when IsEmpty then True otherwise False }
+	}
+	
+	selectedGroup = Record {
+		view: ad_group_select with selectedGroupRecorduid to recorduid 
+	}
+	
+	parameterGroup = Record {
+		view: ad_group_select_uid with paramGroupUid to uid
+	}
+
+	subgroups = Dataset {
+		view:bwa_subgroup360 with selectedGroupUid to uid, '' to tooltipsuffix
+	}
+
+	initAll = NamedAction (
+		Unset selectedTab
+	)
+	
+	refreshAll = NamedAction (
+		IntCase ( selectedTab ) { 
+			when =1 then [
+				Call readDN ( selectedGroup.code to dn, objectDisplayname from object_displayname, objectDn from object_dn, 
+				objectType from object_type, objectUid from object_uid, objectIndex from object_index, objectParent from object_parent)
+			]
+		}
+	)
+	
+	selectionChanged= NamedAction (
+		IntCase ( selectedGroupRecorduid ) {
+			when > 0 then [ 
+				IntCase ( selectedTab ) { 
+					when =0 then [ 
+						Set 1 to selectedTab , ExecuteNamedAction refreshAll 
+					]
+					otherwise [ ExecuteNamedAction refreshAll ]
+	 
+				} 
+			]
+		}
+	)
+	
+	showAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog (
+			selectedAccountUid to inuid,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowgroups,
+			True to inshowowner,
+			True to inshowshares,
+			True to inshowusages
+		)
+	)
+	
+	showGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog (
+			selectedGroupUid to inuid,
+			True to inshowaccounts,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowperjob,
+			True to inshowperorg,
+			True to inshowshares
+		)
+	)
+
+	showIdentityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog (
+			selectedIdentityUid to inuid,
+			True to inshowaccounts,
+			True to inshowapplications,
+			True to inshowbusinessactivities,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowoverallocated,
+			True to inshowposition,
+			True to inshowrisks,
+			True to inshowshares,
+			True to inshowtheoretical,
+			True to inshowusages
+		)
+	)
+
+
+	/* Page content */
+	
+	Splitter {
+		disposition: Horizontal 
+		size: 25%
+		
+		
+		Group {
+			mixins: fileExplorer
+			margins: All 0
+			compact: True 
+			border: False 
+			
+			/*
+			Group {
+				mixins: fileExplorerLabel
+				layout: Layout { grab: horizontal True vertical False indent: horizontal 6 vertical 0 }
+				Combo {
+					label: $adschema_group_explorer.labels.selectdomain
+					options: Dynamic { data: allDomains text: Current displayname value: Current recorduid }
+					variable: selectedDomainRecorduid
+					modify-event: ExecuteNamedAction initAll
+				}
+				
+			}
+			*/
+			
+			Group {
+				mixins: fileExplorerLabel
+				layout: Layout { grab: horizontal True vertical False indent: horizontal 6 vertical 15 }
+				Edit {
+					label: $adschema_group_explorer.labels.search
+					variable: searchFilter
+					commands: Commands {
+						Command { actions: Set searchFilter to applyFilter, ExecuteNamedAction initAll icon: "16/famfamfam_silk_icons_v013/magnifier.png" tooltip: $adschema_group_explorer.labels.tootltips.search}
+						Command { actions: Unset applyFilter , Unset searchFilter, ExecuteNamedAction initAll icon: "16/famfamfam_silk_icons_v013/bin.png" tooltip: $adschema_group_explorer.labels.tootltips.clean}
+					} 
+				}
+			}
+			
+			ConditionalGroup{
+				StringCondition(applyFilter) {
+					when IsEmpty then [
+						Tree {
+							data: groupTree 
+							layout: Layout { grab: horizontal True vertical True indent: horizontal 10 vertical 4}
+							expand-level: 0
+							hide-header: True
+							hidden: StringPredicate ( applyFilter ) { when IsEmpty then False otherwise True }
+							selection-changed-event: ExecuteNamedAction selectionChanged
+							
+							Column {
+								column: displayname
+								image: "bw_ad_schema/16/container_16.png"
+								width: 100%
+								text: Concat ( "  ", Current displayname )
+								
+								styling: StringStyling ( Current parent_recorduid ) { when IsEmpty then rootStyle  }
+							}
+							
+							Column {
+								column: total_accounts
+								text: Transform Current total_accounts using notZero
+								width: 40px
+								align: Right
+								styling: StringStyling ( Current parent_recorduid ) { when IsEmpty then rootStyle  }
+							}
+							
+							Column {
+								column: total_accounts
+								image: TemplateImageSelection ( Current total_accounts ) using accountIcon16
+								width: 25px
+								align: Right
+								text: ""
+								styling: StringStyling ( Current parent_recorduid ) { when IsEmpty then rootStyle  }
+								
+							}
+							
+							
+							Column {
+								column: uid
+								hidden: True
+								selection: selectedGroupUid
+							}
+							
+							Column {
+								column: recorduid
+								hidden: True
+								selection: selectedGroupRecorduid
+							}
+							
+						}
+					
+					]
+					otherwise [
+						Table {
+							data: groupSearch
+							hidden: StringPredicate ( applyFilter ) { when IsEmpty then True otherwise False }
+							layout: Layout { grab: horizontal True vertical True indent: horizontal 10 vertical 8}
+							selection-changed-event: ExecuteNamedAction selectionChanged
+							initial-selection: paramGroupUid using uid
+							
+							Column {
+								column: displayname
+								image: "bw_ad_schema/16/container_16.png"
+								width: 100%
+								text: Concat ( "  ", Current displayname )
+			
+							}
+							
+							Column {
+								column: total_accounts
+								text: Transform Current total_accounts using notZero
+								width: 40px
+								align: Right
+							
+							}
+							
+							Column {
+								column: total_accounts
+								image: TemplateImageSelection ( Current total_accounts ) using accountIcon16
+								width: 25px
+								align: Right
+								text: ""
+								
+							}
+							
+							
+							Column {
+								column: uid
+								hidden: True
+								selection: selectedGroupUid
+							}
+							
+							Column {
+								column: recorduid
+								hidden: True
+								selection: selectedGroupRecorduid
+							}
+						}
+					
+					]
+				}
+			}
+						
+			Spacer { height: 6 }
+			
+			
+		}
+		
+		Group {
+		
+			/*********** START OF THE RIGHT SIDE ************/
+			
+			/********* TABS BORDER AND CONTAINER *******/
+			Group {
+				background: Color RGB(180, 180, 180)
+				layout: Layout { grab: horizontal True vertical True}
+				margins: All 1
+				Group {
+					background: Color RGB ( 249 , 247 , 246)
+					layout: Layout { grab: horizontal True vertical True}
+					
+					/*********** TABS TITLES  **********/
+					mixins: tabsStyle
+					Grid {
+						layout: Layout { grab: horizontal True vertical False }
+						columns: GridColumn { width: 200px }, GridColumn { width: 200px }, GridColumn { width: 200px }, GridColumn { width: grow }
+						GridRow{
+							height: 40 px 
+							GridCell {
+								Button {
+									actions: Set 1 to selectedTab
+									text: $adschema_group_explorer.tabs.activedirectory.title
+									image:  IntImageSelection ( selectedTab ) { when =1 then "bw_ad_schema/32/menu_32_red.png" otherwise "bw_ad_schema/32/menu_32_grey.png"  }
+									disabled: IntPredicate (selectedGroupRecorduid) { when > 0 then False otherwise True }
+								}
+							}
+							
+							GridCell {
+								Button {
+									actions: Set 2 to selectedTab
+									text: $adschema_group_explorer.tabs.identities.title
+									image:  IntImageSelection ( selectedTab ) { when =2 then "bw_ad_schema/32/menu_32_red.png" otherwise "bw_ad_schema/32/menu_32_grey.png"  }
+									disabled: IntPredicate (selectedGroupRecorduid) { when > 0 then False otherwise True }
+								}
+							}
+										
+						}
+					}
+					Separator {}
+					
+					/********* TAB NUMBER 0 *********/
+					Group {
+						layout: Layout { grab: horizontal True vertical True }
+						margins: All 20
+						background: Color white
+						hidden: IntPredicate ( selectedTab) { when !=0 then True}
+						
+						Image {
+							layout: Layout { indent: vertical 100 horizontal 0 } 
+							image: "bw_ad_schema/32/menu_32_red.png"
+							align: Center
+						}
+						Text {
+							align: Center
+							value: $adschema_group_explorer.tabs.emptytab.message
+							styling: smallLabel
+						}
+					}
+					
+					/********** TAB NUMBER 1 *********/
+					Group {
+						layout: Layout { grab: horizontal True vertical True }
+						margins: All 20
+						background: Color white
+						hidden: IntPredicate ( selectedTab) { when !=1 then True}
+						
+						Grid {
+							columns: GridColumn { width: grow 1}, GridColumn { width: 20}, GridColumn { width: grow 2}
+							fill: Both
+							
+							GridRow {
+								height: grow 
+								GridCell{
+								
+									Text { 
+										value: $adschema_group_explorer.tabs.identities.dn
+										styling: redSmallLabel
+									}
+									
+									
+									Text {
+										value: selectedGroup.code
+										layout: Layout { hint: height 35}
+										styling: normalText
+										lines:3
+									}
+									
+									Spacer { height: 5 }
+									
+									Tree {
+										data: containtesTree
+										expand-level: All
+										layout:Layout { grab: horizontal True vertical True }
+										hide-header: True 
+										
+										Column {
+											column: objectDisplayname
+											width: 100%
+											
+											// Icon 
+											image: StringImageSelection ( Current objectType ) {
+												when "DC" then "bw_ad_schema/16/container_16.png" 	// Domain
+												when "CN" then "bw_ad_schema/16/container_16.png" 	// Container
+												when "OU" then "bw_ad_schema/16/ou_16.png" 			// OU	
+											} 
+											
+											
+											text: Concat ( "  ", Current objectDisplayname)
+								
+										}
+									}
+								
+								}
+								GridCell {}
+								GridCell{
+								
+									Text { 
+										value: $adschema_group_explorer.tabs.activedirectory.hierarchy
+										styling: redSmallLabel
+									}
+									
+									Spacer { height: 5 }
+									
+									IncludeHTMLWidget {
+										layout: Layout { grab:horizontal True vertical True /* hint:height 500 */ }
+										template: network
+										datasets:subgroups(id, name, parentid, repositorydisplayname, description) to chartdata(code, label, parentcode, group, description)
+										bindings:
+											value-of True to arrows_middle,
+											value-of True to hierarchical,
+											value-of 'group' to shape,
+											value-of False to computegroupfontcolor,
+											value-of True to navigationButtons
+									}
+					
+									
+									Spacer { height: 2 }
+								}
+							}
+							GridRow {
+								height: 8
+								
+								GridCell {
+									span: 3
+								}
+							}
+							GridRow {
+								height: 80
+								
+								GridCell {
+									span: 3
+									
+
+									Tiles {
+										tile-height: 40
+										columns: 5
+										background: Color RGB ( 249, 247,246)
+										layout: Layout { indent: horizontal 12 vertical 0}
+										
+										Tile {
+											IncludeFragment {
+												fragment: numberLabel with value-of $adschema_group_explorer.tabs.activedirectory.directgroups to text , value-of Count directGroups to number
+												
+											}
+										}
+										Tile {
+											IncludeFragment {
+												fragment: numberLabel with value-of $adschema_group_explorer.tabs.activedirectory.indirectgroups to text , value-of Count indirectGroups to number
+												
+											}
+										}
+										Tile {
+											IncludeFragment {
+												fragment: numberLabel with value-of $adschema_group_explorer.tabs.activedirectory.directaccounts to text , value-of Count directAccounts to number
+												
+											}
+										}
+										Tile {
+											IncludeFragment {
+												fragment: numberLabel with value-of $adschema_group_explorer.tabs.activedirectory.indirectaccounts to text , value-of Count indirectAccounts to number
+												
+											}
+										}
+										
+										Tile {
+										
+											Grid {
+												layout: Layout { grab: horizontal True vertical True  indent: vertical 7 horizontal 0 }
+												columns: GridColumn { width: grow}, GridColumn { width: 32}, GridColumn { width: 90 },GridColumn { width: grow}
+												
+												GridRow {
+													GridCell {}
+													GridCell {
+														Button {
+															actions: ExecuteNamedAction showGroupDetails
+															image: "32/red/group.png"
+															presentation: Link
+														}
+															
+													}
+													GridCell {
+														Text {
+															value: $adschema_group_explorer.tabs.activedirectory.gotodetail
+															layout: Layout { hint: grab: horizontal True vertical True indent: horizontal 0 vertical 8}
+															lines:2
+															styling: xsmallLabel
+															
+														}
+													}
+													GridCell {}
+												}
+											}
+										}	
+									}
+								}
+							}
+						}
+					}
+					
+					
+					/********** TAB NUMBER 2 *********/
+					Group {
+						layout: Layout { grab: horizontal True vertical True }
+						margins: All 20
+						background: Color white
+						hidden: IntPredicate ( selectedTab) { when !=2 then True}
+						
+						Group {
+							layout: Layout { grab: horizontal True vertical False }
+							hidden: Not BooleanPredicate ( timeNavigatorEnabled )
+							Text { 
+								value: $adschema_group_explorer.tabs.identities.timenavitagor styling: redSmallLabel layout: Layout { indent: horizontal 0 vertical 5}
+							}
+									SetNavigator {
+										data: timeslots 
+										column: uid 
+										align: Center
+										selection: selectedTimeSlotUid  
+										label: Current displayname
+										label-width: 350
+										dropdown: Dropdown { text: Current displayname } 
+										initial: initialTimeSlotUid
+										show-last:True
+									}
+									Spacer { height: 5 }
+						}
+						Button {
+							hidden: BooleanPredicate ( timeNavigatorEnabled )
+							layout: Layout { hint: height 30 align: horizontal End vertical Beginning }
+							align: Right
+							actions: Set True to timeNavigatorEnabled,  Set 0 to selectAll , ReloadData ( allIdentities ) text: $adschema_group_explorer.labels.checktimeslots
+							styling: xSmallTextStyle
+						}			
+						
+						Grid {
+							columns: GridColumn { width: grow } , GridColumn { width:minimum 60 maximum 60 ( prefered 60) } , GridColumn{}
+							
+							GridRow {
+								height:grow
+								GridCell {
+									Table {
+										data: allIdentities
+										layout: Layout { grab: horizontal True vertical True indent: horizontal 0 vertical 5 }
+										show-count: True 
+										
+										Column {
+											column: status
+											header: $adschema_group_explorer.tabs.identities.headers.status
+											width: 80px
+											text: Transform Current status using statusMapping
+											image: TemplateImageSelection(Current status) using newItemTemplate
+											sortable: True
+											styling: IntStyling(selectAll) { when =1 then selectedRow} 
+										}
+				
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70% column: type text: Transform Current type using typeMap header: $adschema_group_explorer.tabs.identities.headers.type }
+										
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70% column: type 
+											// isDirect ? displayname : child_displayname
+											text: $adschema_group_explorer.tabs.identities.labels.group( Transform Current type using isDirect , Current displayname, Current child_displayname )  
+											header: $group.concept }
+										
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70% column: account_login header: $account.login actions:ExecuteNamedAction showAccountDetails }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 70%  column: id_fullname header: $pidentity.fullname  text: Transform Current id_fullname using optionStringMapping actions:ExecuteNamedAction showIdentityDetails }
+										Column {styling: IntStyling(selectAll) { when =1 then selectedRow}  width: 50%  column: org_shortname header: $organisation.concept text: Transform Current org_shortname using optionStringMapping  }
+										
+										Column { column: account_uid hidden: True selection: selectedAccountUid }		
+										Column { column: id_uid hidden: True selection: selectedIdentityUid }		
+									}
+								}
+								/* Action icons */
+								GridCell {
+									Group{
+										layout: Layout { grab: horizontal True vertical True align: horizontal Center vertical Beginning}
+										
+										Spacer {
+											height: 10
+										}
+										Button {
+											actions:  Set 1 to selectAll , ReloadData ( allIdentities )
+											image: "bw_ad_schema/48/red/analytics.png"
+											presentation: Link
+											disabled: IntPredicate ( Count allIdentities ) { when =0 then True }
+											hidden: IntPredicate ( selectAll ) { when =1 then True }
+											feature: Any (accountsearch_analytics, groupsearch_analytics)  
+										}
+										Button {
+											actions:  Set 0 to selectAll , ReloadData ( allIdentities )
+											image: "bw_ad_schema/48/red/back.png"
+											presentation: Link
+											disabled: IntPredicate ( Count allIdentities ) { when =0 then True }
+											hidden: IntPredicate ( selectAll ) { when =0 then True }
+											feature: Any (accountsearch_analytics, groupsearch_analytics)  
+										}
+									}
+								}
+								/* Analytics Section */
+								GridCell {
+								
+									Group {
+										hidden: IntPredicate ( selectAll ) { when =0 then True}
+										layout:Layout{hint:width 320}
+							
+										TemplateTable {
+											data:analytics
+											layout:Layout{grab: horizontal True vertical True}
+											row-height:82
+											initial-sort:^priority
+											pagination:6
+											disabled:IntPredicate(Count allIdentities) {when =0 then True}
+											show-filter:True			
+											double-click:
+														StringCase(Current id) {
+															when "identity" then [TransferData allIdentities(id_uid) to (uids)]
+															when "account" then [TransferData allIdentities(account_uid) to (uids)]
+														},													
+														MultivaluedDistinct uids, MultivaluedRemove all '' from uids,
+															IntCase(SizeOf uids) { 
+																//when =0 then [Message $search_page.analyticsreportnoentries]
+																when <2001 then [GoTo Dynamic (Current type, Current name) with uids to uids] //MAX AS OF SQL SERVER : 2100 parameters in Hibernate request
+																//otherwise [Message $search_page.analyticsreporttoomanyentries]
+															}
+											
+											ImageCell {
+												image:Current largeIcon
+												top:0
+												height:48
+												left:136
+												width:48
+												on-click:
+														StringCase(Current id) {
+															when "identity" then [TransferData allIdentities(id_uid) to (uids)]
+															when "account" then [TransferData allIdentities(account_uid) to (uids)]
+														},													
+														MultivaluedDistinct uids, MultivaluedRemove all '' from uids,
+															IntCase(SizeOf uids) { 
+																//when =0 then [Message $search_page.analyticsreportnoentries]
+																when <2001 then [GoTo Dynamic (Current type, Current name) with uids to uids] //MAX AS OF SQL SERVER : 2100 parameters in Hibernate request
+																//otherwise [Message $search_page.analyticsreporttoomanyentries]
+															}
+												}
+											TextCell {
+												column:title
+												top:50
+												height:32
+												left:0
+												width:320
+												horizontal-align:Center
+												filterable:True
+												on-click:
+														StringCase(Current id) {
+															when "identity" then [TransferData allIdentities(id_uid) to (uids)]
+															when "account" then [TransferData allIdentities(account_uid) to (uids)]
+														},													
+														MultivaluedDistinct uids, MultivaluedRemove all '' from uids,
+															IntCase(SizeOf uids) { 
+																//when =0 then [Message $search_page.analyticsreportnoentries]
+																when <2001 then [GoTo Dynamic (Current type, Current name) with uids to uids] //MAX AS OF SQL SERVER : 2100 parameters in Hibernate request
+																//otherwise [Message $search_page.analyticsreporttoomanyentries]
+															}
+											
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

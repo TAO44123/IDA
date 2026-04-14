@@ -1,0 +1,681 @@
+/* Import other pages here */
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/resources/mappings.page"
+
+/* Nationalized labels here */
+reviewedentries360csNLS = NLS {
+	title [en "List of Reviewed Entries (Web Based)" fr "Liste des entrées revues (web)"]
+	description [en "This report list your reviewed entries as an 'accountable' reviewer during the past web based review campaigns of type repository accounts and application access rights. It is possible to group results per review name, review type, 'responsible' reviewer and review status. It is also possible to filter on any column and export the results by right clicking on the report." fr "Ce rapport liste les entrées que vous avez revues en tant que réviseur 'accountable' lors des dernières campagnes de revue web de type comptes de référentiels et accès aux applications. Il est possible de regrouper les résultats par nom de la revue, type de revue, réviseur 'responsable' et statut de la revue. Il est également possible de filtrer sur n'importe quelle colonne et d'exporter les résultats en faisant un clic droit sur le rapport."]
+	groupedcolumn [en "Grouped Column" fr "Colonne groupée"]
+	groupedby [en "Grouped By" fr "Groupé par"]
+	revue [en "Review" fr "Revue"]
+	reviewname [en "Review\n Name" fr "Nom \nde la revue"]
+	reviewnameselect [en "Select the name of the review" fr "Sélectioner le nom de la revue"]	
+	reviewdescription [en "Review \nDescription" fr "Déscription \nde la revue"]
+	reviewtype [en "Review\n Type" fr "Type \nde revue"]
+	reviewduedate [en "Due Date" fr "Date \nd''échéance"]
+	reviewfinalizeddate [en "Finalized On" fr "Terminée le"]
+	appaccessrights [en "Application Access Rights" fr "Droits d'accès applicatifs"]
+	repoaccounts [en "Repository Accounts" fr "Comptes des référentiels"]	
+}
+
+groupedcolumn_style_header = Style {
+	bold: True
+	background: Color RGB(117, 195, 255)
+}
+
+// Grouped columns
+groupedColumn360r_header = Constant { type: String value: "header" }
+groupedColumnType360r_reviewername = Constant { type: String value: "reviewername" }
+groupedColumnType360r_reviewstatus = Constant { type: String value: "reviewstatus" }
+groupedColumnType360r_reviewtype = Constant { type: Date value: "campaignreviewtype" }
+groupedColumnType360r_reviewname = Constant { type: String value: "campaigntitle" }
+
+reviewedentries360csdetail = Page {
+	title: $reviewedentries360csNLS.title
+	description:$reviewedentries360csNLS.description
+	tags: "identityext" priority 200, "byuid" , "analytics", "browsing"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: All(iasreview_license, Any(governance_license, compliance_license))
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page reviewedentries360cs with-current-parameters
+	}
+
+    uid = Parameter { type: String hidden: True }
+}
+
+reviewedentries360cshp = Page {
+	title: $reviewedentries360csNLS.title
+	description:$reviewedentries360csNLS.description	
+	tags: "my_access360" priority 1 
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: iasreview_license
+	
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page reviewedentries360cs with-current-parameters
+	}
+
+    uid = Parameter { type: String hidden: True }
+}
+
+reviewedentries360cs = Page {
+	title: $reviewedentries360csNLS.title
+	
+	/* Parameters here */
+	campaignid = Parameter {hidden:True }
+	
+	/* Variables here */
+	selectedRevieweruid = Variable
+	selectedReviewername = Variable
+	selectedfilterbyreviewstatus = Variable
+	
+	/* Datasets and records here */
+	
+	
+	/* Page content */
+	
+	IncludeFragment (bwaccess360_reviewedentriesComplianceTable with value-of campaignid to incampaignid, selectedRevieweruid binds-to inrevieweruid, selectedReviewername binds-to inreviewername, selectedfilterbyreviewstatus binds-to infilterbyreviewstatus)			
+
+}
+
+
+
+bwaccess360_reviewedentriesComplianceTable = PageFragment {
+	// Compliance ---------------------------
+
+	incampaignid = Variable
+	inrevieweruid = Variable
+	inreviewername = Variable
+	reviewname = Variable	
+	infilterbyreviewstatus = Variable { multivalued:True }
+	enablegroupedby = Variable { type: Boolean initial: False }
+	groupedbycolumn = Variable { type: String }
+	
+	campaigncompliancereviewname = Dataset {
+		view: bwaccess360_finalizedreviewname
+	}
+	
+	campaigncompliancedata = Dataset {
+		view: bwaccess360_reviewedaccessrightsforreviewergroupedby with 
+			incampaignid to campaignid, 
+			False to isgroupedby,
+			infilterbyreviewstatus to filterbyreviewstatus unless-empty, 
+			inrevieweruid to revieweruid unless-empty,
+			Principal.uid  to accountableuid,
+			True to includedremediation
+		disabled: BooleanPredicate ( enablegroupedby )			
+	}
+	
+	campaigncompliancedata_reviewers_tree = HierarchicalData {
+		view: bwaccess360_reviewedaccessrightsforreviewergroupedby with
+			groupedbycolumn to groupedby,
+			incampaignid to campaignid, 
+			True to isgroupedby,					
+			infilterbyreviewstatus to filterbyreviewstatus unless-empty, 
+			inrevieweruid to revieweruid unless-empty,
+			Principal.uid  to accountableuid,
+			True to includedremediation
+		initial: isheader = '1'
+		connect: parent id to child parentid
+		timeslot: ValidatedTimeslot.UID
+		disabled: Not BooleanPredicate ( enablegroupedby )
+	}
+	
+	Group {
+		styling:cssPageDashboard
+		Group {
+			styling:cssRound
+			layout:Layout { grab: horizontal True vertical False }
+			
+			Grid {
+				columns:GridColumn, GridColumn, GridColumn, GridColumn,  GridColumn, GridColumn, GridColumn{ fill:True width:grow }
+				layout: Layout { grab: horizontal True vertical False hint:height 96 }
+				GridRow {
+					GridCell {	
+						Combo {
+							layout: Layout { grab: horizontal True vertical False  hint: width 200 height 22}
+							label: $reviewedentries360csNLS.reviewname
+							tooltip: $reviewedentries360csNLS.reviewnameselect
+							variable: incampaignid
+							allow-none: True
+							options:
+								Dynamic {
+									data:campaigncompliancereviewname
+									text:Current campaigntitle
+									value:Current campaignrecorduid
+									sort: campaigntitle ascending
+									}
+								}				
+							}				
+					GridCell {
+						width: 20
+						}
+					GridCell {
+						Checkbox { variable: enablegroupedby }
+						}
+					GridCell {	
+						Combo {
+							label: $reviewedentries360csNLS.groupedby
+							variable: groupedbycolumn
+							tooltip: $reviewedentries360csNLS.groupedby
+							layout: Layout { grab: horizontal False vertical False hint: width 200 height 22}
+							disabled: Not BooleanPredicate ( enablegroupedby )
+							options: 
+								Static {
+									Option {
+										value: Constant groupedColumnType360r_reviewname
+										text: $reviewedentries360csNLS.reviewname
+									}								
+									Option {
+										value: Constant groupedColumnType360r_reviewername
+										text: $bwaccess360_accessreviewmanagementNLS.lmfullname
+									}
+									Option {
+										value: Constant groupedColumnType360r_reviewstatus
+										text: $bwaccess360_accessreviewmanagementNLS.lrstatus
+									}
+									Option {
+										value: Constant groupedColumnType360r_reviewtype
+										text: $reviewedentries360csNLS.reviewtype
+									}
+								}				
+						}
+					}	
+					GridCell {
+						width: 20
+					}														
+					GridCell {
+						Combo {
+							variable:infilterbyreviewstatus
+							allow-none:True
+							multi-selection:True
+							label:Label {value:$bwaccess360_accessreviewmanagementPerimeterTable.reviewstatus align:Left layout:Layout { align:vertical Beginning horizontal Beginning } } 
+							layout:Layout { hint:width 260 }
+							options:Static {
+								Option {
+									value: "ok"
+									text: $fragmentDefaultReviewStatusNLS.ok
+								}
+								Option {
+									value: "revoke"
+									text: $fragmentDefaultReviewStatusNLS.revoke
+								}
+								Option {
+									value: "update"
+									text: $fragmentDefaultReviewStatusNLS.update
+								}
+								Option {
+									value: "reassign"
+									text: $fragmentDefaultReviewStatusNLS.reassign
+								}
+								Option {
+									value: "to be reviewed"
+									text: $fragmentDefaultReviewStatusNLS.toboreviewed
+								}
+								Option {
+									value: "not reviewed"
+									text: $fragmentDefaultReviewStatusNLS.notreviewed
+								}							
+							}
+						}
+					}
+					GridCell {
+					}
+				}
+			}
+		}
+		ConditionalGroup {			
+			layout:Layout { grab:horizontal True vertical True }			
+			BooleanCondition ( enablegroupedby ) { 
+				when False then [
+					Group {
+					styling:cssRound
+						Table {
+							data: campaigncompliancedata
+							layout: Layout { grab: horizontal True vertical True }
+							label: Label { break: True value: "" }
+							show-count: True
+							show-filter: True
+							configurable:True
+							persist-configuration:True
+					
+							Column {
+								column: reviewerhrcode
+								header:$bwaccess360_accessreviewmanagementNLS.lmhrcode
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column: reviewerfullname
+								header:$bwaccess360_accessreviewmanagementNLS.lmfullname
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column: reviewermail
+								header:$bwaccess360_accessreviewmanagementNLS.lmmail
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							
+							Column {
+								column: accountablehrcode
+								header:$bwaccess360_accessreviewmanagementNLS.achrcode
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column: accountablefullname
+								header:$bwaccess360_accessreviewmanagementNLS.acfullname
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column: accountablemail
+								header:$bwaccess360_accessreviewmanagementNLS.acmail
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+					
+							Column {
+								column:reviewstatus
+								text:Transform LowerCase Current reviewstatus using bwReviewStatus
+								header:$bwaccess360_accessreviewmanagementNLS.lrstatus
+								width:120px
+								sortable:True
+								filterable:True
+								image:TemplateImageSelection(LowerCase Current reviewstatus) using bwReviewStatusIcon
+							}
+							
+							Column {
+								column: reviewactiondate
+								header: $bwaccess360_accessreviewmanagementNLS.lrdate
+								text: SubString(10) Current reviewactiondate
+								tooltip: Current reviewactiondate
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							
+							Column {
+								column: reviewlabel
+								header: $bwaccess360_accessreviewmanagementNLS.lrdetails
+								width: 100%
+								sortable:True
+								filterable:True
+								actions: Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+									SubString(10) Current reviewactiondate to review_date,
+									Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+									Current reviewlabel to review_displayname,
+									Current reviewcomment to review_comment,
+									Current reviewerfullname to reviewer_fullname
+								)
+							}
+				
+							Column {
+								column:reviewcomment
+								tooltip:Current reviewcomment
+								header:$bwaccess360_accessreviewmanagementNLS.lrcomment
+								width: 100%
+								sortable:True
+								filterable:True
+								actions: Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+									SubString(10) Current reviewactiondate to review_date,
+									Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+									Current reviewlabel to review_displayname,
+									Current reviewcomment to review_comment,
+									Current reviewerfullname to reviewer_fullname
+								)
+							}
+			
+							Column {
+								column: campaigntitle
+								header: $reviewedentries360csNLS.reviewname
+								tooltip: Current campaigndescription
+								width:200px
+								sortable:True
+								filterable:True
+							}		
+													
+							Column {
+								column: campaigndescription
+								header: $reviewedentries360csNLS.reviewdescription
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked: True					
+							}												
+							
+							Column {
+								column: campaignreviewtype
+			//					text: Transform Current  campaignreviewtype using typeofreview
+								header: $reviewedentries360csNLS.reviewtype
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column: campaignduedate
+								header: $reviewedentries360csNLS.reviewduedate
+								text: SubString(10) Current campaignduedate
+								tooltip: Current campaignduedate
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked: True
+							}
+							Column {
+								column: finalized_closedate
+								header: $reviewedentries360csNLS.reviewfinalizeddate
+								text: SubString(10) Current finalized_closedate
+								tooltip: Current finalized_closedate
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked: True
+							}				
+							
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationtype
+								column:remediationtype
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationclosed
+								text:Transform Current remediationclosedstatus using remediationclosedstatus
+								column:remediationclosedstatus
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationstatus
+								column:remediationstatus
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationon
+								column:remediationactiondate
+								text:SubString(10) Current remediationactiondate 
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationactorfullname
+								column:remediationactorfullname
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationticketnumber
+								column:remediationextticket
+								actions:StringCase(Current remediationhyperlink) { when Not IsEmpty then [ BrowseURL Current remediationhyperlink ] }
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+						}
+					}
+				]
+				when True then
+				[
+					Group {
+					styling:cssRound					
+						Tree {
+							data: campaigncompliancedata_reviewers_tree
+							layout: Layout { grab: horizontal True vertical True }
+							show-filter: True
+							expand-level: All //2
+							configurable:True
+							persist-configuration:True
+							check-children-auto: True
+							show-count:True
+							hidden: Not BooleanPredicate ( enablegroupedby )
+							
+							Column {
+								column: id
+								header: $reviewedentries360csNLS.groupedcolumn
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }								
+								tooltip: Current id
+								width: 300px
+							}				
+							Column {
+								column: reviewerhrcode
+								header:$bwaccess360_accessreviewmanagementNLS.lmhrcode
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column: reviewerfullname
+								header:$bwaccess360_accessreviewmanagementNLS.lmfullname
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column: reviewermail
+								header:$bwaccess360_accessreviewmanagementNLS.lmmail
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							
+							Column {
+								column: accountablehrcode
+								header:$bwaccess360_accessreviewmanagementNLS.achrcode
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column: accountablefullname
+								header:$bwaccess360_accessreviewmanagementNLS.acfullname
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								column: accountablemail
+								header:$bwaccess360_accessreviewmanagementNLS.acmail
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+					
+							Column {
+								column:reviewstatus
+								text:Transform LowerCase Current reviewstatus using bwReviewStatus
+								header:$bwaccess360_accessreviewmanagementNLS.lrstatus
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:120px
+								sortable:True
+								filterable:True
+								image:TemplateImageSelection(LowerCase Current reviewstatus) using bwReviewStatusIcon
+							}
+							
+							Column {
+								column: reviewactiondate
+								header: $bwaccess360_accessreviewmanagementNLS.lrdate
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								text: SubString(10) Current reviewactiondate
+								width:120px
+								sortable:True
+								filterable:True
+							}
+							
+							Column {
+								column: reviewlabel
+								header: $bwaccess360_accessreviewmanagementNLS.lrdetails
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width: 100%
+								sortable:True
+								filterable:True
+								actions: Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+									SubString(10) Current reviewactiondate to review_date,
+									Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+									Current reviewlabel to review_displayname,
+									Current reviewcomment to review_comment,
+									Current reviewerfullname to reviewer_fullname
+								)
+							}
+				
+							Column {
+								column:reviewcomment
+								header:$bwaccess360_accessreviewmanagementNLS.lrcomment
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width: 100%
+								sortable:True
+								filterable:True
+								actions: Dialog bwaccess360_accessreviewmanagementcompliancedetail_dialog (
+									SubString(10) Current reviewactiondate to review_date,
+									Transform LowerCase Current reviewstatus using bwf_defaultreviewstatus to review_status,
+									Current reviewlabel to review_displayname,
+									Current reviewcomment to review_comment,
+									Current reviewerfullname to reviewer_fullname
+								)
+							}
+			
+							Column {
+								column: campaigntitle
+								header: $reviewedentries360csNLS.reviewname
+								tooltip: Current campaigndescription
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }		
+								width:200px
+								sortable:True
+								filterable:True
+							}						
+													
+							Column {
+								column: campaigndescription
+								header: $reviewedentries360csNLS.reviewdescription
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked: True					
+							}												
+							
+							Column {
+								column: campaignreviewtype
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }			
+								header: $reviewedentries360csNLS.reviewtype
+								width:200px
+								sortable:True
+								filterable:True
+							}
+							Column {
+								column: campaignduedate
+								header: $reviewedentries360csNLS.reviewduedate
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								text: SubString(10) Current campaignduedate
+								tooltip: Current campaignduedate
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked: True
+							}
+							Column {
+								column: finalized_closedate
+								header: $reviewedentries360csNLS.reviewfinalizeddate
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								text: SubString(10) Current finalized_closedate
+								tooltip: Current finalized_closedate
+								width:200px
+								sortable:True
+								filterable:True
+								initially-masked: True
+							}				
+							
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationtype
+								column:remediationtype
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationclosed
+								text:Transform Current remediationclosedstatus using remediationclosedstatus
+								column:remediationclosedstatus
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationstatus
+								column:remediationstatus
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationon
+								column:remediationactiondate
+								text:SubString(10) Current remediationactiondate 
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationactorfullname
+								column:remediationactorfullname
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+							Column {
+								header:$bwaccess360_accessreviewmanagementActionsTable.remediationticketnumber
+								column:remediationextticket
+								styling: StringStyling ( Current isheader ) { when '1' then groupedcolumn_style_header }
+								actions:StringCase(Current remediationhyperlink) { when Not IsEmpty then [ BrowseURL Current remediationhyperlink ] }
+								sortable:True
+								filterable:True
+								initially-masked:True
+							}
+						}
+					}
+				]
+			}
+		}
+	}
+}

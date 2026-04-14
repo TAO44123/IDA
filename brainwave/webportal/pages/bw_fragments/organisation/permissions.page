@@ -1,0 +1,238 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/organisation/resources.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+fragmentOrganisationPermissionsNLS = NLS {
+	directonly [en "only this organisation" fr "seulement cette organisation"]
+	hierarchy [en "organisation hierarchy" fr "hiérarchie des organisations"]
+	employeetype [en "Employee type" fr "Type de contrat"]
+	nbidentities [en "Nb identities" fr "Nb identités"]
+}
+
+hasRightTemplate = StringImageTemplate {
+	when Not IsEmpty then %status_16_green.tick
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected organisation permissions
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the organisation uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inpermissiontypes</b> optional, String value, permissions type  ('Role' by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentOrganisationPermissions= PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inonlydirectselection = Variable { multivalued:False }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inpermissiontypes = Variable { multivalued:True initial:NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") }
+
+	outapplicationuid = Variable
+	outpermissionuid = Variable
+	outidentityuid = Variable
+
+	
+	/* Datasets and records here */
+	permissions = Dataset {
+		view: bwf_org_permissions_identities with
+			inuid to uid unless-empty,
+			inpermissiontypes to permissiontype unless-empty,
+			inonlydirectselection to directonly
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	
+	goApplicationDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outapplicationuid to inuid,
+													True to inshowperjob,
+													True to inshowperorg,
+													True to inshowaccountsfororganisation,
+													inuid to inorganisationuid,
+													inonlydirectselection to inonlydirectselection
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goPermissionDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+													False to inshowaccounts,
+													True to inshowperjob,
+													True to inshowperorg,
+													True to inshowaccountsfororganisation,
+													inuid to inorganisationuid,
+													inonlydirectselection to inonlydirectselection
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Checkbox {
+		variable:inonlydirectselection
+		text:$fragmentOrganisationPermissionsNLS.directonly
+		tooltip:$bwfOrganisation.directonlytooltip
+	}
+	
+	Table {
+		data:permissions
+		layout:Layout {grab: horizontal True vertical True}
+		configurable:True
+		show-count:True
+		show-filter:True
+		double-click:ExecuteNamedAction goPermissionDetails
+		persist-configuration:True
+		
+		commands: Commands {
+			position:After
+			presentation:Icon
+			Command {
+				actions:Message "nop"
+				icon:""
+				disabled:True
+			}
+			Command {
+				actions:ExecuteNamedAction goPermissionDetails
+				icon:%browsing_16.zoom
+				disabled:
+					OrPredicate {
+						Not BooleanPredicate(incanshowdetails)
+						StringPredicate(outpermissionuid) { when IsEmpty then True otherwise False }
+					}
+			}
+		}
+		
+		Column {
+			column:uid
+			hidden:True
+			selection:outpermissionuid
+		}
+
+		Column {
+			column:applicationcode
+			header:$papplication.code
+			sortable:True
+			filterable:True
+			width:128px
+			initially-masked:True
+			
+			actions: ExecuteNamedAction goApplicationDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:applicationdisplayname
+			header:$application.concept
+			sortable:True
+			filterable:True
+			width:160px
+			
+			actions: ExecuteNamedAction goApplicationDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:code
+			header:$ppermission.code
+			width:160px
+			sortable:True
+			filterable:True
+			
+			actions: ExecuteNamedAction goPermissionDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:displayname
+			header:$permission.concept
+			width:100%
+			sortable:True
+			filterable:True
+			
+			actions: ExecuteNamedAction goPermissionDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+		Column {
+			column:permissiontype
+			header:$ppermission.permissiontype
+			width:140px
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:val
+			text:Transform Current val using bwf_defaultsTo0
+			align:Right
+			width:110px
+			header:$fragmentOrganisationPermissionsNLS.nbidentities
+			sortable:True
+		}
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+	}
+	
+}

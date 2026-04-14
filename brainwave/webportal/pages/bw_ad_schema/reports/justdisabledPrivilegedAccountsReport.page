@@ -1,0 +1,234 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+
+import "/webportal/pages/bw_ad_schema/reports/accountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/allreports.page"
+
+/* Nationalized labels here */
+bw_adschema_justdisabledPrivilegedAccountsReportNLS = NLS {
+	title [en "Just disabled privileged accounts" fr "Just disabled privileged accounts"]
+}
+
+bw_adschema_justdisabledPrivilegedAccountsReport = Page {
+	title: $bw_adschema_justdisabledPrivilegedAccountsReportNLS.title
+		dynamic-title:$bw_adschema_accountsReportNLS.dyntitle(title)
+	
+	tags: "ADreports"
+	dock-right: Dock {
+		collapsed:True
+		collapsible:True
+		width:300
+		
+		Header {
+			value:$bw_adschema_accountsReportNLS.accountgroup
+		}
+		Tree {
+			data:selectedAccountGroupsTree
+			layout:Layout{grab:horizontal True vertical True}
+			hide-header:False
+			configurable:True
+			
+			Column {
+				header:$pgroup.displayname
+				column:displayname
+				width:100%
+				filterable:True
+				sortable:True
+			}
+			Column {
+				header:$pgroup.comment
+				column:comment
+				width:320px
+				filterable:True
+				sortable:True
+				initially-masked:True
+			}
+			Column {
+				header:$pgroup.code
+				column:code
+				width:320px
+				sortable:True
+				filterable:True
+				initially-masked:True
+			}
+		
+		}
+	}
+	
+	/* Parameters here */
+	title = Parameter {type:String hidden:True mandatory:False}
+	domainuid = Parameter {type:String hidden:True mandatory:False multivalued:True}
+	
+	locked = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.locked}
+	dontexpirepassword = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.dontexpirepassword}
+	notnormalaccount = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.notnormalaccount}
+	passwordcantchange = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordcantchange}
+	passwordexpired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordexpired}
+	passwordnotrequired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.passwordnotrequired}
+	smartcardrequired = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.smartcardrequired}
+	groupchanged = Parameter {type:Boolean hidden:True mandatory:False label:$paccount.groupchanged}
+	noexpirationdate = Parameter {type:Boolean hidden:True mandatory:False}
+	internal = Parameter {type:Boolean hidden:True mandatory:False}
+	logincount = Parameter {type:Integer hidden:True mandatory:False}
+	badpasswordcount = Parameter {type:Integer hidden:True mandatory:False}
+	importaction = Parameter {type:String hidden:True mandatory:False}
+
+	recontype = Parameter {type:String hidden:True mandatory:False}
+	
+	lastlogin = Parameter {type:Integer hidden:True mandatory:False}
+	passwordlastchanged = Parameter {type:Integer hidden:True mandatory:False}
+	expirationdate = Parameter {type:Integer hidden:True mandatory:False}
+	
+	/* Variables here */
+	vtitle = Variable {type:String initial:$bw_adschema_accountsReportNLS.title}
+	selectedAccount = Variable
+	
+	/* Datasets and records here */
+	accounts = Dataset {
+		view:bw_ad_justdisabledPrivilegedAccountsReport with domainuid to domainuid,
+									locked to locked,
+									dontexpirepassword to dontexpirepassword,
+									notnormalaccount to notnormalaccount,
+									passwordcantchange to passwordcantchange,
+									passwordexpired to passwordexpired,
+									passwordnotrequired to passwordnotrequired,
+									smartcardrequired to smartcardrequired,
+									groupchanged to groupchanged,
+									recontype to recontype,
+									lastlogin to lastlogin,
+									passwordlastchanged to passwordlastchanged,
+									logincount to logincount,
+									noexpirationdate to noexpirationdate,
+									expirationdate to expirationdate,
+									internal to internal,
+									badpasswordcount to badpasswordcount,
+									importaction to importaction
+	}
+
+	selectedAccountGroupsTree = HierarchicalData {
+		roots-view:ad_accountdirectgroups with selectedAccount to recorduid
+		children-view:ad_subgroups
+		attribute:recorduid
+		parameter:parentrecorduid
+	}
+	
+	/* Page content */
+	
+	
+	Grid {
+		columns: GridColumn { width: grow }, GridColumn { width: 50px }
+		GridRow {
+			GridCell {
+			
+		
+	
+	
+	Table {
+		data:accounts
+		layout:Layout {grab:horizontal True vertical True}
+		show-filter:True
+		show-count:True
+		configurable:True
+		double-click:GoTo Activity Account Detail with Current uid to paramAccountUid
+		
+		Column {column:repositoryrecorduid hidden:True}
+		Column {column:repositoryuid hidden:True}
+		Column {column:repositorycode header:$pdomain.code sortable:True filterable:True}
+		Column {column:repositorydisplayname header:$pdomain.displayname sortable:True filterable:True initially-masked:True}
+		Column {column:repositoryextractDate header:$pdomain.extractdate sortable:True filterable:True initially-masked:True}
+
+		Column {column:recorduid hidden:True selection:selectedAccount}
+		Column {column:uid hidden:True}
+		Column {column:identifier header:$bw_adschema_accountsReportNLS.dn sortable:True filterable:True initially-masked:True}
+		Column {column:login header:$account.login sortable:True filterable:True}
+		Column {column:sid header:$account.sid sortable:True filterable:True initially-masked:True}
+		Column {column:guid header:$account.guid sortable:True filterable:True initially-masked:True}
+		Column {column:profile header:$account.profile sortable:True filterable:True initially-masked:True}
+		Column {column:givenname header:$account.givenname sortable:True filterable:True initially-masked:True}
+		Column {column:surname header:$account.surname sortable:True filterable:True initially-masked:True}
+		Column {column:username header:$account.username sortable:True filterable:True}
+		Column {column:employeenumber header:$account.employeenumber sortable:True filterable:True initially-masked:True}
+		Column {column:mail header:$account.mail sortable:True filterable:True}
+		Column {column:managerdata header:$account.managerdata sortable:True filterable:True initially-masked:True}
+		Column {column:creationdate header:$account.creationdate sortable:True filterable:True}
+		Column {column:lastlogindate header:$account.lastlogindate sortable:True filterable:True}
+		Column {column:passwordlastsetdate header:$account.passwordlastsetdate sortable:True filterable:True}
+		Column {column:expiredate header:$account.expiredate sortable:True filterable:True}
+		Column {column:nextpwdchangedate header:$account.nextpwdchangedate sortable:True filterable:True}
+		Column {column:service header:$account.service sortable:True filterable:True initially-masked:True}
+		Column {column:disabled header:$account.disabled sortable:True filterable:True}
+		Column {column:logincount header:$account.logincount sortable:True filterable:True initially-masked:True}
+		Column {column:badpasswordcount header:$account.badpasswordcount sortable:True filterable:True initially-masked:True}
+		Column {column:passwordnotrequired header:$account.passwordnotrequired sortable:True filterable:True}
+		Column {column:passwordcantchange header:$account.passwordcantchange sortable:True filterable:True}
+		Column {column:notnormalaccount header:$account.notnormalaccount sortable:True filterable:True initially-masked:True}
+		Column {column:dontexpirepassword header:$account.dontexpirepassword sortable:True filterable:True}
+		Column {column:passwordexpired header:$account.passwordexpired sortable:True filterable:True}
+		Column {column:smartcardrequired header:$account.smartcardrequired sortable:True filterable:True}
+		Column {column:groupchanged header:$account.groupchanged sortable:True filterable:True initially-masked:True}
+		Column {column:custom1 header:$account.custom1 sortable:True filterable:True initially-masked:True}
+		Column {column:custom2 header:$account.custom2 sortable:True filterable:True initially-masked:True}
+		Column {column:custom3 header:$account.custom3 sortable:True filterable:True initially-masked:True}
+		Column {column:custom4 header:$account.custom4 sortable:True filterable:True initially-masked:True}
+		Column {column:custom5 header:$account.custom5 sortable:True filterable:True initially-masked:True}
+		Column {column:custom6 header:$account.custom6 sortable:True filterable:True initially-masked:True}
+		Column {column:custom7 header:$account.custom7 sortable:True filterable:True initially-masked:True}
+		Column {column:custom8 header:$account.custom8 sortable:True filterable:True initially-masked:True}
+		Column {column:custom9 header:$account.custom9 sortable:True filterable:True initially-masked:True}
+		
+		Column {column:reconciliationdate header:$preconciliation.reconciliationdate sortable:True filterable:True initially-masked:True}
+		Column {column:reconciliationnoownercode header:$bw_adschema_accountsReportNLS.noownercode}
+		Column {column:reconciliationdescription header:$preconciliation.description sortable:True filterable:True initially-masked:True}
+		Column {column:reconciliationcomment header:$preconciliation.comment sortable:True filterable:True initially-masked:True}
+		Column {column:reconciliationtype header:$preconciliation.type sortable:True filterable:True initially-masked:True}
+		Column {column:reconciliationreliability header:$preconciliation.reliability sortable:True filterable:True initially-masked:True}
+		Column {column:reconciliationleavedate header:$preconciliation.leavedate sortable:True filterable:True initially-masked:True}
+		
+		Column {column:ownerhrcode header:$pidentity.hrcode}
+		Column {column:ownergivenname header:$pidentity.givenname sortable:True filterable:True initially-masked:True}
+		Column {column:ownersurname header:$pidentity.surname sortable:True filterable:True initially-masked:True}
+		Column {column:owneraltname header:$pidentity.altname sortable:True filterable:True initially-masked:True}
+		Column {column:ownerfullname header:$pidentity.fullname}
+		Column {column:owneractive header:$pidentity.active}
+		Column {column:ownerarrivaldate header:$pidentity.arrivaldate sortable:True filterable:True initially-masked:True}
+		Column {column:ownerdeparturedate header:$pidentity.departuredate sortable:True filterable:True initially-masked:True}
+		Column {column:ownermail header:$pidentity.mail sortable:True filterable:True initially-masked:True}
+		Column {column:ownerinternal header:$pidentity.internal}
+		Column {column:owneremployeetypecode header:$pidentity.employeetypecode sortable:True filterable:True initially-masked:True}
+		Column {column:owneremployeetypedisplayname header:$pidentity.employeetypedisplayname sortable:True filterable:True initially-masked:True}
+	}
+
+		}
+			GridCell {
+				Button {
+					layout: Layout { indent: horizontal 0 vertical 30 }
+					actions: GoTo Report bw_adschema_justdisabledPrivilegedAccountsReport_print
+						with 	domainuid to domainuid,
+								locked to locked,
+								dontexpirepassword to dontexpirepassword,
+								notnormalaccount to notnormalaccount,
+								passwordcantchange to passwordcantchange,
+								passwordexpired to passwordexpired,
+								passwordnotrequired to passwordnotrequired,
+								smartcardrequired to smartcardrequired,
+								groupchanged to groupchanged,
+								recontype to recontype,
+								lastlogin to lastlogin,
+								passwordlastchanged to passwordlastchanged,
+								logincount to logincount,
+								noexpirationdate to noexpirationdate,
+								expirationdate to expirationdate,
+								internal to internal,
+								badpasswordcount to badpasswordcount,
+								importaction to importaction,
+								
+								title to title
+					presentation: Link
+					image: "32/details/printable_32_gray.png"
+				}
+			}
+		}
+	}
+}

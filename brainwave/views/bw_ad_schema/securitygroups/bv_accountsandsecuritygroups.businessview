@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="ad_bv_accountsandsecuritygroups" displayname="Accounts and Security Groups">
+	<Definition scriptfile="/views/bw_ad_schema/securitygroups/bv_accountsandsecuritygroups.javascript" name="D1514971791705">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1514971791705" title="current">
+			<InnerView name="ct_ad_accountsandsecuritygroups" prefix="current_">
+				<Param name="F1515661805303" viewparam="domains" viewparamvalue="{param.domains.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1514971824772" type="joinview" x="569" y="257" w="300" h="50" title="prev">
+			<Join jointype="left" key1="{dataset.current_key.get()}" key2="{dataset.prev_key.get()}"/>
+			<InnerView name="ct_ad_accountsandsecuritygroups_prev" prefix="prev_">
+				<Param name="F1515661815961" viewparam="domains" viewparamvalue="{param.domains.get()}"/>
+			</InnerView>
+			<ViewComputedAttribute name="status" displayname="status" type="Integer" expression="dataset.current_val.get()!=null&amp;&amp;dataset.prev_val.get()!=null ? 1 :  dataset.current_val.get()!=null ? 2 : 0"/>
+			<ViewComputedAttribute name="xStatus" displayname="X status display" type="String" expression="dataset.status.get()&gt;=0 &amp;&amp; dataset.status.get()&lt;=2 ? &quot;X&quot; : null "/>
+			<ViewComputedAttribute name="accountLabelDisplay" displayname="Account Label Display" type="String" expression="dataset.current_acc_username.get()==null ? dataset.current_acc_login.get() : dataset.current_acc_username.get()"/>
+		</Component>
+		<Link name="L1514971824902" source="C1514971791705" target="C1514971824772" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="domains" displayname="domains"/>
+</View>

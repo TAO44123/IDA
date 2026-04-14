@@ -1,0 +1,237 @@
+import "/webportal/pages/workflow/bw_exception_manager/resources/resources.page"
+
+/*	Dialog deleteControlExceptionDialog
+ * 
+ *  Parameters:
+ * 	- controlcode (String) 
+ *  - controlresulttype (Integer)
+ *  - targetuid (String) uid of the element of the exception
+ *  Output:
+ * 	- resultaction (Integer) 0-> Deleted 1-> Canceled. Indicate which button was clicked.
+ * 
+ *  NLS in $controlexception.delete.*
+ */
+deleteControlExceptionDialog = Dialog {
+	title:$controlexception.delete.title
+	width:600
+	height:180
+	buttons: [
+		OkButton {
+			actions:
+				Set controlcode to taskDelete.controlcode, 
+				Set controlresulttype to taskDelete.targettype, 
+				// Can be called with one (legacy) or multiple values
+				StringCase ( targetuids ) {
+					when IsEmpty then [
+						MultivaluedAdd targetuid to taskDelete.targetuids 
+					] otherwise [
+						Set targetuids to taskDelete.targetuids
+					]
+				},
+				TaskComplete taskDelete wait-end timeout-seconds 30,
+				Set 1 to resultaction,
+				Flash $controlexception.delete.done
+		}
+		CancelButton
+	]
+	
+	// Input variables
+	controlcode = Variable { type: String }
+	controlresulttype = Variable { type: Integer }
+	targetuid = Variable { type: String }
+	targetuids = Variable { type: String multivalued: True }
+	
+	// Output variables
+	resultaction = Variable { type: Integer initial: 0 }
+	
+	// Workflow task
+	taskDelete = TaskRecord ( create "deleteexceptions" )
+	
+	Text {
+		label: $controlexception.delete.confirm
+		value: ""
+		compact: True
+	}
+}
+
+/*	Dialog modifyControlExceptionDialog
+ * 
+ *  Parameters:
+ * 	- exceptionuid (String)
+ *  - targetuid (String) uid of the element of the exception
+ *  Output:
+ * 	- resultaction (Integer) 0-> Modified 1-> Canceled. Indicate which button was clicked.
+ * 
+ *  NLS in $controlexception.modify.*
+ */
+modifyControlExceptionDialog = Dialog {
+	title: $controlexception.modify.title
+	width: 600
+	height: 350
+	enter-event:
+		Set exception.^reason to editReason,
+		Set exception.validuntildate to editEndDate,
+		Set exception.custom1 to editUploadSession
+	buttons: [
+		OkButton {
+			actions:
+				Set editReason to taskModify.^reason,
+				Set Principal.fullname to taskModify.issuerName,
+				Set Date(exception.validfromdate).valueLDAP to taskModify.begindate,
+				Set Date(editEndDate).valueLDAP to taskModify.enddate,
+				Set exception.control_controlcode to taskModify.controlcode,
+				Set exception.control_controlresulttype to taskModify.targettype,
+				Set editUploadSession to taskModify.uploadsession,
+				// Can be called with one (legacy) or multiple values
+				StringCase ( targetuids ) {
+					when IsEmpty then [
+						MultivaluedAdd targetuid to taskModify.targetuids 
+					] otherwise [
+						Set targetuids to taskModify.targetuids
+					]
+				},
+				TaskComplete taskModify wait-end timeout-seconds 30,
+				Set 1 to resultaction,
+				Flash $controlexception.modify.done
+		}
+		CancelButton
+		]
+	
+	// Input variables
+	exceptionuid = Variable { type: String }
+	targetuid = Variable { type: String }
+	targetuids = Variable { type: String multivalued: True }
+	controlresulttype = Variable { type: String }
+	controlcode = Variable { type: String }
+	
+	// Output variables
+	resultaction = Variable { type: Integer initial: 0 }
+	
+	// Edition variables
+	editReason = Variable { type: String }
+	editEndDate = Variable { type: Date }
+	editUploadSession = Variable { type: String }
+	
+	// Exception record
+	exception = Record {
+		view: br_exception with exceptionuid to uid
+	}
+	
+	// Workflow task
+	taskModify = TaskRecord ( create "modifyexceptions" )
+	
+	Edit {
+		variable: editReason
+		multi-lines: True
+		layout:Layout{ hint:height 50 }
+		label: $controlexception.modify.label.^reason
+	}
+	
+	DateTime {
+		variable: editEndDate
+		type: Date
+		label: $controlexception.modify.label.enddate
+		allow-none: True
+	}
+	
+	Upload {
+		variable: editUploadSession
+		compact: True
+		confirm-delete: True
+		download-mode: Name
+		hide-header: True
+		label: $controlexception.modify.label.files
+		
+		layout: Layout {
+			grab: vertical False horizontal True
+		}
+	}
+}
+
+/*	Dialog createControlExceptionDialog
+ * 
+ *  Parameters:
+ * 	- controlcode (String)
+ *  - controlresulttype (Integer)
+ *  - targetuid (String) uid of the element of the exception
+ *  Output:
+ * 	- resultaction (Integer) 0-> Modified 1-> Canceled. Indicate which button was clicked.
+ * 
+ *  NLS in $controlexception.add.*
+ */
+createControlExceptionDialog = Dialog {
+	title: $controlexception.add.title
+	width: 600
+	height: 350
+	buttons: [
+		OkButton {
+			actions:
+				StringCase ( editReason )  {
+					when IsEmpty then [ Set $controlexception.novalue to taskModify.^reason ]
+					otherwise [ Set editReason to taskModify.^reason ]
+				},
+				Set Principal.fullname to taskModify.issuerName,
+				Set Date.valueLDAP to taskModify.begindate,
+				Set Date(editEndDate).valueLDAP to taskModify.enddate,
+				Set controlcode to taskModify.controlcode,
+				Set controlresulttype to taskModify.targettype,
+				Set editUploadSession to taskModify.uploadsession,
+				// Can be called with one (legacy) or multiple values
+				StringCase ( targetuids ) {
+					when IsEmpty then [
+						MultivaluedAdd targetuid to taskModify.targetuids 
+					] otherwise [
+						Set targetuids to taskModify.targetuids
+					]
+				},
+				TaskComplete taskModify wait-end timeout-seconds 20,
+				Set 1 to resultaction,
+				Flash $controlexception.add.done
+		}
+		CancelButton
+	]
+	
+	// Input variables
+	targetuid = Variable { type: String }
+	targetuids = Variable { type: String multivalued: True }
+	controlresulttype = Variable { type: String }
+	controlcode = Variable { type: String }
+	
+	// Output variables
+	resultaction = Variable { type: Integer initial: 0 }
+	
+	// Edition variables
+	editReason = Variable { type: String }
+	editEndDate = Variable { type: Date }
+	editUploadSession = Variable { type: String }
+	
+	// Workflow task
+	taskModify = TaskRecord ( create "modifyexceptions" )
+	
+	Edit {
+		variable: editReason
+		multi-lines: True
+		layout:Layout{ hint:height 50 }
+		label: $controlexception.add.label.^reason
+	}
+	
+	DateTime {
+		variable: editEndDate
+		type: Date
+		label: $controlexception.add.label.enddate
+		allow-none: True
+	}
+	
+	Upload {
+		variable: editUploadSession
+		compact: True
+		confirm-delete: True
+		download-mode: Name
+		hide-header: True
+		label: $controlexception.add.label.files
+		
+		layout: Layout {
+			grab: vertical False horizontal True
+		}
+	}
+}

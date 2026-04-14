@@ -1,0 +1,143 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_rename_dialog.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_changes.page"
+import "/webportal/pages/bw_ledger_admin/manage_timeslot.page"
+
+/* Nationalized labels here */
+
+
+bwdsm_timeslots = PageFragment {
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	currentTimeslot = Variable{type:String }
+	currentTimeslotuid = Variable{type:String}
+	currentStatus = Variable{type:String}
+	timestamp = Variable{type:String}
+		
+	/* Datasets and records here */
+	timeslots = Dataset { view:br_timeslotlist }
+
+
+	/* Page content */
+	ButtonGroup {
+      nb-inline: 2
+		Button {
+			actions: Dialog validateTimeslotRequest ( currentTimeslotuid to timeslotUid ) , Flash Information $timeslotActions.timeslotrequestsent, ReloadData (timeslots)
+			text:$timeslotActions.timeslotValidate
+			image:"16/bw_ledger_admin/activate.png"
+			disabled: 
+			OrPredicate {
+				StringPredicate(currentTimeslotuid) { when IsEmpty then True otherwise False }
+				StringPredicate(currentStatus) { when "W" then False otherwise True }
+			}
+		}
+		
+		Button {
+			actions: Dialog renameTimeSlotDialog ( currentTimeslotuid to timeslotUid, currentTimeslot to timeslot_name ),Flash Information $timeslotActions.timeslotrequestsent, ReloadData (timeslots)	
+			text:$timeslotActions.timeslotRename
+			image:"16/bw_ledger_admin/rename.png"
+			disabled: 
+				OrPredicate {
+					StringPredicate(currentTimeslotuid) { when IsEmpty then True otherwise False }
+				}
+		}
+
+		Button {
+			actions: Dialog timeslotActionConfirmAndExecute ( currentTimeslotuid to timeslotUid, "hide" to actionCode, $timeslotActions.confirm.timeslotHide to confirmMessage ), Flash Information $timeslotActions.timeslotrequestsent, ReloadData (timeslots)		
+			text:$timeslotActions.timeslotHide
+			image:"16/bw_ledger_admin/hide.png"
+			disabled: 
+			OrPredicate {
+				StringPredicate(currentTimeslotuid) { when IsEmpty then True otherwise False }
+				AndPredicate {
+					StringPredicate(currentStatus) { when "C" then False otherwise True }
+					StringPredicate(currentStatus) { when "A" then False otherwise True }
+				}
+			}
+		}
+		Button {
+			actions: Dialog timeslotActionConfirmAndExecute ( currentTimeslotuid to timeslotUid, "show" to actionCode, $timeslotActions.confirm.timeslotShow to confirmMessage ), Flash Information $timeslotActions.timeslotrequestsent, ReloadData (timeslots)
+			text:$timeslotActions.timeslotShow
+			image:"16/bw_ledger_admin/publish.png"
+			disabled: 
+			OrPredicate {
+				StringPredicate(currentTimeslotuid) { when IsEmpty then True otherwise False }
+				StringPredicate(currentStatus) { when Not "D" then True }
+			}
+		}
+
+		Button {			
+			actions: Dialog timeslotActionConfirmAndExecute ( currentTimeslotuid to timeslotUid, "delete" to actionCode, $timeslotActions.confirm.timeslotDelete to confirmMessage ), Flash Information $timeslotActions.timeslotrequestsent, ReloadData (timeslots)
+			text:$timeslotActions.timeslotDelete	
+			image:"16/bw_ledger_admin/delete.png"
+			disabled:
+				OrPredicate {
+					StringPredicate(currentTimeslotuid) { when IsEmpty then True otherwise False }
+						StringPredicate(currentStatus) { when Not "W" then True}			
+				}  
+		}
+	}
+
+	Table {				
+		mixins: resultGridMixin	    
+		data:timeslots				
+		layout:Layout{grab: horizontal True vertical True}
+		persist-configuration:True
+		configurable:True
+		
+		Column {
+			header:$timeslotTableHeader.timeslotDescription
+			image: Transform Current status using timeslotIcons
+			column:displayname
+			selection:currentTimeslot	
+			filterable:True				
+			width: 30%
+			actions: GoTo Page timeslot_statistics with currentTimeslotuid to timeslotuidParam 		
+		}
+		Column {
+			header:$timeslotTableHeader.timeslotCreationDate	
+			column:importdate
+			filterable:True
+			sortable:True
+			width: 25%
+		}
+		Column {
+			header:$timeslotTableHeader.timeslotCommitDate
+			column:commitdate
+			filterable:True
+			sortable:True
+			width: 25%
+		}
+		Column {
+			header:$timeslotTableHeader.timeslotStatus
+			column:status 
+			text: Transform Current status using timeslotStatus
+			selection:currentStatus					
+			filterable:True
+			sortable:True
+			width: 20%					
+		}
+		Column {
+			header:$timeslotTableHeader.timeslotReference
+			column: reference
+			text: Transform Current reference using mayBeNullMapping
+			initially-masked:True
+			filterable:True
+			sortable:True
+			width: 20%
+		}		
+		Column {					
+			column:uid
+			selection:currentTimeslotuid					
+			hidden:True				
+		}						
+	}
+}

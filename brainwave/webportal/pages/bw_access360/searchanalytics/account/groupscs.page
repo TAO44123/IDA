@@ -1,0 +1,254 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ''
+	otherwise current
+}
+
+access360analytics_account_GroupscsNLS = NLS {
+	title [en "Groups analysis" fr "Analyse des groupes"]
+	directrightsonly [en "only direct rights" fr "seulement les droits directs"]
+	description [
+		en "This report analyse the accounts groups in the form of a pivot table. It is possible to identify only changes that have occurred since a given date."
+		fr "Ce rapport analyse les groupes des comptes sous la forme d'un tableau croisé. Il est possible d'identifier uniquement les changements survenus depuis une date donnée."
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+	sensitivitylevel [en "Group sensitivity level" fr "Niveau de sensibilité du groupe"]
+	
+	directonly [en "Direct groups only" fr "Seulement les groupes directs"]
+	directonlytooltip [en "Only display direct account-group links" fr "Affiche seulement les associations comptes-groupes directes"]
+}
+
+access360analytics_account_Groupscs= Page {
+	title: $access360analytics_account_GroupscsNLS.title
+	description: $access360analytics_account_GroupscsNLS.description
+	tags: "account", "searchresults"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwsa_accountgroupscs
+	mixins: simpleReport	
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_resourcesNLS.localfiltertitle
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	comparisontimeslot inline,		
+						exclRemoved inline,
+						exclSimilar inline,
+						repositories inline,
+						directonly inline
+		}
+		
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_account_FilterEdition(SerializeSearch search to accountSearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Account Search with SerializeSearch search to accountSearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	comparisontimeslot = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:String
+		label:$session_comparisonTimeslotTeam360NLS.label
+		tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+		constraint:Lookup {
+			data:session_comparisontimeslots
+			text:Current commitdate
+			value:Current uid
+		}
+	}
+	exclRemoved = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:True
+		label:$session_exclRemovedNLS.label
+		tooltip:$session_exclRemovedNLS.tooltip
+	}
+	exclSimilar = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:False
+		label:$session_exclSimilarNLS.label
+		tooltip:$session_exclSimilarNLS.tooltip
+	}
+	repositories = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:True
+		label:$repository.concept
+		tooltip:$access360analytics_account_GroupscsNLS.multicombotooltip
+		type:String
+		constraint:Lookup {
+			data:repositorylist
+			text:Current repositorydisplayname
+			value:Current repositoryuid
+		}		
+	}
+	directonly = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		default:True
+		label:$access360analytics_account_GroupscsNLS.directonly
+		tooltip:$access360analytics_account_GroupscsNLS.directonlytooltip
+		type:Boolean
+	}
+	search = SearchDefinition {
+		entity: Account
+		simple-mode-rule: br_account_simple_search
+	}
+		
+	/* Variables here */
+	outidentityuid = Variable
+	outaccountuid = Variable
+	outgroupuid = Variable
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	/* Datasets and records here */
+	groups = Dataset {
+		search: Search {
+			view:a360s_accountgroups_bv with repositories to repositories unless-empty, directonly to directonly, comparisontimeslot to comparisontimeslot unless-empty, exclRemoved to excluderemoved, exclSimilar to excludesimilar
+			definition:search
+		}
+
+		excludes:BooleanPredicate(False) /* Contournement de bug */
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	repositorylist = Dataset {
+		search: Search {
+			view:access360r_accountgrouprepos
+			definition:search
+		}
+	}
+
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid,
+												True to inshowaccounts
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid,
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowcontrols,
+												True to inshowdecisionhistory,
+												True to inshowowner,
+												True to inshowshares
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	goGroupDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowperjob,
+												True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:groups
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:32px  grab: horizontal True vertical True }
+					columns:Dim {value:repositorydisplayname header:$repository.concept},Dim {value:groupuid label:groupdisplayname header:$group.concept header-click:outgroupuid} 
+					rows:	Dim {value:orgcode label:orgdisplayname header:$organisation.concept width:160px},
+							Dim {value:jobtitledisplayname label:jobtitledisplayname header:$identity.jobtitledisplayname width:160px tooltip:jobtitledisplayname initially-masked:True},
+							Dim {value:identityinternal label:identityinternal header:$identity.internal width:100px initially-masked:True},
+							Dim {value:identityuid label:identityfullname header:$identity.fullname width:160px},
+							Dim {value:accountuid label:accountlogin header:$account.login header-click:outaccountuid } 
+					cell-content:CellContent {text: 'X' cluster-value:'X' align:Center tooltip:Current accountlogin styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 }}
+					column-header-click:ExecuteNamedAction goGroupDetails
+					row-header-click:ExecuteNamedAction goAccountDetails
+				}
+			}
+		}	
+	}
+}

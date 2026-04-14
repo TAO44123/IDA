@@ -1,0 +1,471 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>Line Chart</title>
+	<script src="bw_pages.js"></script>
+	<script src="chart.umd.min.js"></script>
+	<style>
+		html,
+		body,
+		#canvas-holder {
+			height: 100%;
+			width: 100%
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+
+	<div id="canvas-holder" style="width:100%">
+		<canvas id="chart-area"></canvas>
+	</div>
+
+	<script>
+		document.documentElement.style.overflow = 'hidden';
+		document.body.scroll = "no";
+
+		var legendTitle = '';
+		var showTitle = false;
+		var titlePosition = 'top';
+		var titleFontSize = 12;
+		var tooltipPrefix = '';
+		var tooltipSuffix = '';
+		var tooltipShowPercent = false;
+		var backgroundColor = 'rgba(12, 113, 195, 0.5)';
+		var beginAtZero = false;
+		var fill = 'false';
+		var backgroundcolor = '#FFFFFF';
+		var showLine = true;
+		var showxAxesGrid = true;
+		var showyAxesGrid = true;
+		var xAxesdisplay = true;
+		var yAxesdisplay = true;
+		var reverseXorder = false;
+		var reverseYorder = false;
+		var lineTension = 0;
+		var pointRadius = 4;
+		var borderColor = 'rgba(12, 113, 195, 0.9)';
+		var borderWidth = 2;
+		var borderDash = null;
+		var pointStyle = 'circle';
+		var pointBackgroundColor = 'rgba(12, 113, 195, 1.0)';
+		var pointBorderColor = 'rgba(12, 113, 195, 1.0)';
+		var pointHoverRadius = pointRadius * 1.2;
+		var pointHoverBackgroundColor = 'rgba(12, 113, 195, 1.0)';
+		var pointHoverBorderColor = 'rgba(12, 113, 195, 1.0)';
+		var maintainAspectRatio = true;
+		var datasetMinSize = 0;
+		var xlabel = null;
+		var ylabel = null;
+		var animation = true;
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "title") {
+				legendTitle = initialValue;
+				showTitle = true;
+			}
+			if (varName == "titlePosition") {
+				titlePosition = initialValue;
+			}
+			if (varName == "titleFontSize") {
+				titleFontSize = initialValue;
+			}
+			if (varName == "tooltipPrefix") {
+				tooltipPrefix = initialValue;
+			}
+			if (varName == "tooltipSuffix") {
+				tooltipSuffix = initialValue;
+			}
+			if (varName == "tooltipShowPercent") {
+				tooltipShowPercent = initialValue;
+			}
+			if (varName == "showxAxesGrid") {
+				showxAxesGrid = initialValue;
+			}
+			if (varName == "showyAxesGrid") {
+				showyAxesGrid = initialValue;
+			}
+			if (varName == "xAxesdisplay") {
+				xAxesdisplay = initialValue;
+			}
+			if (varName == "yAxesdisplay") {
+				yAxesdisplay = initialValue;
+			}
+			if (varName == "reverseXorder") {
+				reverseXorder = initialValue;
+			}
+			if (varName == "reverseYorder") {
+				reverseYorder = initialValue;
+			}
+			if (varName == "maintainAspectRatio") {
+				maintainAspectRatio = initialValue;
+			}
+			if (varName == "datasetMinSize") {
+				datasetMinSize = initialValue;
+			}
+			if (varName == "fill") {
+				fill = initialValue;
+			}
+			if (varName == 'beginAtZero') {
+				beginAtZero = initialValue;
+			}
+			if (varName == "showLine") {
+				showLine = initialValue;
+			}
+			if (varName == "curvedLine") {
+				if (initialValue) {
+					lineTension = 0.5;
+				}
+			}
+			if (varName == "pointStyle") {
+				pointStyle = initialValue;
+			}
+			if (varName == "pointRadius") {
+				pointRadius = initialValue;
+				pointHoverRadius = initialValue * 1.2;
+			}
+			if (varName == "lineColor") {
+				borderColor = initialValue;
+			}
+			if (varName == "lineWidth") {
+				borderWidth = initialValue;
+			}
+			if (varName == "lineDashed") {
+				if (initialValue == "style1")
+					borderDash = [2, 2];
+				else if (initialValue == "style2")
+					borderDash = [5, 5];
+				else if (initialValue == "style3")
+					borderDash = [10, 2];
+				else if (initialValue == "style4")
+					borderDash = [20, 2, 5, 2];
+				else
+					borderDash = [2, 2];
+			}
+			if (varName == "pointColor") {
+				pointBackgroundColor = initialValue;
+				pointBorderColor = initialValue;
+			}
+			if (varName == "pointHoverColor") {
+				pointHoverBackgroundColor = initialValue;
+				pointHoverBorderColor = initialValue;
+			}
+			if (varName == "fillColor") {
+				backgroundColor = initialValue;
+			}
+			if (varName == "xlabel") {
+				xlabel = initialValue;
+			}
+			if (varName == "ylabel") {
+				ylabel = initialValue;
+			}
+			if (varName == "backgroundColor") {
+				backgroundcolor = initialValue;
+			}
+			if (varName == "animation") {
+				animation = initialValue;
+			}
+		});
+
+		var newLegendClickHandler = function (e, legendItem) {
+			var index = legendItem.index;
+			var code = window.myDoughnut.data.codes[index];
+			var label = window.myDoughnut.data.labels[index];
+			Pages.sendEvent('onlegendclick', { code: code, label: label });
+		};
+
+
+
+		createChart = function () {
+			var mydata = [];
+			var mylabels = [];
+			var mycodes = [];
+			var mydescriptions = [];
+
+			var options = {
+				responsive: true,
+				maintainAspectRatio: maintainAspectRatio,
+				hover: {
+					onHover: function (e) {
+						var point = this.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+						if (point.length) e.target.style.cursor = 'pointer';
+						else e.target.style.cursor = 'default';
+					}
+				},
+				plugins: {
+					legend: {
+						position: 'right',
+						onClick: newLegendClickHandler,
+						reverse: false,
+						display: false,
+						onHover: function (e) {
+							e.target.style.cursor = 'pointer';
+						}
+					},
+					title: {
+						display: showTitle,
+						text: legendTitle,
+						position: titlePosition,
+						font: {
+							size: titleFontSize
+						}
+					},
+					tooltip: {
+						callbacks: {
+							label: function (tooltipItem) {
+								var dataset = tooltipItem.chart.data.datasets[tooltipItem.datasetIndex];
+								var pTotal = dataset.data.reduce(function (acum, current) { return Number(acum) + Number(current) });
+								var pCurrent = dataset.data[tooltipItem.dataIndex];
+								var pDescription = tooltipItem.chart.data.descriptions[tooltipItem.dataIndex];
+								if (pDescription != null)
+									return pDescription;
+								else
+									return (tooltipPrefix + ' ' + pCurrent + ' ' + tooltipSuffix + (tooltipShowPercent ? (" (" + ((pCurrent / pTotal) * 100).toFixed(2) + "%)") : ''));
+							}
+						}
+					}
+
+				},
+				animation: animation ? {
+					animateScale: true,
+					animateRotate: true
+				} : false,
+				scales: {
+					x: {
+						display: xAxesdisplay,
+						grid: {
+							display: showxAxesGrid
+						},
+						title: {
+							display: xlabel != null,
+							text: xlabel
+						},
+						beginAtZero: beginAtZero
+					},
+					y: {
+						display: yAxesdisplay,
+						grid: {
+							display: showyAxesGrid
+						},
+						title: {
+							display: ylabel != null,
+							text: ylabel
+						},
+						beginAtZero: beginAtZero,
+						reverse: reverseYorder
+					}
+				}
+			};
+
+
+			Pages.fetchDataset("chartdata", function (rows) {
+
+				if (!reverseXorder) {
+					for (index = 0; index < rows.length; index++) {
+						mydata.push(rows[index]["count"]);
+						mylabels.push(rows[index]["label"]);
+						mycodes.push(rows[index]["code"]);
+						mydescriptions.push(rows[index]["description"]);
+					}
+				}
+				else {
+					for (index = rows.length - 1; index >= 0; index--) {
+						mydata.push(rows[index]["count"]);
+						mylabels.push(rows[index]["label"]);
+						mycodes.push(rows[index]["code"]);
+						mydescriptions.push(rows[index]["description"]);
+					}
+				}
+				while (mydata.length < datasetMinSize) {
+					mydata.push(null);
+					mylabels.push("");
+				}
+
+				var data = {
+					datasets: [{
+						data: mydata,
+						backgroundColor: backgroundColor,
+						fill: fill,
+						showLine: showLine,
+						lineTension: lineTension,
+						pointRadius: pointRadius,
+						pointBackgroundColor: pointBackgroundColor,
+						pointBorderColor: pointBorderColor,
+						pointHoverRadius: pointHoverRadius,
+						pointHoverBackgroundColor: pointHoverBackgroundColor,
+						pointHoverBorderColor: pointHoverBorderColor,
+						borderColor: borderColor,
+						borderWidth: borderWidth,
+						pointStyle: pointStyle
+
+					}],
+					labels: mylabels,
+					codes: mycodes,
+					descriptions: mydescriptions
+				};
+
+				if (borderDash != null) {
+					data.datasets[0].borderDash = borderDash;
+				}
+
+
+				var ctx = document.getElementById('chart-area').getContext('2d');
+				document.getElementById('loading').style.display = 'none';
+
+				// used to configure a background color in the canvas
+				var plugin = {
+					id: 'custom_canvas_background_color',
+					beforeDraw: (chart) => {
+						const ctx = chart.canvas.getContext('2d');
+						ctx.save();
+						ctx.globalCompositeOperation = 'destination-over';
+						ctx.fillStyle = backgroundcolor;
+						ctx.fillRect(0, 0, chart.width, chart.height);
+						ctx.restore();
+					}
+				};
+
+				var config = {
+					type: 'line',
+					data: data,
+					options: options,
+					plugins: [plugin]
+				};
+
+				window.myDoughnut = new Chart(ctx, config);
+
+				document.getElementById("chart-area").onclick = function (evt) {
+					var activePoints = window.myDoughnut.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+					if (activePoints.length) {
+						var firstPoint = activePoints[0];
+						var label = window.myDoughnut.data.labels[firstPoint.index];
+						var value = window.myDoughnut.data.datasets[firstPoint.datasetIndex].data[firstPoint.index];
+						var code = window.myDoughnut.data.codes[firstPoint.index];
+						Pages.sendEvent('onclick', { code: code, label: label, count: value });
+					}
+				};
+
+
+			});
+		};
+
+		var myTimeout = null;
+
+		var fetchInvalidated = function () {
+
+			window.myDoughnut.data.codes = [];
+			window.myDoughnut.data.labels = [];
+			window.myDoughnut.data.descriptions = [];
+			window.myDoughnut.data.datasets[0].data = [];
+
+			Pages.fetchDataset("chartdata", function (rows) {
+				if (!reverseXorder) {
+					for (index = 0; index < rows.length; index++) {
+						window.myDoughnut.data.datasets[0].data.push(rows[index]["count"]);
+						window.myDoughnut.data.labels.push(rows[index]["label"]);
+						window.myDoughnut.data.codes.push(rows[index]["code"]);
+						window.myDoughnut.data.descriptions.push(rows[index]["description"]);
+					}
+				}
+				else {
+					for (index = rows.length - 1; index >= 0; index--) {
+						window.myDoughnut.data.datasets[0].data.push(rows[index]["count"]);
+						window.myDoughnut.data.labels.push(rows[index]["label"]);
+						window.myDoughnut.data.codes.push(rows[index]["code"]);
+						window.myDoughnut.data.descriptions.push(rows[index]["description"]);
+					}
+				}
+				while (window.myDoughnut.data.datasets[0].data.length < datasetMinSize) {
+					window.myDoughnut.data.datasets[0].data.push(null);
+					window.myDoughnut.data.labels.push("");
+				}
+
+				window.myDoughnut.update();
+				document.getElementById('loading').style.display = 'none';
+				document.getElementById('canvas-holder').style.display = 'block';
+				myTimeout = null;
+			});
+		};
+
+		Pages.listenToDatasetInvalidation("chartdata", function () {
+			if (myTimeout != null) {
+				clearTimeout(myTimeout);
+				myTimeout = setTimeout(fetchInvalidated, 500);
+				return;
+			}
+			//		document.getElementById('loading').style.display = 'block';
+			//		document.getElementById('canvas-holder').style.display = 'none';
+			myTimeout = setTimeout(fetchInvalidated, 500);
+		});
+
+		Pages.listenInitDone(function () {
+			createChart();
+		});
+	</script>
+</body>
+
+</html>

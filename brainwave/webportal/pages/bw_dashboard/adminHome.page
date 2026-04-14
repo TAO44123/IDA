@@ -1,0 +1,196 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_ledger_admin/manage_timeslot.page"
+import "/webportal/pages/bw_iasreview/dashboard/applicationRightReviewStatus.page"
+import "/webportal/pages/bw_iasreview/dashboard/repositoryAccountReviewStatus.page"
+import "/webportal/pages/bw_iasreview/remediationmanagement.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_dashboard/fragments.page"
+import "/webportal/pages/bw_dashboard/nls.page"
+
+bw_adminHome = Page {
+	title: $bw_adminHomeNLS.title
+	homepage-for: administratorHome priority 3900
+	header: PageHeader {
+		Link {
+			target: Page bwaccess360_remediationmanagement with 1 to activeTabParam
+			value: $bw_adminHomeNLS.warningpending(nbpendingremediation)
+			styling: warningFieldStyle
+			hidden:
+				IntPredicate ( nbpendingremediation ) {
+					when >0 then False
+					otherwise True
+				}
+			layout: Layout { grab: horizontal False vertical True hint: width 250 indent: vertical 4 horizontal 0 }
+		}
+		Link {
+			target: Page manage_timeslot
+			value: $bw_adminHomeNLS.tsnotvalidated
+			styling: warningFieldStyle
+			hidden:
+				StringPredicate ( PageTimeslot.Status ) {
+					when 'W' then False
+					otherwise True
+				}
+			layout: Layout { grab: horizontal False vertical True hint: width 250 indent: vertical 4 horizontal 0 }
+		}
+	}
+	dock-left: Dock {
+		collapsible: True
+		collapsed: True
+		width: 270
+		Header {
+			value: $bw_adminHomeNLS.param
+			styling: bigTitleStyle
+		}
+		ParametersEdition {
+			parameters:
+				errorThreshold,
+				warningThreshold,
+				applicationSelectedTag,
+				repositorySelectedTag
+		}
+	}
+	
+	/* Parameters here */
+	errorThreshold = Parameter {
+		hidden: False
+		default: 365
+		label: $bwiasr_applicationRightReviewStatusNLS.errorthreshold
+		tooltip: $bwiasr_applicationRightReviewStatusNLS.errorthreshold.tooltip
+		constraint: Int { min: 0 max: 99999 }
+		mandatory: False
+	}
+	warningThreshold = Parameter {
+		hidden: False
+		default: 45
+		label: $bwiasr_applicationRightReviewStatusNLS.warningthreshold
+		tooltip: $bwiasr_applicationRightReviewStatusNLS.warningthreshold.tooltip
+		constraint: Int { min: 0 max: 99999 }
+		mandatory: False
+	}
+	applicationSelectedTag = Parameter {
+		type: String
+		label: $bwiasr_applicationRightReviewStatusNLS.filtertag
+		tooltip: $bwiasr_applicationRightReviewStatusNLS.filtertag.tooltip
+		constraint:
+			Lookup {
+				data: applicationTagList
+				text: Current tag
+				value: Current tag
+				empty-text: ""
+				empty-value: ""
+			}
+		hidden: False
+		mandatory: False
+	}
+	repositorySelectedTag = Parameter {
+		type: String
+		label: $bwiasr_repositoryAccountReviewStatusNLS.filtertag
+		tooltip: $bwiasr_repositoryAccountReviewStatusNLS.filtertag.tooltip
+		constraint:
+			Lookup {
+				data: repositoryTagList
+				text: Current tag
+				value: Current tag
+				empty-text: ""
+				empty-value: ""
+			}
+		hidden: False
+		mandatory: False
+	}
+
+	nbpendingremediation = Variable { type:Integer }
+	
+	applicationTagList = Dataset {
+		view: bwd_applications_tags
+	}
+	
+	repositoryTagList = Dataset {
+		view: bwd_repository_tags
+	}
+
+	nbpendingremediation = Dataset {
+		view: bwaccess360r_applicationnbremediation with
+			'-1' to filterbyrunstatus,
+			True to filterolderthan90days unless-empty
+		count-variable: nbpendingremediation
+	}
+
+	Group { // gray background  
+		layout: Layout { grab:horizontal True vertical True}
+		styling: cssPageDashboard
+		Grid { // layout
+			layout: Layout { grab: horizontal True vertical True}
+			columns:
+				GridColumn { width: 100px },
+				GridColumn { width: grow }
+			GridRow {
+				GridCell { // Left column
+					Grid {
+						columns:
+							GridColumn
+						GridRow {
+							GridCell {
+								IncludeFragment (bw_adminHome_exploreblock)
+								IncludeFragment (bw_adminHome_shortlinksblock)
+								IncludeFragment (bw_adminHome_bookmarkblock)
+								Spacer {
+									height:Fill
+								}
+								Spacer {
+									height:Fill
+								}
+								Spacer {
+									height:Fill
+								}
+							}
+						}
+					}
+				}			
+				GridCell { // Middle column
+					IncludeFragment (bw_admin_home_riskcharts)
+					Grid {
+						columns:
+							GridColumn
+						GridRow {
+							GridCell {
+								IncludeFragment (bw_admin_home_top10riskblock)
+								IncludeFragment (bw_admin_home_controlblock)
+							}
+						}
+					}
+					IncludeFragment (bw_admin_home_controlcharts)
+					Grid {
+						columns:
+							GridColumn
+						GridRow {
+							GridCell {
+								IncludeFragment (bw_admin_home_reviewblock with
+									value-of errorThreshold to inerrorThreshold,
+									value-of warningThreshold to inwarningThreshold,
+									value-of applicationSelectedTag to inapplicationSelectedTag,
+									value-of repositorySelectedTag to inrepositorySelectedTag
+								)
+							}
+						}
+					}
+					Grid {
+						columns:
+							GridColumn {group:a}, GridColumn  {group:a}
+						GridRow {
+							GridCell {
+								IncludeFragment (bw_admin_home_entriescounter)
+								IncludeFragment (bw_admin_home_ledgerinfosblock)
+							}
+							GridCell {
+								IncludeFragment (bw_admin_home_notesblock)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+							

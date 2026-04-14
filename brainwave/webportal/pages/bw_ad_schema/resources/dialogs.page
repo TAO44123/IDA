@@ -1,0 +1,462 @@
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+isgroupACE = StringMapping {
+	when "group" then 1
+	otherwise 0
+}
+
+groupOrgAccountACE = NLS {
+	displayname [en "{0,choice,0# Account ACE |1#{1}}" ]
+}
+
+inverseManaged = IntMapping {
+	when =0 then 1
+	when =1 then 0
+	otherwise 1
+}
+
+intToBooleanMapping = IntMapping {
+	when =0 then False
+	when =1 then True
+}
+
+objectMetadata_Dialog = Dialog {
+	title: $adschema_dialogs.objectmetadata.title
+	width: 700
+	height: 280
+	enter-event:
+		Set selectedPermission.managed to managed,
+		Set selectedPermission.description to description,
+		IntCase ( autoSet ) { when =0 then [ Set 0 to managed, Set 1 to changed ] when =1 then [ Set 1 to managed, Set 1 to changed ] }
+		
+	buttons: [
+	
+		OkButton {
+			disabled:StringPredicate(changed) {when '1' then False otherwise True}
+			actions: Set description to task.description,
+			Set Transform managed using intToBooleanMapping to task.managed,
+			Set paramPermissionUid to task.object,
+			TaskComplete task wait,
+			Flash $adschema_dialogs.objectmetadata.messages.done
+			
+		}
+		
+		CancelButton
+		
+	] 
+	
+	// Parameter
+	paramPermissionUid = Variable {type:String multivalued:False}
+	autoSet = Variable { type: Integer initial: -1 }
+	
+	// Variables to edit
+	description = Variable
+	managed = Variable
+	
+	changed = Variable{type:String initial:'0'}
+	
+	// Datasets and Records
+	selectedPermission = Record { view: ad_object_detail with paramPermissionUid to uid }
+	
+	task = TaskRecord ( create "updateobjectmetadata" )
+	
+	
+	Header {
+		value: $adschema_dialogs.objectmetadata.description ( selectedPermission.displayname )
+	}
+	
+	Spacer {
+		height: 10
+	}
+	
+	
+	Combo {
+		variable: managed
+		label: $adschema_dialogs.objectmetadata.labels.managed
+		modify-event:
+			Set '1' to changed
+		options:Static{
+			Option{text: $global.no value:'0'}
+			Option{text: $global.yes value:'1'}
+		}
+	}
+	
+	Edit {
+		variable:description
+		label:$adschema_dialogs.objectmetadata.labels.description
+		multi-lines:True
+		layout:Layout{grab: horizontal True vertical False hint:height 64}
+		modify-event:Set '1' to changed
+	}	
+	
+	
+
+}
+
+dialogGroupMembers = Dialog {
+	title: $adschema_dialogs.groupmembers.title
+	width: 700
+	height: 400
+	
+	// Parameter
+	groupUid = Variable { type: String }
+	
+	selectedGroup = Record { view: ad_group_select_uid with groupUid to uid}
+	
+	directIdentities = Dataset {
+		view: ad_group_identitiesdirect with groupUid to uid
+	}
+	
+	indirectIdentities = Dataset {
+		view: ad_group_identitiesindirect with groupUid to uid
+	}
+	
+	allIdentities = Dataset {
+		union: Union {
+			datasets: directIdentities discriminator "direct", indirectIdentities discriminator "indirect"
+			discriminator-column: type
+		}
+	}
+	
+	Text { 
+		value: $adschema_dialogs.groupmembers.subtitle (selectedGroup.displayname )
+		styling: redSmallLabel
+		compact: True 
+	}
+									
+	Table {
+		data: allIdentities
+		layout: Layout { grab: horizontal True vertical True indent: horizontal 0 vertical 5  hint: width 650 }
+		show-count: True 
+		show-filter: True
+		
+		Column {width: 70% column: type text: Transform Current type using typeMap header: $adschema_group_explorer.tabs.identities.headers.type }
+		
+		Column { width: 70% column: type 
+			// isDirect ? displayname : child_displayname
+			text: $adschema_group_explorer.tabs.identities.labels.group( Transform Current type using isDirect , Current displayname, Current child_displayname )  
+			header: $group.concept 
+			filterable: True
+			}
+		
+		Column {width: 70% column: account_login header: $account.login filterable: True }
+		Column {width: 70%  column: id_fullname header: $pidentity.fullname  text: Transform Current id_fullname using optionStringMapping filterable: True }
+		Column {width: 50%  column: org_shortname header: $organisation.concept text: Transform Current org_shortname using optionStringMapping  filterable: True }		
+	}
+
+}
+
+dialogACLDetails = Dialog {
+	title: $adschema_dialogs.acldetails.title
+	width: 780
+	height: 500
+	mixins: base_dialogMixin
+	enter-event: TransferData groups(uid) to (accountInGroups)
+	
+	// Input variables
+	accountUid = Variable { type: String }
+	adObjectUid = Variable { type: String }
+	
+	// Other variables
+	accountInGroups = Variable { type: String multivalued: True }
+	initialTimeSlotUid = Variable { initial:PageTimeslot.UID }
+	selectedTimeSlotUid = Variable { type: String }
+	selectedACEUid = Variable  { type: String }
+	selectedACEType = Variable { type: String }
+	selectedGroupUid = Variable {type: String }
+	selectedPerimeterUid = Variable { type: String }
+	
+	// Datasets
+	account = Record { view: br_accountDetail with accountUid to uid }
+	adObject = Record { view: adobject_Detail_Uid with adObjectUid to uid  }
+	groups = Dataset { view: groups_byaccount with accountUid to uid }
+	
+	
+	// Datasets to get ACLS ( same used in the explorer ) 
+	groupAcls = Dataset {
+		view: adacl_groupacls with adObjectUid to uid , accountInGroups to groupUids
+		timeslot: selectedTimeSlotUid 
+	}
+	accountAcls = Dataset {
+		view: adacl_accountacls with adObjectUid to uid , accountUid to accountUids
+		timeslot: selectedTimeSlotUid 
+	}
+	
+	allACEs = Dataset {
+		union: Union {
+			datasets: accountAcls discriminator "account", groupAcls discriminator "group"
+			discriminator-column: type
+		}
+	}
+	
+	/* timeslots */
+	timeslots = Dataset { view: explorergettimeslots }
+	
+	Group {
+		layout: Layout { grab: horizontal True  vertical False }
+		Grid{ columns: GridColumn { width: grow 1 } , GridColumn { width: grow 2 } 
+			GridRow {
+				GridCell {
+					Text {
+						label: $ad_account.pdomain
+						value: account.repository_displayname
+					}
+					Text {
+						label: $paccount.login
+						value: account.login 
+					}
+				}
+				GridCell {
+					Text {
+						label: $ad_object.concept 
+						value: adObject.displayname
+					}
+					Text {
+						layout: Layout { hint: height 40 grab: horizontal True vertical False }
+						label: Label { value: $ad_object.dn  layout: Layout { align: horizontal Beginning vertical Beginning }}
+						value: adObject.custom1
+						lines: 2
+					}
+				}
+			}
+		}
+	}
+	
+	/*SetNavigator {
+		data: timeslots 
+		column: uid 
+		align: Center
+		selection: selectedTimeSlotUid  
+		label: Current displayname
+		label-width: 350
+		dropdown: Dropdown { text: Current displayname } 
+		show-last:True
+		initial: 
+	}*/
+	
+	
+	Table {
+		data: allACEs
+		layout: Layout { grab: horizontal True vertical True }
+		double-click: StringCase ( selectedACEType ) {
+			when "account" then [ Dialog dialogACEDetails( selectedACEUid to accountAceUid ) ]
+			when "group" then [ Dialog dialogACEDetails( selectedGroupUid to groupAceGroupUid , adObjectUid to groupAcePermUid, selectedPerimeterUid to groupAcePerimUid ) ]
+		
+		}
+		commands:Commands{position:After orientation:Vertical presentation:Icon Command{actions: Dialog dialogACLHelp icon:"16/famfamfam_silk_icons_v013/help.png" tooltip: $adschema_dialogs.aclhelp.tooltip.button}  Command{actions:Message "" icon:"" disabled:True}}
+							
+		
+		
+		Column { column: type  hidden: True selection: selectedACEType }
+		Column { width: 60% column: group_displayname text: $groupOrgAccountACE.displayname ( Transform Current type using isgroupACE , Concat ( Current domain_displayname , "\\", Current group_displayname))    header: $group.concept }
+		Column { width: 25px column: ADS_RIGHT_DS_READ_PROP header: "R"  image: TemplateImageSelection (Current ADS_RIGHT_DS_READ_PROP) using rightTemplate text: ""  }
+		Column { width: 25px column: ADS_RIGHT_DS_WRITE_PROP header: "W"  image: TemplateImageSelection (Current ADS_RIGHT_DS_WRITE_PROP) using rightTemplate text: "" }
+		Column { width: 25px column: ADS_RIGHT_ACTRL_DS_LIST header: "L"  image: TemplateImageSelection (Current ADS_RIGHT_ACTRL_DS_LIST) using rightTemplate text: "" }
+		Column { width: 25px column: ADS_RIGHT_DS_CREATE_CHILD header: "A" image: TemplateImageSelection (Current ADS_RIGHT_DS_CREATE_CHILD) using rightTemplate text: "" }
+		Column { width: 25px column: ADS_RIGHT_DS_DELETE_CHILD header: "D" image: TemplateImageSelection (Current ADS_RIGHT_DS_DELETE_CHILD) using rightTemplate text: "" }
+		Column { width: 25px column: SPECIAL header: "+" image: TemplateImageSelection (Current SPECIAL) using rightTemplate text: ""}
+		
+		Column { width: 100% column: perimeterdisplayname  header: $ad_perimeter.displayname  }
+		Column { width: 56px column: isdefault header: $adschema_explorer.headers.defaultright text: Transform Current isdefault using booleanDisplayMapping }
+		
+		Column { column: uid hidden: True selection: selectedACEUid}
+		Column { column: group_uid hidden: True selection: selectedGroupUid}
+		Column { column: perimeteruid hidden: True selection: selectedPerimeterUid }	
+	}
+}
+
+dialogACLHelp = Dialog {
+	title: $adschema_dialogs.aclhelp.title
+	width: 620
+	height: 380
+	mixins: base_dialogMixin
+	
+	Group {
+		layout: Layout { indent: horizontal 20 vertical  10}
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.rightR styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.rightR.description 
+		}
+		
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.rightW styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.rightW.description 
+		}
+		
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.rightL styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.rightL.description 
+		}
+		
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.rightA styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.rightA.description 
+		}
+		
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.rightD styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.rightD.description 
+		}
+		
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.rightOther styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.rightOther.description 
+		}
+		
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.scope styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.scope.description 
+		}
+		
+		Text {
+			label: Label { value: $adschema_dialogs.aclhelp.label.defaultright styling: redSmallLabel layout: Layout{ hint: width 90} }
+			value: $adschema_dialogs.aclhelp.label.defaultright.description 
+		}
+	}
+}
+
+
+dialogACEDetails = Dialog {
+	title: $adschema_dialogs.acedetails.title
+	width: 720
+	height: 400
+	mixins: base_dialogMixin
+	enter-event: 
+	StringCase ( accountAceUid ) {
+		when IsEmpty then [
+			Set groupAce.domain_displayname to principalDomain,
+			Set groupAce.group_displayname to principalId,
+			Set groupAce.dn to soDistinguishedname,
+			Set groupAce.perimeterdisplayname to aceScope,
+			Set groupAce.ADS_RIGHT_DELETE to rightT, Set groupAce.ADS_RIGHT_READ_CONTROL to rightC, Set groupAce.ADS_RIGHT_WRITE_DAC to rightM , 
+			Set groupAce.ADS_RIGHT_WRITE_OWNER to rightO, Set groupAce.ADS_RIGHT_SYNCHRONIZE to rightY , Set groupAce.ADS_RIGHT_ACCESS_SYSTEM_SECURITY to rightU,
+			Set groupAce.ADS_RIGHT_DS_CREATE_CHILD to rightA, Set groupAce.ADS_RIGHT_DS_DELETE_CHILD to rightD, Set groupAce.ADS_RIGHT_ACTRL_DS_LIST to rightL,
+			Set groupAce.ADS_RIGHT_DS_SELF to rightS, Set groupAce.ADS_RIGHT_DS_READ_PROP to rightR, Set groupAce.ADS_RIGHT_DS_WRITE_PROP to rightW,
+			Set groupAce.ADS_RIGHT_DS_DELETE_TREE to rightE, Set groupAce.ADS_RIGHT_DS_LIST_OBJECT to rightI, Set groupAce.ADS_RIGHT_DS_CONTROL_ACCESS to rightX,
+			
+			Set $group.concept to soType
+			
+		]
+		otherwise [
+			Set accountAce.domain_displayname to principalDomain,
+			Set accountAce.account_login to principalId,
+			Set accountAce.dn to soDistinguishedname,
+			Set accountAce.perimeterdisplayname to aceScope,
+			
+			Set accountAce.ADS_RIGHT_DELETE to rightT, Set accountAce.ADS_RIGHT_READ_CONTROL to rightC, Set accountAce.ADS_RIGHT_WRITE_DAC to rightM , 
+			Set accountAce.ADS_RIGHT_WRITE_OWNER to rightO, Set accountAce.ADS_RIGHT_SYNCHRONIZE to rightY , Set accountAce.ADS_RIGHT_ACCESS_SYSTEM_SECURITY to rightU,
+			Set accountAce.ADS_RIGHT_DS_CREATE_CHILD to rightA, Set accountAce.ADS_RIGHT_DS_DELETE_CHILD to rightD, Set accountAce.ADS_RIGHT_ACTRL_DS_LIST to rightL,
+			Set accountAce.ADS_RIGHT_DS_SELF to rightS, Set accountAce.ADS_RIGHT_DS_READ_PROP to rightR, Set accountAce.ADS_RIGHT_DS_WRITE_PROP to rightW,
+			Set accountAce.ADS_RIGHT_DS_DELETE_TREE to rightE, Set accountAce.ADS_RIGHT_DS_LIST_OBJECT to rightI, Set accountAce.ADS_RIGHT_DS_CONTROL_ACCESS to rightX,
+			
+			Set $account.concept to soType
+		]
+	}
+	
+	accountAceUid = Variable { type: String }
+	
+	groupAceGroupUid = Variable { type: String }
+	groupAcePermUid = Variable { type: String }
+	groupAcePerimUid = Variable { type: String }
+	
+	// Data to display
+	principalDomain = Variable { type: String }
+	principalId = Variable { type: String }
+	soType = Variable { type: String }
+	soDistinguishedname = Variable { type: String }
+	aceScope = Variable { type: String }
+	rightA = Variable { type: Integer }
+	rightD = Variable { type: Integer }
+	rightL = Variable { type: Integer }
+	rightS = Variable { type: Integer }
+	rightR = Variable { type: Integer }
+	rightW = Variable { type: Integer }
+	rightE = Variable { type: Integer }
+	rightI = Variable { type: Integer }
+	rightX = Variable { type: Integer }
+	rightT = Variable { type: Integer }
+	rightC = Variable { type: Integer }
+	rightM = Variable { type: Integer }
+	rightO = Variable { type: Integer }
+	rightY = Variable { type: Integer }
+	rightU = Variable { type: Integer }
+	
+	
+	accountAce = Record { view: adacl_accountace with accountAceUid to uid }
+	groupAce = Record { view: adacl_groupace with groupAceGroupUid to group_uid , groupAcePerimUid to perimeter_uid, groupAcePermUid to permission_uid }
+	
+	Grid {
+		columns: GridColumn { width: grow }, GridColumn { width: 150 }, GridColumn { width: 150 }
+		
+		GridRow {
+			GridCell{
+				
+				Text { value: $dialogsdetailsACL.labels.securityprincipal styling: redSmallLabel }
+				Group {
+					layout: Layout { indent: horizontal 20 vertical 0 }
+					Text { label: $ad_domain.concept value: principalDomain }
+					Text { label: $dialogsdetailsACL.labels.id value: principalId }
+				}
+				Text { value: $dialogsdetailsACL.labels.securableobject styling: redSmallLabel }
+				Group {
+					layout: Layout { indent: horizontal 20 vertical 0 }
+					Text { label: $dialogsdetailsACL.labels.type value: soType }
+					Text { label: $dialogsdetailsACL.labels.dn value: soDistinguishedname  lines: 2 layout: Layout { hint: height 30 }}
+				}
+				Text { value: $dialogsdetailsACL.labels.additional styling: redSmallLabel  }
+				Group {
+					layout: Layout { indent: horizontal 20 vertical 0 }
+					Text { label: $dialogsdetailsACL.labels.scope value: aceScope }
+				}
+			
+			
+			}
+			
+			GridCell{
+				Text { value: $dialogsdetailsACL.labels.rights styling: redSmallLabel  }
+				Group {
+				
+					layout: Layout { indent: horizontal 10 vertical 0 }
+					
+					Text { value: $ad_rights.svalue.R  tooltip: $ad_rights.explained.R decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightR ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.W  tooltip: $ad_rights.explained.W decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightW ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.L  tooltip: $ad_rights.explained.L decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightL ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.A  tooltip: $ad_rights.explained.A decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightA ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.D  tooltip: $ad_rights.explained.D decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightD ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.S  tooltip: $ad_rights.explained.S decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightS ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.E  tooltip: $ad_rights.explained.E decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightE ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.I  tooltip: $ad_rights.explained.I decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightI ) using rightTemplate width:18 } width: 140  } }
+					
+					
+					
+				}
+			
+			}
+			
+			GridCell {
+				Group {
+					layout: Layout { indent: horizontal 0 vertical 26 }
+					
+					Text { value: $ad_rights.svalue.X  tooltip: $ad_rights.explained.X decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightX ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.T  tooltip: $ad_rights.explained.T decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightT ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.C  tooltip: $ad_rights.explained.C decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightC ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.M  tooltip: $ad_rights.explained.M decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightM ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.O  tooltip: $ad_rights.explained.O decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightO ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.Y  tooltip: $ad_rights.explained.Y decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightY ) using rightTemplate width:18 } width: 140  } }
+					Text { value: $ad_rights.svalue.U  tooltip: $ad_rights.explained.U decorator: Decorator { before: Image {  image: TemplateImageSelection ( rightU ) using rightTemplate width:18 } width: 140  } }
+				}
+			}
+		
+		}
+	}
+	
+	
+	
+
+}

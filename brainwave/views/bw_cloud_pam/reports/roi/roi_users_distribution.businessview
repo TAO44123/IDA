@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpam_roi_users_distribution" displayname="roi users distribution">
+	<Definition scriptfile="/views/bw_cloud_pam/reports/roi/users_distribution.javascript" name="D1627327028350">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1627327028350" title="Human">
+			<InnerView name="bwpam_roi_human_users">
+				<Param name="F1628002885115" viewparam="nbdays" viewparamvalue="{param.nbdays.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1627327038153" type="unionview" x="710" y="206" w="300" h="50" title="Built-in">
+			<InnerView name="bwpam_roi_builtin_users">
+				<Param name="F1628003004789" viewparam="nbdays" viewparamvalue="{param.nbdays.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="human" secondary_discriminator="builtin" discriminatorcolumn="disc1"/>
+			<ExcludeList>
+				<Exclude name="disc1"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627327038269" source="C1627327028350" target="C1627327038153" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1627327076813" type="unionview" x="749" y="237" w="300" h="50" title="Application">
+			<InnerView name="bwpam_roi_application_users">
+				<Param name="F1628003154284" viewparam="nbdays" viewparamvalue="{param.nbdays.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="builtin" secondary_discriminator="application" discriminatorcolumn="disc2"/>
+			<ExcludeList>
+				<Exclude name="disc2"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627327076929" source="C1627327038153" target="C1627327076813" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1627327097976" type="unionview" x="762" y="227" w="300" h="50" title="AD">
+			<InnerView name="bwpam_roi_ad_users">
+				<Param name="F1628003324520" viewparam="nbdays" viewparamvalue="{param.nbdays.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="application" secondary_discriminator="ad" discriminatorcolumn="disc3"/>
+			<ExcludeList>
+				<Exclude name="disc3"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1627327098230" source="C1627327076813" target="C1627327097976" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="nbdays" displayname="nbdays" type="Integer"/>
+</View>

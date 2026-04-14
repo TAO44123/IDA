@@ -1,0 +1,765 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_rename_dialog.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_changes.page"
+
+countOrganisations = IntService {
+	reference: statistics
+	selection: countOrganisations
+	timeslotUid = Input
+}
+
+validateTimeslotRequest_NLS = NLS {
+	title [ en "Timeslot Validation Request" fr "Demande de validation de la période d'analyse"]
+	options.validatenow [ en "Validate the Timeslot Immediately" fr "Valider la période d'analyse immédiatement"]
+	options.schedulevalidation [ en "Schedule Timeslot Validation" fr "Programmer la demande de validation de la période d'analyse" ]
+	actions.send [en "Send" fr "Envoyer"]
+}
+
+referenceTimeslotRequest_NLS = NLS {
+	title [ en "Reference Timeslot" fr "Période d'analyse de référence" ]
+	actions.send [en "Send" fr "Envoyer"]
+	labels.reference [en "Timeslot Reference" fr "Référence"]
+	options.newreference [ en "<New Reference>" fr "<Nouvelle référence>"]
+	options.seelist [ en "See list" fr "Voir la liste"]
+	options.delete [ en "Delete Reference" fr "Supprimer la référence"]
+}
+
+getBrowserTimestamp = HTMLWidgetTemplate {
+	source-file: "static/bw_ledger_admin/browsertimestamp.html"
+	widget-events: localtimestampfound ( timestamp as String )
+}
+
+newReferenceOptionMapping = StringMapping {
+	when "¶" then $referenceTimeslotRequest_NLS.options.newreference
+	otherwise current
+}
+
+referenceTimeslotRequest = Dialog {
+	title: $referenceTimeslotRequest_NLS.title
+	enter-event: IntCase ( Count allreferences ) { when = 0 then [ Unset timeslotReference, Set True to freeTextMode ] }, Set timeslotReference to timeslotReferenceList
+	height: 260
+	width: 600
+	buttons: [
+		ActionButton {
+			actions: Set timeslotUid to task.timeslot_uid, Set timeslotReference to task.timeslot_reference, TaskComplete task wait
+			text: $referenceTimeslotRequest_NLS.actions.send
+			status: Ok
+			close: True
+		}
+		CancelButton
+	]
+	
+	timeslotUid =  Variable
+	timeslotReference = Variable 
+	timeslotReferenceList = Variable
+	freeTextMode = Variable { type: Boolean  initial: False }
+	task = TaskRecord ( create "reference_timeslot" )
+	
+	timeslot = Record {
+		view:br_timeslotlist with timeslotUid to timeslot_uid
+	}
+	
+	allreferences = Dataset {
+		view: br_timeslots_references
+	}
+	
+	newreference = Dataset { values: [ ( reference-> "¶" )] }
+	
+	alloptions = Dataset {
+		union: Union {
+			datasets: newreference, allreferences
+			discriminator-column: source
+		}
+	}
+	
+	Group {
+		layout: Layout { indent: horizontal 40 vertical 20 }
+		Grid {
+			columns: GridColumn { width: 160 }, GridColumn { width: grow }, GridColumn { width: 200 }
+			fill: Both
+			layout: Layout { grab: horizontal True vertical True }
+			GridRow {
+				height: 30
+				GridCell {
+					Text {
+						value: $timeslotTableHeader.timeslotDescription
+						compact: True
+						styling: labelStyle
+					}
+				}
+				GridCell {
+					span: 2
+					Text {
+						value:timeslot.displayname
+						compact:True
+					}	
+				}
+			}
+			GridRow {
+				height: 30
+				GridCell {
+					Text {
+						value: $timeslotTableHeader.timeslotStatus
+						compact: True
+						styling: labelStyle
+					}
+				}
+				GridCell {
+					span: 2
+					Text {
+						value: Transform timeslot.status  using timeslotFullStatus
+						compact:True
+					}	
+				}
+			}
+			GridRow {
+				height: 30
+				GridCell {
+					Text {
+						value: $referenceTimeslotRequest_NLS.labels.reference
+						compact: True
+						styling: labelStyle
+					}
+				}
+				GridCell {
+					Edit {
+						layout: Layout { grab: horizontal True vertical False }
+						variable: timeslotReference
+						hidden: Not BooleanPredicate ( freeTextMode )
+					}
+					
+					Combo {
+						layout: Layout { grab: horizontal True vertical False }
+						variable: timeslotReferenceList
+						allow-none: True
+						modify-event: 
+							StringCase( timeslotReferenceList ) { 
+								when "¶" then [ Unset timeslotReference , Unset timeslotReferenceList, Set True to freeTextMode ]
+								otherwise [ Set timeslotReferenceList to timeslotReference ]
+							}
+						hidden: BooleanPredicate ( freeTextMode )
+						options: Dynamic {
+							data: alloptions
+							text: Transform Current reference using newReferenceOptionMapping
+							value: Current reference
+						} 
+					}
+				}
+				GridCell {
+					ButtonGroup {
+						Button {
+							presentation: Link
+							image: "16/bw_ledger_admin/text_list_bullets.png"
+							actions: Unset timeslotReference , Set False to freeTextMode
+							hidden: OrPredicate {
+								Not BooleanPredicate ( freeTextMode )
+								IntPredicate ( Count allreferences ) { when =0 then True when InvalidInteger then True otherwise False }
+							}
+							tooltip: $referenceTimeslotRequest_NLS.options.seelist
+						}
+						Button {
+							presentation: Link
+							image: "16/bw_ledger_admin/delete.png"
+							actions: Unset timeslotReference , Unset timeslotReferenceList, Set False to freeTextMode
+							tooltip: $referenceTimeslotRequest_NLS.options.delete
+							disabled: StringPredicate ( timeslotReference ) { when IsEmpty then True otherwise False }
+						}
+					}
+				}
+			}
+			GridRow {
+				height: grow
+			}
+		}		
+	}
+}
+
+pendingReferenceRequests_NLS = NLS {
+	title [ en "Pending References Modifications Requests" en "Demandes de modification de référence en cours" ]
+	creationdate [ en "Request creation date" fr "Date de création de la demande"]
+	createdby [en "Created by" fr "Crée par"]
+}
+
+pendingReferenceRequests = Dialog {
+	title: $pendingReferenceRequests_NLS.title
+	height: 240
+	width: 600
+	buttons: OkButton
+	
+	timeslotUID = Variable 
+	processID = Variable
+	
+	referenceRequests = Dataset {
+  		processes: ProcessFilter {
+  			definition: "reference_timeslot"
+  			show-completed: False
+			show-error: False
+			show-suspended: False
+			workflow-variable: 
+				Constraint {
+					variable: timeslot_uid
+					operator: "equals"
+					value: timeslotUID
+				}
+  		}
+  	}
+	
+	Group {
+		layout: Layout { indent: horizontal 0 vertical 20 }
+		Table {
+			data: referenceRequests
+			layout: Layout { grab: horizontal True vertical True }
+			commands: 
+				Commands {
+					orientation: Vertical
+					position: After
+					presentation: Icon
+					
+					Command {
+						actions: ProcessTerminate process-id processID, ReloadData ( referenceRequests )
+						icon: "16/bw_ledger_admin/delete.png"
+						disabled: StringPredicate ( processID ) { when IsEmpty then True otherwise False }
+					}
+				}
+			Column {
+				column: processCreationDate
+				text: DateLDAP(Current processCreationDate).value
+				header: $pendingReferenceRequests_NLS.creationdate
+				width: 100%
+			}
+			
+			Column {
+				column: processCreatorName
+				header: $pendingReferenceRequests_NLS.creationdate
+				width: 100%
+			}
+			
+			Column {
+				column: processId
+				selection: processID
+				hidden: True 
+			}
+		}
+	}
+}
+
+validateTimeslotRequest = Dialog {
+	title: $validateTimeslotRequest_NLS.title
+	height: 260
+	width: 600
+	buttons: [
+		ActionButton {
+			disabled: Not BooleanPredicate ( targetDateTimeValid )
+			text: $validateTimeslotRequest_NLS.actions.send
+			close: True
+			status: Ok
+			actions:
+				BooleanCase ( schedule ) {
+					when True then [ Set Date(targetDateTime).value("yyyyMMddHHmmss.'000'Z") to targetDateTimeLDAP ]
+					when False then [ Unset targetDateTimeLDAP ]
+				},
+				Set timeslotUid to task.timeslot_uid, Set "validate" to task.action_code,
+				Set targetDateTimeLDAP to task.execute_timestamp, 
+				Set userDateTimeLDAP to task.user_timestamp,
+				TaskComplete task wait
+		}
+		CancelButton 
+	]
+	
+	timeslotUid = Variable
+	schedule = Variable { initial: True }
+	targetDateTime = Variable { multivalued: False type: Date  initial: Date.value }
+	targetDateTimeValid = Variable { type: Boolean }
+	targetDateTimeLDAP= Variable { type: String }
+	userDateTimeLDAP= Variable { type: String initial: Date.value("yyyyMMddHHmmss.'000'Z") }
+	task = TaskRecord (create "virtual_timeslot")
+	
+	IncludeHTMLWidget {
+		layout: Layout { grab: horizontal True vertical False hint: height 20  }
+		template: getBrowserTimestamp
+		widget-events: {
+			when localtimestampfound then [
+				StringCase ( Current timestamp ){
+					when Not IsEmpty then [
+						Set Current timestamp to userDateTimeLDAP,
+						Set DateLDAP( Current timestamp ).offset(1 hours).value to targetDateTime
+					]
+				}
+			]
+		}
+	}
+	Group {
+		RadioButtons {
+			variable: schedule
+			layout: Layout { indent: horizontal 40 vertical 0 }
+			Option { text: $validateTimeslotRequest_NLS.options.validatenow value: False }
+			Option { text: $validateTimeslotRequest_NLS.options.schedulevalidation value: True }
+		}
+		DateTime {
+			variable: targetDateTime
+			allow-none: False
+			type: DateTime
+			validity: targetDateTimeValid date-after: DateLDAP(userDateTimeLDAP)  
+			layout: Layout { indent: horizontal 140 vertical 20 }
+			disabled: Not BooleanPredicate ( schedule )
+		}
+	}
+}
+
+pendingValidationRequests_NLS = NLS {
+	title [ en "Pending Validation Requests" en "Demandes de validation en cours" ]
+	creationdate [ en "Request creation date" fr "Date de création de la demande"]
+	createdby [en "Created by" fr "Crée par"]
+}
+
+pendingValidationRequests = Dialog {
+	title: $pendingValidationRequests_NLS.title
+	height: 240
+	width: 600
+	buttons: OkButton
+	
+	timeslotUID = Variable 
+	processID = Variable
+	
+	validationRequests = Dataset {
+		processes: ProcessFilter { 
+			definition: "virtual_timeslot"
+			show-completed: False
+			show-error: False
+			show-suspended: False
+			workflow-variable:
+				Constraint {
+					variable: action_code
+					operator: "equals"
+					value: "validate"
+				}, 
+				Constraint {
+					variable: timeslot_uid
+					operator: "equals"
+					value: timeslotUID
+				}
+		}	
+	}
+	
+	Group {
+		layout: Layout { indent: horizontal 0 vertical 20 }
+		Table {
+			data: validationRequests
+			layout: Layout { grab: horizontal True vertical True }
+			commands: 
+				Commands {
+					orientation: Vertical
+					position: After
+					presentation: Icon
+					
+					Command {
+						actions: ProcessTerminate process-id processID, ReloadData ( validationRequests )
+						icon: "16/bw_ledger_admin/delete.png"
+						disabled: StringPredicate ( processID ) { when IsEmpty then True otherwise False }
+					}
+				}
+			Column {
+				column: processCreationDate
+				text: DateLDAP(Current processCreationDate).value
+				header: $pendingValidationRequests_NLS.creationdate
+				width: 100%
+			}
+			
+			Column {
+				column: processCreatorName
+				header: $pendingValidationRequests_NLS.creationdate
+				width: 100%
+			}
+			
+			Column {
+				column: processId
+				selection: processID
+				hidden: True 
+			}
+		}
+	}
+}
+
+timeslotActionConfirmAndExecute_NLS = NLS {
+	title [ en "Confirmation" fr "Confirmation" ]
+}
+timeslotActionConfirmAndExecute = Dialog {
+	title: $timeslotActionConfirmAndExecute_NLS.title
+	height: 150
+	width: 500
+	
+	buttons: [
+		ActionButton {
+			text: "OK"
+			close: True
+			status: Ok
+			actions: Set timeslotUid to task.timeslot_uid , Set actionCode to task.action_code, TaskComplete task wait
+		}
+		CancelButton
+	]
+	
+	dialogTitle = Variable
+	timeslotUid = Variable
+	actionCode = Variable
+	confirmMessage = Variable
+	task = TaskRecord (create "virtual_timeslot")
+	
+	Group {
+		Text {
+			value: confirmMessage
+			styling: labelStyle
+			layout: Layout { indent: vertical 20 horizontal 30 }
+			compact: True 
+		}
+	}
+}
+
+manage_timeslot= Page {
+	enter-event: StringCase(timeslotuidParam) {when Not IsNull then[Set timeslotuidParam to currentTimeslotuid] }
+	title: $menusAndTitles.manageLedger
+	large-icon: '48/red/repository.png'
+	feature: ledgeradmin_showtimeslots
+	tags: "admin"
+	
+timeslotuidParam  = Parameter {
+		mandatory: False
+		hidden: True
+		type: String			
+	}
+	
+
+	currentTimeslot = Variable{type:String }
+	currentTimeslotuid = Variable{type:String}
+	timeslotRename = Variable{type:String}
+
+	organisationCount = Variable{type:Integer}
+
+	timeslots = Dataset {
+		view:br_timeslotlist
+		}
+
+
+	stat = Dataset {
+		service: srv_timeslot_count_diff with timeslot.uid to timeslotUid
+		}
+
+	
+	timeslot = Record {
+		view:br_timeslotlist with currentTimeslotuid to timeslot_uid
+	}
+	
+	timeslotBatchDone = Record {
+		view: timeslot_batchdone with timeslot.uid to timeslot_uid
+	}
+
+	statichierarchicaldataset = HierarchicalData {
+		service: srv_timeslot_count_diff with timeslot.uid to timeslotUid
+		connect:parent identity to child identity 
+		initial:identity IsNull
+	}
+
+	
+	validationRequests = Dataset {
+		processes: ProcessFilter { 
+			definition: "virtual_timeslot"
+			show-completed: False
+			show-error: False
+			show-suspended: False
+			workflow-variable:
+				Constraint {
+					variable: action_code
+					operator: "equals"
+					value: "validate"
+				}, 
+				Constraint {
+					variable: timeslot_uid
+					operator: "equals"
+					value: timeslot.uid
+				}
+		}	
+	}	
+  	
+  	referenceRequests = Dataset {
+  		processes: ProcessFilter {
+  			definition: "reference_timeslot"
+  			show-completed: False
+			show-error: False
+			show-suspended: False
+			workflow-variable: 
+				Constraint {
+					variable: timeslot_uid
+					operator: "equals"
+					value: timeslot.uid
+				}
+  		}
+  	}
+  	
+  	canUnhideTS = Record {
+  		view: timeslot_hierarchy_bv with timeslot.uid to uid
+  	}
+  	
+	Splitter
+	{
+		disposition:Horizontal
+		size:70%		
+		Group {
+			title:$menusAndTitles.timeslots			
+			Table {				
+				double-click:GoTo Page timeslot_statistics with currentTimeslotuid to timeslotuidParam
+				selection-changed-event:ReloadData (stat)				
+				mixins: resultGridMixin	    
+				data:timeslots				
+				layout:Layout{grab: horizontal True vertical True}
+				Column {
+					header:$timeslotTableHeader.timeslotDescription
+					image: Transform Current status using timeslotIcons
+					column:displayname
+					selection:currentTimeslot	
+					filterable:True				
+					width: 30%
+					
+				}
+				Column {
+					header:$timeslotTableHeader.timeslotCreationDate	
+					column:importdate
+					filterable:True
+					sortable:True
+					width: 25%
+				}
+				Column {
+					header:$timeslotTableHeader.timeslotCommitDate
+					column:commitdate
+					filterable:True
+					sortable:True
+					width: 25%
+				}
+				Column {
+					header:$timeslotTableHeader.timeslotStatus
+					column:status 
+					text: Transform Current status using timeslotStatus
+					filterable:True
+					sortable:True
+					width: 20%					
+				}
+				Column {
+					header:$timeslotTableHeader.timeslotReference
+					column: reference
+					text: Transform Current reference using mayBeNullMapping
+					filterable:True
+					sortable:True
+					width: 20%
+				}		
+				Column {					
+					column:uid
+					selection:currentTimeslotuid					
+					hidden:True				
+				}				
+						
+			}
+		}
+
+
+		Group {		
+				//layout:Layout{grab: horizontal True vertical False}				
+				
+					Group {
+						layout:Layout{grab: horizontal True vertical False}						
+						title: $menusAndTitles.informationTitle		
+						Text {
+							label: $timeslotTableHeader.timeslotDescription
+							value:timeslot.displayname
+							compact:True
+						}
+						Text {
+							label:$timeslotTableHeader.timeslotStatus
+							value: Transform timeslot.status  using timeslotFullStatus	  
+							compact:True
+						}
+																				
+					}
+					
+					Group {
+						title: $menusAndTitles.timeslotreference
+						feature: ledgeradmin_editreferences
+						layout:Layout{grab: horizontal True vertical False}
+						
+						Button {
+							presentation:Link
+							actions: Dialog referenceTimeslotRequest ( timeslot.uid to timeslotUid, timeslot.reference to timeslotReference ), Message $timeslotActions.timeslotrequestsent, ReloadData ( timeslots ), ReloadData(referenceRequests)
+							text: $timeslotActions.timeslotReference
+							image:"16/bw_ledger_admin/tag_blue.png"
+							align:Left		
+							disabled:  
+								OrPredicate {	
+									Not IntPredicate( Count referenceRequests ) { when > 0 then False otherwise True } 		
+									IntPredicate( timeslotBatchDone.done ) { when >= 1 then False otherwise True }
+								}		
+						}
+						
+						Button {
+							presentation:Link
+							actions: Dialog pendingReferenceRequests ( timeslot.uid to timeslotUID ), ReloadData ( timeslots ), ReloadData(referenceRequests)
+							text: $timeslotActions.timeslotReferencePending
+							align:Left		
+							layout: Layout { indent: horizontal 25 vertical 0 }
+							hidden: IntPredicate( Count referenceRequests ) { when > 0 then False otherwise True }			
+						}
+						
+					}
+					
+					Group {
+					  title: $menusAndTitles.allowedActionsTitle
+					  feature: ledgeradmin_modifytimeslots
+					  layout:Layout{grab: horizontal True vertical False}	
+					  Button {
+								presentation:Link
+								actions: Dialog validateTimeslotRequest ( timeslot.uid to timeslotUid ) , Flash Information $timeslotActions.timeslotrequestsent, GoTo HomePage
+								text: $timeslotActions.timeslotValidate
+								image:"16/bw_ledger_admin/activate.png"
+								align:Left		
+								hidden:StringPredicate(timeslot.status) { when Not "W" then True}				
+								disabled:  
+									OrPredicate {
+										IntPredicate( Count validationRequests ) { when > 0 then True otherwise False }				
+										IntPredicate( timeslotBatchDone.done ) { when >= 1 then False otherwise True }
+									}
+							}
+								
+							Button {
+								presentation:Link
+								actions: Dialog pendingValidationRequests ( timeslot.uid to timeslotUID ), ReloadData ( validationRequests )
+								text: $timeslotActions.timeslotValidationPending
+								align:Left		
+								layout: Layout { indent: horizontal 25 vertical 0 }
+								hidden: OrPredicate {
+									StringPredicate(timeslot.status) { when Not "W" then True}
+									IntPredicate( Count validationRequests ) { when > 0 then False otherwise True }
+								}				
+							}
+							
+						Button {
+								presentation:Link
+								actions: Dialog timeslotActionConfirmAndExecute ( timeslot.uid to timeslotUid, "show" to actionCode, $timeslotActions.confirm.timeslotShow to confirmMessage ), Flash Information $timeslotActions.timeslotrequestsent, GoTo HomePage
+								text:$timeslotActions.timeslotShow	
+								image:"16/bw_ledger_admin/publish.png"
+								align:Left	
+								hidden:
+									OrPredicate {
+										StringPredicate(timeslot.status) { when Not "D" then True}
+										StringPredicate(canUnhideTS.TS_uid) { when IsEmpty then False otherwise True }
+									}
+							}
+			
+						Button {
+								presentation:Link
+								actions: Dialog timeslotActionConfirmAndExecute ( timeslot.uid to timeslotUid, "hide" to actionCode, $timeslotActions.confirm.timeslotHide to confirmMessage ), Flash Information $timeslotActions.timeslotrequestsent, GoTo HomePage		
+								text:$timeslotActions.timeslotHide	
+								image:"16/bw_ledger_admin/hide.png"
+								align:Left	
+								hidden:AndPredicate{ 
+											StringPredicate(timeslot.status) { when Not"A" then True}
+											StringPredicate(timeslot.status) { when Not "C" then True}
+											}	
+								disabled:  
+									OrPredicate {			
+										IntPredicate( timeslotBatchDone.done ) { when >= 1 then False otherwise True }
+									}
+												
+							}
+							
+						Button {			
+								presentation:Link
+								actions: Dialog timeslotActionConfirmAndExecute ( timeslot.uid to timeslotUid, "delete" to actionCode, $timeslotActions.confirm.timeslotDelete to confirmMessage ), Flash Information $timeslotActions.timeslotrequestsent, GoTo HomePage
+								text:$timeslotActions.timeslotDelete	
+								image:"16/bw_ledger_admin/delete.png"
+								align:Left
+								hidden:StringPredicate(timeslot.status) { when Not "W" then True}					
+								disabled:  
+									OrPredicate {
+										IntPredicate( Count validationRequests ) { when > 0 then True otherwise False }			
+										IntPredicate( timeslotBatchDone.done ) { when >= 1 then False otherwise True }
+									}
+										
+							}
+							
+						Button {			
+								presentation:Link
+								actions: Dialog renameTimeSlotDialog ( timeslot.uid to timeslotUid, currentTimeslot to timeslot_name ),Flash Information $timeslotActions.timeslotrequestsent, GoTo HomePage	
+								text:$timeslotActions.timeslotRename	
+								image:"16/bw_ledger_admin/rename.png"
+								align:Left										 		
+								disabled:  
+									OrPredicate {
+										IntPredicate( Count validationRequests ) { when > 0 then True otherwise False }		
+										IntPredicate( timeslotBatchDone.done ) { when >= 1 then False otherwise True }
+									}
+							}
+					}	
+					
+					Group {
+						//layout:Layout{grab: horizontal True vertical False}					
+						title: $menusAndTitles.countsTitle
+						feature: ledgeradmin_modifytimeslots
+						
+						  ButtonGroup {
+						      
+						      Button {
+						        text: $menusAndTitles.statistics
+						        image: "16/bw_ledger_admin/chart_bar.png"
+						        actions: GoTo Page timeslot_statistics
+						        tooltip:$navigation.gotoStatistics 
+						      }
+						      
+						      Button {
+						        text: $menusAndTitles.changes
+						        image: "16/bw_ledger_admin/lightning.png"
+						        actions: GoTo Page timeslot_changes
+						        tooltip:$navigation.gotoAction
+						      }     
+						      
+						    }
+			
+									
+						Table {	   
+							layout:Layout{grab: horizontal True vertical True}
+							label: Label {
+							  break: True
+							}
+							data:stat								
+							Column {
+								header:$timeslotCountTab.timeslotEntities	
+								column:entity						
+								image: Transform Current entity using timeslotCountTabIcons
+								text:Transform Current entity using timeslotCountTabLabel									 
+								width: 50%
+							}
+							Column {
+								header:$timeslotCountTab.timeslotCount	
+								column:count
+								width: 25%
+							}
+							Column {
+								header:$timeslotCountTab.timeslotDifferences
+								column:diff
+								width: 25%																		
+							}
+						}
+						
+						Text {		
+						 		label: $timeslotCountTab.timeslotParent 				
+								value: Transform timeslot.parent_timeslot using timeslotNA
+								compact: True
+						}					
+																		
+					}		
+							
+			}		
+		
+	}
+	}
+

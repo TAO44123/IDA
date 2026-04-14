@@ -1,0 +1,634 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/identity/resources.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentIdentityColleaguesNLS = NLS {
+	employeetype [en "Employee Type" fr "Type de contrat"]
+	jobandorgs [en "{0} in {1}" fr "{0} au sein de {1}"]
+	jobandorganisation [en "Job and Organization" fr "métier et organisation"]
+	empty [en "Identity doesn't have colleagues" fr "Cette identité n'a pas de collègues"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the identity direct colleagues in a table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate identity details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outcolleagueuid </b>the selected colleague uid</li>
+ * <li><b>outcolleaguefullname </b>the selected colleague fullname </li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityColleagues = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outcolleagueuid = Variable
+	outcolleaguefullname = Variable
+	
+	/* Datasets here */
+	colleagues = Dataset {
+		view: bwf_identitycolleagues with inuid to uid
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	 	disabled:
+	 		OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outcolleagueuid to inuid, 
+												True to inshowowner
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(Count colleagues) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityColleaguesNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:colleagues
+					layout:Layout {grab:horizontal True vertical True}
+					configurable:True
+					show-filter:True
+					show-count:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+				
+					Column {
+						column:uid
+						hidden:True
+						selection:outcolleagueuid
+					}
+					
+					Column {
+						column:hrcode
+						sortable:True
+						filterable:True
+						header:$identity.hrcode
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:givenname
+						sortable:True
+						filterable:True
+						header:$identity.givenname
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:surname
+						sortable:True
+						filterable:True
+						header:$identity.surname
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:fullname
+						sortable:True
+						filterable:True
+						header:$identity.fullname
+						width:160px
+						selection:outcolleaguefullname
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:mail
+						sortable:True
+						filterable:True
+						header:$identity.mail
+						initially-masked:True
+						width:160px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:phone
+						sortable:True
+						filterable:True
+						header:$identity.phone
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:mobile
+						sortable:True
+						filterable:True
+						header:$identity.mobile
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:internal
+						text:Transform Current internal using booleanDisplayMapping
+						sortable:True
+						filterable:True
+						header:$identity.internal
+						width:96px
+					}
+					
+					Column {
+						column:arrivaldate
+						sortable:True
+						filterable:True
+						header:$identity.arrivaldate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:departuredate
+						sortable:True
+						filterable:True
+						header:$identity.departuredate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitlecode
+						sortable:True
+						filterable:True
+						header:$identity.jobtitlecode
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitledisplayname
+						sortable:True
+						filterable:True
+						header:$identity.jobtitledisplayname
+						width:100%
+					}
+
+
+					Column {
+						column:bwa_identityanalytics_aggriskrank
+						sortable:True
+						header:$bwf_identityNLS.riskrank
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggmaxrisklevel
+						sortable:True
+						header:$bwf_identityNLS.maxrisk
+						image:TemplateImageSelection(Current bwa_identityanalytics_aggmaxrisklevel) using bwf_identityriskimage
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggnbrisks
+						sortable:True
+						header:$bwf_identityNLS.nbrisk
+						width:120px
+						initially-masked:True
+					}
+
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the identity direct and indirect colleagues in a table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate identity details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outcolleagueuid </b>the selected colleague uid</li>
+ * <li><b>outcolleaguefullname </b>the selected colleague fullname </li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityAllColleagues = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outcolleagueuid = Variable
+	outcolleaguefullname = Variable
+	
+	/* Datasets here */
+	colleagues = Dataset {
+		view: bwf_identityallcolleagues with inuid to uid
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outcolleagueuid to inuid, 
+												True to inshowowner,
+												True to inshowposition
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(Count colleagues) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityColleaguesNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:colleagues
+					layout:Layout {grab:horizontal True vertical True}
+					configurable:True
+					show-filter:True
+					show-count:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+					
+				
+					Column {
+						column:uid
+						hidden:True
+						selection:outcolleagueuid
+					}
+					
+					Column {
+						column:hrcode
+						sortable:True
+						filterable:True
+						header:$identity.hrcode
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:givenname
+						sortable:True
+						filterable:True
+						header:$identity.givenname
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:surname
+						sortable:True
+						filterable:True
+						header:$identity.surname
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:fullname
+						sortable:True
+						filterable:True
+						header:$identity.fullname
+						width:160px
+						selection:outcolleaguefullname
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:mail
+						sortable:True
+						filterable:True
+						header:$identity.mail
+						initially-masked:True
+						width:160px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:phone
+						sortable:True
+						filterable:True
+						header:$identity.phone
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:mobile
+						sortable:True
+						filterable:True
+						header:$identity.mobile
+						initially-masked:True
+						width:128px
+						actions: ExecuteNamedAction goDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					
+					Column {
+						column:internal
+						text:Transform Current internal using booleanDisplayMapping
+						sortable:True
+						filterable:True
+						header:$identity.internal
+						width:96px
+					}
+					
+					Column {
+						column:arrivaldate
+						sortable:True
+						filterable:True
+						header:$identity.arrivaldate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:departuredate
+						sortable:True
+						filterable:True
+						header:$identity.departuredate
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitlecode
+						sortable:True
+						filterable:True
+						header:$identity.jobtitlecode
+						initially-masked:True
+						width:128px
+					}
+					
+					Column {
+						column:jobtitledisplayname
+						sortable:True
+						filterable:True
+						header:$identity.jobtitledisplayname
+						width:160px
+					}
+			
+					Column {
+						column:organisationcode
+						sortable:True
+						filterable:True
+						header:$porganisation.code
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:organisationshortname
+						sortable:True
+						filterable:True
+						header:$porganisation.shortname
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:organisationdisplayname
+						sortable:True
+						filterable:True
+						header:$porganisation.displayname
+						width:100%
+					}
+
+
+
+					Column {
+						column:bwa_identityanalytics_aggriskrank
+						sortable:True
+						header:$bwf_identityNLS.riskrank
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggmaxrisklevel
+						sortable:True
+						header:$bwf_identityNLS.maxrisk
+						image:TemplateImageSelection(Current bwa_identityanalytics_aggmaxrisklevel) using bwf_identityriskimage
+						width:120px
+						initially-masked:True
+					}
+					Column {
+						column:bwa_identityanalytics_aggnbrisks
+						sortable:True
+						header:$bwf_identityNLS.nbrisk
+						width:120px
+						initially-masked:True
+					}
+
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}
+				}
+			]
+		}
+	}
+}
+
+fragmentIdentityColleaguesSelectionNLS = NLS {
+	direct [en "direct colleagues" fr "collègues directs"]
+	_all [en "all colleagues" fr "tous les collègues"]
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the identity colleagues in a table in various forms
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate identity details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outcolleagueuid </b>the selected colleague uid</li>
+ * <li><b>outcolleaguefullname </b>the selected colleague fullname </li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityColleaguesSelection = PageFragment {
+	enter-event: ExecuteNamedAction updateActiveFlags
+	
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outcolleagueuid = Variable
+	outcolleaguefullname = Variable
+
+	selection = Variable { private:True initial:'direct' }
+
+	active_direct = Variable { initial:False multivalued:False type:Boolean }
+	active_all = Variable { initial:False multivalued:False type:Boolean }
+
+	updateActiveFlags = NamedAction (
+		StringCase(selection) {
+			when "direct" then [
+				Set True to active_direct
+			]		
+			when "all" then [
+				Set True to active_all
+			]		
+		}
+	)
+
+	Combo {
+		variable:selection
+		layout: Layout { hint: width 300 }
+		modify-event:ExecuteNamedAction updateActiveFlags
+		options:Static {
+			Option { value:"direct" text:$fragmentIdentityColleaguesSelectionNLS.direct }
+			Option { value:"all" text:$fragmentIdentityColleaguesSelectionNLS._all }
+		}
+	}
+	ConditionalGroup {
+		StringCondition(selection) {
+			when "direct" then [
+				IncludeFragment (fragmentIdentityColleagues with 	value-of inuid to inuid, 
+																	value-of incanshowdetails to incanshowdetails,
+																	value-of inenabled to inenabled, 
+																	outcolleagueuid binds-to outcolleagueuid, 
+																	outcolleaguefullname binds-to outcolleaguefullname,
+																	value-of Eval "inenabled.get()&&active_direct.get()" to inenabled
+																	) 
+			]	
+			when "all" then [
+				IncludeFragment (fragmentIdentityAllColleagues with 	value-of inuid to inuid, 
+																	value-of incanshowdetails to incanshowdetails,
+																	value-of inenabled to inenabled, 
+																	outcolleagueuid binds-to outcolleagueuid, 
+																	outcolleaguefullname binds-to outcolleaguefullname,
+																	value-of Eval "inenabled.get()&&active_all.get()" to inenabled
+																	) 
+			]	
+		}
+	}
+}

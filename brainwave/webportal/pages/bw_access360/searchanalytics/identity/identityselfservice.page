@@ -1,0 +1,124 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+/* Nationalized labels here */
+access360analytics_identityselfserviceNLS = NLS {
+	title [en "Self-Service Identity Characteristics Analysis" fr "Analyse des caractéristiques des identités en self-service"]
+	description [
+		en "This report presents the identities' characteristics in a dynamic pivot table.You can choose your dimensions to perform analysis based on the identities' characteristics."
+		fr "Ce rapport présente les caractéristiques des identités sous la forme d'un tableau croisé dynamique éditable. Vous pouvez choisir les dimensions d'analyse sur la base des caractéristiques des identités."
+	]
+	measure [en "Number of Identities" fr "Nombre d'identités"]
+}
+
+access360analytics_identityselfservice = Page {
+	title: $access360analytics_identityselfserviceNLS.title
+	tags: "identity", "searchresults"
+	description:$access360analytics_identityselfserviceNLS.description
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwsa_identityidentityselfservice
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_identity_FilterEdition(SerializeSearch search to identitySearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Identity Search with SerializeSearch search to identitySearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+	
+	/* Parameters here */
+	search = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	data = Dataset {
+		search: Search {
+			view:access360r_identityinformation
+			definition:search
+		}
+	}
+	
+	/* Page content */
+	DynamicCrossTable {
+		data:data
+		layout:Layout { grab:horizontal True vertical True }
+		dimensions:	
+			Dim {
+				value: uid
+				label: fullname
+				header: $identity.fullname
+			},
+			Dim {
+				value: hrcode
+				label: hrcode
+				header: $identity.hrcode
+			},
+			Dim {
+				value: mail
+				label: mail
+				header: $identity.mail
+			},
+			Dim {
+				value: internal
+				label: internal
+				header: $identity.internal
+			},
+			Dim {
+				value: jobtitlecode
+				label: jobtitlecode
+				header: $identity.jobtitlecode
+			},
+			Dim {
+				value: jobtitledisplayname
+				label: jobtitledisplayname
+				header: $identity.jobtitledisplayname
+			},
+			Dim {
+				value: organisationcode
+				label: organisationcode
+				header: $porganisation.code
+			},
+			Dim {
+				value: organisationshortname
+				label: organisationshortname
+				header: $porganisation.shortname
+			},
+			Dim {
+				value: organisationdisplayname
+				label: organisationdisplayname
+				header: $organisation.concept
+			}
+		measures:
+			Measure {
+				value: uid
+				header: $access360analytics_identityselfserviceNLS.measure
+			},
+			Measure {
+				value: organisationuid
+				header: $organisation.concept
+			},
+			Measure {
+				value: jobtitleuid
+				header: $identity.jobtitledisplayname
+			}
+	}
+}

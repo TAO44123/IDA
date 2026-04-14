@@ -1,0 +1,111 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+rm_permission_review_startNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel process creation ?" fr "Annuler la création du processus ?"]
+	complete.buttontext [en "Start process" fr "Initier le processus"]
+	complete.confirm [en "Start process ?" fr "Démarrer le processus ?"]
+	complete.flashmessage [en "Process started" fr "Processus démarré"]
+	title [en "Start" fr "Start"]
+	_in_action [en "action" fr "action"]
+	in_action.value0 [en "add" fr "add"]
+	in_action.value1 [en "replace" fr "replace"]
+	in_action.value2 [en "delete" fr "delete"]
+	_in_permissionuid [en "permissionuid" fr "permissionuid"]
+	_in_comment [en "comment" fr "comment"]
+	_in_tr_toreplace [en "tr recorduid to replace" fr "tr recorduid to replace"]
+}
+
+
+rm_permission_review_start = Page {
+	title: $rm_permission_review_startNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	
+	/* variables here */
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord (create "rm_permission_review")
+	in_permissionuidRecord = Record(workflow_permissiondisplayname with task.in_permissionuid to uid)
+	
+	
+	/* Page content */
+	Combo {
+		label: Concat($rm_permission_review_startNLS._in_action,"*")
+		variable: task.in_action
+		options: Static {
+			Option {
+				value: "add"
+				text: $rm_permission_review_startNLS.in_action.value0
+			}
+			Option {
+				value: "replace"
+				text: $rm_permission_review_startNLS.in_action.value1
+			}
+			Option {
+				value: "delete"
+				text: $rm_permission_review_startNLS.in_action.value2
+			}
+		}
+	}
+	Text {
+		label: Concat($rm_permission_review_startNLS._in_permissionuid,"*")
+		value: in_permissionuidRecord.displayname
+		mixins: workflowTextWithCommandMixin
+		commands: Command { 
+			actions: Dialog permissionPicker(task.in_permissionuid from outUid)
+			icon: "16/audit/permission_16.png"
+		}
+	}
+	Edit {
+		label: $rm_permission_review_startNLS._in_comment
+		variable: task.in_comment
+	}
+	Spinner {
+		label: $rm_permission_review_startNLS._in_tr_toreplace
+		variable: task.in_tr_toreplace
+		increment: 1
+	}
+	
+	Header {
+		value: $rm_permission_review_startNLS.mandatoryfields
+	}
+	
+	Group {
+		title: $rm_permission_review_startNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		ButtonGroup {
+			Button { 
+				text: $rm_permission_review_startNLS.cancel.buttontext
+				actions: Confirm $rm_permission_review_startNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: OrPredicate {
+					StringPredicate (task.in_action) { when IsEmpty then True }
+					StringPredicate (task.in_permissionuid) { when IsEmpty then True }
+				}
+				
+				text: $rm_permission_review_startNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $rm_permission_review_startNLS.complete.confirm, TaskComplete task, Flash Information $rm_permission_review_startNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+}
+

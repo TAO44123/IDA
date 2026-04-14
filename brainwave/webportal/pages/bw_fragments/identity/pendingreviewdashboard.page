@@ -1,0 +1,847 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/bw_fragments/identity/tasks.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/bw_fragments/lib/constants.page"
+
+/* Nationalized labels here */
+fragmentIdentityPendingReviewDashboardNLS = NLS {
+	hidecompleted [en "Hide Signed-Off Reviews" fr "Cacher les revues signées"]
+	customreview [en "Custom Review" fr "Revue custom"]
+	customreviews [en "Custom Reviews" fr "Revues custom"]
+	customreviewsprogress [en "Reviewed Entries" fr "Entrées revues"]
+	reviewpriority.na [en "n/a" fr "n/a"]
+	reviewpriority.low [en "Low" fr "Basse"]
+	reviewpriority.medium [en "Medium" fr "Moyenne"]
+	reviewpriority.high [en "High" fr "Haute"]
+	offlinemode [ en "Offline Mode" fr "Mode hors-ligne"]
+	getreport [en "Download" fr "Télécharger"]
+	getreport_tooltip [en "Download the Excel report to do the review offline." fr "Télécharger le document Excel de revue hors-ligne."]
+	generating_flash [en "The Excel review report is being generated." fr "Le rapport Excel de revue est en cours de génération."]
+	upload.text [en "Upload" fr "Importer"]
+	upload.tooltip [en "Upload the offline Excel review report." fr "Chargement du document Excel de revue hors-ligne"]
+	stickytimeslot [en "Attached to Timeslot" fr "Attaché au Timeslot"]
+	type.right [en "Application Access Rights" fr "Droits d'accès à l'application"]
+	type.account [en "Repository Accounts" fr "Comptes de référentiel"]
+	type.group [en "Group Members" fr "Membres de groupe"]
+	type.safe [en "CyberArk Safe" fr "Coffre-fort CyberArk"]
+	type.servers [en "Server Access Rights" fr "Droits d'accès au serveur"]
+	type.roles [en "Roles Content" fr "Contenu des Rôles"]
+}
+
+/* Include Review Type */
+typeofreview = StringMapping {
+	when Constant reviewType_right then $fragmentIdentityPendingReviewDashboardNLS.type.right
+	when Constant reviewType_account then $fragmentIdentityPendingReviewDashboardNLS.type.account
+	when Constant reviewType_group then $fragmentIdentityPendingReviewDashboardNLS.type.group
+	when Constant reviewType_safe then $fragmentIdentityPendingReviewDashboardNLS.type.safe
+	when Constant reviewType_servers then $fragmentIdentityPendingReviewDashboardNLS.type.servers
+	when Constant reviewType_roles then $fragmentIdentityPendingReviewDashboardNLS.type.roles
+	otherwise current
+}
+
+reviewpriority = StringMapping {
+	when '1' then $fragmentIdentityPendingReviewDashboardNLS.reviewpriority.low
+	when '2' then $fragmentIdentityPendingReviewDashboardNLS.reviewpriority.medium	
+	when '3' then $fragmentIdentityPendingReviewDashboardNLS.reviewpriority.high		
+	otherwise $fragmentIdentityPendingReviewDashboardNLS.reviewpriority.na
+}
+
+fragmentIdentityPendingReviewDashboard = PageFragment {
+	feature: iasreview_license
+	enter-event:
+		ExecuteNamedAction CampaignPerimeter, //Extract the full list of IAP "active" campaigns (non finalized campaigns) and custom review tasks.
+		ExecuteNamedAction NbReviews, //Total review nb (tasks + IAP) + Review nb with still entries to review (tasks + IAP)
+		ExecuteNamedAction InitAllPendingTasks
+		
+	/* Parameters here */
+	// To ship
+	criticaltreshold_param = Parameter { type: Integer mandatory: False hidden: True default: NonEmpty ( ConfigurationVariable "ias_reviewercriticalthreshold", 30000 ) }
+	/* Variables here */					 
+	inuid = Variable { type: String }
+	incanshowdetails = Variable { initial:True type: String }	
+	inenabled = Variable { type: Boolean initial: True }
+	inhidecompleted = Variable { initial: True type:Boolean }
+	inhidereviewedentries = Variable { initial: True type:Boolean }
+	selectedreviewid = Variable { type: String }
+	selectedreviewtickets = Variable { type: String multivalued: True }
+	selectedreviewremainingtickets = Variable { type: String multivalued: True }
+	selectedcampaign = Variable { type: String }
+	reportname = Variable { type: String }
+												
+	outhasentriestoreview = Variable { type: Boolean } // is there an active campaign for this user
+	outnbactivereviews = Variable { type: Integer initial: "0" }// nb of reviews still active (not finalized)
+	outnbcampaignswithtobereviewedentries = Variable { type: Integer initial: "0" }// nb of reviews with still entries to review
+	
+	notrmtasks = Variable { type: String multivalued: True }// list of task id that are not role mining tasks
+	
+	includedcampaigns = Variable { multivalued: True }
+	reviewstatus = Variable { type: String }
+	nbactivecampaigns = Variable { type: Integer }
+	nbactivecampaignswithtobereviewedentries = Variable { type: Integer }
+
+	/* Variables for task counters */
+	nbtasks = Variable { type: Integer }	
+	allTasksIds = Variable { type: String multivalued: True }
+	inenabledwf = Variable { type: Boolean initial: True }				
+	signoff = Variable { type: Boolean initial: False }
+	
+	/* allpendingreviews dataset attributes */
+
+	apr_pendingcounter_nb = Variable { type: Integer multivalued: True }
+	apr_pendingcounter_recorduid = Variable { type: Integer multivalued: True }
+	apr_description = Variable { type: String multivalued: True }
+	apr_duedate = Variable { type: Date multivalued: True }
+	apr_isApplicationRightsReview = Variable { type: Boolean multivalued: True }
+	apr_isServerReview = Variable { type: Boolean multivalued: True }
+	apr_isCyberArkSafeReview = Variable { type: Boolean multivalued: True }
+	apr_isGroupMembersReview = Variable { type: Boolean multivalued: True }
+	apr_isRolesContentReview = Variable { type: Boolean multivalued: True }
+	apr_isRepositoryAccountsReview = Variable { type: Boolean multivalued: True }
+	apr_offlinemode = Variable { type: String multivalued: True }
+	apr_priority = Variable { type: String multivalued: True }
+	apr_recorduid = Variable { type: Integer multivalued: True }
+	apr_reviewpage = Variable { type: String multivalued: True }
+	apr_reviewtype = Variable { type: String multivalued: True }
+	apr_submissiondate = Variable { type: Date multivalued: True }
+	apr_title = Variable { type: String multivalued: True }
+	apr_notreviewedcounter_nb = Variable { type: Integer multivalued: True }
+	apr_notreviewedcounter_recorduid = Variable { type: Integer multivalued: True }
+	apr_notreviewedcounter_title = Variable { type: String multivalued: True }
+	apr_stickytimeslot = Variable { type: String multivalued: True }
+	apr_stickytimeslotlabel = Variable { type: String multivalued: True }
+	
+ 	
+	/* Datasets and records here */
+	
+	markEntryExplicitelyReviewed = TaskRecord( create "bwaccess360_markEntryExplicitelyReviewed")
+
+	// used to extract the full list of "active" campaigns (non finalized campaigns)
+
+	campaignsinperimeter = Dataset {
+		view: bwf_accessreviewcampaigns_list_bv
+		includes: StringPredicate(Current campaigninstancecurrentstatus){
+			when "active" then True
+			otherwise False
+		}
+	}
+	
+	allactivereviews = Dataset {
+		view: bwf_identitylistactivecampaigns with
+			inuid to revieweruid, 
+			includedcampaigns to includedcampaigns
+		count-variable: nbactivecampaigns
+	}
+
+	allreviewswithtobereviewedentries = Dataset {
+		view: bwf_identitylistactivecampaigns with
+			inuid to revieweruid, 
+			includedcampaigns to includedcampaigns,
+			True to filteractivetasks
+		count-variable: nbactivecampaignswithtobereviewedentries
+	}
+
+	allpendingreviews = Dataset {
+		view: bwf_allpendingreviews with 
+			inuid to revieweruid, 
+			includedcampaigns to campaignid,
+			inhidecompleted to filteractivetasks,
+			PortalTimeslot.UID to currenttimeslot
+	}
+	
+	allpendingreviews_bis = Dataset {
+		columns:
+			apr_pendingcounter_nb as pendingcounter_nb,
+			apr_pendingcounter_recorduid as pendingcounter_recorduid,
+			apr_description as description,
+			apr_duedate as duedate,
+			apr_isApplicationRightsReview as isApplicationRightsReview,
+			apr_isServerReview as isServerReview,
+			apr_isCyberArkSafeReview as isCyberArkSafeReview,
+			apr_isGroupMembersReview as isGroupMembersReview,
+			apr_isRolesContentReview as isRolesContentReview,
+			apr_isRepositoryAccountsReview as isRepositoryAccountsReview,
+			apr_isRepositoryAccountsReview as isRepositoryAccountsReview,
+			apr_offlinemode as offlinemode,
+			apr_priority as ^priority,
+			apr_recorduid as recorduid,
+			apr_reviewpage as reviewpage,
+			apr_reviewtype as reviewtype,
+			apr_submissiondate as submissiondate,
+			apr_title as title,
+			apr_notreviewedcounter_nb as notreviewedcounter_nb,
+			apr_notreviewedcounter_recorduid as notreviewedcounter_recorduid,
+			apr_notreviewedcounter_title as notreviewedcounter_title,
+			apr_stickytimeslot as stickytimeslot,
+			apr_stickytimeslotlabel as stickytimeslotlabel
+	}
+	
+	nbentriestoreview = Record {
+		view: bwf_numberofentriesfortaskreview with
+				inuid to revieweruid,
+				selectedcampaign to includedcampaign
+		disabled:
+			StringPredicate (selectedcampaign) {
+				when IsEmpty then True
+				otherwise False
+			}
+	}
+	
+	/* List of all active workflow generated review tasks */
+	TasksWithoutRM 	= Dataset {
+		view: bwf_roleminingtasks_excluded 
+	}
+
+	/* List of inbox/assigned task (from the workflow engine), filtered to review tasks only */	
+    inboxTasks = Dataset {
+        tasks: TaskFilter {
+        	candidate: inuid 
+        	show-completed: False
+        	show-error: False
+        	hide-active: False
+        	columns: prioritylevel      	
+        	show-delegated: True	
+        }
+        disabled:
+        	Not AndPredicate {
+        		BooleanPredicate ( inenabledwf )
+        		StringPredicate ( inuid ) {
+        			when IsEmpty then False
+        			otherwise True
+        		}
+        		Not BooleanPredicate (ConfigurationVariable "ias_disablenoniapreviews")
+        	}
+		includes:
+			MultivaluedPredicate ( notrmtasks contains Current taskId )
+ 	}
+
+    assignedTasks = Dataset {
+        tasks: TaskFilter {
+        	assignee: inuid
+        	show-completed: False
+        	show-error: False
+        	hide-active: False
+        	columns: prioritylevel  	
+        	show-delegated: True 
+        }
+        disabled:
+        	Not AndPredicate {
+        		BooleanPredicate ( inenabledwf )
+        		StringPredicate ( inuid ) {
+        			when IsEmpty then False
+        			otherwise True
+        		}
+        		Not BooleanPredicate (ConfigurationVariable "ias_disablenoniapreviews")
+        	}
+        	
+		includes:
+			MultivaluedPredicate ( notrmtasks contains Current taskId )			
+	}
+
+	allTasks = Dataset {
+		union:
+			Union {
+				datasets: inboxTasks, assignedTasks
+				discriminator-column: discrim
+			}
+		count-variable: nbtasks
+	}
+
+	tasksInfos = Dataset {
+		view: bwf_workflowprocessinfo
+		disabled:
+        	Not AndPredicate {
+        		BooleanPredicate ( inenabledwf )
+        		StringPredicate ( inuid ) {
+        			when IsEmpty then False
+        			otherwise True
+        		}
+        		Not BooleanPredicate (ConfigurationVariable "ias_disablenoniapreviews")
+        	}
+	}
+	
+	// Ticket still to review (for upload dialog)
+	campaignRemainingReviewTickets = Dataset {
+		view: bwf_identitylistactivecampaigntickets with
+			inuid to revieweruid, 
+			selectedreviewid to includedcampaign,
+			True to filteractivetasks
+		disabled:
+			StringPredicate ( selectedreviewid ) {
+				when IsEmpty then True
+			}
+	}
+
+	/* Main Dataset Used to list Active Tasks */
+	allTasksWithInfo = Dataset {
+		join:
+			Join {
+				primary-dataset: allTasks
+				primary-column: processId
+				primary-optional: False
+				primary-prefix: task_
+				secondary-dataset: tasksInfos
+				secondary-cardinality: optional
+				secondary-column: processinstanceid
+				secondary-prefix: info_
+			}
+		disabled:
+			Not BooleanPredicate ( inenabledwf )
+	}
+	/* Named actions done to compute nb of reviews and perimeters */
+	
+	CampaignPerimeter = NamedAction (
+		TransferData TasksWithoutRM( taskid ) to  (notrmtasks),
+		TransferData allTasks ( taskId ) to ( allTasksIds ),	
+		TransferData campaignsinperimeter( key ) to ( includedcampaigns )
+	)
+	
+	NbReviews = NamedAction (
+		Unset outnbactivereviews, Set Sum ( nbactivecampaigns, nbtasks) to outnbactivereviews,	
+		Unset outnbcampaignswithtobereviewedentries, Set Sum (nbactivecampaignswithtobereviewedentries, nbtasks) to outnbcampaignswithtobereviewedentries,
+		IntCase ( outnbcampaignswithtobereviewedentries ) {
+			when >0 then [
+				Set True to outhasentriestoreview
+			] otherwise [
+				Set False to outhasentriestoreview
+			]
+		}
+	)
+	
+	prepareSignOffInfo = NamedAction (
+		TransferData campaignRemainingReviewTickets ( _key ) to ( selectedreviewremainingtickets )
+	)
+	
+	signOff = NamedAction (
+		// Signoff
+		BooleanCase ( signoff ) {
+			when False then [
+				// Nothing to do
+			]
+			when True then [
+				Set False to markEntryExplicitelyReviewed.forcemarkentry,
+				Set selectedreviewid to markEntryExplicitelyReviewed.campaignid,
+				Set Principal.uid to markEntryExplicitelyReviewed.currentreviewer,
+				TaskComplete markEntryExplicitelyReviewed
+			]
+		},
+		Unset selectedreviewid
+	)
+
+	InitAllPendingTasks = NamedAction (
+		TransferData allpendingreviews
+		(
+			_pendingcounter_nb,
+			pendingcounter_recorduid,
+			description,
+			duedate,
+			isApplicationRightsReview,
+			isServerRightsReview,
+			isCyberArkSafeReview,
+			isGroupMembersReview,
+			isRolesContentReview,
+			isRepositoryAccountsReview,
+			offlinemode,
+			^priority,
+			recorduid,
+			reviewpage,
+			reviewtype,
+			submissiondate,
+			title,
+			_notreviewedcounter_nb,
+			notreviewedcounter_recorduid,
+			notreviewedcounter_title,
+			stickytimeslot,
+			stickytimeslotlabel
+		)
+	to (
+			apr_pendingcounter_nb,
+			apr_pendingcounter_recorduid,
+			apr_description,
+			apr_duedate,
+			apr_isApplicationRightsReview,
+			apr_isServerReview,
+			apr_isCyberArkSafeReview,
+			apr_isGroupMembersReview,
+			apr_isRolesContentReview,
+			apr_isRepositoryAccountsReview,
+			apr_offlinemode,
+			apr_priority,
+			apr_recorduid,
+			apr_reviewpage,
+			apr_reviewtype,
+			apr_submissiondate,
+			apr_title,
+			apr_notreviewedcounter_nb,
+			apr_notreviewedcounter_recorduid,
+			apr_notreviewedcounter_title,
+			apr_stickytimeslot,
+			apr_stickytimeslotlabel
+		)
+	)
+	
+	/* Page content */
+	Checkbox {
+		variable: inhidecompleted
+		text: $fragmentIdentityPendingReviewDashboardNLS.hidecompleted
+		modify-event:
+			ExecuteNamedAction InitAllPendingTasks
+		hidden: BooleanPredicate ( Eval "!(nbactivecampaigns.get()>0)")
+	}
+	Tiles {
+		hidden: BooleanPredicate ( Eval "!(nbactivecampaigns.get()>0) && inhidecompleted.get()") //BooleanPredicate (inhidecompleted)//
+		columns: 3
+		tile-height: 200
+		TileGroup {
+			initial-sort: duedate ascending		
+			iterate-on: allpendingreviews_bis
+			Tile {				
+				Group {
+					border: True
+					Button {
+						actions:
+							Set Current recorduid to selectedcampaign,
+							IntCase (nbentriestoreview.nbentries) {
+								when <=criticaltreshold_param then [								   
+									GoTo Dynamic ( "page", Current reviewpage) with
+										inuid to uid,
+										Current recorduid to campaignrecorduid,
+										inhidereviewedentries to hidereviewedentries,
+										Current stickytimeslot to stickyTimeslot
+								] otherwise [
+									Set Current recorduid to selectedreviewid,
+									ExecuteNamedAction prepareSignOffInfo,
+									Dialog bwaccess360_accessreviewmanagementabovethreshold(
+										inuid to inreviweruid,
+										Current title to inreviewtitle,
+										Current recorduid to incampaignid,
+										Current reviewtype to inreviewtype,
+										selectedreviewremainingtickets to inreviewtickets,
+										True to isAbove,
+										signoff from signoff
+									),
+									ExecuteNamedAction signOff,
+									ReloadData ( allpendingreviews ),
+									ExecuteNamedAction InitAllPendingTasks
+								]
+							}
+						presentation: Button
+						text: @srv_truncatestring (Current title to string, 45 to maxlength)  
+						tooltip: Current description
+						styling: bigTitleStyle
+						disabled: IntPredicate(Sum (Current notreviewedcounter_nb, Current pendingcounter_nb)){
+									when =0 then True
+									otherwise False
+								}
+					}
+					Text {
+						label: $bwaccess360_accessreviewmanagementNLS.cprogress
+						value: ""
+						compact: True
+						align: Center
+						decorator: Decorator {						
+							width:80			
+							after: Bar { 							
+								width:200
+								max-value: Sum ( Current pendingcounter_nb, Current notreviewedcounter_nb )
+								value: Current notreviewedcounter_nb
+								tooltip: Concat (NonEmpty (Current notreviewedcounter_nb, 0 ),'/',Sum ( NonEmpty(Current pendingcounter_nb, 0), NonEmpty(Current notreviewedcounter_nb, 0)))
+							}
+						}
+						hidden: Eval "current.stickytimeslot != null"
+					}						
+					Grid {
+						columns: GridColumn { width: 250px }, GridColumn { width: 40px }	
+						layout:Layout { grab:horizontal True vertical True }
+						GridRow {				
+							GridCell {
+								Text {
+									value:Transform Current reviewtype using typeofreview
+									
+									label: $bwaccess360_accessreviewmanagementNLS.creviewtype
+									compact: True
+								}					
+								Text {
+									value: Concat (NonEmpty ( Current pendingcounter_nb, 0 ),'/',Sum ( NonEmpty(Current pendingcounter_nb, 0), NonEmpty(Current notreviewedcounter_nb, 0)))
+									label: $bwaccess360_accessreviewmanagementNLS.cleft
+									compact: True
+									hidden:
+										OrPredicate {
+											IntPredicate(Sum (Current notreviewedcounter_nb, Current pendingcounter_nb)){
+												when =0 then True
+												otherwise False
+											}
+											Eval "current.stickytimeslot != null"
+										}
+								}
+								Text {
+								  value: Current stickytimeslotlabel
+								  label: $fragmentIdentityPendingReviewDashboardNLS.stickytimeslot
+								  compact: True
+								  hidden: Eval "current.stickytimeslot == null"
+								}
+								Text {
+									value: ""
+									label: $bwaccess360_accessreviewmanagementNLS.csignedoff
+									compact: True
+									hidden:
+										IntPredicate(Sum (Current notreviewedcounter_nb, Current pendingcounter_nb)){
+											when =0 then False
+											otherwise True
+										}
+								}
+								Text {
+									value: SubString(10) Current duedate
+									label: $bwaccess360_accessreviewmanagementNLS.cduedate
+									compact: True
+								}
+								Text {
+									value: Transform  Current ^priority using reviewpriority
+									label: $bwaccess360_accessreviewmanagementNLS.cprioritylevel
+									compact: True
+								}
+							}
+							GridCell {					
+								Text {
+									value: $fragmentIdentityPendingReviewDashboardNLS.offlinemode
+									compact: True
+									styling: blueStyle
+									align: Right
+									hidden:
+										StringPredicate ( Current offlinemode ) {
+											when "1" then False
+											otherwise True
+										}
+								}
+								// Access rights review download
+								ButtonGroup {
+									align: Right
+									hidden:
+										OrPredicate { 
+											StringPredicate ( Current offlinemode ) {
+												when "1" then False
+												otherwise True
+											}
+											Not BooleanPredicate ( Current isApplicationRightsReview )
+										}
+									Button {							
+										actions:  
+											Set Current recorduid to selectedreviewid,
+											Set Concat( $bwaccess360_accessreviewmanagementNLS.reportName.rights, "_", Current title) to reportname,
+											ExportReport "reports/bw_access360/accessrightsreviewperapplication.rptdesign"
+												with
+													inuid to revieweruid,
+													selectedreviewid to campaignid no-cache
+												export-name reportname									
+												format "xlsx",		
+											Flash $fragmentIdentityPendingReviewDashboardNLS.generating_flash
+										presentation: Button
+										text: $fragmentIdentityPendingReviewDashboardNLS.getreport
+										tooltip: $fragmentIdentityPendingReviewDashboardNLS.getreport_tooltip
+										image: %report_16.download
+										layout: Layout align: Right
+										styling: blueStyle
+										disabled:
+											Not BooleanPredicate ( inhidecompleted )
+									}
+								}
+								// Servers review download
+								ButtonGroup {
+									align: Right
+									hidden:
+										OrPredicate { 
+											StringPredicate ( Current offlinemode ) {
+												when "1" then False
+												otherwise True
+											}
+											Not BooleanPredicate ( Current isServerReview )
+										}
+									Button {							
+										actions:  
+											Set Current recorduid to selectedreviewid,
+											Set Concat( $bwaccess360_accessreviewmanagementNLS.reportName.servers, "_", Current title) to reportname,
+											ExportReport "reports/bw_access360/accessrightsreviewperapplication.rptdesign"
+												with
+													inuid to revieweruid,
+													selectedreviewid to campaignid no-cache
+												export-name reportname									
+												format "xlsx",		
+											Flash $fragmentIdentityPendingReviewDashboardNLS.generating_flash
+										presentation: Button
+										text: $fragmentIdentityPendingReviewDashboardNLS.getreport
+										tooltip: $fragmentIdentityPendingReviewDashboardNLS.getreport_tooltip
+										image: %report_16.download
+										layout: Layout align: Right
+										styling: blueStyle
+										disabled:
+											Not BooleanPredicate ( inhidecompleted )
+									}
+								}
+								// Accounts review download
+								ButtonGroup {
+									align: Right	
+									hidden:
+										OrPredicate { 
+											StringPredicate ( Current offlinemode ) {
+												when "1" then False
+												otherwise True
+											}
+											Not BooleanPredicate ( Current isRepositoryAccountsReview )
+										}
+									Button {
+										actions:
+											Set Current recorduid to selectedreviewid,
+											Set Concat( $bwaccess360_accessreviewmanagementNLS.reportName.accounts, "_", Current title) to reportname,
+											ExportReport "reports/bw_access360/accountsreviewperrepository.rptdesign" 
+												with
+													inuid to revieweruid,
+													selectedreviewid to campaignid no-cache
+												export-name reportname									
+												format "xlsx",
+											Flash $fragmentIdentityPendingReviewDashboardNLS.generating_flash
+										presentation: Button
+										text: $fragmentIdentityPendingReviewDashboardNLS.getreport
+										tooltip: $fragmentIdentityPendingReviewDashboardNLS.getreport_tooltip
+										image: %report_16.download
+										layout: Layout align: Right
+										styling: blueStyle					
+										disabled:
+											Not BooleanPredicate ( inhidecompleted )
+									}
+								}
+								// Safe review download
+								ButtonGroup {
+									align: Right	
+									hidden:
+										OrPredicate { 
+											StringPredicate ( Current offlinemode ) {
+												when "1" then False
+												otherwise True
+											}
+											Not BooleanPredicate ( Current isCyberArkSafeReview )
+										}
+									Button {
+										actions:
+											Set Current recorduid to selectedreviewid,
+											Set Concat( $bwaccess360_accessreviewmanagementNLS.reportName.safe, "_", Current title) to reportname,
+											ExportReport "reports/bw_cloud_pam/review/accessrightsreviewpersafe.rptdesign" 
+												with
+													inuid to revieweruid,
+													selectedreviewid to campaignid no-cache
+												export-name reportname									
+												format "xlsx",
+											Flash $fragmentIdentityPendingReviewDashboardNLS.generating_flash
+										presentation: Button
+										text: $fragmentIdentityPendingReviewDashboardNLS.getreport
+										tooltip: $fragmentIdentityPendingReviewDashboardNLS.getreport_tooltip
+										image: %report_16.download
+										layout: Layout align: Right
+										styling: blueStyle					
+										disabled:
+											Not BooleanPredicate ( inhidecompleted )
+									}
+								}
+								// Group members review download
+								ButtonGroup {
+									align: Right	
+									hidden:
+										OrPredicate { 
+											StringPredicate ( Current offlinemode ) {
+												when "1" then False
+												otherwise True
+											}
+											Not BooleanPredicate ( Current isGroupMembersReview )
+										}
+									Button {
+										actions:  
+											Set Current recorduid to selectedreviewid,
+											Set Concat( $bwaccess360_accessreviewmanagementNLS.reportName.members, "_", Current title) to reportname,
+											ExportReport "reports/bw_access360/groupmembersreviewperrepository.rptdesign" 
+												with
+													inuid to revieweruid,
+													selectedreviewid to campaignid no-cache
+												export-name reportname									
+												format "xlsx",
+											Flash $fragmentIdentityPendingReviewDashboardNLS.generating_flash
+										presentation: Button
+										text: $fragmentIdentityPendingReviewDashboardNLS.getreport
+										tooltip: $fragmentIdentityPendingReviewDashboardNLS.getreport_tooltip
+										image: %report_16.download
+										layout: Layout align: Right
+										styling: blueStyle					
+										disabled:
+											Not BooleanPredicate ( inhidecompleted )
+									}
+								}
+								// Roles Content review download
+								ButtonGroup {
+									align: Right
+									hidden:
+										OrPredicate { 
+											StringPredicate ( Current offlinemode ) {
+												when "1" then False
+												otherwise True
+											}
+											Not BooleanPredicate ( Current isRolesContentReview )
+										}
+									Button {							
+										actions:  
+											Set Current recorduid to selectedreviewid,
+											Set Concat( $bwaccess360_accessreviewmanagementNLS.reportName.roles, "_", Current title) to reportname,
+											ExportReport "reports/bw_access360/roleContentReview_full.rptdesign"
+												with
+													inuid to revieweruid,
+													selectedreviewid to campaignid no-cache
+												export-name reportname									
+												format "xlsx",		
+											Flash $fragmentIdentityPendingReviewDashboardNLS.generating_flash
+										presentation: Button
+										text: $fragmentIdentityPendingReviewDashboardNLS.getreport
+										tooltip: $fragmentIdentityPendingReviewDashboardNLS.getreport_tooltip
+										image: %report_16.download
+										layout: Layout align: Right
+										styling: blueStyle
+										disabled:
+											Not BooleanPredicate ( inhidecompleted )
+									}
+								}
+								// Upload
+								ButtonGroup {
+									align: Right								
+									Button {
+										actions:
+											Set Current recorduid to selectedreviewid,
+											ExecuteNamedAction prepareSignOffInfo,
+											Dialog bwaccess360_accessreviewmanagementabovethreshold (
+												selectedreviewid to incampaignid,
+												selectedreviewremainingtickets to inreviewtickets,
+												False to isAbove,
+												signoff from signoff
+											),
+											ExecuteNamedAction signOff,
+											ReloadData ( allpendingreviews ),
+											ExecuteNamedAction InitAllPendingTasks
+										presentation: Button
+										text: $fragmentIdentityPendingReviewDashboardNLS.upload.text
+										tooltip: $fragmentIdentityPendingReviewDashboardNLS.upload.tooltip
+										image: %report_16.upload
+										layout: Layout align: Right
+										styling: blueStyle
+										disabled:
+											Not BooleanPredicate ( inhidecompleted )
+										hidden:
+											StringPredicate ( Current offlinemode ) {
+												when "1" then False
+												otherwise True
+											}						
+									}						
+								}
+							}
+						}	
+					}
+				}
+			}
+		}
+	}
+	
+	
+	Separator {
+		hidden:
+			OrPredicate {
+				Not BooleanPredicate ( inenabledwf )
+				IntPredicate ( Count allTasks ) {
+					when <1 then True
+				}	
+			}
+		}
+
+	Header { value:  $fragmentIdentityPendingReviewDashboardNLS.customreviews 
+			styling: bigColorTitleStyle 
+			hidden: 
+				OrPredicate {
+					Not BooleanPredicate ( inenabledwf )
+					IntPredicate ( Count allTasks ) {
+						when <1 then True
+					}
+				}
+			}
+	Tiles {
+		
+		hidden: 
+			OrPredicate {
+				Not BooleanPredicate ( inenabledwf )
+				IntPredicate ( Count allTasks ) {
+					when <1 then True
+				}
+			}
+		columns: 3
+		tile-height: 200	
+		
+					
+		TileGroup {
+			
+			initial-sort: task_taskDueDate ascending
+			iterate-on: allTasksWithInfo	
+			
+				Tile {
+					Group {
+						border: True
+						Button {
+							actions:
+								StringCase ( Current task_taskDelegatorUid ) {
+									when IsNull then [
+										GoTo TaskPage Current task_taskId
+									] when IsEmpty then [
+										GoTo TaskPage Current task_taskId
+									] otherwise [
+										Confirm $fragmentIdentityPendingTasksNLS.delegationwarning ( Current task_taskDelegatorName ),
+										StartDelegation Current task_taskDelegatorUid to TaskPage Current task_taskId
+									]
+								}	
+							presentation: Button
+							text: @srv_truncatestring (Current info_campaigntitle to string, 45 to maxlength)
+							tooltip: Current info_title
+							styling: bigTitleStyle
+						}
+						Text {
+							label: $bwaccess360_accessreviewmanagementNLS.cprogress
+							value: ""//Sum ( Current counter_nb, Current totalcounter_nb )
+							compact: True
+							decorator: Decorator {						
+								width:150							
+								before: Bar { 							
+									width:150
+									max-value: Current task_processProgressTotal
+									value: Current  task_processProgress
+									tooltip: Concat (NonEmpty (Current  task_processProgress, 0 ),'/',Current task_processProgressTotal)
+	
+								}
+							}
+						}						
+						Text {
+							value: $fragmentIdentityPendingReviewDashboardNLS.customreview
+							label: $bwaccess360_accessreviewmanagementNLS.creviewtype
+							compact: True
+						}						
+						Text {
+							value: Concat (Difference(Current task_processProgressTotal, Current  task_processProgress),"/",Current task_processProgressTotal)
+							label: $bwaccess360_accessreviewmanagementNLS.cleft
+							compact: True
+						}
+						Text {
+							value: SubString(0,10) Date(Current task_taskDueDate,"yyyyMMddHHmmss").value 
+							label: $bwaccess360_accessreviewmanagementNLS.cduedate
+							compact: True
+						}
+						Text {
+							value: Transform Current task_processPriority using reviewpriority
+							label: $bwaccess360_accessreviewmanagementNLS.cprioritylevel
+							compact: True
+						}
+					}			
+				}
+			}
+		}
+	}

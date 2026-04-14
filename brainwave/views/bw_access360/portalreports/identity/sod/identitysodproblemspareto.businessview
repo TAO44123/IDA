@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa360_identitysodproblemspareto" displayname="identitysodproblemspareto">
+	<Definition scriptfile="/views/bw_access360/portalreports/identity/sod/identitysodproblemspareto.javascript" name="D1646995330538">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1646995330537" title="get identity problems">
+			<InnerView name="bwa360_identitysodproblems1">
+				<Param name="F1646995502065" viewparam="minimumRiskLevel" viewparamvalue="{param.minimumRiskLevel.get()}"/>
+				<Param name="F1647002597594" viewparam="identityuid" viewparamvalue="{param.identityuid}"/>
+				<Param name="F1647002605903" viewparam="organisationuid" viewparamvalue="{param.organisationuid}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1646995369911" type="scriptview" x="193" y="182" w="300" h="50" title="running sum">
+			<Script onscriptinit="init" onscriptread="read"/>
+			<Attributes>
+				<Attribute name="A1646995561180" attribute="nbidentity_runningsum" type="Number" multivalued="false"/>
+				<Attribute name="A1646997331866" attribute="nbidentity_grandtotal" type="Number" multivalued="false"/>
+				<Attribute name="A1647000674332" attribute="nbidentity_runningpercent" type="Number" multivalued="false"/>
+			</Attributes>
+			<ViewComputedAttribute name="color" displayname="color" type="String" expression="dataset.nbidentity_runningpercent.get()&lt;80?&quot;#B93D3D&quot;:&quot;#D2771D&quot;"/>
+			<ViewComputedAttribute name="description" displayname="description" type="String" expression="&apos;&apos;+dataset.nbidentity.get()+&apos; (&apos;+param.runningpercentlabel.get()+&apos;:&apos;+dataset.nbidentity_runningpercent.get()+&apos;%)&apos;"/>
+		</Component>
+		<Component name="N1647002005665" type="note" x="405" y="46" w="300" h="50" title="PARETO ANALYSIS"/>
+		<Component name="C1757604363744_1" type="joinview" x="370" y="269" w="300" h="50" title="filter on sod matrix" enable="{param.sodmatrixuid.get()!=null}">
+			<Join jointype="left" key1="{dataset.controldisplayname.get()}" key2="{dataset.permission_pair_controldisplayname.get()}"/>
+			<InnerView name="identitysodproblemsmatrix">
+				<Param name="F1757604520757" viewparam="uid" viewparamvalue="{param.sodmatrixuid.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1757605287597" expression="dataset.matrix_uid.get()==null" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1757925871638" source="C1757604363744_1" target="C1646995369911" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1758619291363_1" type="joinview" x="282" y="169" w="300" h="50" title="Exceptions">
+			<InnerView name="bwa360_identitysodexceptions_nb"/>
+			<Join jointype="left" key1="{dataset.controlcode.get()}" key2="{dataset.exception_controlcode.get()}"/>
+			<ViewComputedAttribute name="nbidentity" displayname="nb identity" type="Integer" expression="dataset.nbidentity_exception.get()!=null&amp;&amp;param.rejectExceptions.get()?dataset.nbidentity_all.get()-dataset.nbidentity_exception.get():dataset.nbidentity_all.get()"/>
+			<FilterList>
+				<Filter name="F1758619632425" expression="dataset.nbidentity.get()==0" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1758620997752" source="C1646995330537" target="C1758619291363_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1758620998212" source="C1758619291363_1" target="C1757604363744_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="minimumRiskLevel" displayname="minimumRiskLevel" type="Integer">
+	</ViewParam>
+	<ViewParam name="runningpercentlabel" displayname="runningpercentlabel" type="String"/>
+	<ViewParam name="identityuid" displayname="identityuid" type="String"/>
+	<ViewParam name="organisationuid" displayname="organisationuid" type="String"/>
+	<ViewParam name="sodmatrixuid" displayname="sodmatrixuid" type="String"/>
+	<ViewParam name="exceptionsOnly" displayname="exceptionsOnly" type="Boolean" defaultvalue="false"/>
+	<ViewParam name="rejectExceptions" displayname="rejectExceptions" type="Boolean" defaultvalue="true"/>
+	<ViewSort name="sort" attribute1="nbidentity" direction1="DESC"/>
+</View>

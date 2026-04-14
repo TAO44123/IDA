@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA Identity Prepare" scriptfile="collectors/bw_ias_cyberark/CyberArk_Identity/bw_cyberark_identity.javascript" name="P1729774306642_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1729774388434">
+		<Component name="C1729774388434" type="discoverysource" x="57" y="34" w="300" h="64" title="CA_Identity_DirectoryServices">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DirectoryServices.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_Repository_Mapping.csv&apos;,&apos;_DirectoryServices.csv&apos;)}"/>
+		</Component>
+		<Component name="C1729774779910" type="discoverysource" x="773" y="142" w="300" h="64" title="CA_Identity_repository_mapping">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_repository_mapping.discovery" datafile="{config.siloIteratedFileFullname}"/>
+		</Component>
+		<Component name="C1729775011241" type="joinfilter" x="413" y="145" w="300" h="64" title="directory service mapping">
+			<Join source="C1729774779910"/>
+			<Cache active="true" main="service" join="identity_reponame"/>
+			<Attributes>
+				<Attribute name="A1756798810469" attribute="external_reponame" source="external_reponame" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1729775017995" source="C1729774779910" target="C1729775011241" priority="1"/>
+		<Component name="C1729775185815" type="csvoutput" x="58" y="273" w="300" h="64" title="external repository">
+			<Output file="{config.cyberark_folder}external_repository.csv" encoding="UTF-8" separator=";" textseparator="&quot;" multiseparator="|"/>
+			<OutputColumns>
+				<Column name="A1729775267221" attribute="directoryserviceuuid" column="directoryserviceuuid"/>
+				<Column name="A1729775275225" attribute="external_reponame" column="external_reponame"/>
+				<Column name="A1730191673933" attribute="service" column="servicetype"/>
+			</OutputColumns>
+		</Component>
+		<Component name="N1733215372727" type="note" x="757" y="54" w="300" h="94" title="Creation of the mapping file between CyberArk Identity directory service name and IGRC repository name&#xA;&#xA;X_Repository_Mapping.csv has to be filled manually"/>
+		<Link name="L1740665740851" source="C1729775011241" target="C1729775185815" priority="1"/>
+		<Link name="L1741601017250" source="C1729774388434" target="C1729775011241" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="cyberark_folder"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

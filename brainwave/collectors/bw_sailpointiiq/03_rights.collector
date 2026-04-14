@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="03 rights" scriptfile="/collectors/bw_sailpointiiq/03_rights.javascript" name="P1756373539156_5vE0bERY99EAqevHf30Lg" startingpoint="C1756374706699">
+		<Component name="C1756374706699" type="discoverysource" x="467" y="20" w="300" h="64" title="accounts">
+			<Discovery file="/discovery/bw_sailpointiiq/accounts.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/accounts.csv"/>
+		</Component>
+		<Component name="C1756374719481" type="joinfilter" x="467" y="308" w="300" h="64" title="Get all entilements attributes per app">
+			<Join source="C1756374796356" zeroerror="true" zeroevent="_NOT_THE_RIGHT_APP_" zerotechnical="true" severalaction="all"/>
+			<Attributes>
+				<Attribute name="A1756374921121" attribute="_ent_attr" source="attribute" type="String" multivalued="true" removeduplicates="true"/>
+			</Attributes>
+			<Cache active="true" main="_app_id" join="_app_id"/>
+		</Component>
+		<Link name="L1756374765957" source="C1756374706699" target="C1752066550640_3" priority="1"/>
+		<Component name="C1756374796356" type="discoverysource" x="873" y="308" w="300" h="64" title="rights">
+			<Discovery file="/discovery/bw_sailpointiiq/rights.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/entitlements.csv"/>
+		</Component>
+		<Link name="L1756374849485" source="C1756374796356" target="C1756374719481" priority="1"/>
+		<Component name="C1756375052673" type="scriptfilter" x="467" y="446" w="300" h="64" title="Get entitlement attribute value from app schema">
+			<Script onscriptwrite="get_permission_values"/>
+			<Attributes>
+				<Attribute name="A1756467473650" attribute="permission_values" type="String" multivalued="true"/>
+			</Attributes>
+		</Component>
+		<Link name="L1756375074280" source="C1756374719481" target="C1756375052673" priority="1" expression="(! dataset.hasEvent(&apos;_NOT_THE_RIGHT_APP_&apos;))"/>
+		<Component name="C1756467512574" type="right" x="467" y="605" w="300" h="64" title="Rights found in app schema">
+			<Domain isuniqueidentifier="true" repositorytype="_repotype"/>
+			<Right account="id" application="_app_id" permission="permission_values"/>
+		</Component>
+		<Link name="L1756467523541" source="C1756375052673" target="C1756467512574" priority="1"/>
+		<Component name="C1752066550640_3" type="changefilter" x="469" y="171" w="300" h="64" title="Sailpoint tag">
+			<Actions>
+				<Action name="U1752066584521" action="add" attribute="_repotype" type="String" multivalued="false" newvalue="SailPoint IdentityIQ" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1756467689356" source="C1752066550640_3" target="C1756374719481" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

@@ -1,0 +1,617 @@
+/* Import other pages here */
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_campaignmanager/resources.page"
+
+fragmentIdentityPendingTasksNLS = NLS {
+	description [en "Description" fr "Description"]
+	closedate [en "Close date" fr "Date de fermeture"]
+	submissiondate [en "Submission date" fr "Date de soumission"]
+	title [en "Title" fr "Titre"]
+	requester [en "Requester" fr "Demandeur"]
+	status [en "Status" fr "Statut"]
+	coverage [en 'Coverage' fr 'Couverture']
+	tickettype [en "Ticket type" fr "Type de ticket"]
+	managedpendingtasks [en "My pending tasks" fr "Mes tâches en attente"]
+	empty [en "No tasks are pending" fr "Pas de tâches en attente"]
+	emptyall [en "No requests" fr "Pas de requêtes"]
+	filterfinalized [en "Filter finalized requests" fr "Filtrer les requêtes finalisées"]
+	isdelegated [en "Delegated task" fr "tâche déléguée"]
+	delegatedby [en "Delegated by" fr "Déléguée par"]
+	campaign [en "Campaign" fr "Campagne"]
+	instance [en "Instance" fr "Instance"]
+		
+	delegationwarning [
+		en "This task has been delegated to you\nYou will take this task on behalf of {0}"
+		fr "Cette tâche vous a été déléguée\nvous allez prendre cette tâche en tant que {0}"
+	]
+	
+	creator [ en "Creator Name" fr "Créateur" ]
+	nbrights [ en "Nb Access Rights" fr "Nb de droits d''accès" ]
+}
+
+fragmentIdentityPendingTasksIsDelegatedMapping = StringMapping {
+	when IsEmpty then $global.no
+	otherwise $global.yes
+}
+/**
+ * <span style="white-space: pre-line">
+ * Manage pending tasks for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbtasks</b>, String value, the number of pending tasks</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityPendingTasks = PageFragment {
+	enter-event:
+			ExecuteNamedAction listAllTasksIds
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { type: Boolean initial: True }
+	outnbtasks = Variable { type: Image }
+	allTasksIds = Variable { type: String multivalued: True }
+
+	selectedTask = Variable	{ type: String private: True }
+	selectedTaskDelegator = Variable { type: String }
+
+	/* Data here*/
+    inboxTasks = Dataset {
+        tasks: TaskFilter {
+        	candidate: inuid
+        	show-completed: False
+        	show-error: False
+        	hide-active: False
+        	columns: prioritylevel      	
+        	show-delegated: True  	
+        }
+        disabled:
+        	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+    }
+
+    assignedTasks = Dataset {
+        tasks: TaskFilter {
+        	assignee: inuid
+        	show-completed: False
+        	show-error: False
+        	hide-active: False
+        	columns: prioritylevel  	
+        	show-delegated: True  	
+        }
+        disabled:
+        	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+    }
+
+	allTasks = Dataset {
+		union:
+			Union {
+				datasets: inboxTasks, assignedTasks
+				discriminator-column: discrim
+			}
+		count-variable: outnbtasks
+	}
+	
+	tasksInfos = Dataset {
+		view: bw_access360_tasksInfos_bv with allTasksIds to tasksIds
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				IntPredicate ( Count allTasks ) {
+					when <1 then True
+				}
+			}
+	}
+	
+	allTasksWithInfo = Dataset {
+		join:
+			Join {
+				primary-dataset: allTasks
+				primary-column: taskId
+				primary-optional: False
+				primary-prefix: task_
+				secondary-dataset: tasksInfos
+				secondary-cardinality: optional
+				secondary-column: task_taskid
+				secondary-prefix: info_
+			}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				IntPredicate ( Count allTasks ) {
+					when <1 then True
+				}
+			}
+	}
+	
+	listAllTasksIds = NamedAction (
+		TransferData allTasks ( taskId ) to ( allTasksIds )
+	)
+	
+    // My pending tasks box
+    ConditionalGroup {
+    	IntCondition ( Count allTasks ) {
+    		when =0 then [
+				Header {
+					value: $fragmentIdentityPendingTasksNLS.empty
+					styling: bigTitleStyle
+				}
+    		] otherwise [
+				Table {
+					data: allTasksWithInfo
+					double-click: StringCase(Current task_taskDelegatorUid) {
+						when IsNull then [GoTo TaskPage selectedTask]
+						when IsEmpty then [GoTo TaskPage selectedTask]
+						otherwise [ StartDelegation selectedTaskDelegator to TaskPage selectedTask]
+					}
+					layout: Layout { grab: horizontal True vertical True }
+					configurable:True
+					persist-configuration:True
+					Column {
+			       		column: task_taskId
+			       		hidden: True
+			       		selection: selectedTask
+					}
+					Column {
+						column: task_taskDelegatorUid
+						text: Transform Current task_taskDelegatorUid using fragmentIdentityPendingTasksIsDelegatedMapping
+						header: $fragmentIdentityPendingTasksNLS.isdelegated
+						hidden: True
+						selection: selectedTaskDelegator
+					}
+					Column {
+						column: task_taskDelegatorName
+						header: $fragmentIdentityPendingTasksNLS.delegatedby
+						width: 160px
+						initially-masked: True
+					}
+					Column {
+			       		column: task_processCreationDate
+			       		header: $fragmentIdentityPendingTasksNLS.submissiondate
+			       		sortable: True
+			       		width: 140px
+			       		text: SubString(0,10) Date(Current task_taskCreationDate,"yyyyMMddHHmmss").value 
+					}
+			   		Column {
+			       		column: info_campaign_title
+			       		header: $fragmentIdentityPendingTasksNLS.campaign
+			       		sortable: True
+			       		width: 100%
+			       		initially-masked: False
+					}
+					Column {
+			       		column: info_master_title
+			       		header: $fragmentIdentityPendingTasksNLS.instance
+			       		sortable: True
+			       		width: 100%
+			       		initially-masked: False
+					}
+					Column {
+						column: task_taskName
+						header: $fragmentIdentityPendingTasksNLS.managedpendingtasks
+						width: 100%
+						filterable: True
+						sortable: True
+						actions:
+							StringCase ( Current task_taskDelegatorUid ) {
+								when IsNull then [
+									GoTo TaskPage selectedTask
+								] when IsEmpty then [
+									GoTo TaskPage selectedTask
+								] otherwise [
+									Confirm $fragmentIdentityPendingTasksNLS.delegationwarning ( Current task_taskDelegatorName ),
+									StartDelegation selectedTaskDelegator to TaskPage selectedTask
+								]
+							}				
+					}
+				}		  
+    		]
+    	}
+    }
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * List created tasks for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outselectedinstance</b>, String value, selected instance</li>
+ * <li><b>outnbtasks</b>, String value, the number of tasks</li>
+ * <li><b>outnbongoingtasks</b>, String value, the number of pending tasks</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityCreatedTasks = PageFragment {
+		
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	outnbtasks = Variable
+	outnbongoingtasks = Variable
+	outselectedinstance = Variable
+	filterdone = Variable { initial:True private:True type: Boolean multivalued:False }
+
+	selectedTask = Variable	{ private:True }
+
+	/* Data here*/
+	cnt = Dataset {
+		view: bwf_createdtasks with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		count-variable: outnbtasks
+	}
+	
+	allTasks = Dataset {
+		view: bwf_createdtasks with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		
+		excludes:
+			AndPredicate {
+				BooleanPredicate(filterdone)
+				SameValuePredicate(Current status, "done")
+			}
+	}
+
+	ongoingTasks = Dataset {
+		view: bwf_createdtasks with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		excludes:
+			StringPredicate(Current status) { when 'in progress' then False otherwise True }
+		count-variable: outnbongoingtasks
+	}
+	
+    // My pending tasks box
+    Checkbox {
+    	variable:filterdone
+    	text:$fragmentIdentityPendingTasksNLS.filterfinalized
+    }
+    ConditionalGroup {
+    	IntCondition(Count allTasks) {
+    		when =0 then [
+				Header {
+					value:$fragmentIdentityPendingTasksNLS.emptyall
+					styling:bigTitleStyle
+				}    		
+    		]
+    		otherwise [
+				Table {
+					data: allTasks
+					double-click: GoTo TaskPage selectedTask
+					layout: Layout { grab: horizontal True vertical True }
+					configurable:True
+					persist-configuration:True
+
+					Column {
+						column: processinstanceid
+						selection: outselectedinstance
+						hidden: True
+					}
+					
+					Column {
+						column: issuerfullname
+						header: $fragmentIdentityPendingTasksNLS.requester
+						sortable: True
+						filterable: True
+					    width: 15%
+						initially-masked:True
+					}
+					
+					Column {
+						column: title
+						header: $fragmentIdentityPendingTasksNLS.title
+						sortable: True
+						filterable: True
+					    width: 100%
+					}									
+					
+					Column {
+						column: status
+						header: $fragmentIdentityPendingTasksNLS.status
+						sortable: True
+						filterable: True
+						width: 15%
+						initially-masked: False
+					}
+					
+					Column {
+						column: submissiondate
+						header: $fragmentIdentityPendingTasksNLS.submissiondate
+						sortable: True
+						filterable: True
+						width: 15%
+					}
+					Column {
+						column: closedate	
+						header: $fragmentIdentityPendingTasksNLS.closedate
+						sortable: True
+						filterable: True
+						width:15%
+					}
+					Column {
+						column: description	
+						header: $fragmentIdentityPendingTasksNLS.description
+						sortable: True
+						filterable: True
+						width:10%
+						initially-masked:True
+					}
+					Column {
+						column: tickettype
+						header: $fragmentIdentityPendingTasksNLS.tickettype
+						sortable: True
+						filterable: True
+						width:15%
+						initially-masked:True
+					}				
+				}		  
+    		]
+    	}
+    }
+}
+
+
+/**
+ * <span style="white-space: pre-line">
+ * Manage pending tasks for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outnbrmtasks</b>, String value, the number of pending role mining tasks</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityRMPendingTasks = PageFragment {
+	enter-event:
+			ExecuteNamedAction listAllRMTasksIds,
+			TransferData TasksWithRM( taskid ) to  (rmtasks)
+
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { type: Boolean initial: True }
+	outnbrmtasks = Variable { type: Image }
+	allTasksIds = Variable { type: String multivalued: True }
+
+	selectedTask = Variable	{ type: String private: True }
+	selectedTaskDelegator = Variable { type: String }
+
+	rmtasks = Variable { type: String multivalued: True }
+
+	/* Data here*/
+
+	TasksWithRM = Dataset {
+		view: bwf_roleminingtasks_included
+		}
+
+    inboxRMTasks = Dataset {
+        tasks: TaskFilter {
+        	candidate: inuid
+        	show-completed: False
+        	show-error: False
+        	hide-active: False
+        	columns: prioritylevel      	
+        	show-delegated: True  	
+        }
+        disabled:
+        	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		includes: MultivaluedPredicate (rmtasks contains Current taskId)			
+    }
+
+    assignedRMTasks = Dataset {
+        tasks: TaskFilter {
+        	assignee: inuid
+        	show-completed: False
+        	show-error: False
+        	hide-active: False
+        	columns: prioritylevel  	
+        	show-delegated: True  	
+        }
+        disabled:
+        	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		includes: MultivaluedPredicate (rmtasks contains Current taskId)		
+    }
+
+	allRMTasks = Dataset {
+		union:
+			Union {
+				datasets: inboxRMTasks, assignedRMTasks
+				discriminator-column: discrim
+			}
+		count-variable: outnbrmtasks
+	}
+	
+	tasksInfos = Dataset {
+		view: bw_access360_tasksInfos_bv with allTasksIds to tasksIds
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				IntPredicate ( Count allRMTasks ) {
+					when <1 then True
+				}
+			}
+	}
+	
+	allTasksWithInfo = Dataset {
+		join:
+			Join {
+				primary-dataset: allRMTasks
+				primary-column: taskId
+				primary-optional: False
+				primary-prefix: task_
+				secondary-dataset: tasksInfos
+				secondary-cardinality: optional
+				secondary-column: task_taskid
+				secondary-prefix: info_
+			}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				IntPredicate ( Count allRMTasks ) {
+					when <1 then True
+				}
+			}
+	}
+	
+	listAllRMTasksIds = NamedAction (
+		TransferData allRMTasks ( taskId ) to ( allTasksIds )
+	)
+
+
+
+    // My pending tasks box
+    ConditionalGroup {
+    	IntCondition ( Count allRMTasks ) {
+    		when =0 then [
+				Header {
+					value: $fragmentIdentityPendingTasksNLS.empty
+					styling: bigTitleStyle
+				}
+    		] otherwise [
+				Table {
+					data: allTasksWithInfo
+					double-click: StringCase(Current task_taskDelegatorUid) {
+						when IsNull then [GoTo TaskPage selectedTask]
+						when IsEmpty then [GoTo TaskPage selectedTask]
+						otherwise [ StartDelegation selectedTaskDelegator to TaskPage selectedTask]
+					}
+					layout: Layout { grab: horizontal True vertical True }
+					configurable:True
+					persist-configuration:True
+					Column {
+			       		column: task_taskId
+			       		hidden: True
+			       		selection: selectedTask
+					}
+					Column {
+						column: task_taskDelegatorUid
+						text: Transform Current task_taskDelegatorUid using fragmentIdentityPendingTasksIsDelegatedMapping
+						header: $fragmentIdentityPendingTasksNLS.isdelegated
+						hidden: True
+						selection: selectedTaskDelegator
+					}
+					Column {
+						column: task_taskDelegatorName
+						header: $fragmentIdentityPendingTasksNLS.delegatedby
+						width: 160px
+						initially-masked: True
+					}
+					Column {
+			       		column: task_processCreationDate
+			       		header: $fragmentIdentityPendingTasksNLS.submissiondate
+			       		sortable: True
+			       		width: 140px
+			       		text: SubString(0,10) Date(Current task_taskCreationDate,"yyyyMMddHHmmss").value 
+					}
+//			   		Column {
+//			       		column: info_campaign_title
+//			       		header: $fragmentIdentityPendingTasksNLS.campaign
+//			       		sortable: True
+//			       		width: 100%
+//			       		initially-masked: False
+//					}
+//					Column {
+//			       		column: info_master_title
+//			       		header: $fragmentIdentityPendingTasksNLS.instance
+//			       		sortable: True
+//			       		width: 100%
+//			       		initially-masked: False
+//					}
+					Column {
+						column: task_taskName
+						header: $fragmentIdentityPendingTasksNLS.managedpendingtasks
+						width: 50%
+						filterable: True
+						sortable: True
+						actions:
+							StringCase ( Current task_taskDelegatorUid ) {
+								when IsNull then [
+									GoTo TaskPage selectedTask
+								] when IsEmpty then [
+									GoTo TaskPage selectedTask
+								] otherwise [
+									Confirm $fragmentIdentityPendingTasksNLS.delegationwarning ( Current task_taskDelegatorName ),
+									StartDelegation selectedTaskDelegator to TaskPage selectedTask
+								]
+							}				
+					}
+					
+					Column {
+			       		column: task_processCreatorName
+			       		header: $fragmentIdentityPendingTasksNLS.creator
+			       		sortable: True
+			       		width: 140px
+			       		initially-masked: True
+					}
+
+
+					Column { column:task_processProgress header:$fragmentIdentityPendingTasksNLS.coverage sortable:True filterable:True
+					    align: Right
+						text: Eval " ' ' + (current.task_processProgress ? (current.task_processProgress * 100 / current.task_processProgressTotal): 0) + '%' "
+						image:TemplateImageSelection( Eval " current.task_processProgress * 100 / current.task_processProgressTotal" ) using br_campaignManagerPieProgress
+					}	
+					
+					Column {
+			       		column: task_processProgressTotal
+			       		header: $fragmentIdentityPendingTasksNLS.nbrights 
+			       		sortable: True
+			       		width: 140px
+					}																													
+				}		  
+    		]
+    	}
+    }
+}
+
+

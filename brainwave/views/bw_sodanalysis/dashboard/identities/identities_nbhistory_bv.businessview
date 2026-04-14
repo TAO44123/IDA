@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwsodd_identities_nbhistory_bv" displayname="identities nbhistory bv">
+	<Definition scriptfile="/views/bw_sodanalysis/dashboard/identities/dashboard_count.javascript" name="D1764260637424">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1764260637424" title="Get all identities and their history">
+			<InnerView name="bwsodd_identities_nbhistory">
+				<Param name="F1764262906101" viewparam="sodmatrix" viewparamvalue="{param.sodmatrix.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1764260655754" type="joinview" x="355" y="199" w="300" h="50" title="Exclude exceptions">
+			<InnerView name="bwsodd_identities_nbhistory_exceptions" prefix="exception_">
+				<Param name="F1764263065128" viewparam="sodmatrix" viewparamvalue="{param.sodmatrix.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.exception_key.get()}"/>
+			<FilterList>
+				<Filter name="F1764260828928" expression="dataset.exception_key.get()!=null" type="Exclude"/>
+				<Filter name="F1764261142122" expression="param.dedup.get()?dataset.nb.get():dataset.key.get()" type="Deduplicate"/>
+			</FilterList>
+			<ViewComputedAttribute name="nb" displayname="nb" type="String" expression="dataset.uid.get()+&quot;$$&quot;+dataset.timeslotuid.get()"/>
+		</Component>
+		<Link name="L1764260655819" source="C1764260637424" target="C1764260655754" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1548944979931_1" type="scriptview" x="402" y="311" w="300" h="50" title="Count ">
+			<Script onscriptinit="ini_nbhistory" onscriptread="read_nbhistory"/>
+			<ViewComputedAttribute name="description" displayname="description" type="String" expression="&apos;&apos;+dataset.nb.get()+&apos; &apos;+param.descriptionsuffix.get()"/>
+			<ViewComputedAttribute name="timelabel" displayname="timelabel" type="String" expression="dataset.timeslotuid.get().left(4)+&apos;/&apos;+dataset.timeslotuid.get().substring(4, 6)+&apos;/&apos;+dataset.timeslotuid.get().substring(6, 8)"/>
+		</Component>
+		<Link name="L1764261261202" source="C1764260655754" target="C1548944979931_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewSort name="sort" attribute1="timeslotuid" direction1="ASC"/>
+	<ViewParam name="descriptionsuffix" displayname="descriptionsuffix">
+		<Value name="V1764329643139_1" data="problems"/>
+	</ViewParam>
+	<ViewParam name="sodmatrix" displayname="sodmatrix"/>
+	<ViewParam name="dedup" displayname="dedup" type="Boolean" defaultvalue="true">
+		<Value name="V1764322633873_1" data="true"/>
+	</ViewParam>
+</View>

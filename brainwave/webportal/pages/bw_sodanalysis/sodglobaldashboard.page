@@ -1,0 +1,581 @@
+/* Import other pages here */
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+
+import "/webportal/pages/bw_access360/portalreports/control/allidentitysodmatrix.page"
+import "/webportal/pages/bw_access360/portalreports/control/rolessodmatrix.page"
+import "/webportal/pages/bw_access360/portalreports/control/sodmatrix.page"
+import "/webportal/pages/bw_access360/portalreports/control/exceptionssod.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+/* Nationalized labels here */
+bwsod_sodglobaldashboardNLS = NLS {
+	title [en "SoD Global Dashboard" fr "Synthèse globale SoD"]
+	
+	rlabelprefix [en "Level" fr "niveau"]
+	rdescriptionsuffix [en "Problems" fr "problèmes"]
+	rdescriptionsidffix [en "Identities" fr "identités"]
+	rdescriptionsroleffix [en "Roles" fr "rôles"]
+
+	sodmatrix [en "SoD Matrix" fr "Matrice SoD"]
+	idwprb [en "Identities \nwith Problems" fr "Identités avec \ndes problèmes"]
+	nbidwprb [en "Number of Identity\n- Related Problems" fr "Nombre de problèmes \nsur les identités"]
+	rwprb [en "Roles with \nCore Model Problems" fr "Rôles avec des \nproblèmes core model"]
+	nbrwprb [en "Number of Core Model \nRelated Problems" fr "Nombre de problèmes \ncore model"]
+	sodcontrols [en "SoD Controls" fr "Contrôles SoD"]
+	sodexceptions [en "SoD Exceptions" fr "Exceptions SoD"]
+	sodproblems [en "SoD Problems" fr "Problemes SoD"]
+	prbhistory [en "Problems History" fr "Historique des problèmes"]
+	nbidentity [en "Number of Identities" fr "Nb d'identités"]
+	nbidentityprb [en "Number of Identity Problems" fr "Nombre de problèmes sur identités"]
+	nbrole [en "Number of Roles" fr "Nombre de rôles"]
+	nbroleprb [en "Number of Role-Related Problems" fr "Nombre de problèmes sur rôles"]
+	nbidwprbrl [en "Number of Identities with Problems at Risk Level" fr "Nb d'identités avec des problèmes au niveau de risque"]
+	nbidprbrl [en "Number of Identity Problems at Risk Level" fr "Nombre de problèmes d'identités au niveau de risque"]
+	nbrolewprbrl [en "Number of Roles with Problems at Risk Level" fr "Nombre de rôles avec des problèmes au niveau de risque"]
+	nbroleprbrl [en "Number of Core Model Problems at Risk Level" fr "Nombre de problèmes core model au niveau de risque"]
+}
+
+bwsod_sodglobaldashboard = Page {
+	title: $bwsod_sodglobaldashboardNLS.title
+	enter-event:ExecuteNamedAction compute_diff
+	feature:All(sod_license, compliance_license)
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	activeidentities = Variable { type: String }
+	selectedsodmatrix = Variable { type: String }
+	selectedmatrixuid = Variable { type: String }
+	
+	riskLevels = Variable { 
+		type: String 
+		multivalued: True 
+		initial: [
+			$bwf_ControlLevel_NLS._0, 
+			$bwf_ControlLevel_NLS._1, 
+			$bwf_ControlLevel_NLS._2, 
+			$bwf_ControlLevel_NLS._3, 
+			$bwf_ControlLevel_NLS._4,
+			$bwf_ControlLevel_NLS.notclassified	
+		]
+	}
+
+	// Global KPIs
+	nbmatrix = Variable
+	nbmatrix_prev = Variable
+	nbmatrix_diff = Variable
+
+	nbcontrol = Variable
+	nbcontrol_prev = Variable
+	nbcontrol_diff = Variable
+	
+	nbdefects = Variable
+	nbdefects_prev = Variable
+	nbdefects_diff = Variable
+	
+	nbexceptionidentities = Variable
+	nbexceptionidentities_prev = Variable
+	nbexceptionidentities_diff = Variable
+
+	// User level KPIs
+	nbidentities = Variable
+	nbidentities_prev = Variable
+	nbidentities_diff = Variable
+
+	nbidentitydefects = Variable
+	nbidentitydefects_prev = Variable
+	nbidentitydefects_diff = Variable
+	
+	// Role level KPIs
+	nbroles = Variable
+	nbroles_prev = Variable
+	nbroles_diff = Variable
+	
+	nbroledefects = Variable
+	nbroledefects_prev = Variable
+	nbroledefects_diff = Variable
+	
+	activeidentitiesds = Dataset {
+		view:bwsodd_activeidentities
+		count-variable: activeidentities
+	}
+	
+	selectedsodmatrixrecord = Record {
+		view: bwsodd_sodmatrix with selectedsodmatrix to sodmatrixcode
+		disabled: StringPredicate(selectedsodmatrix) { when IsEmpty then True otherwise False }
+	}
+	
+	// Global Datasets
+	sodmatrix = Dataset {
+		view:bwsodd_sodmatrix
+		count-variable: nbmatrix
+	}
+	sodmatrix_prev = Dataset {
+		view:bwsodd_sodmatrix
+		timeslot:FromPage(-1)
+		count-variable: nbmatrix_prev
+	}
+
+	sodcontrol = Dataset {
+		view:bwsodd_sodcontrols with selectedsodmatrix to sodmatrix unless-empty
+		count-variable: nbcontrol
+	}
+	sodcontrol_prev = Dataset {
+		view:bwsodd_sodcontrols with selectedsodmatrix to sodmatrix unless-empty
+		timeslot:FromPage(-1)
+		count-variable: nbcontrol_prev
+	}
+	
+	soddefects = Dataset {
+		view: bwsodd_defects with selectedsodmatrix to sodmatrix unless-empty
+		count-variable: nbdefects
+	}
+	soddefects_prev = Dataset {
+		view: bwsodd_defects with selectedsodmatrix to sodmatrix unless-empty
+		timeslot:FromPage(-1)
+		count-variable: nbdefects_prev
+	}
+	
+	exceptionidentities = Dataset {
+		view: bwsodd_identityexceptions with selectedsodmatrix to sodmatrix unless-empty
+		count-variable: nbexceptionidentities
+	}
+	
+	exceptionidentities_prev = Dataset {
+		view: bwsodd_identityexceptions with selectedsodmatrix to sodmatrix unless-empty
+		timeslot:FromPage(-1)
+		count-variable: nbexceptionidentities_prev
+	}
+	
+	// User level Datasets
+	identities = Dataset {
+		view:bwsodd_identities_nb_bv with 
+			True to dedup, 
+			selectedsodmatrix to sodmatrix unless-empty
+		count-variable: nbidentities
+	}
+	identities_prev = Dataset {
+		view:bwsodd_identities_nb_bv with 
+			True to dedup, 
+			selectedsodmatrix to sodmatrix unless-empty
+		timeslot:FromPage(-1)
+		count-variable: nbidentities_prev
+	}
+
+	identitydefects = Dataset {
+		view:bwsodd_identities_nb_bv with 
+			selectedsodmatrix to sodmatrix unless-empty
+		count-variable: nbidentitydefects
+	}
+	identitydefects_prev = Dataset {
+		view:bwsodd_identities_nb_bv with 
+			selectedsodmatrix to sodmatrix unless-empty
+		timeslot:FromPage(-1)
+		count-variable: nbidentitydefects_prev
+	}
+	
+	identities_history = Dataset {
+		view:bwsodd_identities_nbhistory_bv with 
+			$bwsod_sodglobaldashboardNLS.idwprb to descriptionsuffix, 
+			selectedsodmatrix to sodmatrix unless-empty, 
+			True to dedup
+	}
+	identitydefects_history = Dataset {
+		view:bwsodd_identities_nbhistory_bv with 
+			$bwsod_sodglobaldashboardNLS.rdescriptionsuffix to descriptionsuffix, 
+			selectedsodmatrix to sodmatrix unless-empty, 
+			False to dedup
+	}
+	
+	identities_risklevel = Dataset {
+		view:bwsodd_identities_risklevel_bv with 
+		riskLevels to labelvalue, 
+		selectedsodmatrix to sodmatrix unless-empty,
+		True to dedup
+	}
+	identitydefects_risklevel = Dataset {
+		view:bwsodd_identities_risklevel_bv with 
+		riskLevels to labelvalue, 
+		selectedsodmatrix to sodmatrix unless-empty, 
+		False to dedup
+	}
+	
+	// Role level Datasets
+	roles = Dataset {
+		view:bwsodd_roles with 
+			selectedsodmatrix to sodmatrix unless-empty
+		count-variable: nbroles
+	}	
+	roles_prev = Dataset {
+		view:bwsodd_roles with 
+			selectedsodmatrix to sodmatrix unless-empty
+		timeslot:FromPage(-1)
+		count-variable: nbroles_prev
+	}	
+	
+	roledefects = Dataset {
+		view:bwsodd_roledefects with 
+			selectedsodmatrix to sodmatrix unless-empty
+		count-variable: nbroledefects
+	}
+	roledefects_prev = Dataset {
+		view:bwsodd_roledefects with 
+			selectedsodmatrix to sodmatrix unless-empty
+		timeslot:FromPage(-1)
+		count-variable: nbroledefects_prev
+	}
+	
+	roles_history = Dataset {
+		view:bwsodd_roles_nbhistory with 
+			$bwsod_sodglobaldashboardNLS.rdescriptionsroleffix to descriptionsuffix,
+			selectedsodmatrix to sodmatrix unless-empty
+	}
+	roledefects_nbhistory = Dataset {
+		view:bwsodd_roledefects_nbhistory with 
+			$bwsod_sodglobaldashboardNLS.rdescriptionsuffix to descriptionsuffix,
+			selectedsodmatrix to sodmatrix unless-empty
+	}
+
+	roles_risklevel = Dataset {
+		view:bwsodd_roles_risklevel with 
+			riskLevels to labelvalue, 
+			$bwsod_sodglobaldashboardNLS.rdescriptionsroleffix to descriptionsuffix,
+			selectedsodmatrix to sodmatrix unless-empty
+	}
+	roledefects_risklevel = Dataset {
+		view:bwsodd_roledefects_risklevel with 
+			riskLevels to labelvalue, 
+			$bwsod_sodglobaldashboardNLS.rdescriptionsuffix to descriptionsuffix,
+			selectedsodmatrix to sodmatrix unless-empty
+	}
+	
+	compute_diff = NamedAction (
+		Set Difference(nbmatrix, nbmatrix_prev) to nbmatrix_diff,
+		Set Difference(nbcontrol, nbcontrol_prev) to nbcontrol_diff,
+		Set Difference(nbdefects, nbdefects_prev) to nbdefects_diff,
+		Set Difference(nbexceptionidentities, nbexceptionidentities_prev) to nbexceptionidentities_diff,
+		Set Difference(nbidentities, nbidentities_prev) to nbidentities_diff,
+		Set Difference(nbidentitydefects, nbidentitydefects_prev) to nbidentitydefects_diff,
+		Set Difference(nbroles, nbroles_prev) to nbroles_diff,
+		Set Difference(nbroledefects, nbroledefects_prev) to nbroledefects_diff
+	)
+	
+	matrix_selection = NamedAction(
+		ReloadData(selectedsodmatrixrecord),
+		Set selectedsodmatrixrecord.uid to selectedmatrixuid
+	)
+	
+	Group {
+		styling:cssPageDashboard
+		layout:Layout { grab:horizontal True vertical True }
+		Splitter {
+			size: 20%
+			disposition: Horizontal
+			Group {
+				styling:cssRound
+				Combo {
+					options:Dynamic {data:sodmatrix text:Current displayname value:Current code}
+					allow-none: True
+					variable:selectedsodmatrix
+					label:$bwa360_sodmatrixNLS.matrix
+					modify-event: ExecuteNamedAction compute_diff, ExecuteNamedAction matrix_selection
+				}
+				IncludeHTMLWidget {
+					layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+					template: mashupGaugeIndicator
+					bindings:
+						value-of $bwsod_sodglobaldashboardNLS.sodmatrix to title,
+						value-of "numeric" to mode, // radial, numeric, row
+						value-of True to hasLink,
+						value-of False to hasThresholds,
+						nbmatrix binds-to count,
+						nbmatrix_diff binds-to trendValue
+					widget-events: {
+						when onclick then [
+							GoTo Page bwa360_sodmatrix with selectedmatrixuid to inmatrixuid unless-empty 
+						]
+					}
+				}
+				IncludeHTMLWidget {
+					layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+					template: mashupGaugeIndicator
+					bindings:
+						value-of $bwsod_sodglobaldashboardNLS.sodcontrols to title,
+						value-of "numeric" to mode, // radial, numeric, row
+						value-of True to hasLink,
+						value-of False to hasThresholds,
+						nbcontrol binds-to count,
+						nbcontrol_diff binds-to trendValue
+					widget-events: {
+						when onclick then [
+							GoTo Page bwa360_sodmatrix with selectedmatrixuid to inmatrixuid unless-empty 
+						]
+					}
+				}
+				IncludeHTMLWidget {
+					layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+					template: mashupGaugeIndicator
+					bindings:
+						value-of $bwsod_sodglobaldashboardNLS.sodproblems to title,
+						value-of "numeric" to mode, // radial, numeric, row
+						value-of True to hasLink,
+						value-of False to hasThresholds, 
+						nbdefects binds-to count,
+						nbdefects_diff binds-to trendValue
+				}
+				IncludeHTMLWidget {
+					layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+					template: mashupGaugeIndicator
+					bindings:
+						value-of $bwsod_sodglobaldashboardNLS.sodexceptions to title,
+						value-of "numeric" to mode, // radial, numeric, row
+						value-of True to hasLink,
+						value-of False to hasThresholds,
+						nbexceptionidentities binds-to count,
+						nbexceptionidentities_diff binds-to trendValue
+					widget-events: {
+						when onclick then [
+							GoTo Page bwa360_exceptionssod 
+						]
+					}
+				}
+			}
+			Group {
+				TabFolder {
+					TabItem {
+						text: "Identities"
+						Flow {
+						 	disposition: Horizontal
+							Group {
+								styling:cssRound
+								IncludeHTMLWidget {
+									layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+									template: mashupGaugeIndicator
+									bindings:
+										value-of $bwsod_sodglobaldashboardNLS.idwprb to title,
+										value-of "numeric" to mode, // radial, numeric, row
+										value-of True to hasLink,
+										value-of True to hasThresholds,
+										nbidentities binds-to count,
+										nbidentities_diff binds-to trendValue,
+										activeidentities binds-to maxValue,
+										value-of "0" to criticalThreshold,
+										value-of "0" to warningThreshold,
+										value-of "testvalue" to identifier,
+										value-of "#9400D3" to gaugeColor
+									widget-events: {
+										when onclick then [
+											GoTo Page bwa360_allidentitysodmatrix with selectedmatrixuid to inmatrixuid unless-empty 
+										]
+									}
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: lineChart
+									datasets: identities_history ( timelabel, timeslotuid, nb, description) to chartdata ( label, code , count, description)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.prbhistory to title,
+										value-of $bwsod_sodglobaldashboardNLS.nbidentity to ylabel,
+										value-of False to showxAxesGrid,
+										value-of False to maintainAspectRatio,
+										value-of 2 to pointRadius,
+										value-of "origin" to fill,
+										value-of False to xAxesdisplay,
+										value-of True to beginAtZero
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: doughnutChart
+									datasets: identities_risklevel(risklabel, risklevelcode, nb) to chartdata(label, code, count)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.nbidwprbrl to title,
+										value-of True to tooltipShowPercent,
+										value-of True to showLegend,
+										value-of True to showHalfOnly,
+										value-of "bottom" to legendPosition,
+										value-of Constant higherTheWorstPalette to customColors
+									widget-events: {
+										when onclick then [
+											GoTo Page bwa360_allidentitysodmatrix_inner with Current code to minimumRiskLevel unless-empty, selectedmatrixuid to inmatrixuid unless-empty
+										]
+									}
+								}
+							}
+							Group {
+								styling:cssRound
+								IncludeHTMLWidget {
+								layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+								template: mashupGaugeIndicator
+								bindings:
+									value-of $bwsod_sodglobaldashboardNLS.nbidwprb to title,
+									value-of "numeric" to mode, // radial, numeric, row
+									value-of True to hasLink,
+									value-of True to hasThresholds,
+									nbidentitydefects binds-to count,
+									nbidentitydefects_diff binds-to trendValue,
+									value-of "0" to criticalThreshold,
+									value-of "0" to warningThreshold,
+									value-of "testvalue" to identifier,
+									value-of "#9400D3" to gaugeColor
+								widget-events: {
+									when onclick then [
+										GoTo Page bwa360_allidentitysodmatrix with selectedmatrixuid to inmatrixuid unless-empty
+									]
+									}
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: lineChart
+									datasets: identitydefects_history(timelabel, timeslotuid, nb, description) to chartdata(label, code , count, description)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.prbhistory to title,
+										value-of $bwsod_sodglobaldashboardNLS.nbidentityprb to ylabel,
+										value-of False to showxAxesGrid,
+										value-of False to maintainAspectRatio,
+										value-of 2 to pointRadius,
+										value-of "origin" to fill,
+										value-of False to xAxesdisplay,
+										value-of True to beginAtZero
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: doughnutChart
+									datasets: identitydefects_risklevel ( risklabel, risklevelcode, nb) to chartdata ( label, code , count)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.nbidprbrl to title,
+										value-of True to tooltipShowPercent,
+										value-of True to showLegend,
+										value-of True to showHalfOnly,
+										value-of "bottom" to legendPosition,
+										value-of Constant higherTheWorstPalette to customColors
+									widget-events: {
+										when onclick then [
+											GoTo Page bwa360_allidentitysodmatrix_inner with Current code to minimumRiskLevel unless-empty, selectedmatrixuid to inmatrixuid unless-empty
+										]
+									}
+								}
+							}
+						}
+					}
+					TabItem {
+						text: "Roles"
+						Flow {
+							disposition: Horizontal
+							Group {
+								styling:cssRound
+								IncludeHTMLWidget {
+									layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+									template: mashupGaugeIndicator
+									bindings:
+										value-of $bwsod_sodglobaldashboardNLS.rwprb to title,
+										value-of "numeric" to mode, // radial, numeric, row
+										value-of True to hasLink,
+										value-of True to hasThresholds,
+										nbroles binds-to count,
+										nbroles_diff binds-to trendValue,
+										value-of "0" to criticalThreshold,
+										value-of "0" to warningThreshold,
+										value-of "testvalue" to identifier,
+										value-of "#9400D3" to gaugeColor
+									widget-events: {
+										when onclick then [
+											GoTo Page bwa360_rolessodmatrix with selectedmatrixuid to inmatrixuid unless-empty
+										]
+									}
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: lineChart
+									datasets: roles_history ( timelabel, timeslotuid, nb, description) to chartdata ( label, code , count, description)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.prbhistory to title,
+										value-of $bwsod_sodglobaldashboardNLS.nbrole to ylabel,
+										value-of False to showxAxesGrid,
+										value-of False to maintainAspectRatio,
+										value-of 2 to pointRadius,
+										value-of "origin" to fill,
+										value-of False to xAxesdisplay,
+										value-of True to beginAtZero
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: doughnutChart
+									datasets: roles_risklevel(risklabel, risklevelcode, nb, description) to chartdata(label, code , count, color)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.nbrolewprbrl to title,
+										value-of True to tooltipShowPercent,
+										value-of True to showLegend,
+										value-of True to showHalfOnly,
+										value-of "bottom" to legendPosition,
+										value-of Constant higherTheWorstPalette to customColors
+									widget-events: {
+										when onclick then [
+											GoTo Page bwa360_rolessodmatrix_inner with Current code to minimumRiskLevel unless-empty, selectedmatrixuid to inmatrixuid unless-empty
+										]
+									}
+								}
+							}
+							Group {
+								styling:cssRound
+								IncludeHTMLWidget {
+									layout: Layout { hint: height 180 width 180 align: horizontal Center vertical Center }
+									template: mashupGaugeIndicator
+									bindings:
+										value-of $bwsod_sodglobaldashboardNLS.nbrwprb to title,
+										value-of "numeric" to mode, // radial, numeric, row
+										value-of True to hasLink,
+										value-of True to hasThresholds,
+										nbroledefects binds-to count,
+										nbroledefects_diff binds-to trendValue,
+										value-of "0" to criticalThreshold,
+										value-of "0" to warningThreshold,
+										value-of "testvalue" to identifier,
+										value-of "#9400D3" to gaugeColor
+									widget-events: {
+										when onclick then [
+											GoTo Page bwa360_rolessodmatrix with selectedmatrixuid to inmatrixuid unless-empty
+										]
+									}
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: lineChart
+									datasets: roledefects_nbhistory ( timelabel, timeslotuid, nb, description) to chartdata ( label, code , count, description)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.prbhistory to title,
+										value-of $bwsod_sodglobaldashboardNLS.nbroleprb to ylabel,
+										value-of False to showxAxesGrid,
+										value-of False to maintainAspectRatio,
+										value-of 2 to pointRadius,
+										value-of "origin" to fill,
+										value-of False to xAxesdisplay,
+										value-of True to beginAtZero
+								}
+								IncludeHTMLWidget {
+									layout: Layout { grab: horizontal True vertical True }
+									template: doughnutChart
+									datasets: roledefects_risklevel(risklabel, risklevelcode, nb, description) to chartdata(label, code , count, color)
+									bindings: 
+										value-of $bwsod_sodglobaldashboardNLS.nbroleprbrl to title,
+										value-of True to tooltipShowPercent,
+										value-of True to showLegend,
+										value-of True to showHalfOnly,
+										value-of "bottom" to legendPosition,
+										value-of Constant higherTheWorstPalette to customColors
+									widget-events: {
+										when onclick then [
+											GoTo Page bwa360_rolessodmatrix_inner with Current code to minimumRiskLevel unless-empty, selectedmatrixuid to inmatrixuid unless-empty
+										]
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

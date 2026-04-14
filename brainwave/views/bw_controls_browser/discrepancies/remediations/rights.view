@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bw_controls_browser_get_right_remediations" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="right" displayname="Right remediations filtered by control" notes="" begindate="" enddate="">
+	<ViewParam name="controlcode" displayname="Control code" type="String">
+		<Value name="0" data="4f007b7b-16b2-435b-9d63-103841ab1682"/>
+	</ViewParam>
+	<ViewParam name="repo_uid" displayname="Repository Uid(s)" type="String"/>
+	<ViewParam name="app_uid" displayname="Application Uid(s)" type="String"/>
+	<ViewParam name="includedAccUid" displayname="Included account(s) uid(s)" type="String"/>
+	<ViewParam name="includedPermUid" displayname="Included permission(s) uid(s)" type="String"/>
+	<ViewParam name="tags" displayname="Tag(s)" type="String"/>
+	<ViewComputedAttribute name="_key" displayname="Key (account + perimeter + permission)" type="String" expression="dataset.acc_uid.get() + &apos;_$$_&apos; + dataset.perimeteruid.get() + &apos;_$$_&apos; + dataset.perm_uid.get()"/>
+	<ViewComputedAttribute name="_simple_key" displayname="Account + permission (no perimeter)" type="String" expression="dataset.acc_uid.get() + &apos;_$$_&apos; + dataset.perm_uid.get()"/>
+	<ViewSort name="sort" attribute1="1667986096990_809" direction1="DESC"/>
+	<ViewJoin name="J1667985951076_778" prefix="acc_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+		<ViewAttribute name="A1667985979644_781" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1669624056120_0" reference="includedAccUid" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewJoin name="J1666792836662_9876" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controldiscrepancy">
+			<ViewJoin name="J1666792839993_9877" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controllog">
+				<ViewAttribute name="1667986112844_844" attribute="controlcode" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1666792845623_0" reference="controlcode" operation="eq" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1669623916981_1183" prefix="repo_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+			<ViewAttribute name="A1669623923710_1184" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1669623925814_0" reference="repo_uid" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="A1669624109248_1194" attribute="bwa_accounttags_tag" operator="or" removedfromprojection="true" globalfilter="true">
+			<ViewAttributeFilter name="F1669624111463_0" reference="tags" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1667985958756_779" prefix="perm_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermission">
+		<ViewAttribute name="A1667985974954_780" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1669624069393_0" reference="includedPermUid" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewJoin name="J1669623936585_1187" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="A1669623942283_1188" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1669623956796_0" reference="app_uid" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+	<ViewAttribute name="A1667985983298_782" attribute="perimeteruid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1667986077234_783" prefix="review_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+		<ViewAttribute name="1667986096990_809" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1666792764784_9872" prefix="remed_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="remediations">
+			<ViewAttribute name="1667986103494_827" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1667986103494_828" attribute="status" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1667986103494_829" attribute="title" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1627204971882_2043" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketAction">
+				<ViewJoin name="J1627204974792_2044" prefix="remediation" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreview">
+					<ViewAttribute name="1667986103494_830" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103494_831" attribute="status" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103494_832" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103499_833" attribute="actiondate" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103499_834" attribute="custom2" alias="remediationclosed" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103499_835" attribute="custom3" alias="remediationtype" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103499_836" attribute="actoruid" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103499_837" attribute="actorfullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103499_838" attribute="custom5" alias="remediationitsmticketnumber" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103504_839" attribute="custom8" alias="remediationitsmlink" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1667986103504_840" attribute="custom7" alias="remediationinstance" displayname="remediationinstance" operator="or" removedfromprojection="false" globalfilter="false"/>
+				</ViewJoin>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewAttribute name="A1672134477569_1212" attribute="status" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1672134478318_1213" attribute="comment" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+</View>

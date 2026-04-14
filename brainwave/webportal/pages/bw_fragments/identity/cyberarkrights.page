@@ -1,0 +1,1012 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/mixins.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/group/cyberarkrights.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/account/cyberarkrights.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+import "/webportal/pages/bw_cloud_pam/safe/fragments/safeDetails.page"
+import "/webportal/pages/bw_cloud_pam/vault/fragments/vaultDetails.page"
+import "/webportal/pages/bw_cloud_pam/permission/CApermissionDetails.page"
+
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+fragmentIdentityCAVaultsRightsNLS = NLS {
+	empty [en "Identity doesn't have access to CybarArk Vaults" fr "Cette identité n'a pas d'accès à des vaults CyberArk"]
+}
+
+fragmentIdentityCAVAultsRights360NLS = NLS {
+	profilecode [en "Permission code" fr "Code permission"]
+	profilename [en "Permission" fr "Permission"]
+	profiledescription [en "Description" fr "Description"]
+	sensitivitylevel [en "Sensitivity" fr "Sensibilité"]
+	sensitivityreason [en "Sensitivity\nreason" fr "Raison\nSensibilité"]
+	action [en "Action" fr "Action"]
+	limit [en "Limit" fr "Limite"]
+	perimetercode [en "Perimeter\ncode" fr "Code\npérimètre"]
+	perimetername [en "Perimeter" fr "Périmètre"]
+	type [en "type" fr "type"]
+	filteredto [en "filtered to {0}" fr "filtré sur {0}"]
+	vault [en "Vault" fr "Vault"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the CyberArk Vaults rights for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>intype </b>the permission types (Role by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>inapplicationuids </b>optional filter to display only some applications</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * <li><b>outapplicationname </b>the selected application name</li>
+ * <li><b>outpermissionuid </b>the selected permission uid  </li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityCAVaultsRights360 = PageFragment {
+	feature: All(pam_license, Any(governance_license, compliance_license))
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	intype = Variable {multivalued: True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inapplicationuids = Variable {multivalued: True}
+
+	outapplicationuid = Variable
+	outapplicationname = Variable
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	
+	nbvaults = Variable
+	
+	application = Record {
+		view:bwf_applicationDetail with inapplicationuids to uid
+	}
+	
+	appsbyidentity = Dataset {
+		view: bwf_cavaultsbyidentity
+		with inuid to uid, inapplicationuids to applicationuids unless-empty
+		trend: Trend { 
+			join-column: uniqappid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			//  value-column: trend
+			value-column: const
+			
+		}
+		//disabled: Not BooleanPredicate(inenabled)
+		count-variable: nbvaults
+	}
+	
+	permsbyidentity = Dataset {
+		view: bwf_capermsbyidentity
+		with outapplicationuid to application_uid, inuid to id_uid
+		trend: Trend { 
+			join-column: perm_uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: trend
+		}
+		disabled: Not BooleanPredicate(inenabled)
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+													False to inshowaccounts, 
+													True to inshowperjob,
+													True to inshowperorg
+												  )
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False }
+		value:$fragmentIdentityCAVAultsRights360NLS.filteredto(application.displayname)
+	}
+	ConditionalGroup {
+		IntCondition(Count appsbyidentity) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityCAVaultsRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Grid {
+					layout: Layout fill: Both 								
+					columns: GridColumn { width: 300px }, GridColumn { width: 400px } 
+									
+					GridRow {
+					height:grow
+						GridCell {
+							Table {	
+							data: appsbyidentity
+							layout: Layout { grab: horizontal True vertical True }
+							label: Label { break: True }
+							show-filter: True
+							show-count: True
+			
+							Column {
+								column: app_uid
+								hidden: True
+								selection: outapplicationuid
+								}
+							Column {
+								column: app_displayname
+								selection: outapplicationname
+								header: $fragmentIdentityCAVAultsRights360NLS.vault
+								sortable: True
+								filterable: True
+								width: 30%
+								}
+							Column {
+								column: acc_login
+								header: $account.login
+								sortable: True
+								filterable: True
+								width: 100%
+								}
+							Column {
+						column: trends
+								header: $bw_fragment.trends
+								text:Transform Current trends using bwf_trendStatusColumn 
+								styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+								image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+								tooltip:$bwf_trendStatusColumnNLS.tooltip
+		
+								sortable: True
+								filterable: True
+								width: 10%
+								}												
+							} // End of table
+					
+					}		
+					// Groups by identity and application
+					GridCell {
+					
+					       // Permissions by identity 
+					    ConditionalGroup {
+					    	IntCondition(application.bwa_applicationanalytics_nbperimeter) {
+								when >0 then [
+									Table {
+										data: permsbyidentity
+										layout: Layout { grab: horizontal True vertical True }
+										label: Label { break: True }
+										show-filter: True
+										show-count: True
+										configurable:True
+										double-click:ExecuteNamedAction goDetails
+										
+																											
+										Column {
+											column: perm_uid
+											header: $fragmentIdentityCAVAultsRights360NLS.profilecode
+											hidden: True
+											selection: outpermissionuid
+										}
+										Column {
+											column: acc_login
+											header: $account.login
+											sortable: True
+											filterable: True
+											width: 50%
+										}
+										Column {
+											column: perm_permissiontype
+											header: $fragmentIdentityCAVAultsRights360NLS.type
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 5%
+										}
+										Column {
+											column: perm_code
+											header: $fragmentIdentityCAVAultsRights360NLS.profilecode
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_displayname
+											selection: outpermissionname
+											header: $fragmentIdentityCAVAultsRights360NLS.profilename
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_description
+											header: $fragmentIdentityCAVAultsRights360NLS.profiledescription
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivitylevel
+											header: $fragmentIdentityCAVAultsRights360NLS.sensitivitylevel
+											sortable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivityreason
+											header: $fragmentIdentityCAVAultsRights360NLS.sensitivityreason
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: action
+											header: $fragmentIdentityCAVAultsRights360NLS.action
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: limit
+											header: $fragmentIdentityCAVAultsRights360NLS.limit
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perimetercode
+											header: $fragmentIdentityCAVAultsRights360NLS.perimetercode
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perimeterdisplayname
+											header: $fragmentIdentityCAVAultsRights360NLS.perimetername
+											sortable: True
+											filterable: True
+											width: 100%
+										}
+										Column {
+											column: trends
+											header: $bw_fragment.trends
+											text:Transform Current trends using bwf_trendStatusColumn 
+											styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+											image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+											tooltip:$bwf_trendStatusColumnNLS.tooltip
+					
+											sortable: True
+											filterable: True
+											width: 10%
+										}																
+									} 
+								]
+								otherwise [
+									Table {
+										data: permsbyidentity
+										layout: Layout { grab: horizontal True vertical True }
+										label: Label { break: True }
+										show-filter: True
+										show-count: True
+										configurable:True
+										persist-configuration:True
+										double-click:ExecuteNamedAction goDetails
+										
+																											
+										Column {
+											column: perm_uid
+											header: $fragmentIdentityCAVAultsRights360NLS.profilecode
+											hidden: True
+											selection: outpermissionuid
+										}
+										Column {
+											column: acc_login
+											header: $account.login
+											sortable: True
+											filterable: True
+											width: 50%
+										}
+										Column {
+											column: perm_permissiontype
+											header: $fragmentIdentityCAVAultsRights360NLS.type
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 5%
+										}
+										Column {
+											column: perm_code
+											header: $fragmentIdentityCAVAultsRights360NLS.profilecode
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_displayname
+											selection: outpermissionname
+											header: $fragmentIdentityCAVAultsRights360NLS.profilename
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_description
+											header: $fragmentIdentityCAVAultsRights360NLS.profiledescription
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivitylevel
+											header: $fragmentIdentityCAVAultsRights360NLS.sensitivitylevel
+											sortable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivityreason
+											header: $fragmentIdentityCAVAultsRights360NLS.sensitivityreason
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: action
+											header: $fragmentIdentityCAVAultsRights360NLS.action
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: limit
+											header: $fragmentIdentityCAVAultsRights360NLS.limit
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: trends
+											header: $bw_fragment.trends
+											text:Transform Current trends using bwf_trendStatusColumn 
+											styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+											image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+											tooltip:$bwf_trendStatusColumnNLS.tooltip
+					
+											sortable: True
+											filterable: True
+											width: 10%
+										}																
+									} 
+								]					    	
+					    	}
+					    }
+						} // End of Gridcell
+					}// End of Gridrow	
+				} // End of Grid
+			]
+		}
+	}
+}
+
+
+
+
+fragmentIdentityCASafeRightsNLS = NLS {
+	empty [en "Identity doesn't have access to CybarArk Vaults" fr "Cette identité n'a pas d'accès à des vaults CyberArk"]
+}
+
+fragmentIdentityCASafeRights360NLS = NLS {
+	profilecode [en "Permission code" fr "Code permission"]
+	profilename [en "Permission" fr "Permission"]
+	profiledescription [en "Description" fr "Description"]
+	sensitivitylevel [en "Sensitivity" fr "Sensibilité"]
+	sensitivityreason [en "Sensitivity\nreason" fr "Raison\nSensibilité"]
+	action [en "Action" fr "Action"]
+	limit [en "Limit" fr "Limite"]
+	perimetercode [en "Perimeter\ncode" fr "Code\npérimètre"]
+	perimetername [en "Perimeter" fr "Périmètre"]
+	type [en "type" fr "type"]
+	filteredto [en "filtered to {0}" fr "filtré sur {0}"]
+	vault [en "Vault" fr "Vault"]
+	safe [en "Safe" fr "Safe"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the CyberArk Safes rights for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>intype </b>the permission types (Role by default)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>inapplicationuids </b>optional filter to display only some applications</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outapplicationuid </b>the selected application uid</li>
+ * <li><b>outapplicationname </b>the selected application name</li>
+ * <li><b>outpermissionuid </b>the selected permission uid  </li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityCASafesRights360 = PageFragment {
+	feature: All(pam_license, Any(governance_license, compliance_license))
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	intype = Variable {multivalued: True}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inapplicationuids = Variable {multivalued: True}
+
+	outapplicationuid = Variable
+	outapplicationname = Variable
+	outpermissionuid = Variable
+	outaccountuid = Variable
+	outpermissionname = Variable
+	
+	nbsafes = Variable
+	
+	application = Record {
+		view:bwf_applicationDetail with inapplicationuids to uid
+	}
+	
+	appsbyidentity = Dataset {
+		view: bwf_casafesbyidentity
+		with inuid to uid, inapplicationuids to applicationuids unless-empty
+		trend: Trend { 
+			join-column: uniqappid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			//  value-column: trend
+			value-column: const
+			
+		}
+		//disabled: Not BooleanPredicate(inenabled)
+		count-variable: nbsafes
+	}
+	
+	permsbyidentity = Dataset {
+		view: bwf_capermsbyidentity
+		with outapplicationuid to application_uid, inuid to id_uid
+		trend: Trend { 
+			join-column: perm_uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: trend
+		}
+		disabled: Not BooleanPredicate(inenabled)
+	}
+	
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_CApermissionDetailsDialog (
+					outpermissionuid to inuid,
+					outaccountuid to inaccountuids,
+					True to active_rights,
+					True to inshowaccountrights,
+					True to inshowaccounts,
+					True to inshowperjob,
+					True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False }
+		value:$fragmentIdentityCASafeRights360NLS.filteredto(application.displayname)
+	}
+	ConditionalGroup {
+		IntCondition(Count appsbyidentity) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityCASafeRightsNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+
+				Grid {
+					layout: Layout fill: Both 								
+					columns: GridColumn { width: 300px }, GridColumn { width: 400px } 
+									
+					GridRow {
+					height:grow
+						GridCell {
+							Table {	
+							data: appsbyidentity
+							layout: Layout { grab: horizontal True vertical True }
+							label: Label { break: True }
+							show-filter: True
+							show-count: True
+			
+							Column {
+								column: app_uid
+								hidden: True
+								selection: outapplicationuid
+								}
+							Column {
+								column: vault_displayname
+								header: $fragmentIdentityCASafeRights360NLS.vault
+								sortable: True
+								filterable: True
+								width: 40%
+								}
+							Column {
+								column: app_displayname
+								selection: outapplicationname
+								header: $fragmentIdentityCASafeRights360NLS.safe
+								actions: GoTo Activity CASafe Detail with Current app_uid to paramSafeUid save-state 
+								sortable: True
+								filterable: True
+								width: 60%
+								}
+							Column {
+								column: acc_login
+								header: $account.login
+								sortable: True
+								filterable: True
+								width: 100%
+								}
+							Column {
+								column: acc_uid
+								header: $account.uid
+								hidden: True
+								selection: outaccountuid
+							}								
+							Column {
+						column: trends
+								header: $bw_fragment.trends
+								text:Transform Current trends using bwf_trendStatusColumn 
+								styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+								image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+								tooltip:$bwf_trendStatusColumnNLS.tooltip
+		
+								sortable: True
+								filterable: True
+								width: 10%
+								}												
+							} // End of table
+					
+					}		
+					// Groups by identity and application
+					GridCell {
+					
+					       // Permissions by identity 
+					    ConditionalGroup {
+					    	IntCondition(application.bwa_applicationanalytics_nbperimeter) {
+								when >0 then [
+									Table {
+										data: permsbyidentity
+										layout: Layout { grab: horizontal True vertical True }
+										label: Label { break: True }
+										show-filter: True
+										show-count: True
+										configurable:True
+										double-click:ExecuteNamedAction goDetails
+										
+																											
+										Column {
+											column: perm_uid
+											header: $fragmentIdentityCASafeRights360NLS.profilecode
+											hidden: True
+											selection: outpermissionuid
+										}
+										Column {
+											column: acc_login
+											header: $account.login
+											sortable: True
+											filterable: True
+											width: 50%
+										}
+										Column {
+											column: perm_permissiontype
+											header: $fragmentIdentityCASafeRights360NLS.type
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 5%
+										}
+										Column {
+											column: perm_code
+											header: $fragmentIdentityCASafeRights360NLS.profilecode
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_displayname
+											selection: outpermissionname
+											header: $fragmentIdentityCASafeRights360NLS.profilename
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_description
+											header: $fragmentIdentityCASafeRights360NLS.profiledescription
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivitylevel
+											header: $fragmentIdentityCASafeRights360NLS.sensitivitylevel
+											sortable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivityreason
+											header: $fragmentIdentityCASafeRights360NLS.sensitivityreason
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: action
+											header: $fragmentIdentityCASafeRights360NLS.action
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: limit
+											header: $fragmentIdentityCASafeRights360NLS.limit
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perimetercode
+											header: $fragmentIdentityCASafeRights360NLS.perimetercode
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perimeterdisplayname
+											header: $fragmentIdentityCASafeRights360NLS.perimetername
+											sortable: True
+											filterable: True
+											width: 100%
+										}
+										Column {
+											column: trends
+											header: $bw_fragment.trends
+											text:Transform Current trends using bwf_trendStatusColumn 
+											styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+											image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+											tooltip:$bwf_trendStatusColumnNLS.tooltip
+					
+											sortable: True
+											filterable: True
+											width: 10%
+										}																
+									} 
+								]
+								otherwise [
+									Table {
+										data: permsbyidentity
+										layout: Layout { grab: horizontal True vertical True }
+										label: Label { break: True }
+										show-filter: True
+										show-count: True
+										configurable:True
+										persist-configuration:True
+										double-click:ExecuteNamedAction goDetails
+										
+																											
+										Column {
+											column: perm_uid
+											header: $fragmentIdentityCASafeRights360NLS.profilecode
+											hidden: True
+											selection: outpermissionuid
+										}
+										Column {
+											column: acc_login
+											header: $account.login
+											sortable: True
+											filterable: True
+											width: 50%
+										}
+										Column {
+											column: perm_permissiontype
+											header: $fragmentIdentityCASafeRights360NLS.type
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 5%
+										}
+										Column {
+											column: perm_code
+											header: $fragmentIdentityCASafeRights360NLS.profilecode
+											initially-masked:True
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_displayname
+											selection: outpermissionname
+											header: $fragmentIdentityCASafeRights360NLS.profilename
+											sortable: True
+											filterable: True
+											width: 100%
+											actions: ExecuteNamedAction goDetails
+											actions-disabled: Not BooleanPredicate(incanshowdetails)
+											tooltip: $search_page.showdetails
+										}
+										Column {
+											column: perm_description
+											header: $fragmentIdentityCASafeRights360NLS.profiledescription
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivitylevel
+											header: $fragmentIdentityCASafeRights360NLS.sensitivitylevel
+											sortable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: perm_sensitivityreason
+											header: $fragmentIdentityCASafeRights360NLS.sensitivityreason
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: action
+											header: $fragmentIdentityCASafeRights360NLS.action
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: limit
+											header: $fragmentIdentityCASafeRights360NLS.limit
+											sortable: True
+											filterable: True
+											width: 100%
+											initially-masked:True
+										}
+										Column {
+											column: trends
+											header: $bw_fragment.trends
+											text:Transform Current trends using bwf_trendStatusColumn 
+											styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+											image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+											tooltip:$bwf_trendStatusColumnNLS.tooltip
+					
+											sortable: True
+											filterable: True
+											width: 10%
+										}																
+									} 
+								]					    	
+					    	}
+					    }
+						} // End of Gridcell
+					}// End of Gridrow	
+				} // End of Grid
+			]
+		}
+	}
+}
+
+fragmentIdentityCAGraphRights360 = PageFragment {
+	feature: All(pam_license, Any(governance_license, compliance_license))
+	inuid = Variable
+	innbsafes = Variable { type: Integer }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outSelectionType = Variable
+
+	outSelectedcode = Variable
+	outSelectedlabel = Variable
+	outSelectedGroup = Variable
+	
+	outFromNode = Variable
+	outToNode = Variable
+	
+	accountuid = Variable
+	lastreconrecorduid = Variable
+
+	dataviz = Dataset {
+		view:bwcpam_tree_identity_ca with inuid to identity_uid, innbsafes to nbsafes
+		disabled:OrPredicate{
+			Not BooleanPredicate(inenabled)
+			StringPredicate(inuid) {
+				when IsEmpty then True
+				otherwise False
+			}
+		}
+	}
+	
+	lastrecon = Record {
+		view: br_reconciliation_recent with accountuid to accountuid
+	}
+
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: network
+		datasets:dataviz(target_uid, target_code, target_family, target_tooltip, source_uid, node, edge) to chartdata(code, label, group, description, parentcode, nodeattributes, edgeattributes)
+		bindings:
+			value-of False to hierarchical,
+			value-of 'box' to shape,
+			value-of 'LR' to hierarchical_direction,// UD, DU, LR, RL
+			value-of 2000 to textboxsize,
+			value-of True to navigationButtons
+		widget-events: {
+			when onclick then [
+				Set 'node' to outSelectionType,
+				Set Current code to outSelectedcode,
+				Set Current label to outSelectedlabel,
+				Set Current group to outSelectedGroup,
+				Set '' to outFromNode,
+				Set '' to outToNode,
+				StringCase ( Current group ) {
+					when "GROUP" then [ 
+						Dialog bwf_groupDetailsDialog ( Current code to inuid )
+					]
+					when "ACCOUNT" then [ 
+						Set Current code to accountuid,
+						Set lastrecon.recorduid to lastreconrecorduid, ReloadData ( lastrecon ),
+						Dialog bwf_accountDetailsDialog ( Current code to inuid , True to incanreconcile ),
+						ReloadData ( lastrecon ),
+						BooleanCase using SameValuePredicate ( lastrecon.recorduid , lastreconrecorduid ) in {
+							when False then [
+								ReloadData ( dataviz )
+							]
+							when True then []
+						}
+					]
+					when "IDENTITY" then [ 
+						Dialog bwf_identityDetailsDialog ( Current code to inuid )
+					]
+					when "ca_safe" then [ 
+						Dialog bwf_casafeDetailsDialog ( Current code to inuid )
+					]
+					when "ca_vault" then [ 
+						Dialog bwf_cavaultDetailsDialog ( Current code to inuid )
+					]
+					when "NBSAFES" then [ 
+						Dialog nbSafesDetailsDialog ( Current parentcode to inuid )
+					]
+					when "NBSAFESACCOUNT" then [ 
+						Dialog nbSafesAccountDetailsDialog ( Current parentcode to inuid )
+					]
+				}
+			]
+			when onedgeclick then [
+				Set 'edge' to outSelectionType,
+				Set Current _from to outFromNode,
+				Set Current _to to outToNode,
+				Set '' to outSelectedcode,
+				Set '' to outSelectedlabel,
+				Set '' to outSelectedGroup
+			]
+		}
+	}
+}
+
+nbSafesDetailsDialog = Dialog {
+	title:$bwf_groupDetailsDialogNLS.cyberark.safe
+	width:1366
+	height:720
+	buttons:OkButton
+						
+	inuid = Variable
+
+	Group {
+		IncludeFragment {
+			fragment:fragmentGroupCASafesRights
+			with value-of inuid to inuid, value-of False to incanshowdetails, value-of True to inenabled
+		}
+	}	
+}
+
+nbSafesAccountDetailsDialog = Dialog {
+	title:$bwf_accountDetailsDialogNLS.cyberark.safe
+	width:1366
+	height:720
+	buttons:OkButton
+						
+	inuid = Variable
+
+	Group {
+		IncludeFragment {
+			fragment:fragmentAccountCADirectSafesRights
+			with value-of inuid to inuid, value-of False to inallapps, value-of False to incanshowdetails, value-of True to inenabled
+		}
+	}	
+}

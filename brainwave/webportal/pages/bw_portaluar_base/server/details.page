@@ -1,0 +1,366 @@
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/repository/accounts.page"
+import "/webportal/pages/bw_fragments/repository/groups.page"
+import "/webportal/pages/bw_fragments/repository/usages.page"
+import "/webportal/pages/bw_fragments/repository/decisionhistory.page"
+import "/webportal/pages/bw_fragments/custom/serverExtendedDetails.page"
+
+import "/webportal/pages/bw_fragments/server/details.page"
+import "/webportal/pages/bw_fragments/server/shares.page"
+import "/webportal/pages/bw_fragments/server/fsrights.page"
+import "/webportal/pages/bw_fragments/server/analytics.page"
+import "/webportal/pages/bw_fragments/server/perorg.page"
+import "/webportal/pages/bw_fragments/server/perjob.page"
+import "/webportal/pages/bw_fragments/server/controls.page"
+
+import "/webportal/pages/bw_fragments/application/permissions.page"
+import "/webportal/pages/bw_fragments/application/rights.page"
+
+import "/webportal/pages/bw_portaluar_base/repository/details.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/styles/styles.page"
+
+serverDetailsPageNLS = NLS {
+	title [en "Server Details" fr "Détails du Serveur" ]
+	dynamictitle [en "Server Details {0}" fr "Détails du Serveur {0}" ]
+	server [en "Server" fr "Serveur"]
+	shares [en "Local shares" fr "Partages locaux"]
+	
+	accounts [en "Local accounts" fr "Comptes locaux"]
+	groups [en "Local groups" fr "Groupes locaux"]
+
+	permissions [en "Permissions" fr "Permissions"]
+	rights [en "Access Rights" fr "Droits d'accès"]
+	pusage [en "Permission usage" fr "Usage de la permission"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+	
+	notexists [
+		en "This server does not exist in the current timeslot, you should select a different timeslot"
+		fr "Ce serveur n'existe pas à la date courante, vous devriez choisir une autre date"
+	]
+}
+
+serverDetailsPageRecorduid = Page {
+	title: "Recorduid redirection (repository)"
+	conditional-redirect: ConditionalRedirect { condition: True target: Activity Repository Detail with repositoryUid.uid to paramRepositoryUid }
+	feature: All (serverdetails_access, pam_license, Any(governance_license, compliance_license))
+	
+	recorduid = Parameter {
+		type: Integer
+		hidden: True
+		recorduid-of: Repository
+		mandatory: True
+	}
+	
+	repositoryUid = Record {
+		view: br_repositoryDetail_uid with recorduid to recorduid
+	}
+}
+
+serverDetailsParkingPage = Page {
+	title: $serverDetailsPageNLS.title
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( repository.recorduid ) {
+					when InvalidInteger then False
+					otherwise True
+				}
+			target:
+				Page serverDetailsPage with-current-parameters
+		}
+	
+	paramRepositoryUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+
+	// Record for concept details
+	repository = Record {
+		view: bwf_repositoryDetail with paramRepositoryUid to uid
+	}
+
+	Header {
+		icon:%status_48.warning
+		value:$serverDetailsPageNLS.notexists
+		layout:Layout { indent:vertical 24 horizontal 0 }
+		styling:bigTitleStyle
+	}
+}
+
+serverDetailsPage = Page {
+	title: $serverDetailsPageNLS.title
+	dynamic-title: $serverDetailsPageNLS.dynamictitle ( repository.displayname )
+	icon: %concept.server
+	conditional-redirect:
+		ConditionalRedirect {
+			condition:
+				IntPredicate ( repository.recorduid ) {
+					when InvalidInteger then True
+				}
+			target:
+				Page serverDetailsParkingPage with-current-parameters
+		}
+	feature: All(pam_license, Any(governance_license, compliance_license))
+	mixins: detailsPage
+	enter-event:
+		IntCase(repository.bwa_repositoryanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+		IntCase(repository.bwa_repositoryanalytics_nbgroup) { when >0 then [ Set True to hasgroups ] },
+		IntCase(repository.bwa_repositoryanalytics_nbaccount) { when >0 then [ Set True to hasaccounts ] },
+		IntCase(repository.bwa_repositoryanalytics_nbshare) { when >0 then [ Set True to hasshares ] }, 
+		StringCase(serverapplication.uid) {
+			when Not IsEmpty then [
+				IntCase(serverapplication.bwa_applicationanalytics_nbpermission) { when >0 then [ Set True to haspermissions ] },
+				IntCase(serverapplication.bwa_applicationanalytics_nbdirectaccountright) { when >0 then [ Set True to hasrights ] },
+				IntCase(serverapplication.bwa_applicationanalytics_nbdirectidentityright) { when >0 then [ Set True to hasidentityrights ] }
+			]
+		},
+		Set nbControls._total to nbdefects
+	
+	// Parameters Here
+	paramRepositoryUid = Parameter {
+		type: String
+		hidden: True
+		mandatory: True
+	}
+	
+	// Variables Here
+	selectedRepositoryUid = Variable {
+		type: String
+		initial: paramRepositoryUid
+	}
+	
+	nbdefects = Variable
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+
+	nbdecision = Variable
+	hasshares = Variable { initial:False }
+	hasaccounts = Variable { initial:False }
+	hasgroups = Variable { initial:False }
+	haspermissions = Variable { initial:False }
+	hasrights = Variable { initial:False }
+	hasidentityrights = Variable { initial:False }
+	hasusages = Variable { initial:False }
+	
+	showextended = Variable { initial:False }
+
+	active_detail = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_access = Variable { initial:False multivalued:False type:Boolean }
+	active_server = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_permissions = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_sharesrights = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_analytics = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	// Dataset for Reports
+	repository = Record {
+		view: bwf_repositoryDetail with selectedRepositoryUid to uid
+	}
+	serverapplication = Record {
+		view: bwf_serverapplication with selectedRepositoryUid to uid
+	}
+	
+	// Number of control defects for current repository (avoid performance issues with defects fragment)
+	nbControls = Record {
+		view: bwf_repository_allcontroldefects_nb with selectedRepositoryUid to uid
+	}
+
+	Grid {
+		columns: GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical True }
+		GridRow {
+			height:grow
+			GridCell {
+				TabFolder {
+					border:True
+					layout:Layout { indent: horizontal 0 vertical 6 }
+					TabItem {
+						text:$repositoryDetailsPageNLS.details
+						activation-event:Set True to active_detail
+						TabFolder {
+							border:False
+							TabItem {
+								text:$serverDetailsPageNLS.server
+								activation-event:Set True to active_server
+								IncludeFragment {
+									fragment: fragmentServerFullDetails with
+										value-of selectedRepositoryUid to inuid,
+										value-of True to incanupdatedescription,
+										value-of True to incanupdateowners,
+										value-of True to incanupdatetags,
+										value-of Eval "active_detail.get() && active_server.get()" to inenabled
+								}
+							}
+							TabItem  {
+								text:$repositoryDetailsPageNLS.extended
+								hidden:Not BooleanPredicate(showextended)
+								activation-event: Set True to active_extended
+								
+								IncludeFragment (fragmentServerExtendedDetails with value-of selectedRepositoryUid to inuid, value-of Eval "active_detail.get() && active_extended.get()" to inenabled, showextended binds-to outdisplay )
+							}
+							TabItem {
+								text:$serverDetailsPageNLS.accounts
+								hidden:Not BooleanPredicate(hasaccounts)
+								activation-event:Set True to active_accounts
+
+								IncludeFragment {
+									fragment:fragmentRepositoryAccounts
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of True to incanreconcile, value-of True to incanshowdisabled, value-of True to inhidedisabled, value-of Eval "active_detail.get() && active_accounts.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$serverDetailsPageNLS.groups
+								hidden:Not BooleanPredicate(hasgroups)
+								activation-event:Set True to active_groups
+
+								IncludeFragment {
+									fragment:fragmentRepositoryGroupsSelection
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of Eval "active_detail.get() && active_groups.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$serverDetailsPageNLS.permissions
+								activation-event:Set True to active_permissions
+								hidden:Not BooleanPredicate(haspermissions) 
+							
+								IncludeFragment {
+									fragment:fragmentApplicationPermissionSelection
+									with value-of serverapplication.uid to inuid, value-of True to incanshowdetails, value-of True to incancompare, value-of Eval "active_detail.get() && active_permissions.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$serverDetailsPageNLS.shares
+								feature:unstructureddata_license
+								activation-event:Set True to active_shares
+								hidden:	Not BooleanPredicate(hasshares)
+
+								IncludeFragment {
+									fragment:fragmentServerShares
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_detail.get() && active_shares.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$repositoryDetailsPageNLS.access
+						activation-event:Set True to active_access
+
+						hidden:
+							AndPredicate {
+								OrPredicate {
+									Not FeaturePredicate unstructureddata_license
+									Not BooleanPredicate(hasshares)
+								}
+								Not BooleanPredicate(hasaccounts)
+								Not BooleanPredicate(hasrights)
+								Not BooleanPredicate(hasusages)
+							}
+						
+						TabFolder {
+							border:False
+
+							TabItem {
+								text:$serverDetailsPageNLS.rights
+								hidden:Not BooleanPredicate(hasrights)
+								activation-event:Set True to active_rights
+							
+								IncludeFragment {
+									fragment:fragmentApplicationRights
+									with value-of serverapplication.uid to inuid, value-of True to incanshowdetails, value-of True to incanreconcile,  value-of Eval "active_access.get() && active_rights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$serverDetailsPageNLS.oorigin
+								hidden:Not BooleanPredicate(hasaccounts) 
+								activation-event:Set True to active_perorg
+							
+								IncludeFragment {
+									fragment:fragmentServerPerOrg
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perorg.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$serverDetailsPageNLS.jorigin
+								hidden:Not BooleanPredicate(hasaccounts)
+								activation-event:Set True to active_perjob
+							
+								IncludeFragment {
+									fragment:fragmentServerPerJob
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_perjob.get()" to inenabled
+								}
+							}
+
+							TabItem {
+								text:$repositoryDetailsPageNLS.sharesrights
+								feature:unstructureddata_license
+								activation-event:Set True to active_sharesrights
+								hidden:	Not BooleanPredicate(hasshares)
+
+								IncludeFragment {
+									fragment:fragmentServerFSRights
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_sharesrights.get()" to inenabled
+								}
+							}
+							TabItem {
+								text:$repositoryDetailsPageNLS.usages
+								activation-event:Set True to active_usages
+								hidden:	Not BooleanPredicate(hasusages)
+
+								IncludeFragment {
+									fragment:fragmentRepositoryUsages
+									with value-of selectedRepositoryUid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_usages.get()" to inenabled
+								}
+							}
+						}
+					}
+					TabItem {
+						text:$repositoryDetailsPageNLS.controls
+						activation-event:
+							Set True to active_control
+						badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+						IncludeFragment {
+							fragment:fragmentServerAllControlDefectsList with
+								value-of selectedRepositoryUid to inuid,
+								value-of True to incanshowdetails,
+								value-of active_control to inenabled
+						}
+					}
+					TabItem {
+						text:$repositoryDetailsPageNLS.analytics
+						activation-event:Set True to active_analytics
+
+						IncludeFragment {
+							fragment:fragmentServerAnalytics
+							with value-of selectedRepositoryUid to inuid, value-of active_analytics to inenabled
+						}
+					}
+					TabItem {
+						text:$repositoryDetailsPageNLS.decisionhistory
+						//hidden:IntPredicate(nbdecision) { when >0 then False otherwise True }
+						activation-event:Set True to active_decision
+
+						IncludeFragment {
+							fragment:fragmentRepositoryDecisionHistory
+							with value-of selectedRepositoryUid to inuid, nbdecision binds-to outnbdecision, value-of active_decision to inenabled
+						}
+					}
+				}
+			}
+		}
+	}
+}

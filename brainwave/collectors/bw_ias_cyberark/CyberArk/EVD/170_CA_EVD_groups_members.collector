@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA groups members" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617040424525_1_nK3h2t7OMxIKLC8tluTePQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039877974_1">
+		<Component name="C1617203530230" type="groupmembers" x="35" y="684" w="300" h="64" title="CA vault group members">
+			<Group code="EVD_groupid" error="true" event="groupNotFound"/>
+			<Content members="member" error="true" event="memberNotFound"/>
+			<Domain isuniqueidentifier="false" repoerror="true" repoevent="memberRepositoryNotFound" separator="\"/>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="repositoryNotFound"/>
+		</Component>
+		<Component name="C1617039877974_1" type="discoverysource" x="35" y="32" w="300" h="64" title="EVD-GroupMembersList">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_GroupMembersList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-GroupMembersList.csv&apos;)}"/>
+		</Component>
+		<Link name="L1620240620001" source="C1617039877974_1" target="C1618241351848_2" priority="1"/>
+		<Component name="C1622216579006" type="groupfilter" x="35" y="579" w="300" h="64" title="group members">
+			<Criteria expression="{dataset.EVD_groupid.get()}"/>
+			<Multivalued>
+				<Value name="M1637314046158" attribute="member"/>
+			</Multivalued>
+		</Component>
+		<Component name="C1618240637334_1" type="discoverysource" x="480" y="259" w="300" h="64" title="CA_users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_UsersList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-UsersList.csv&apos;)}"/>
+			<Request/>
+		</Component>
+		<Component name="C1618241399441_1" type="discoverysource" x="472" y="379" w="300" h="64" title="CA_groups_2">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_GroupsList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-GroupsList.csv&apos;)}"/>
+			<Request/>
+		</Component>
+		<Component name="C1618241629328_1" type="changefilter" x="35" y="473" w="300" h="64" title="member id and repo">
+			<Actions>
+				<Action name="U1618241684453" action="add" attribute="object_id" type="String" multivalued="false" errorexist="false" newvalue="{(! dataset.isEmpty(&apos;ca_user_name&apos;)) ? dataset.ca_user_name.get() : ( (! dataset.isEmpty(&apos;ca_group_name&apos;)) ? dataset.ca_group_name.get() : dataset.EVD_userid.get())}" description="if safe memeber is LDAP User or Group get the DN"/>
+				<Action name="U1618241693608" action="add" attribute="object_repo" type="String" multivalued="false" errorexist="false" newvalue="{(! dataset.isEmpty(&apos;ca_user_userdn&apos;)) ? dataset.ca_user_repository_code.get() : ( (! dataset.isEmpty(&apos;ca_group_dn&apos;)) ? dataset.ca_group_repository_code.get() : dataset._REPOSITORY_CODE_)}" description="if memeber is LDAP User or Group get the domain name"/>
+				<Action name="U1637283128197" action="add" attribute="member" type="String" multivalued="true" newvalue="{dataset.object_repo.get().concat(&apos;\\&apos;).concat(dataset.object_id.get())}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1618240531515_1" type="joinfilter" x="35" y="259" w="300" h="64" title="Join members with users">
+			<Join source="C1618240637334_1" zeroerror="true" zerotechnical="true" zeroevent="join_fails"/>
+			<Attributes>
+				<Attribute name="A1622242507819" attribute="ca_user_repository_code" source="repository_code" type="String" multivalued="false"/>
+				<Attribute name="A1637282856040" attribute="ca_user_name" source="EVD_username" type="String" multivalued="false"/>
+				<Attribute name="A1637313284612" attribute="ca_user_userdn" source="EVD_ldapfulldn" type="String" multivalued="false"/>
+			</Attributes>
+			<Cache active="true" main="EVD_userid" join="EVD_userid"/>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Component name="C1618241351848_1" type="joinfilter" x="35" y="379" w="300" h="64" title="Join members with groups">
+			<Attributes>
+				<Attribute name="A1622243146797" attribute="ca_group_repository_code" source="repository_code" type="String" multivalued="false"/>
+				<Attribute name="A1637282911043" attribute="ca_group_name" source="EVD_groupname" type="String" multivalued="false"/>
+				<Attribute name="A1637313314414" attribute="ca_group_dn" source="EVD_ldapfulldn" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1618241399441_1"/>
+			<Cache active="true" main="EVD_userid" join="EVD_groupid"/>
+		</Component>
+		<Link name="L1618241370427_1" source="C1618240531515_1" target="C1618241351848_1" priority="1"/>
+		<Link name="L1618240649870_1" source="C1618240637334_1" target="C1618240531515_1" priority="1"/>
+		<Link name="L1618242352551_1" source="C1618241351848_1" target="C1618241629328_1" priority="1"/>
+		<Link name="L1618241408108_1" source="C1618241399441_1" target="C1618241351848_1" priority="1"/>
+		<Link name="L1637258892093" source="C1618241629328_1" target="C1622216579006" priority="1"/>
+		<Component name="C1618241399441_2" type="discoverysource" x="485" y="137" w="300" h="64" title="CA_groups_1">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_GroupsList.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_EVD-GroupsList.csv&apos;)}"/>
+			<Request/>
+		</Component>
+		<Component name="C1618241351848_2" type="joinfilter" x="35" y="136" w="300" h="64" title="ignore ldap groups">
+			<Attributes>
+				<Attribute name="A1637276290232" attribute="source" source="source" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1618241399441_2"/>
+			<Cache active="true" main="EVD_groupid" join="EVD_groupid"/>
+		</Component>
+		<Link name="L1618241408108_2" source="C1618241399441_2" target="C1618241351848_2" priority="1"/>
+		<Link name="L1637275893059" source="C1618241351848_2" target="C1618240531515_1" priority="1" expression="(! dataset.equals(&apos;source&apos;, &apos;directory&apos;, false, true))" labelcustom="true" label="Vault group (not LDAP)"/>
+		<Link name="L1637313430955" source="C1622216579006" target="C1617203530230" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

@@ -1,0 +1,63 @@
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>Animated bar chart</title>
+
+	<link rel="stylesheet" type="text/css" href="animatedbarchart.css" />
+	<script src="d3.min.js"></script>
+
+	<script type="text/javascript">
+
+		window.onload = function () {
+
+			// parameters
+			var params = {};
+			window.location.search.substr(1).split("&").forEach(function (i) { params[i.split('=')[0]] = i.split('=')[1] });
+			var value = params["currentval"];
+			var total = params["currenttotal"];
+			var totalWidth = params["totalwitdh"];
+			var barwitdth = (value * totalWidth) / total + 2;
+			var perc = parseInt((value / total) * 100) + " %";
+
+			// SVG container
+			var svg = d3.select("#canvas")
+				.append("svg")
+				.attr("width", "100%")
+				.attr("height", "100%");
+
+
+			// Create initial bar with half width
+			var bar = svg.append("rect")
+				.attr("x", 2)
+				.attr("y", 4)
+				.attr("width", totalWidth / 2)
+				.attr("height", 32)
+				.attr("fill", "#4F9E8C")
+				.attr("stroke", "#4F9E8C");
+
+			bar.transition()
+				.duration(800)
+				.attr("width", barwitdth)
+				.on("end", function () {
+					// Add percentage text after animation completes
+					svg.append("text")
+						.attr("x", barwitdth + 30)
+						.attr("y", 18)
+						.text(perc)
+						.attr("font-size", 16)
+						.attr("font-family", "Anton,Impact,Arial Black,Gadget,sans-serif")
+						.attr("fill", "#626262")
+						.attr("dominant-baseline", "middle");
+				});
+		}
+	</script>
+</head>
+
+<body>
+	<div id="canvas"></div>
+</body>
+
+</html>

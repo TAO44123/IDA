@@ -1,0 +1,75 @@
+import "/webportal/pages/bw_portaluar_base/permission/search.page"
+import "/webportal/pages/bw_portaluar_base/permission/details.page"
+
+Activity {
+	concept: Permission
+	kind: Search
+	to: Page permissionSearchPage
+}
+
+Activity {
+	concept: Permission
+	kind: Detail
+	priority:1000
+	to: Page permissionDetailsPageDispatcher
+}
+
+/**
+ * Redirect to the right activity depending on the [application family].[permission type], application family or application type
+ * if you want to override permission type when application family is empty, set your discriminator to *.[permission type]
+ */
+permissionDetailsPageDispatcher = Page {
+	title: ''
+	conditional-redirect:
+		// test to avoid infinite loops...
+		ConditionalRedirect {
+			// starts with permissiontype
+			condition: IntPredicate(paramCounter) {	when =0 then True otherwise False }
+			 target:Activity Permission (value-of Concat(NonEmpty(permission.application_applicationfamily,'*'),'.', permission.permissiontype)) Detail with 
+														paramPermissionUid to paramPermissionUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														1 to paramCounter
+		},
+		ConditionalRedirect {
+			// tries with applicationfamily
+			condition: IntPredicate(paramCounter) {	when =1 then True otherwise False }
+			 target:Activity Permission (value-of permission.application_applicationfamily) Detail with 
+														paramPermissionUid to paramPermissionUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														2 to paramCounter
+		},
+			// tries applicationtype then
+		ConditionalRedirect {
+			condition: IntPredicate(paramCounter) {	when =2 then True otherwise False }
+			 target:Activity Permission (value-of permission.application_applicationtype) Detail with 
+														paramPermissionUid to paramPermissionUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														3 to paramCounter
+		},
+			// fall back to the default, legacy detail page 
+		ConditionalRedirect {
+			condition: IntPredicate(paramCounter) {	when >2 then True otherwise False }
+			target:Page permissionDetailsPage with-current-parameters
+		}
+	
+	
+	paramPermissionUid = Parameter {type: String hidden: True mandatory: True}
+	paramSearchMode = Parameter {type: Boolean hidden: True	default: False}
+	paramInitialIndex = Parameter {type: Integer hidden: True}
+	paramCounter = Parameter {type: Integer hidden: True mandatory:False default:0}
+
+	permission = Record { view: br_permissionDetail with paramPermissionUid to uid }
+}
+
+/*
+ * Application type detail page
+ */
+Activity {
+	concept: Permission
+	kind: Detail
+	discriminator:"Profile" 
+	to: Page permissionDetailsPage
+}

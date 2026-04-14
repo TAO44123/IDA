@@ -1,0 +1,472 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/control/details/controlDetails.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+/* Nationalized labels here */
+access360analytics_identityprbNLS = NLS {
+	title [en "Identity list with controls defects" fr "Liste des identités et de leurs écarts de contrôle"]
+	description [
+		en "This report presents the identities along with their controls defects.You can configure the columns or export the data by right clicking on the table."
+		fr "Ce rapport présente la liste des identités avec pour chacune les écarts de contrôle constatés. Vous pouvez configurer les colonnes ou exporter les données à l'aide d'un clic droit sur la table."
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+
+	risklevel [en "Risk level" fr "Niveau de risque"]
+	riskinfo [en "Risk info" fr "Informations sur le risque"]
+	suggestedmitigation [en "Suggested mitigation" fr "Remédation suggérée"]
+	
+	controlscope [en "Control scope" fr "Portée du controle"]
+	minimumrisklevel [en "Minimum risk level" fr "Niveau de risque minimum"]
+}
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ''
+	otherwise current
+}
+
+access360analytics_identityprb = Page {
+	title: $access360analytics_identityprbNLS.title
+	tags: "identity", "searchresults"
+	description:$access360analytics_identityprbNLS.description
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwsa_identityidentityprb
+	dock-left:Dock {
+		width:300
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_resourcesNLS.localfiltertitle
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	comparisontimeslot inline,		
+						exclRemoved inline,
+						exclSimilar inline,
+						minimumrisklevel inline,
+						controlscope inline,
+						controls inline
+		}
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_identity_FilterEdition(SerializeSearch search to identitySearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Identity Search with SerializeSearch search to identitySearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	comparisontimeslot = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:String
+		label:$session_comparisonTimeslotTeam360NLS.label
+		tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+		constraint:Lookup {
+			data:session_comparisontimeslots
+			text:Current commitdate
+			value:Current uid
+		}
+	}
+	exclRemoved = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:True
+		label:$session_exclRemovedNLS.label
+		tooltip:$session_exclRemovedNLS.tooltip
+	}
+	exclSimilar = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:False
+		label:$session_exclSimilarNLS.label
+		tooltip:$session_exclSimilarNLS.tooltip
+	}
+	controls = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:True
+		type:String
+		label:$controlresult.concept
+		constraint:Lookup {
+			data:controlslist
+			text:Current controldisplayname
+			value:Current controlcode
+		}
+	}
+	controlscope = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:True
+		type:String
+		label:$access360analytics_identityprbNLS.controlscope
+		constraint: Choice {
+			values:["Account","Identity"]
+		}
+	}
+	minimumrisklevel = Parameter {
+		label:$access360analytics_identityprbNLS.minimumrisklevel
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Integer
+		constraint: Choice {
+			values:[
+				'':' ',
+				4:$bwf_ControlLevel_NLS._4,
+				3:$bwf_ControlLevel_NLS._3,
+				2:$bwf_ControlLevel_NLS._2,
+				1:$bwf_ControlLevel_NLS._1,
+				0:$bwf_ControlLevel_NLS._0
+			]
+		}
+	}
+	search = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+	
+	/* Variables here */
+	outidentityuid = Variable
+	outaccountuid = Variable
+	outcontrolcode = Variable
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	/* Datasets and records here */
+	controlslist = Dataset {
+		view:access360r_identityctrllist
+	}
+	
+	data = Dataset {
+		search: Search {
+			view:a360s_identityctrl_bv with controls to controls unless-empty, controlscope to controlscope unless-empty, minimumrisklevel to minimumrisklevel unless-empty, comparisontimeslot to comparisontimeslot unless-empty, exclRemoved to excluderemoved, exclSimilar to excludesimilar
+			definition:search
+		}
+
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(exclSimilar)
+			}
+		}
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	repositories = Dataset {
+		search: Search {
+			view:access360r_identityaccountrepos
+			definition:search
+		}
+	}
+
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid,
+												True to inshowaccounts,
+												True to inshowapplications,
+												True to inshowbusinessactivities,
+												True to inshowcontrols,
+												True to inshowoverallocated,
+												True to inshowdecisionhistory,
+												True to inshowposition,
+												True to inshowshares,
+												True to inshowtheoretical
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goControlDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_controlDetailsDialog(outcontrolcode to incontrolcode, outaccountuid to inaccountuid, outidentityuid to inidentityuid)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												True to inshowgroups,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowowner,
+												True to inshowdecisionhistory,
+												True to inshowcontrols
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	/* Page content */
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+
+				PaginatedTable {
+					data:data
+					layout:Layout { grab: horizontal True vertical True }
+					configurable:True
+					page-size:1000
+					//show-count:True
+					show-filter:True
+					double-click:ExecuteNamedAction goAccountDetails
+					persist-configuration:True
+					show-count-button: True
+			
+					Column {
+						column:identityuid
+						hidden:True
+						selection:outidentityuid
+					}
+			
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 when 'Invalid' then tartimeline_highlightremoved360 } text:Transform Current status using tarmapping360 }
+			
+					Column {
+						column:controlentity
+						header:$access360analytics_identityprbNLS.controlscope
+						width:120px
+						sortable:True
+					}
+
+					Column {
+						column:identityhrcode
+						header:$identity.hrcode
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identityfullname
+						header:$identity.fullname
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identitymail
+						header:$identity.mail
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						header:$identity.internal
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:identityarrivaldate
+						header:$identity.arrivaldate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:identitydeparturedate
+						header:$identity.departuredate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:organisationshortname
+						header:$porganisation.shortname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:organisationdisplayname
+						header:$organisation.concept
+						sortable:True
+						width:160px
+						initially-masked:True
+					}
+			
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						width:128px
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountusername
+						header:$paccount.username
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						initially-masked:True
+						sortable:True
+						filterable:True
+						width:128px
+					}
+			
+					Column {
+						column:repositorydisplayname
+						header:$repository.concept
+						initially-masked:True
+						sortable:True
+						filterable:True
+						width:160px
+					}
+
+					Column {
+						column:reconnoownercode
+						header:$reconciliation.status.noowner
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:reconleavedate
+						header:$reconciliation.leavedate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:controlcode
+						selection:outcontrolcode
+						hidden:True
+					}
+					Column {
+						column:controldisplayname
+						header:$pcontrolresult.controldisplayname
+						sortable:True
+						filterable:True
+						width:100%
+
+						actions: ExecuteNamedAction goControlDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:risklevel
+						header:$access360analytics_identityprbNLS.risklevel
+						image:TemplateImageSelection(Current risklevel) using bwf_controllevel
+						width:120px
+						sortable:True
+					}
+				}
+			}
+		}
+	}
+}

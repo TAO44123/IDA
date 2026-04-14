@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bws_application_rights" prefix="application" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="application" displayname="activeaccounts" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="0" data="SAP_ERP_1639568866319_33516"/>
+	</ViewParam>
+	<ViewParam name="permissiontype" displayname="permissiontype" type="String" defaultvalue="{(config.ias_permissionroletype!=null &amp;&amp; config.ias_permissionroletype.trim().length&gt;0)?config.ias_permissionroletype:&quot;Role&quot;}"/>
+	<ViewComputedAttribute name="val" displayname="val" type="Integer" expression="1"/>
+	<ViewComputedAttribute name="rightkey" displayname="rightkey" type="String" expression="dataset.accountuid.get()+&apos;$$&apos;+dataset.permissionuid.get()"/>
+	<ViewComputedAttribute name="identitykey" displayname="identitykey" type="String" expression="dataset.identityuid.get()+&apos;$$&apos;+dataset.permissionuid.get()"/>
+	<ViewComputedAttribute name="reconciliationstatus" displayname="reconciliationstatus" type="String" expression="(dataset.isEmpty(&apos;_accountdisabled&apos;)||!dataset._accountdisabled.get())?dataset.isEmpty(&apos;reconciliationrecorduid&apos;)?&apos;orphan&apos;:!dataset.isEmpty(&apos;identityuid&apos;)?&apos;user&apos;:dataset.reconciliationnoownercode.get().equals(&apos;leave&apos;)?&apos;leave&apos;:&apos;technical&apos;:&apos;&apos;"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.accountuid.get()+&apos;$$&apos;+dataset.permissionuid.get()+(dataset.isEmpty(&apos;perimeteruid&apos;)?&apos;&apos;:(&apos;$$&apos;+dataset.perimeteruid.get()))"/>
+	<ViewComputedAttribute name="accountdisabled" displayname="accountdisabled" type="Boolean" expression="dataset.isEmpty(&apos;_accountdisabled&apos;)?false:dataset._accountdisabled.get()"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="A1639056785340_821" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1639070638215_0" reference="uid" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1640182073809_2067" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+		<ViewAttribute name="A1640182165175_2162" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1640182165759_2163" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1640182166346_2164" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1640182167162_2165" attribute="permissiontype" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1640340234204_0" reference="permissiontype" operation="in" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1640182196158_2166" attribute="bwa_permissionmetadata_descr" alias="permissiondescription" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="A1640182207206_2167" attribute="bwa_permissionmetadata_sensitivitylevel" alias="permissionsensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewAttribute name="A1640182207754_2168" attribute="bwa_permissionmetadata_sensitivityreason" alias="permissionsensitivityreason" operator="or" removedfromprojection="false" globalfilter="true"/>
+		<ViewJoin name="J1640340086656_669" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="directpermright">
+			<ViewAttribute name="1640340096114_675" attribute="perimeteruid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1640340096117_676" attribute="perimetercode" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1640340096120_677" attribute="perimeterdisplayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1640340096122_678" attribute="action" alias="rightaction" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1640340096125_679" attribute="limit" alias="rightlimit" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1640182100999_2070" prefix="account" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+				<ViewJoin name="J1639056990954_846" prefix="reconciliation" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="reconciliation">
+					<ViewAttribute name="1640340100301_727" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1640340100302_728" attribute="noownercode" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewAttribute name="1640340100302_729" attribute="leavedate" operator="or" removedfromprojection="false" globalfilter="false"/>
+					<ViewJoin name="J1639057056848_855" prefix="identity" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="identity">
+						<ViewAttribute name="1640340100302_730" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100303_731" attribute="hrcode" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100303_732" attribute="givenname" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100303_733" attribute="surname" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100303_734" attribute="fullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100304_735" attribute="mail" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100304_736" attribute="employeetypedisplayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100304_737" attribute="arrivaldate" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100304_738" attribute="departuredate" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100304_739" attribute="active" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100305_740" attribute="internal" operator="or" removedfromprojection="false" globalfilter="false"/>
+						<ViewAttribute name="1640340100305_741" attribute="bwa_identityanalyticsdata_joborg" alias="identityjoborg" operator="or" removedfromprojection="false" globalfilter="true"/>
+					</ViewJoin>
+					<ViewAttribute name="1640340100306_742" attribute="recorduid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				</ViewJoin>
+				<ViewJoin name="J1639146945679_1231" prefix="repository" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+					<ViewAttribute name="1640340100307_743" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				</ViewJoin>
+				<ViewAttribute name="1640340100307_744" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100307_745" attribute="identifier" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100308_746" attribute="login" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100308_747" attribute="givenname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100309_748" attribute="surname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100309_749" attribute="username" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100309_750" attribute="employeenumber" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100310_751" attribute="mail" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100310_752" attribute="creationdate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100310_753" attribute="lastlogindate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100310_754" attribute="passwordlastsetdate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100310_755" attribute="expiredate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100311_756" attribute="nextpwdchangedate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100311_757" attribute="lastmodificationdate" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100311_758" attribute="disabled" alias="_accountdisabled" operator="or" removedfromprojection="false" globalfilter="false">
+					<ViewAttributeFilter name="F1640195756722_0" operation="isNull" ignoreifempty="false"/>
+					<ViewAttributeFilter name="F1640195759829_1" operation="isFalse" ignoreifempty="false"/>
+				</ViewAttribute>
+				<ViewAttribute name="1640340100312_759" attribute="locked" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100312_760" attribute="logincount" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100313_761" attribute="badpasswordcount" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100313_762" attribute="privilegedaccount" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100313_763" attribute="bwa_accountmetadata_sensitivitylevel" alias="accountsensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+				<ViewAttribute name="1640340100313_764" attribute="bwa_accountanalytics_riskrank" alias="accountriskrank" operator="or" removedfromprojection="false" globalfilter="true"/>
+				<ViewAttribute name="1640340100313_765" attribute="passwordexpired" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100314_766" attribute="dontexpirepassword" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100314_767" attribute="smartcardrequired" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100314_768" attribute="passwordcantchange" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1640340100314_769" attribute="passwordnotrequired" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

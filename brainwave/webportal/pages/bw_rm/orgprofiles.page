@@ -1,0 +1,194 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_rm/rolemining_dialogs.page"
+import "/webportal/pages/bw_rm/reports/orgprofilesmining_roleperrole.page"
+
+/*  Activity Page for Organisations
+ * Table of all candidate roles for a given organisation, with detail of permissions and identities for each role 
+ */
+
+
+bwpm_orgprofilesNLS = NLS {
+	title [en "Roles candidates" fr "Candidats pour les rôles"]
+	dyntitle [en "Roles candidates for {0}" fr "Candidats pour les rôles de {0}"]
+	desc [
+	 en "This report lists the possible roles that would be assigned to identities that belong to this organization, with regards to the Role Mining campaigns conducted within this portal. 
+After a click on one of the roles listed, it is possible to see the list of permissions embedded in the role, and the list of identities to which this role could be assigned as a role candidate."
+	 fr "Ce rapport présente la liste des rôles qui pourraient être affectés à des identités appartenant à cette organisation, suite aux campagnes de Role Mining effectuées au sein de ce portail.
+En cliquant sur un des rôles, il est possible de visualiser les permissions qui en font partie ainsi que l'ensemble des personnes candidates à l'affectation de ces rôles."
+	]
+}
+
+bwpm_orgprofiles = Page {
+	title: $bwpm_orgprofilesNLS.title
+	dynamic-title: $bwpm_orgprofilesNLS.dyntitle(organisation.displayname) 
+	description: $bwpm_orgprofilesNLS.desc
+	tags:  "organisation" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(bwpm_browsingreports, Any(governance_license, compliance_license))
+	
+	/* Parameters here */
+	uid = Parameter {
+		label:"Organisation Uid" 
+		type:String
+	}
+
+	// Related to Search Navigator	
+	paramSearchMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: False
+	}
+	// Related to Search Navigator	
+	organisationSearch = SearchDefinition {
+		entity: Organisation
+		simple-mode-rule: br_organisation_simple_search
+	}
+	
+	// Related to Search Navigator
+	currentOrganisation = Variable {
+		type: String
+		initial: uid
+	}
+	
+	selectedRole = Variable
+	
+	// Empty uid when search mode
+	nonEmptyUid = Variable { type: String }
+	
+	// Related to Search Navigator	
+	organisationList = Dataset {
+		search: Search {
+			definition: organisationSearch
+			view: br_organisation_searchpoint with nonEmptyUid to uid
+		}
+	}
+	
+	organisation = Record {
+		view:br_organisation_picker with currentOrganisation to paramUid
+	}
+
+	roles = Dataset {
+		view:bwpm_rolelist_perorg_md with currentOrganisation to organisationuid disable-cache: True
+	}
+	
+	identitiesinrole = Dataset {
+		view:bwpm_getroleidentities_md with selectedRole to rolecode
+	}	
+	permissionsinrole = Dataset {
+		view:bwpm_getrolepermissions_md with selectedRole to rolecode
+	}	
+	
+	/* Page content */
+
+	Group{
+		layout: Layout { grab: horizontal False vertical False align: horizontal Center vertical Beginning }
+		Spacer {
+			height: 11
+			hidden: Not BooleanPredicate(paramSearchMode)
+		}
+		SetNavigator {
+			data: organisationList
+			column: uid
+			selection: currentOrganisation
+			back-link: Activity Organisation Detail with currentOrganisation to paramOrganisationUid , SerializeSearch organisationSearch to organisationSearch, paramSearchMode to paramSearchMode
+			initial: uid
+			show-count: True
+			show-first: True
+			show-last: True
+			count-width: 150
+			hidden: Not BooleanPredicate(paramSearchMode)
+		}
+	}
+	
+	Splitter {
+		disposition:Vertical
+		Group {
+			Table {
+				data:roles
+				layout:Layout {grab:horizontal True vertical True}
+				double-click:GoTo Page bwpm_orgprofilesmining_roleperrole with uid to uid, Current rolecode to selectedRole
+				
+				Column {
+					column:rolecode
+					header: $permminingNLS.rolecode
+					width:200px
+					selection:selectedRole
+				}
+				Column {
+					column:rolename
+					header:$permminingNLS.rolename
+					width:200px
+				}
+				Column {
+					column:description
+					header:$permminingNLS.roledesc
+					width:100%
+				}
+			}
+		}
+		Group {
+			Splitter {
+				disposition:Horizontal
+				Group {
+					Table {
+						data:permissionsinrole
+						layout:Layout {grab:horizontal True vertical True}
+						configurable:True
+						double-click:GoTo Activity Permission Detail with Current uid to paramPermissionUid
+						label:Label {
+							break:True
+							value:$permminingNLS.permselectrole
+						}
+						
+						Column {
+							column:code
+							header:$permminingNLS.permcode
+							width:200px
+						}
+						Column {
+							column:displayname
+							header:$permminingNLS.permname
+							width:200px
+						}
+						Column {
+							column:applicationdisplayname
+							header:$permminingNLS.app
+							width:200px
+						}
+					}
+				}
+				Group {
+					Table {
+						data:identitiesinrole
+						layout:Layout {grab:horizontal True vertical True}
+						configurable:True
+						double-click:GoTo Activity Identity Detail with Current uid to paramIdentityUid
+						label:Label {
+							break:True
+							value:$permminingNLS.idwithrole
+						}
+						
+						Column {
+							column:hrcode
+							header:$permminingNLS.hrcode
+							width:200px
+						}
+						Column {
+							column:fullname
+							header:$permminingNLS.fullname
+							width:200px
+						}
+						Column {
+							column:mail
+							header:$permminingNLS.mail
+							width:200px
+						}
+					}
+				}
+			}		
+		}
+	}
+}

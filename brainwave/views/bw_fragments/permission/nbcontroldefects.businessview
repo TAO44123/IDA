@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_permissionallcontroldefects_nb" displayname="Number of permission control defects">
+	<Definition scriptfile="/views/bw_fragments/permission/allcontroldefects.javascript" name="D1585318737660" description="Number of permission control defects">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1585318737659" title="Permission detail">
+			<InnerView name="bwf_permissionDetail">
+				<Param name="F1585318816441" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1637770240710" type="joinview" x="806" y="190" w="300" h="50" title="# Account defects">
+			<InnerView name="bwf_permissionaccountcontroldefects_nb" prefix="acc_">
+				<Param name="F1637770258803" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637770263825" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.acc_perm_uid.get()}"/>
+		</Component>
+		<Link name="L1637770241041" source="C1585318737659" target="C1637770240710" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637770271392" type="joinview" x="666" y="305" w="300" h="50" title="# Identity defects">
+			<InnerView name="bwf_permissionidentitycontroldefects_nb" prefix="idt_">
+				<Param name="F1637770289054" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637770294321" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.idt_perm_uid.get()}"/>
+		</Component>
+		<Link name="L1637770271778" source="C1637770240710" target="C1637770271392" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1637770316310" type="joinview" x="731" y="345" w="300" h="50" title="# Permission defects">
+			<InnerView name="bwf_permissioncontroldefects_nb" prefix="perm_">
+				<Param name="F1637770355458" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1637770361136" viewparam="minimumrisklevel" viewparamvalue="{param.minimumrisklevel.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.perm_permissionuid.get()}"/>
+			<ViewComputedAttribute name="_total" displayname="Total number of defects" type="Integer" expression="( dataset.isEmpty( &apos;perm_nb&apos; ) ? 0 : dataset.perm_nb.get() ) + ( dataset.isEmpty( &apos;acc_nb&apos; ) ? 0 : dataset.acc_nb.get() ) + ( dataset.isEmpty( &apos;idt_nb&apos; ) ? 0 : dataset.idt_nb.get() )"/>
+		</Component>
+		<Link name="L1637770316732" source="C1637770271392" target="C1637770316310" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="V1586098745136_1" data="RC_EXPERTCOMPTA_1576503457416_193019"/>
+	</ViewParam>
+	<ViewSort name="sort" attribute1="controlrisklevel" direction1="DESC" attribute2="controldisplayname" attribute3="accountlogin" attribute4="identityfullname"/>
+	<ViewParam name="minimumrisklevel" displayname="minimumrisklevel" type="Integer"/>
+</View>

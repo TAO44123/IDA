@@ -1,0 +1,120 @@
+/* Import other pages here */
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+/* Nationalized labels here */
+bwg_demoparallelsetNLS = NLS {
+	title [en "HTML ParallelSet Widget Demo" ]
+}
+
+/**
+ * A simple showcase of Parallel Set
+ * see "tree.page" for the documentation of the parameters
+ * 
+ */
+bwg_parallelset = Page {
+	title: $bwg_demoparallelsetNLS.title
+	feature:htmlwidgets_showcase
+	tags:"demo"
+	
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	activity = Variable
+	transaction = Variable
+	srole = Variable
+	crole = Variable
+	
+	/* Datasets and records here */
+	testparallelset = Dataset {
+		view:htmlwidgets_testparallelset with 
+			activity to activitycode unless-empty,
+			transaction to transactioncode unless-empty,
+			srole to srolecode unless-empty,
+			crole to crolecode unless-empty
+	}
+	
+	/* Page content */
+	Header {value:"Double click on a category value to zoom in"}
+	Grid {
+		layout:Layout {grab: horizontal True vertical False hint: height 32}
+		columns:GridColumn,GridColumn,GridColumn,GridColumn
+		GridRow {
+			GridCell {
+				Edit {
+					variable:activity
+					label:"filter by activity"
+					disabled:True
+					commands: Command { actions:Set '' to activity icon:'16/famfamfam_silk_icons_v013/cancel.png' tooltip:'clear content' }
+				}
+			}
+			GridCell {
+				Edit {
+					variable:transaction
+					label:"filter by transaction"
+					disabled:True
+					commands: Command { actions:Set '' to transaction icon:'16/famfamfam_silk_icons_v013/cancel.png' tooltip:'clear content' }
+				}
+			}
+			GridCell {
+				Edit {
+					variable:srole
+					label:"filter by simple role"
+					disabled:True
+					commands: Command { actions:Set '' to srole icon:'16/famfamfam_silk_icons_v013/cancel.png' tooltip:'clear content' }
+				}
+			}
+			GridCell {
+				Edit {
+					variable:crole
+					label:"filter by composite role"
+					disabled:True
+					commands: Command { actions:Set '' to crole icon:'16/famfamfam_silk_icons_v013/cancel.png' tooltip:'clear content' }
+				}
+			}
+		}
+		
+	}
+	
+	
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: parallelSet
+		datasets: testparallelset ( activitycode, 
+									transactioncode,
+									simplerolecode,
+									compositerolecode
+								  ) 
+								  to chartdata ( 
+									dim0,
+									dim1,
+									dim2,
+									dim3
+								  )
+		bindings:
+			value-of "business activity|transaction|simple role|composite role" to dimensions
+		widget-events:{
+			when ondimensiondbleclick then [ Flash Concat("Dimension ",Current dimension) ]
+			when oncategorydbleclick then [ 
+				Flash Concat ("Filter dimension ",Current dimension," by ",Current category),
+				IntCase(Current dimensionindex) {
+					when =0 then [ Set Current category to activity ]				
+					when =1 then [ Set Current category to transaction ]				
+					when =2 then [ Set Current category to srole ]				
+					when =3 then [ Set Current category to crole ]				
+				}
+			]
+			when onpathdbleclick then [ 
+				Flash Concat ("Filter by path"),
+				Set Current dim0 to activity,
+				Set Current dim1 to transaction,
+				Set Current dim2 to srole,
+				Set Current dim3 to crole
+			]
+			when onpathclick then [ 
+				Flash Concat ("Clic on path ",Current dim0, "->",Current dim1, "->",Current dim2, "->",Current dim3)
+			]
+		}
+	}
+}

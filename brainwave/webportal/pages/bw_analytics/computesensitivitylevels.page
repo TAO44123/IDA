@@ -1,0 +1,211 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+/* Nationalized labels here */
+bwa_computesensitivitylevelsNLS = NLS {
+	title [en "Compute sensitivity levels" fr "Calcul des niveaux de sensibilité"]
+	titleaudit [en "Audit trail" fr "Piste d'audit"]
+	inprogressmessage [ en "Accounts and identities sensitivity levels are already being refreshed (refresh started on {0}), please come back later"
+						fr "La sensibilité des comptes et des identités est en cours de calcul (démarré le {0}), merci de revenir plus tard"
+						]
+	go [ en "Compute sensitivity levels" fr "Calculer les niveaux de sensibilité"]
+	goconfirm [
+		en "Are you sure that you want to compute accounts and identities sensitivity levels?\nThis will ERASE ALL current values\ncomputing can take some time as well..."
+		fr "Etes-vous sûr de vouloir calculer les niveaux de sensibilité des comptes et des identités?\nCeci va ECRASER toutes les valeurs actuelles\nce calcul peut prendre un certain temps..."
+	]
+	goflash [
+		en "Computing accounts and identities sensitivity levels"
+		fr "Calcul en cours des niveaux de sensibilité des comptes et des identités"
+	]
+	help [
+		en "Through this page you will be able to automatically compute accounts and identities sensitivity levels\naccount sensitivity level = MAX (ApplicationSensitivityLevel, GroupSensitivityLevel, RepositorySensitivitylevel, PermissionSensitivityLevel, ShareSensitivityLevel, FolderSensitivityLevel)\nidentity sensitivity level=MAX (Direct or indirect Organisation Sensitivity Level, ActiveAccountSensitivityLevel)\nYou can select below which sensitivity level to consider to compute account sensitivity levels\nWARNING: Computing sensitivity level will ERASE ALL previous values"
+		fr "A l'aide de cette page vous allez etre capable de calculer automatiquement les niveaux de sensibilité des comptes et des identités\nniveau de sensibilité du compte = MAX (ApplicationSensitivityLevel, GroupSensitivityLevel, RepositorySensitivitylevel, PermissionSensitivityLevel, ShareSensitivityLevel, FolderSensitivityLevel)\nniveau de sensibilité de l'identité=MAX (Niveau de sensibilité des organisations directes ou indirectes, ActiveAccountSensitivityLevel)\nVous pouvez choisir ci dessous quels niveaux de sensibilité prendre en compte dans le calcul\nATTENTION: Calculer les niveaux de sensibilité va ECRASER toutes les valeurs actuelles"
+	]
+	
+	includeorgs [
+		en "Includes organisation sensitivity levels"
+		fr "Inclure le niveau de sensibilité des organisations"
+	]
+	includeapps [
+		en "Includes application sensitivity levels"
+		fr "Inclure le niveau de sensibilité des applications"
+	]
+	includeshares [
+		en "Includes share sensitivity levels"
+		fr "Inclure le niveau de sensibilité des partages"
+	]
+	includerepository [
+		en "Includes repository sensitivity levels" 
+	    fr "Inclure le niveau de sensibilité des référentiels"
+	]
+	includegroup [
+		en "Includes group sensitivity levels"
+		fr "Inclure le niveau de sensibilité des groupes"
+	]
+	includepermission [
+		en "Includes permission sensitivity levels"
+		fr "Inclure le niveau de sensibilité des permissions"
+	]	
+	includefolder [
+		en "Includes folder sensitivity levels"
+		fr "Inclure le niveau de sensibilité des répertoires" 
+	]
+}
+
+bwa_computesensitivitylevels_auditrail_icons = StringImageTemplate {
+	when "in progress" then "16/famfamfam_silk_icons_v013/control_play_blue.png"
+	when "Active" then "16/famfamfam_silk_icons_v013/control_play_blue.png"
+	when "done" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "Completed" then "16/famfamfam_silk_icons_v013/accept.png"
+	when "OnHold" then "16/famfamfam_silk_icons_v013/control_pause_blue.png"
+	when "Initializing" then "16/famfamfam_silk_icons_v013/time.png"
+	when "Terminated" then "16/famfamfam_silk_icons_v013/cancel.png"
+	otherwise ""
+}
+
+bwa_computesensitivitylevels_auditrail = Dialog {
+	title:$bwa_computesensitivitylevelsNLS.titleaudit
+	width:1366
+	height:600
+	buttons:OkButton
+	
+	audit = Dataset {
+		view:bwa_refreshaudittrail
+	}
+	
+	Table {
+		data:audit
+		layout:Layout { grab:horizontal True vertical True }
+		show-count:True
+		show-filter:True
+		
+		Column {
+			column:status
+			image:TemplateImageSelection (Current status) using bwa_computesensitivitylevels_auditrail_icons
+			width:120px
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:description
+			width:100%
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:issuerfullname
+			width:160px
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:submissiondate
+			width:130px
+			sortable:True
+		}
+		Column {
+			column:closedate
+			width:130px
+			sortable:True
+		}
+	}
+}
+
+bwa_computesensitivitylevels = Page {
+	title: $bwa_computesensitivitylevelsNLS.title
+	tags:"admin"
+	icon:%collection_32.gear
+	large-icon:%collection_48.gear
+	
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	organisation = Variable { type:Boolean initial:True }
+	application = Variable { type:Boolean initial:True }
+	share = Variable { type:Boolean initial:True }
+	repository = Variable { type:Boolean initial:True }
+	group = Variable { type:Boolean initial:True }
+	permission = Variable { type:Boolean initial:True }
+	folder = Variable { type:Boolean initial:True }
+	
+	/* Datasets and records here */
+	task = TaskRecord(create "bwa_compute_account_identity_metadata")
+
+	lastinstance = Record {
+		view:bwa_refreshaudittrail
+	}
+	
+	/* Page content */
+
+	ButtonGroup {
+		align:Right
+		Button {
+			actions: Dialog bwa_computesensitivitylevels_auditrail
+			text:$bwa_computesensitivitylevelsNLS.titleaudit
+		}
+		Button {
+			actions:	StringCase(lastinstance.status) {
+							when 'in progress' then [
+								Message $bwa_computesensitivitylevelsNLS.inprogressmessage(lastinstance.submissiondate)							
+							]
+							otherwise [
+								Confirm $bwa_computesensitivitylevelsNLS.goconfirm,
+								Set organisation to task.includeorganisations,
+								Set application to task.includeapplications,
+								Set share to task.includeshares,
+								Set repository to task.includerepositories,
+								Set group to task.includegroups,
+								Set permission to task.includepermissions,
+								Set folder to task.includefolders,
+								TaskComplete task,
+								Flash $bwa_computesensitivitylevelsNLS.goflash,
+								GoTo HomePage
+							]
+						}	
+			text:$bwa_computesensitivitylevelsNLS.go
+		}
+	}
+	Text {
+		lines:10
+		value:$bwa_computesensitivitylevelsNLS.help
+		layout:Layout { grab:horizontal True vertical False hint:height 96 }
+		compact:True
+	}
+	
+	Flow {
+		disposition:Horizontal
+		Group {
+			Checkbox {
+				variable:organisation
+				text:$bwa_computesensitivitylevelsNLS.includeorgs
+			}
+			Checkbox {
+				variable:application
+				text:$bwa_computesensitivitylevelsNLS.includeapps
+			}
+			Checkbox {
+				variable:share
+				text:$bwa_computesensitivitylevelsNLS.includeshares
+			}
+			Checkbox {
+				variable:repository
+				text:$bwa_computesensitivitylevelsNLS.includerepository
+			}
+		}
+		Group {
+			Checkbox {
+				variable:group
+				text:$bwa_computesensitivitylevelsNLS.includegroup
+			}
+			Checkbox {
+				variable:permission
+				text:$bwa_computesensitivitylevelsNLS.includepermission
+			}
+			Checkbox {
+				variable:folder
+				text:$bwa_computesensitivitylevelsNLS.includefolder
+			}
+		}
+	}
+}

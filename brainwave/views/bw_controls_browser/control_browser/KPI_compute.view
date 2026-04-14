@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bw_control_browser_sharedfolder_KPI_compute" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="controldiscrepancy" displayname="KPI compute" notes="" begindate="" enddate="">
+	<ViewParam name="controlcode" displayname="controlcode" type="String">
+		<Value name="0" data="c5a999d1-48cd-4ce2-a893-60aed2f62693"/>
+	</ViewParam>
+	<ViewParam name="controlentity" displayname="controlentity" type="String">
+		<Value name="0" data="Account"/>
+	</ViewParam>
+	<ViewParam name="is_managed" displayname="Is managed" type="Boolean">
+		<Value name="0" data="false"/>
+	</ViewParam>
+	<ViewParam name="is_sensitive" displayname="Is sensitive" type="Boolean" defaultvalue="false"/>
+	<ViewParam name="applications" displayname="applications" type="String"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1600075351723_696" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="controllog">
+		<ViewAttribute name="A1600075354931_697" attribute="controlcode" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1600075374602_0" reference="controlcode" operation="eq" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewAttribute name="A1600155994619_989" attribute="recorduid" alias="nb_items" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1600075386020_700" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.controlentity.get()==&quot;Application&quot;" join="application">
+		<ViewJoin name="J1600075405100_706" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="applicationinfo">
+			<ViewAttribute name="1601902606510_16467" attribute="sensitivitylevel" operator="or" removedfromprojection="true" globalfilter="true" enabled="param.is_sensitive.get()==&quot;true&quot;">
+				<ViewAttributeFilter name="F1600084150084_0" operation="ge" ignoreifempty="false">
+					<Value name="0" data="1"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewJoin name="J1600075749018_708" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="management">
+			<ViewAttribute name="1601902606510_16468" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="true" enabled="param.is_managed.get()==&quot;true&quot;">
+				<ViewAttributeFilter name="F1600084164061_0" operation="isNotNull" ignoreifempty="false"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="1601902606510_16469" attribute="applicationfamily" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1600085846741_0" reference="applications" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1600075390860_701" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.controlentity.get()==&quot;Permission&quot;" join="permission">
+		<ViewJoin name="J1600075403093_705" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permissioninfo">
+			<ViewAttribute name="1601902606517_16470" attribute="managed" operator="or" removedfromprojection="true" globalfilter="true" enabled="param.is_managed.get()==&quot;true&quot;">
+				<ViewAttributeFilter name="F1600083873875_0" operation="isTrue" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewAttribute name="1601902606517_16471" attribute="sensitivitylevel" operator="or" removedfromprojection="true" globalfilter="true" enabled="param.is_sensitive.get()==&quot;true&quot;">
+				<ViewAttributeFilter name="F1600084023540_0" operation="ge" ignoreifempty="false">
+					<Value name="0" data="1"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewJoin name="J1600081767713_726" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+			<ViewAttribute name="1601902606517_16472" attribute="applicationfamily" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1600085834445_0" reference="applications" operation="in" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+	</ViewJoin>
+</View>

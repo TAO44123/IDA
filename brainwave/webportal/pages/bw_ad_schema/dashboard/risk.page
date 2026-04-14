@@ -1,0 +1,211 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dashboards_nls.page"
+
+
+ad_dashboard_risk = Page {
+	title: $ad_dashboard_riskNLS.title
+	dynamic-title: $ad_dashboard_riskNLS.dyntitle(repository.displayname)
+	description: $ad_dashboard_riskNLS.description
+
+	mixins: dashboardPageMixin
+
+    tags: "byuid", "analytics", "repositoryext", "AD"
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+	enter-event: Set uid to domainsCriteria
+	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	filterByDomains = Parameter {
+		type: String
+		multivalued: True
+	}
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	
+	/* selection and filtering variables */
+	domainsCriteria = Variable { type: String multivalued: True }
+	
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with domainsCriteria to uid	
+	}
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+//	groupAlmostPublicThreshold			= Record { view: ad_group_threshold with 50 to percentage, domainsCriteria to domains unless-empty }
+//	groupAlmostPublicThreshold_prev		= Record { view: ad_group_threshold with 50 to percentage, domainsCriteria to domains unless-empty timeslot: FromPage(-1) }
+	accountLeaver 						= Dataset { view: ad_account_leaver with domainsCriteria to domains unless-empty  }
+	accountLeaver_prev					= Dataset { view: ad_account_leaver with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountPasswordnotchanged 			= Dataset { view: ad_account_passnotchanged with domainsCriteria to domains unless-empty  }
+	accountPasswordnotchanged_prev		= Dataset { view: ad_account_passnotchanged with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountPasswordnoexpire 			= Dataset { view: ad_account_passnoexpire with domainsCriteria to domains unless-empty  }
+	accountPasswordnoexpire_prev		= Dataset { view: ad_account_passnoexpire with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountPasswordnotrequired 			= Dataset { view: ad_account_passnotrequired with domainsCriteria to domains unless-empty  }
+	accountPasswordnotrequired_prev		= Dataset { view: ad_account_passnotrequired with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	accountSrvPasswordnotrequired		= Dataset { view: ad_account_srvpassnotrequired with domainsCriteria to domains unless-empty  }
+	accountSrvPasswordnotrequired_prev	= Dataset { view: ad_account_srvpassnotrequired with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	groupPublic 						= Dataset { view: ad_group_public with domainsCriteria to domains unless-empty  }
+	groupPublic_prev					= Dataset { view: ad_group_public with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	groupAlmostPublic 					= Dataset { view: ad_group_almostpublic with domainsCriteria to domains unless-empty }
+	groupAlmostPublic_prev				= Dataset { view: ad_group_almostpublic with domainsCriteria to domains unless-empty timeslot: FromPage(-1)  }
+	
+	
+	accountLeaver_rec 						= Dataset { view: ad_account_leaver with domainsCriteria to domains unless-empty, "true" to recentlyused  }
+	accountLeaver_rec_prev					= Dataset { view: ad_account_leaver with domainsCriteria to domains unless-empty, "true" to recentlyused timeslot: FromPage(-1)  }
+	accountPasswordnotchanged_rec 			= Dataset { view: ad_account_passnotchanged with domainsCriteria to domains unless-empty, "true" to recentlyused  }
+	accountPasswordnotchanged_rec_prev		= Dataset { view: ad_account_passnotchanged with domainsCriteria to domains unless-empty, "true" to recentlyused timeslot: FromPage(-1)  }
+	accountPasswordnoexpire_rec 			= Dataset { view: ad_account_passnoexpire with domainsCriteria to domains unless-empty, "true" to recentlyused  }
+	accountPasswordnoexpire_rec_prev		= Dataset { view: ad_account_passnoexpire with domainsCriteria to domains unless-empty, "true" to recentlyused timeslot: FromPage(-1)  }
+	accountPasswordnotrequired_rec 			= Dataset { view: ad_account_passnotrequired with domainsCriteria to domains unless-empty, "true" to recentlyused  }
+	accountPasswordnotrequired_rec_prev		= Dataset { view: ad_account_passnotrequired with domainsCriteria to domains unless-empty, "true" to recentlyused timeslot: FromPage(-1)  }
+	accountSrvPasswordnotrequired_rec		= Dataset { view: ad_account_srvpassnotrequired with domainsCriteria to domains unless-empty, "true" to recentlyused  }
+	accountSrvPasswordnotrequired_rec_prev	= Dataset { view: ad_account_srvpassnotrequired with domainsCriteria to domains unless-empty, "true" to recentlyused timeslot: FromPage(-1)  }
+	
+	/* Totals datasets */
+	accounts 				= Dataset { view: ad_allaccounts with domainsCriteria to domains unless-empty  }
+	accountsActive 			= Dataset { view: ad_activeaccounts with domainsCriteria to domains unless-empty  }
+	groups 					= Dataset { view: ad_groups with domainsCriteria to domains unless-empty  }
+	
+	/* Page content */
+	
+	Grid {
+		fill: Both 
+		gap:0
+		insets:0
+		columns: GridColumn { width: 0 }, GridColumn { width: grow }
+		layout: Layout {  grab: horizontal True vertical True }
+		
+		
+		GridRow{
+			GridCell {}
+			
+			GridCell {
+				// Page content
+				
+				Grid { 
+					layout: Layout { indent: horizontal 0 vertical 20 }
+					columns: GridColumn { width: grow 1 }  ,GridColumn { width: grow 1}, GridColumn { width: grow 2}
+					GridRow { height: 8 GridCell { span: 3 } }
+					GridRow {
+						GridCell { }
+						GridCell {
+						
+							IncludeFragment {
+								fragment: deDetailsHeaders with
+									value-of $ad_dashboard_riskNLS.kpi.headers.total to firstHeader,
+									value-of $ad_dashboard_riskNLS.kpi.headers.recentlyused to secondHeader
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_riskNLS.kpi.label.account_leaver to label,
+									value-of Count accountLeaver to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_riskNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountLeaver_prev to previousValue,
+									value-of Count accountLeaver_rec to secondCurrentValue,
+									value-of Count accountLeaver_rec_prev to secondPreviousValue,
+									value-of "analytics_account_leaver" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItemBig with
+									value-of $ad_dashboard_riskNLS.kpi.label.account_passnotchanged  to label,
+									value-of Count accountPasswordnotchanged to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_riskNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountPasswordnotchanged_prev to previousValue,
+									value-of Count accountPasswordnotchanged_rec to secondCurrentValue,
+									value-of Count accountPasswordnotchanged_rec_prev to secondPreviousValue,
+									value-of "analytics_account_passnotchanged" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_riskNLS.kpi.label.account_passnoexpire to label,
+									value-of Count accountPasswordnoexpire to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_riskNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountPasswordnoexpire_prev to previousValue,
+									value-of Count accountPasswordnoexpire_rec to secondCurrentValue,
+									value-of Count accountPasswordnoexpire_rec_prev to secondPreviousValue,
+									value-of "analytics_account_passnoexpire" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_riskNLS.kpi.label.account_passnotrequired to label,
+									value-of Count accountPasswordnotrequired to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_riskNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountPasswordnotrequired_prev to previousValue,
+									value-of Count accountPasswordnotrequired_rec to secondCurrentValue,
+									value-of Count accountPasswordnotrequired_rec_prev to secondPreviousValue,
+									value-of "analytics_account_passnotrequired" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_riskNLS.kpi.label.account_srvpassnotrequired to label,
+									value-of Count accountSrvPasswordnotrequired to currentValue,
+									value-of Count accountsActive to currentValueOver,
+									value-of $ad_dashboard_riskNLS.kpi.label.global.activeaccounts to valueOverString,
+									value-of Count accountSrvPasswordnotrequired_prev to previousValue,
+									value-of Count accountSrvPasswordnotrequired_rec to secondCurrentValue,
+									value-of Count accountSrvPasswordnotrequired_rec_prev to secondPreviousValue,
+									value-of "analytics_account_srvpassnotrequired" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+							
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_riskNLS.kpi.label.group_public to label,
+									value-of Count groupPublic to currentValue,
+									value-of Count groups to currentValueOver,
+									value-of $ad_dashboard_riskNLS.kpi.label.global.totalgroups to valueOverString,
+									value-of Count groupPublic_prev to previousValue,
+									value-of "NA" to secondCurrentValue,
+									value-of "analytics_group_public" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+
+							IncludeFragment {
+								fragment: dbDetailsItem with
+									value-of $ad_dashboard_riskNLS.kpi.label.group_almostpublic to label,
+									value-of Count groupAlmostPublic to currentValue,
+									value-of $ad_dashboard_riskNLS.kpi.label.global.totalgroups to valueOverString,
+									value-of Count groups to currentValueOver,
+									value-of Count groupAlmostPublic_prev to previousValue,
+									value-of "NA" to secondCurrentValue,
+									value-of "analytics_group_almostpublic" to pageToLink,
+									value-of domainsCriteria to domainFilter,
+									value-of "warning" to trendType
+							}
+						}
+					}
+					GridRow {
+						height: grow
+						GridCell { span: 3}
+					}
+				 }
+				
+			}
+		}
+	}
+}

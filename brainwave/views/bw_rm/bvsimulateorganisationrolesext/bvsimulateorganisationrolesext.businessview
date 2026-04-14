@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwpm_bvsimulateorganisationrolesext" displayname="bvsimulateorganisationrolesext">
+	<Definition scriptfile="views/bw_rm/bv.javascript" name="D1521821168336">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1521821168335" title="get role identities">
+			<InnerView name="bwpm_igetroleidentitiesext_md">
+				<Param name="F1521821202476" viewparam="organisation" viewparamvalue="{param.organisation.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1521821174912" type="joinview" x="544" y="156" w="300" h="50" title="get role perms">
+			<InnerView name="bwpm_igetrolepermsext_md">
+				<Param name="F1521821211987" viewparam="organisation" viewparamvalue="{param.organisation.get()}"/>
+			</InnerView>
+			<Join jointype="inner" key1="{dataset.rolecode.get()}" key2="{dataset.rolecode.get()}"/>
+			<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.identityuid.get()+&apos;$$&apos;+dataset.permissionuid.get()"/>
+		</Component>
+		<Link name="L1521821175044" source="C1521821168335" target="C1521821174912" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1522054885479" type="joinview" x="536" y="282" w="300" h="50" title="identities perms">
+			<InnerView name="bwpm_identitiespermsperorg">
+				<Param name="F1522055100721" viewparam="organisation" viewparamvalue="{param.organisation.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<ViewComputedAttribute name="realright" displayname="realright" type="String" expression="dataset.isEmpty(&apos;realright&apos;)?&apos;N&apos;:dataset.accountusage.get()"/>
+			<ViewComputedAttribute name="val" displayname="value" type="String" expression="!dataset.isEmpty(&apos;rolename&apos;)?dataset.rolename.get():dataset.accountusage.get()"/>
+		</Component>
+		<Link name="L1522054885707" source="C1521821174912" target="C1522054885479" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="organisation" displayname="organisation">
+		<Value name="V1539780876408_1" data="6672900_1542839846415_11952"/>
+	</ViewParam>
+</View>

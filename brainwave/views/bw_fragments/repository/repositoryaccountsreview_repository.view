@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwf_repositoryaccountsreview_repository" prefix="reviewer" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="identity" displayname="applicationaccessrightsforcampaign" notes="" begindate="" enddate="">
+	<ViewParam name="campaignid" displayname="campaign id" type="String"/>
+	<ViewParam name="revieweruid" displayname="reviewer uid" type="String"/>
+	<ViewParam name="includedcampaigns" displayname="includedcampaigns" type="String"/>
+	<ViewParam name="notreviewedonly" displayname="filterbynotreviewedonly" type="Boolean"/>
+	<ViewParam name="filteridentity" displayname="filter identity" type="String"/>
+	<ViewParam name="filterrepository" displayname="filterrepository" type="String"/>
+	<ViewParam name="filteraccountable" displayname="filteraccountable" type="Boolean"/>
+	<ViewSqlFilter name="F1681811049472" expression="dataset.revieweruid=param.revieweruid OR  dataset.accountableuid=param.revieweruid" enabled="param.filteraccountable.get()==false"/>
+	<ViewComputedAttribute name="isheader" displayname="isheader" type="String" expression="&apos;1&apos;"/>
+	<ViewComputedAttribute name="id" displayname="id" type="String" expression="dataset.isEmpty(&apos;repositorydisplayname&apos;)?dataset.repositorycode.get():dataset.repositorydisplayname.get()"/>
+	<ViewComputedAttribute name="parentid" displayname="parentid" type="String" expression="&apos;&apos;"/>
+	<ViewSort name="sort" attribute1="A1647628939971_749"/>
+	<ViewAttribute name="1637248378727_562" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false" enabled="param.isEmpty(&apos;filteraccountable&apos;) || param.filteraccountable.get()==true">
+		<ViewAttributeFilter name="F1626350257910_0" reference="revieweruid" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1637248388982_565" prefix="review" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketreviewactor">
+		<ViewAttribute name="1637248412219_577" attribute="status" operator="or" removedfromprojection="true" globalfilter="false" enabled="param.notreviewedonly.get()">
+			<ViewAttributeFilter name="F1626445051749_0" reference="" operation="eq" ignoreifempty="false">
+				<Value name="0" data="to be reviewed"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewJoin name="J1626349948708_454" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticketaction">
+			<ViewJoin name="J1626349950948_455" prefix="campaign" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="ticket">
+				<ViewAttribute name="1637248422824_595" attribute="tickettype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1628339918734_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="ADHOC_UAR"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+				<ViewAttribute name="1637248422824_596" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1630309887906_0" reference="campaignid" operation="eq" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="1637248422824_597" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1630309887906_0" reference="includedcampaigns" operation="in" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="A1645042234061_534" attribute="custom1" alias="reviewtype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1645042237080_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="account"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1647628923741_745" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accounts">
+			<ViewJoin name="J1647628926661_746" prefix="repository" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+				<ViewAttribute name="A1647628938883_747" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+					<ViewAttributeFilter name="F1647628961872_0" reference="filterrepository" operation="eq" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="A1647628939454_748" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1647628939971_749" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewJoin name="J1659089111228_1264" prefix="accountable" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" enabled="param.filteraccountable.get()==false" join="accountable">
+			<ViewAttribute name="1681810992845_3800" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+</View>

@@ -1,0 +1,173 @@
+CyberArk permission model
+*************************
+
+User rights or user group rights are created for roles and NOT fine grained permissions.
+
+It means that if a user can add an account in a safe (fine grained permission addAccounts) and also delete an account in the same
+safe (fine grained permission deleteAccounts), there will be only one right in the database towards a permission named manageAccounts
+which is a role.
+
+The association between fine grained permissions and roles is given by CyberArk:
+
+fine grained permission                   role
+-----------------------                   ----
+useAccounts                               useAccounts
+retrieveAccounts                          useAccounts
+listAccounts                              useAccounts
+addAccounts                               manageAccounts
+updateAccountContent                      manageAccounts
+updateAccountProperties                   manageAccounts
+initiateCPMAccountManagementOperations    manageAccounts
+specifyNextAccountContent                 manageAccounts
+renameAccounts                            manageAccounts
+deleteAccounts                            manageAccounts
+unlockAccounts                            manageAccounts
+manageSafe                                manageSafes
+manageSafeMembers                         manageSafes
+backupSafe                                manageSafes
+viewAuditLog                              monitor
+viewSafeMembers                           monitor
+requestsAuthorizationLevel1               workflow
+requestsAuthorizationLevel2               workflow
+accessWithoutConfirmation                 workflow
+createFolders                             advanced
+deleteFolders                             advanced
+moveAccountsAndFolders                    advanced
+
+A role is associated with a user or a user group if he has at least one of the fine grained permissions of this role.
+For exemple, if a user has only addAccounts fine grained permission, then he has the role manageAccounts.
+
+To know which fine grained permission he really has, there are 2 fields in the Right or RightGroup table:
+
+field      description
+-----      -----------
+action     this is a human readable list of fine grained permission using the CyberArk terminology separated by commas.
+           This field contains at least one fine grained permission but can contain all the fine grained permissions for this role.
+           For example, if the user can only add accounts, this field contains "addAccounts".
+           If the user has also deleteAccounts, this field contains "addAccounts,deleteAccounts".
+           This field is NOT indexed and should not be used to search for fineGrained permissions.
+           If such a search is needed, it should be done using the context field to speed up the query.
+context    this is a compact version of the action field. For each fine grained permission, it contains a letter or a digit.
+           The following table give the mapping between a fine grained permission and the letter/digit.
+           This field always put the letters/digits in the same order and at the same positions.
+           For example if the user has the role manageAccounts with only deleteAccounts fine grained permission,
+           this field will contains "-------D-". The letter 'D' (for Delete accounts) will always be at position 8.
+           All others positions are filled with "-" meaining that the user or user group does not have other fine grained permissions
+           for this role.
+
+Mapping between fine grained permissions and context letters or digits:
+
+fine grained permission                   context letter or digit
+-----------------------                   -----------------------
+useAccounts                               U
+retrieveAccounts                          R
+listAccounts                              L
+addAccounts                               C
+updateAccountContent                      T
+updateAccountProperties                   P
+initiateCPMAccountManagementOperations    I
+specifyNextAccountContent                 A
+renameAccounts                            N
+deleteAccounts                            D
+unlockAccounts                            K
+manageSafe                                S
+manageSafeMembers                         W
+backupSafe                                B
+viewAuditLog                              V
+viewSafeMembers                           X
+requestsAuthorizationLevel1               1
+requestsAuthorizationLevel2               2
+accessWithoutConfirmation                 Q
+createFolders                             F
+deleteFolders                             E
+moveAccountsAndFolders                    M
+
+Another letter "O" may also appear in the context field. It means safe Owner.
+By default the discovery consider that if a user has either manageSafe (letter S) or manageSafeMembers (letter W) then he is the safe owner.
+This rule can be changed in the discovery as explained latter in this documentation.
+The letter "O" is always the first letter in the context field.
+
+The product fills the manager table by searching for identities having a right which context field starts with "O".
+Note that for a particular safe, there can be many safe owners.
+
+Let's look at several examples:
+
+Example 1: John is the administrator of the safe UnixProd and has all the fine grained permissions.
+Between John and the safe, there will be 6 rights corresponding to the 6 different roles he has on the safe.
+As he owns manageSafe and manageSafeMembers, the right toward the manageSafes role contains the letter "O" in the context field.
+It means that John will be a safe owner in Brainwave product.
+
+role              context      action
+----              ---------    ------------------------
+useAccounts       -URL         useAccounts,retrieveAccounts,listAccounts
+manageAccounts    -CTPIANDK    addAccounts,updateAccountContent,updateAccountProperties,initiateCPMAccountManagementOperations,specifyNextAccountContent,renameAccounts,deleteAccounts,unlockAccounts
+manageSafes       OSWB         manageSafe,manageSafeMembers,backupSafe
+monitor           -VX          viewAuditLog,viewSafeMembers
+workflow          -12Q         requestsAuthorizationLevel1,requestsAuthorizationLevel2,accessWithoutConfirmation
+advanced          -FEM         createFolders,deleteFolders,moveAccountsAndFolders
+
+Example 2: Paul can only use an account on the safe UnixProd.
+Between John and the safe, there is only one right and Paul is not a safe owner.
+
+role              context      action
+----              ---------    ------------------------
+useAccounts       -U--         useAccounts
+
+Example 3: Marc can audit the safe and also make backups but can not manage safes or safe members.
+As Marc owns backupSafe fine grained permission, he gets the role manageSafes.
+But with the default rule, Marc is a not a safe owner even if he has the role manageSafes because he does not own manageSafe or
+manageSafeMembers fine grained permissions.
+
+role              context      action
+----              ---------    ------------------------
+manageSafes       ---B         backupSafe
+monitor           -VX          viewAuditLog,viewSafeMembers
+
+The default rule to determine safe owner can be changed in the discovery.
+This is handy if the manageSafe and manageSafeMembers are given to administrators only.
+The concept of safe owner is mainly used in Brainwave to push statistics and changes to people in charge of the safe.
+And these people are also responsible of performing the User Access Review for the compliance.
+In some organizational contexts, theses people may not own either manageSafe or manageSafeMembers fine grained permissions.
+
+Let's look at an example where we consider that safe owners are the people who can change the accounts inside a safe.
+There are 8 fine grained permissions. The most important permissions are addAccounts and deleteAccounts
+We will consider that if the user or user group has at least one of these 2 fine grained permissions, he is the safe owner.
+
+There are 2 discoveries to change:
+discovery/bw_ias_cyberark/CyberArk/EVD/CA_EVD_OwnersList.discovery: the discovery for extraction in EVD mode
+discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_safe_members.discovery: the discovery for extraction in REST mode
+If you are using the mixed mode, then both discoveries should be changed.
+
+In the first tab of the discovery, in the action list, search for the "multireplace" action on "manageSafesContext".
+
+In CA_EVD_OwnerList.discovery, the value starts with:
+{((dataset.equals('EVD_managesafe', 'yes', false, true)) || (dataset.equals('EVD_managesafeowners', 'yes', false, true)) ? 'O' : '-')}{((dataset.equals('EVD_managesafe'......
+Replace "{((dataset.equals('EVD_managesafe', 'yes', false, true)) || (dataset.equals('EVD_managesafeowners', 'yes', false, true)) ? 'O' : '-')}" by "-".
+So it looks like 
+-{((dataset.equals('EVD_managesafe'......
+This way, there will be "-" at the start of the context field for role manageSafes meaning that this right is not relevant
+for determining if the user or user group is a safe owner.
+
+In CA_safe_members.discovery, the value starts with:
+{((dataset.permissions.indexOf('manageSafe') != -1) || (dataset.permissions.indexOf('manageSafeMembers') != -1) ? 'O' : '-')}{((dataset.permissions.indexOf('manageSafe'......
+Replace "{((dataset.permissions.indexOf('manageSafe') != -1) || (dataset.permissions.indexOf('manageSafeMembers') != -1) ? 'O' : '-')}" by "-".
+So it looks like 
+-{((dataset.permissions.indexOf('manageSafe'......
+
+Now we must generate the letter "O" at the start of the context field for the manageAccounts role.
+To do this, we change the "multireplace" action of "manageAccountsContext".
+
+{((dataset.equals('EVD_createobject', 'yes', false, true)) ? 'C' : '-')
+In CA_EVD_OwnerList.discovery, the value starts with:
+-{((dataset.equals('EVD_createobject'......
+Replace "-" by "{((dataset.equals('EVD_createobject', 'yes', false, true)) || (dataset.equals('EVD_delete', 'yes', false, true)) ? 'O' : '-')}".
+So it looks like 
+{((dataset.equals('EVD_createobject', 'yes', false, true)) || (dataset.equals('EVD_delete', 'yes', false, true)) ? 'O' : '-')}{((dataset.equals('EVD_createobject'......
+This way, there will be "-" at the start of the context field for role manageSafes meaning that this right is not relevant
+for determining if the user or user group is a safe owner.
+
+In CA_safe_members.discovery, the value starts with:
+-{((dataset.permissions.indexOf('manageSafe'......
+Replace "-" by "{((dataset.permissions.indexOf('addAccounts') != -1) || (dataset.permissions.indexOf('deleteAccounts') != -1) ? 'O' : '-')}".
+So it looks like 
+{((dataset.permissions.indexOf('addAccounts') != -1) || (dataset.permissions.indexOf('deleteAccounts') != -1) ? 'O' : '-')}{((dataset.permissions.indexOf('addAccounts'......

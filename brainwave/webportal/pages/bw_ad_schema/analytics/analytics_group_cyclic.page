@@ -1,0 +1,153 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dashboards_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/analytics_nls.page"
+
+
+analytics_group_cyclic = Page {
+	title: $ad_dashboard_qualityNLS.kpi.label.group_cyclic
+	mixins: base_pageMixin
+	tags: "ADreports"	
+	enter-event:
+		TransferData domainperimeterdataset(uid) to ( domainperimeter ),
+		IntCase ( SizeOf filterByDomain ) {
+			when =0 then [
+				// filter domain is empty, apply perimeter
+				TransferData domainperimeterdataset (uid) to ( domainsCriteria )
+			]
+			otherwise [
+				// Move filter to the criteria variable
+				MultivaluedAdd filterByDomain to domainsCriteria
+			]
+		}
+	
+	/* Parameters here */
+	domainFilter = Parameter { type: String hidden:True }
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	domainsCriteria = Variable { type: String multivalued: True initial:domainFilter }
+	filterByDomain = Variable { type: String multivalued: True }
+	
+	selectedGroup = Variable { type: String }
+	selectedGroupUid = Variable { type: String }
+	selectedGroupRecorduid = Variable { type: Integer }
+	
+	/* Datasets and records here */
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	groupCyclic = Dataset { view: ad_group_cyclic  with domainsCriteria to domains unless-empty
+		trend: Trend { 
+					join-column: uid
+					exclude-new: False
+					include-removed: False
+					exclude-same: False
+					status-column-name:status
+					timeslot: FromPage (-1)
+					value-column: trend
+				}
+	}
+	
+	
+	allDomains = Dataset {
+		view: getdomains with domainperimeter to domains
+	}
+	
+	clearDomainCriteria = NamedAction (
+		Unset domainsCriteria,
+		TransferData domainperimeterdataset(uid) to ( domainsCriteria )
+	)
+	
+	clearAll = NamedAction (
+		Unset selectedGroupUid, Unset selectedGroupRecorduid
+	)
+	
+	Splitter {
+		disposition: Horizontal
+		size: 60%
+		Group {
+			Table {
+				layout:  Layout  { grab: horizontal True vertical True }
+				data: groupCyclic
+				show-count: True
+				show-filter: True
+				configurable: True 
+				
+				Column {
+					column: status
+					header: $analytics_results_pages.table.headers.status
+					width: 80px
+					text: Transform Current status using statusMapping
+					image: TemplateImageSelection(Current status) using newItemTemplate
+					sortable: True
+				}
+				Column { column: domain_displayname header: $ad_domain.concept width: 100% sortable: True filterable:True}
+				Column { column: displayname header: $group.displayname width: 100% sortable: True selection: selectedGroup filterable:True}
+				Column { column: code header: $group.code width: 100% initially-masked: True sortable: True }
+				Column { column: comment header: $group.comment width: 100% initially-masked: True sortable: True }
+				Column { column: nbaccount header: $account.concept width: 100% sortable: True}
+			
+				Column { column: uid hidden: True selection: selectedGroupUid }
+				Column { column: recorduid hidden: True selection: selectedGroupRecorduid }	
+			}
+		}
+		Group {
+			title: $moreDetailsNLS.title
+			layout: Layout { indent: vertical 5 horizontal 0}
+			
+			Grid {
+				columns: GridColumn { width: 80 }, GridColumn { width: grow }
+				
+				GridRow {
+					GridCell {
+						Image { image: "48/audit/reconciliation_48.png"}
+					}
+					GridCell {
+						Text { value: $moreDetailsCircularGroupsNLS.headers.hierarchy styling: simpleLabel }
+						Text { value: $moreDetailsCircularGroupsNLS.messages.selectformore hidden: StringPredicate ( selectedGroupUid ) { when IsEmpty then False otherwise True } }
+					}
+				}
+				
+				GridRow {
+					height: grow 
+					GridCell {
+						span:2
+						
+						Spacer { height: 20}
+					
+						TabFolder {
+							TabItem {
+								text: $moreDetailsCircularGroupsNLS.tabs.circular.title
+								
+								Browser {
+									static: "static/bw_ad_schema/cyclic.html" with selectedGroupUid to rootuid unless-empty
+									hidden: StringPredicate ( selectedGroupUid ){ when IsEmpty then True otherwise False }
+									layout: Layout { grab: horizontal True vertical True}
+									background: None
+									border: False
+								}
+							}
+							TabItem {
+								text: $moreDetailsCircularGroupsNLS.tabs.hierarchy.title
+								Spacer { height: 10 }
+								Browser {
+									static: "static/bw_ad_schema/nested_groups.html" with selectedGroupRecorduid to grouprecorduid, 
+										Concat($nestedgroupsNLS.graphtitle.part1, selectedGroup, $nestedgroupsNLS.graphtitle.part2, Date.value,$nestedgroupsNLS.graphtitle.part3,Principal.fullname) to title
+									hidden: StringPredicate ( selectedGroupUid ){ when IsEmpty then True otherwise False }
+									layout: Layout { grab: horizontal True vertical True}
+									background: None
+									border: False
+								}
+								
+							}
+						}
+					}
+				}
+			}
+		}
+	}	
+}

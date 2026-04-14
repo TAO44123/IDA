@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA accounts" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039307292_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617040465054">
+		<Component name="C1617040465054" type="discoverysource" x="35" y="28" w="300" h="64" title="CA_accounts">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_accounts.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_accounts.csv&apos;)}"/>
+		</Component>
+		<Component name="C1624458380241" type="changefilter" x="32" y="261" w="300" h="64" title="Update">
+			<Actions>
+				<Action name="U1624458422126" action="update" attribute="safenameacc" newvalue="{&apos;SAFE_&apos;+dataset.safenumber.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+				<Action name="U1625563413212" action="add" attribute="asset_category" type="String" multivalued="false" newvalue="ca_secret" errorexist="false"/>
+				<Action name="U1625649364748" action="update" attribute="id" newvalue="{dataset.id.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1625489200158" type="asset" x="30" y="381" w="300" h="64" title="CA safe secrets">
+			<Asset key="id" error="true" event="AssetNullOrEmpty">
+				<Attribute name="displayname" attribute="name"/>
+				<Attribute name="custom1" attribute="username"/>
+				<Attribute name="custom2" attribute="address"/>
+				<Attribute name="custom3" attribute="platformid"/>
+				<Attribute name="custom4" attribute="secrettype"/>
+				<Attribute name="custom5" attribute="secretmanagement_automaticmanagementenabled"/>
+				<Attribute name="custom6" attribute="secretmanagement_manualmanagementreason"/>
+				<Attribute name="custom7" attribute="secretmanagement_status"/>
+				<Attribute name="custom9" attribute="secretmanagement_lastreconciledtime"/>
+				<Attribute name="custom8" attribute="secretmanagement_lastverifiedtime"/>
+				<Attribute name="category" attribute="asset_category"/>
+			</Asset>
+		</Component>
+		<Component name="C1625492468732" type="metadata" x="30" y="508" w="300" h="64" title="safe_to_secrets">
+			<Metadata schema="safe_to_secrets" key=" " application="safenameacc" asset="id" assetValue="id">
+				<Attribute name="value1date" attribute="createdtime"/>
+				<Attribute name="value2date" attribute="secretmanagement_lastmodifiedtime"/>
+			</Metadata>
+		</Component>
+		<Link name="L1625492477457" source="C1625489200158" target="C1625492468732" priority="1"/>
+		<Link name="L1625501205591" source="C1624458380241" target="C1625489200158" priority="1"/>
+		<Component name="C1753949482958" type="discoverysource" x="507" y="156" w="300" h="50" title="CA_safes">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_safes.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_safes.csv&apos;)}"/>
+		</Component>
+		<Component name="C1753949514131" type="joinfilter" x="34" y="150" w="300" h="64" title="Join Account Safe">
+			<Join source="C1753949482958" zeroerror="false"/>
+			<Cache active="true" main="safenameacc" join="safename"/>
+			<Attributes>
+				<Attribute name="A1753949983634" attribute="safenumber" source="safenumber" type="Number" multivalued="false"/>
+				<Attribute name="A1753952547550" attribute="safename" source="safename" type="String" multivalued="false"/>
+				<Attribute name="A1753952555057" attribute="safenameacc" source="safenameacc" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1753949522900" source="C1617040465054" target="C1753949514131" priority="1"/>
+		<Link name="L1753949525298" source="C1753949482958" target="C1753949514131" priority="1"/>
+		<Link name="L1753952274412" source="C1753949514131" target="C1624458380241" priority="2"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

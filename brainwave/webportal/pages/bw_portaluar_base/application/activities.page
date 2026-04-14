@@ -1,0 +1,69 @@
+
+import "/webportal/pages/bw_portaluar_base/application/search.page"
+import "/webportal/pages/bw_portaluar_base/application/details.page"
+
+Activity {
+	concept: Application
+	kind: Search
+	to: Page applicationSearchPage
+}
+
+
+Activity {
+	concept: Application
+	kind: Detail
+	priority:1000
+	to: Page applicationDetailsPageDispatcher
+}
+
+/**
+ * Redirect to the right activity depending on the application family or application type
+ */
+applicationDetailsPageDispatcher = Page {
+	title: ''
+	conditional-redirect:
+		// test to avoid infinite loops...
+		ConditionalRedirect {
+			// starts with applicationfamily
+			condition: IntPredicate(paramCounter) {	when =0 then True otherwise False }
+			 target:Activity Application (value-of application.applicationfamily) Detail with 
+														paramApplicationUid to paramApplicationUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														1 to paramCounter
+		},
+			// tries applicationtype then
+		ConditionalRedirect {
+			condition: IntPredicate(paramCounter) {	when =1 then True otherwise False }
+			 target:Activity Application (value-of application.applicationtype) Detail with 
+														paramApplicationUid to paramApplicationUid, 
+														paramSearchMode to paramSearchMode,
+														paramInitialIndex to paramInitialIndex,
+														2 to paramCounter
+		},
+			// fall back to the default, legacy detail page 
+		ConditionalRedirect {
+			condition: IntPredicate(paramCounter) {	when >1 then True otherwise False }
+			target:Page applicationDetailsPage with-current-parameters
+		}
+	
+	
+	paramApplicationUid = Parameter {type: String hidden: True mandatory: True}
+	paramSearchMode = Parameter {type: Boolean hidden: True	default: False}
+	paramInitialIndex = Parameter {type: Integer hidden: True}
+	paramCounter = Parameter {type: Integer hidden: True mandatory:False default:0}
+
+	application = Record { view: br_applicationDetail with paramApplicationUid to uid }
+}
+
+
+/*
+ * Application type detail page
+ */
+Activity {
+	concept: Application
+	kind: Detail
+	discriminator:"Profile" 
+	to: Page applicationDetailsPage
+}
+

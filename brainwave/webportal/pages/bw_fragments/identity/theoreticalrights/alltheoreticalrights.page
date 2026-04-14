@@ -1,0 +1,87 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/rightsinmodel.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/underallocations.page"
+
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+/* Nationalized labels here */
+alltheoreticalrihgtsNLS = NLS {
+	title [en "Theoretical rights" fr "Droits théoriques"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display theoretical rights status for a given identity as a series of Tabs:
+ * - overallocated rights
+ * - rights in the model
+ * - theoretical rights
+ * - underallocated rights
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inApplicationUid </b>the application uid (optional)</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionname </b>the selected permission</li>
+ * <li><b>outapplicationname </b>the selected application</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityAllThoereticlRights = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inApplicationUid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outpermissionname = Variable
+	outapplicationname = Variable
+	
+	TabFolder {
+		TabItem {
+			text: $bwf_theoreticalrightsNLS.overAllocs
+			IncludeFragment ( fragmentIdentityOverAllocationsList with 
+				inApplicationUid binds-to inApplicationUid,
+				inuid binds-to inuid,
+				inenabled binds-to inenabled,
+				outapplicationname binds-to outapplicationname,
+				outpermissionname binds-to outpermissionname
+			)
+		}
+		TabItem {
+			text: $bwf_theoreticalrightsNLS.modelRights
+			IncludeFragment ( fragmentIdentityRightsInModelList with 
+				inApplicationUid binds-to inApplicationUid,
+				inuid binds-to inuid,
+				inenabled binds-to inenabled,
+				outapplicationname binds-to outapplicationname,
+				outpermissionname binds-to outpermissionname
+			)
+		}
+		TabItem {
+			text: $bwf_theoreticalrightsNLS.TR
+			IncludeFragment ( fragmentIdentityTheoreticalRightsList with 
+				inApplicationUid binds-to inapplicationuids,
+				inuid binds-to inuid,
+				inenabled binds-to inenabled,
+				outapplicationname binds-to outapplicationname,
+				outpermissionname binds-to outpermissionname
+			)
+		}
+		TabItem {
+			text: $bwf_theoreticalrightsNLS.underAllocs
+			IncludeFragment ( fragmentIdentityUnderAllocationsList with 
+				inApplicationUid binds-to inApplicationUid,
+				inuid binds-to inuid,
+				inenabled binds-to inenabled,
+				outapplicationname binds-to outapplicationname,
+				outpermissionname binds-to outpermissionname
+			)
+		}
+	}
+}

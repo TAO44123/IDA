@@ -1,0 +1,67 @@
+/* Import other pages here */
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+/* Nationalized labels here */
+bwpm_orgprofilesmining_roleperroleNLS = NLS {
+	title [en "Role per role analysis" fr "Analyse rôle par rôle"]
+	dyntitle [en "Role per role analysis for organisation {0}" fr "Analyse rôle par rôle pour l''organisation {0}"]
+}
+
+bwpm_orgprofilesmining_roleperrole = Page {
+	title: $bwpm_orgprofilesmining_roleperroleNLS.title
+	dynamic-title: $bwpm_orgprofilesmining_roleperroleNLS.dyntitle(organisation.shortname)
+	
+	/* Parameters here */
+	uid = Parameter {hidden:True}
+	selectedRole = Parameter {
+		label: $permminingNLS.selectroleanalysis
+		type:String
+		constraint:Lookup {
+			data:roles
+			text:Current rolename
+			value:Current rolecode
+		}
+		mandatory:False
+	}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	roles = Dataset {
+		view:bwpm_rolelist_perorg_md with uid to organisationuid
+	}
+
+	data = Dataset {
+		view:bwpm_bvsimulateorganisationrolesext with uid to organisation
+		includes:SameValuePredicate(Current rolecode, selectedRole) 
+	}
+
+	organisation = Record {
+		view:br_organisation_picker with uid to paramUid
+	}
+	
+	/* Page content */
+	
+	Group {
+		layout: Layout {grab: horizontal True vertical False hint: width 600}
+		ParametersEdition {
+			parameters:selectedRole inline
+		}
+	}
+	CrossTable { // all rights
+		data:data
+		layout:Layout{grab:horizontal True vertical True cell-width:100px}
+		rows: 
+		   Dim {value:applicationuid label: applicationdisplayname header:$permminingNLS.app}, 
+		   Dim {value:permissionuid label:permissiondisplayname header:$permminingNLS.perm}
+		columns:
+		   Dim {value:organisationuid label:organisationshortname header:$permminingNLS.orga},
+		   Dim {value:interncontractor header:$permminingNLS.employeetype},
+		   Dim{value:identityuid label:identityfullname header:$permminingNLS.name}
+		cell-content:CellContent { 
+		  text:Current val align:Center  
+		  styling:StringStyling(Current realright) { when "N" then bwpm_redStyle when "V" then bwpm_directStyle when 'X' then bwpm_grayStyle} 
+		}
+	}
+}

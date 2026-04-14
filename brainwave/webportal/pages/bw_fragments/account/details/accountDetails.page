@@ -1,0 +1,308 @@
+import "/webportal/pages/bw_fragments/account/details.page"
+import "/webportal/pages/bw_fragments/account/owner.page"
+import "/webportal/pages/bw_fragments/account/groups.page"
+import "/webportal/pages/bw_fragments/account/serverrights.page"
+import "/webportal/pages/bw_fragments/account/rights.page"
+import "/webportal/pages/bw_fragments/account/fsrights.page"
+import "/webportal/pages/bw_fragments/account/controls.page"
+import "/webportal/pages/bw_fragments/account/usages.page"
+import "/webportal/pages/bw_fragments/account/acls.page"
+import "/webportal/pages/bw_fragments/account/decisionhistory.page"
+import "/webportal/pages/bw_fragments/custom/accountExtendedDetails.page"
+import "/webportal/pages/bw_fragments/account/data.page"
+
+bwf_accountDetailsDialogNLS = NLS {
+	title [en 'Account detail' fr 'Détails du compte']
+	
+	owner [en "Owner" fr "Propriétaire"]
+	account [en "Account" fr "Compte"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	acls [en "ACLs" fr "ACLs"]
+	groups [en "Groups" fr "Groupes"]
+	infrastructure [en "Servers" fr "Serveurs"]
+	applications [en "Applications" fr "Applications"]
+	shares [en "Shares" fr "Partages"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	cyberark.vault [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	cyberark.safe [en "CyberArk Safes" fr "Safes CyberArk"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Account details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> account uid</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>inshowowner </b>optional boolean, true to show owner tab, true by default</li>
+ * <li><b>inshowgroups </b>optional boolean, true to show groups tab, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show infrastructure/applications tab, false by default</li>
+ * <li><b>inshowACLs </b>optional boolean, true to show ACLs tab for a given sharedfolder (provided through sharedfolderuid)</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>infolderdepth </b>optional, integer value, folder depth (1 by default)</li>
+ * <li><b>inaclonly </b>optional, boolean value, show only entries with ACLs attached to them (false by default)</li>
+ * <li><b>inapplicationuids </b>optional string, filter those applications only</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types (set to Role by default)</li>
+ * <li><b>inshareuids </b>optional string, filter those shares only</li>
+ * <li><b>insharedfolderuid </b>optional string, used by inshowACLs</li>
+ * </ul>
+ * </span>
+ */
+bwf_accountDetailsDialog = Dialog {
+	title:$bwf_accountDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	
+	inuid = Variable
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowowner = Variable { type:Boolean initial:True }
+	inshowgroups = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowACLs = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+
+	inapplicationuids = Variable { type:String multivalued:True }
+	insharedfolderuid = Variable { type:String multivalued:True }
+	inshareuids = Variable { type:String multivalued:True }
+	inpermissiontypes = Variable { type:String multivalued:True }
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+	inaclonly = Variable { multivalued:False type:Boolean initial:False }
+
+	account = Record {
+		view: bwf_accountDetail with inuid to uid
+	}
+
+	IncludeDynamicFragment{
+		dynamic-name:Concat("bwf_accountDetailsFragment",account.repository_repositoryfamily) 
+		base-fragment:  bwf_accountDetailsFragment with  inuid binds-to inuid,
+														 incanreconcile binds-to incanreconcile,
+														 inshowowner binds-to inshowowner,
+														 inshowgroups binds-to inshowgroups,
+														 inshowapplications binds-to inshowapplications,
+														 inshowshares binds-to inshowshares,
+														 inshowACLs binds-to inshowACLs,
+														 inshowcontrols binds-to inshowcontrols,
+														 inshowdecisionhistory binds-to inshowdecisionhistory,
+														 inshowusages binds-to inshowusages,
+														 inapplicationuids binds-to inapplicationuids,
+														 insharedfolderuid binds-to insharedfolderuid,
+														 inshareuids binds-to inshareuids,
+														 inpermissiontypes binds-to inpermissiontypes,
+														 infolderdepth binds-to infolderdepth,
+														 inaclonly binds-to inaclonly 
+		layout:Layout { grab:horizontal True vertical True}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Account details Dialog Fragment
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> account uid</li>
+ * <li><b>incanreconcile</b>, optional boolean, can perform manual reconciliation, false by default</li>
+ * <li><b>inshowowner </b>optional boolean, true to show owner tab, true by default</li>
+ * <li><b>inshowgroups </b>optional boolean, true to show groups tab, false by default</li>
+ * <li><b>inshowapplications </b>optional boolean, true to show infrastructure/applications tab, false by default</li>
+ * <li><b>inshowACLs </b>optional boolean, true to show ACLs tab for a given sharedfolder (provided through sharedfolderuid)</li>
+ * <li><b>inshowshares </b>optional boolean, true to show shares tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>infolderdepth </b>optional, integer value, folder depth (1 by default)</li>
+ * <li><b>inaclonly </b>optional, boolean value, show only entries with ACLs attached to them (false by default)</li>
+ * <li><b>inapplicationuids </b>optional string, filter those applications only</li>
+ * <li><b>inpermissiontypes </b>optional, multivalued filtering of the permission types (set to Role by default)</li>
+ * <li><b>inshareuids </b>optional string, filter those shares only</li>
+ * <li><b>insharedfolderuid </b>optional string, used by inshowACLs</li>
+ * </ul>
+ * </span>
+ */
+bwf_accountDetailsFragment = PageFragment {
+	enter-event: 	Set account.bwa_accountanalytics_nbdirectgroup to nbgroups,
+					IntCase(account.bwa_accountanalytics_nbdirectinfrastructureright) { when >0 then [ Set True to hasinfrastructurerights ] },
+					IntCase(account.bwa_accountanalytics_nbdirectright) { when >0 then [ Set True to hasrights ] },
+					IntCase(account.bwa_accountanalytics_nbdirectfsright) { when >0 then [ Set True to hasfsrights ] },
+					IntCase(account.bwa_accountanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+					IntCase(account.bwa_accountanalytics_nbperimeter) { when >0 then [ Set True to hasperimeter ] }
+	
+	inuid = Variable
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowowner = Variable { type:Boolean initial:True }
+	inshowgroups = Variable { type:Boolean initial:False }
+	inshowapplications = Variable { type:Boolean initial:False }
+	inshowshares = Variable { type:Boolean initial:False }
+	inshowACLs = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+
+	inapplicationuids = Variable { type:String multivalued:True }
+	insharedfolderuid = Variable { type:String multivalued:True }
+	inshareuids = Variable { type:String multivalued:True }
+	inpermissiontypes = Variable { type:String multivalued:True }
+	infolderdepth = Variable { multivalued:False type:Integer initial:1 }
+	inaclonly = Variable { multivalued:False type:Boolean initial:False }
+	
+	nbdefects = Variable { private:True }
+	nbgroups = Variable { private:True }
+	hasinfrastructurerights = Variable { private:True initial:False }
+	hasrights = Variable { private:True initial:False }
+	hasfsrights = Variable { private:True initial:False }
+	hasusages = Variable { private:True initial:False }
+	hasperimeter = Variable { private:True initial:False }
+
+	showextended = Variable { private:True initial:False }
+
+	grouptype = Variable { private:True }
+
+	active_account = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_owner = Variable { initial:False multivalued:False type:Boolean }
+	active_groups = Variable { initial:False multivalued:False type:Boolean }
+	active_infrastructure = Variable { initial:False multivalued:False type:Boolean }
+	active_applications = Variable { initial:False multivalued:False type:Boolean }
+	active_acls = Variable { initial:False multivalued:False type:Boolean }
+	active_shares = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+
+	account = Record {
+		view: bwf_accountDetail with inuid to uid
+	}
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.account
+			activation-event: Set True to active_account
+			
+			IncludeFragment (fragmentAccountFullDetails with value-of inuid to inuid, value-of active_account to inenabled )
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentAccountExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.owner
+			hidden:Not BooleanPredicate(inshowowner)
+			activation-event: Set True to active_owner
+			
+			IncludeFragment (fragmentAccountOwnerFull with value-of inuid to inuid,  incanreconcile binds-to inenablemanualreconciliation, value-of active_owner to inenabled )
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.groups
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowgroups)
+					StringPredicate(nbgroups) { when IsEmpty then True }
+					IntPredicate(nbgroups) { when >0 then False otherwise True }
+				}
+			activation-event: Set True to active_groups
+
+			IncludeFragment (fragmentAccountGroupsSelection with value-of inuid to inuid,value-of inapplicationuids to inapplicationuids, value-of True to incanshowdetails,  value-of active_groups to inenabled )
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.infrastructure
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowapplications)
+					Not BooleanPredicate(hasinfrastructurerights)
+				}
+			activation-event: Set True to active_infrastructure
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			
+			IncludeFragment (fragmentAccountServerRightsList with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_infrastructure to inenabled, inapplicationuids binds-to inapplicationuids )
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.applications
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowapplications)
+					Not BooleanPredicate(hasrights)
+				}
+			activation-event: Set True to active_applications
+			
+			IncludeFragment (fragmentAccountRightsSelection with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_applications to inenabled, inapplicationuids binds-to inapplicationuids, inpermissiontypes binds-to inpermissiontypes )
+		}
+		TabItem  {
+			text: $bwf_accountDetailsDialogNLS.acls
+			feature: unstructureddata_license
+			hidden:
+				Not BooleanPredicate ( inshowACLs )
+			activation-event:
+				Set True to active_acls,
+				ExecuteFragmentNamedAction fragmentAccountPermissionACLs.reload
+			fragmentAccountPermissionACLs = IncludeFragment {
+				fragment: fragmentAccountPermissionACLs with
+					value-of inuid to inuid, 
+					insharedfolderuid binds-to inpermissionuid, 
+					value-of True to incanshowdetails, 
+					value-of active_acls to inenabled
+			}
+		}
+		TabItem  {
+			text: $bwf_accountDetailsDialogNLS.shares
+			feature: unstructureddata_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate ( inshowshares )
+					Not BooleanPredicate ( hasfsrights )
+				}
+			activation-event:
+				Set True to active_shares
+			IncludeFragment ( fragmentAccountData360 with
+				value-of inuid to inuid,
+				inaclonly binds-to inaclonly,
+				infolderdepth binds-to infolderdepth,
+				value-of True to incanshowdetails,
+				value-of True to incanchangedepth,
+				value-of active_shares to inenabled
+			)
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.usages
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowusages)
+					Not BooleanPredicate(hasusages)
+				}
+			activation-event: Set True to active_usages
+			
+			IncludeFragment (fragmentAccountUsages with 	value-of inuid to inuid, 
+																	value-of True to incanshowdetails, 
+																	value-of active_usages to inenabled )
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentAccountControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_accountDetailsDialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentAccountDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}
+}

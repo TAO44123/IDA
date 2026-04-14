@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwf_applicationnbidentityperprofiles" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="application" displayname="nb active accounts per profile" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="uid" type="String">
+		<Value name="0" data="SAP_1525809206778_52676"/>
+	</ViewParam>
+	<ViewParam name="permissiontype" displayname="permissiontype" type="String" defaultvalue="{(config.ias_permissionroletype!=null &amp;&amp; config.ias_permissionroletype.trim().length&gt;0)?config.ias_permissionroletype:&quot;Role&quot;}"/>
+	<ViewParam name="total" displayname="total" type="Integer"/>
+	<ViewComputedAttribute name="label" displayname="label" type="String" expression="&apos;&apos;+dataset.nbaccounts.get()+&apos;/&apos;+param.total.get()+&apos; - &apos;+dataset.permissioncode.get()+ &apos; - &apos; + dataset.permissiondisplayname.get()"/>
+	<ViewSort name="sort" attribute1="A1527065609201_2152" direction1="DESC" attribute2="A1527065338129_2138"/>
+	<ViewAttribute name="A1527065277709_2133" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1527065283738_0" reference="uid" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1527065309825_2135" prefix="permission" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+		<ViewAttribute name="A1527065336101_2136" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1527065337145_2137" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1527065338129_2138" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1527065338777_2139" attribute="permissiontype" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1527065342061_0" reference="permissiontype" operation="in" ignoreifempty="false"/>
+		</ViewAttribute>
+		<ViewJoin name="J1527065439309_2141" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accountright">
+			<ViewAttribute name="A1527065540486_2150" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1527065544822_0" operation="isNull" ignoreifempty="false"/>
+				<ViewAttributeFilter name="F1527065548354_1" operation="isFalse" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1527065609201_2152" attribute="recorduid" alias="nbaccounts" displayname="nb accounts" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+	</ViewJoin>
+</View>

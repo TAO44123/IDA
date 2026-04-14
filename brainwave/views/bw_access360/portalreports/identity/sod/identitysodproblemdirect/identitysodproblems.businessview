@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa360_identitysodproblems_direct" displayname="identitysodproblems">
+	<Definition scriptfile="/views/bw_access360/portalreports/identity/sod/identitysodproblems.javascript" name="D1539109097462">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1539109097462" title="sod problems 1">
+			<InnerView name="bwa360_identitysodproblems1">
+				<Param name="F1550766628499" viewparam="identityuid" viewparamvalue="{param.identityuid}"/>
+				<Param name="F1646655858959" viewparam="organisationuid" viewparamvalue="{param.organisationuid.get()}"/>
+				<Param name="F1646902850982" viewparam="minimumRiskLevel" viewparamvalue="{param.minimumRiskLevel.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1539109107558" type="unionview" x="717" y="138" w="300" h="50" title="sod problems 2">
+			<Union primary_discriminator="sodproblems1" secondary_discriminator="sodproblems2" discriminatorcolumn="discr"/>
+			<InnerView name="bwa360_identitysodproblems2">
+				<Param name="F1550766643550" viewparam="identityuid" viewparamvalue="{param.identityuid}"/>
+				<Param name="F1646655866688" viewparam="organisationuid" viewparamvalue="{param.organisationuid.get()}"/>
+				<Param name="F1646902857983" viewparam="minimumRiskLevel" viewparamvalue="{param.minimumRiskLevel.get()}"/>
+			</InnerView>
+		</Component>
+		<Link name="L1539109107685" source="C1539109097462" target="C1539109107558" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1757604363744" type="joinview" x="351" y="269" w="300" h="50" title="filter on sod matrix" enable="{param.sodmatrixuid.get()!=null}">
+			<Join jointype="left" key1="{dataset.controldisplayname.get()}" key2="{dataset.permission_pair_controldisplayname.get()}"/>
+			<InnerView name="identitysodproblemsmatrix">
+				<Param name="F1757604520757" viewparam="uid" viewparamvalue="{param.sodmatrixuid.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1757605287597" expression="dataset.matrix_uid.get()==null" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1758619291363" type="joinview" x="270" y="169" w="300" h="50" title="Exceptions">
+			<InnerView name="bwa360_identitysodexceptions_nb"/>
+			<Join jointype="left" key1="{dataset.controlcode.get()}" key2="{dataset.exception_controlcode.get()}"/>
+			<FilterList>
+			</FilterList>
+		</Component>
+		<Component name="C1758633472122_1" type="joinview" x="272" y="142" w="300" h="50" title="Roles Exceptions">
+			<InnerView name="bwa360_identitysodexceptionsviarole_nb"/>
+			<Join jointype="left" key1="{dataset.controldisplayname.get()}" key2="{dataset.controldisplayname.get()}"/>
+			<FilterList>
+				<Filter name="F1758635693348" expression="dataset.nbidentity.get()==0" type="Exclude"/>
+			</FilterList>
+			<ViewComputedAttribute name="nbexception_direct" displayname="nb direct exception" type="Integer" expression="dataset.nbidentity_exception.get()!=null?dataset.nbidentity_exception_role.get()!=null?dataset.nbidentity_exception.get()-dataset.nbidentity_exception_role.get():dataset.nbidentity_exception.get():0"/>
+			<ViewComputedAttribute name="nbidentity_direct" displayname="nb identity direct" type="Integer" expression="dataset.nbidentity_via_role.get()!=null?dataset.nbidentity_all.get()-dataset.nbidentity_via_role.get():dataset.nbidentity_all.get()"/>
+			<ViewComputedAttribute name="nbidentity" displayname="nb identity" type="Integer" expression="param.rejectExceptions.get()?dataset.nbidentity_direct.get()-dataset.nbexception_direct.get():dataset.nbidentity_direct.get()"/>
+		</Component>
+		<Link name="L1758639023223" source="C1758619291363" target="C1758633472122_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1758639023802" source="C1758633472122_1" target="C1757604363744" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1758701480902" type="joinview" x="85" y="144" w="300" h="50" title="Role source problem">
+			<InnerView name="bwa360_identitysodproblemsviarole_nb"/>
+			<Join jointype="left" key2="{dataset.id_controlcode.get()}" key1="{dataset.controlcode.get()}"/>
+		</Component>
+		<Link name="L1758701481518" source="C1539109107558" target="C1758701480902" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1758701482180" source="C1758701480902" target="C1758619291363" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="identityuid" displayname="identityuid" type="String"/>
+	<ViewParam name="organisationuid" displayname="organisationuid" type="String"/>
+	<ViewParam name="minimumRiskLevel" displayname="minimumRiskLevel" type="Integer"/>
+	<ViewParam name="sodmatrixuid" displayname="sodmatrixuid" type="String">
+	</ViewParam>
+	<ViewParam name="rejectExceptions" displayname="rejectExceptions" type="Boolean" defaultvalue="true">
+		<Value name="V1758640174094_1" data="true"/>
+	</ViewParam>
+</View>

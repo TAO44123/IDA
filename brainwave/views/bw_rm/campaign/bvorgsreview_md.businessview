@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bw_rm_orgsreview_md" displayname="bvorgsreview">
+	<Definition scriptfile="/views/bw_rm/bv.javascript" name="D1541675440904" description="Vue qui donne le statut de revue par organisation ( acteur, progres) et des infos sur le orga ( nb members) ">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1541675440904" title="tickets">
+			<InnerView name="bw_rm_getsubtickets">
+				<Param name="F1541675564009" viewparam="recorduid" viewparamvalue="{param.recorduid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1521966673539_1" type="joinview" x="402" y="220" w="300" h="50" title="nb roles per org">
+			<InnerView name="bwpm_nbroleperorg_md"/>
+			<Join jointype="left" key1="{dataset.orguid.get()}" key2="{dataset.org_uid.get()}"/>
+			<ViewComputedAttribute name="nbrolecode" displayname="nbrolecode" type="Integer" expression="!dataset.isEmpty(&apos;nbroleperorga&apos;)?dataset.nbroleperorga.get():0"/>
+		</Component>
+		<Component name="C1521966723205_1" type="joinview" x="385" y="269" w="300" h="50" title="nb identities">
+			<Join jointype="left" key1="{dataset.orguid.get()}" key2="{dataset.orga_uid.get()}"/>
+			<InnerView name="bwpm_nbidentitieswithroleperorg_md"/>
+			<ViewComputedAttribute name="nbidentities" displayname="nbidentities" type="Integer" expression="!dataset.isEmpty(&apos;nbidentities&apos;)?dataset.nbidentities.get():0"/>
+		</Component>
+		<Link name="L1521966723334_1" source="C1521966673539_1" target="C1521966723205_1" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1541676039514" type="joinview" x="166" y="50" w="300" h="50" title="org_info">
+			<InnerView name="bwpm_orgs"/>
+			<Join jointype="inner" key1="{dataset.orguid.get()}" key2="{dataset.uid.get()}"/>
+		</Component>
+		<Link name="L1541676040779" source="C1541675440904" target="C1541676039514" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1541676041066" source="C1541676039514" target="C1521966673539_1" priority="3" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="recorduid" displayname="ticket recorduid">
+		<Value name="V1582815800489_2" data="72"/>
+	</ViewParam>
+</View>

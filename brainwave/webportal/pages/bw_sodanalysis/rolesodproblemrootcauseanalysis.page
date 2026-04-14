@@ -1,0 +1,514 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+import "/webportal/pages/resources/concepts_nls.page"
+//import "/webportal/pages/bw_sodwhatif/usercentric/sodwhatif_user_simulation.page"
+
+import "/webportal/pages/bw_fragments/businessactivity/identitytopermissionpaths.page"
+import "/webportal/pages/bw_fragments/permission/content.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+
+bwsod_rolesodproblemrootcauseanalysisNLS = NLS {
+	title [ en "SoD problem root cause analysis" fr "Analyse de la cause du problème de SoD" ]
+	dyntitle [ en "SoD problem {1} root cause analysis for {0}" fr "Analyse de la cause du problème de SoD {1} pour {0}" ]
+	subtitle [en "Double click on a category value to zoom in" fr "Double cliquez sur une valeur de catégorie pour zoomer"]
+	dimensions [en "Business activity|transaction / auth obj.|simple role|composite role" fr "Business activity|transaction / obj auth.|simple role|composite role"]
+	activitycode [en "activity" fr "activité"]
+	activity [en "activity" fr "activité"]
+	rootcode [en "transaction / auth obj code" fr "transaction / obj auth code"]
+	root [en "transaction / auth obj" fr "transaction / obj auth"]
+	srole [en "simple role" fr "role simple"]
+	crole [en "composite role" fr "role composite"]
+	clear [en "clear" fr "effacer"]
+	filterflash [en "filter dimension {0} by {1}" fr "filtrage de la dimension {0} par {1}"]
+	risklevel [en "Risk level" fr "Niveau de risque"]
+	riskinformation [en "Risk information" fr "Description du risque"]
+	simulate [en "simulate user roles change" fr "simuler des changements de role pour l'utilisateur"]
+
+	rootcauselist [en "Root Cause List" fr "Root Cause"]
+	rolecontent [en "Role Content" fr "Contenu du rôle"]
+	rootcauseanalysis [en "Root Cause Analysis" fr "Analyse de la Root Cause"]
+	affectedidentities [en "Affected Identities" fr "Identités affectées"]
+	controldetails [en "SoD Control Details" fr "Détails Contrôle SoD"]
+}
+
+bwsod_rolesodproblemrootcauseanalysisDialog = Dialog {
+	title: $bwsod_rolesodproblemrootcauseanalysisNLS.title
+	enter-event: StringCase(controltagtype) {
+		when "SoD between permissions" then [ Set "bwsod_rolesodproblemrootcauselistPermission" to fragmentIdentifier ]
+		when "SoD between activities" then [ Set "bwsod_rolesodproblemrootcauselistActivity" to fragmentIdentifier ]
+		otherwise [ Set "bwsod_rolesodproblemrootcauselistActivity" to fragmentIdentifier ]
+	}
+	buttons:OkButton
+	width:1366
+	height:768
+	
+	roleuid = Variable { private:False } // parameter
+	controlcode = Variable { private:False } // parameter
+	controltagtype = Variable { private:False } // parameter
+	
+	fragmentIdentifier = Variable { type:String }
+
+	list1uid = Variable { multivalued:True private:True }
+	list2uid = Variable { multivalued:True private:True }
+	
+	role = Record {
+		view:br_permissionDetail with roleuid to uid
+	}
+	
+	control = Record {
+		view:bwsod_control with controlcode to controlcode
+	}
+	
+	Header { icon: %concept.permission value:role.displayname styling:hugeTitleStyle }
+	Group {
+		title: $bwsod_rolesodproblemrootcauseanalysisNLS.controldetails
+		layout: Layout {grab: horizontal True vertical False}
+		Grid {
+			layout:Layout {grab: horizontal True vertical True}
+			columns:GridColumn,GridColumn
+			GridRow {
+				GridCell {
+					Text {
+						label:$controlresult.controlcode
+						value:control.controlcode
+						compact:True
+					}
+					Text {
+						label:$controlresult.controldisplayname
+						value:control.controldisplayname
+						compact:True
+					}
+				}
+				GridCell {
+					Text {
+						label:$bwsod_rolesodproblemrootcauseanalysisNLS.risklevel
+						value: Transform control.risklevel using bwf_ControlLevelMapping
+						decorator: Decorator {
+							width: Fill
+							before: Image {
+								image: TemplateImageSelection(control.risklevel) using bwf_controllevel
+								width: 16
+							}
+						}
+						compact: True 
+					}
+					Text {
+						label:$bwsod_rolesodproblemrootcauseanalysisNLS.riskinformation
+						value:control.riskinfo
+						compact:True
+					}
+				}
+			}
+		}
+	}
+
+	TabFolder {
+		TabItem {
+			text:$bwsod_rolesodproblemrootcauseanalysisNLS.rootcauselist
+			IncludeDynamicFragment {
+				dynamic-name: fragmentIdentifier  
+				base-fragment: bwsod_rolesodproblemrootcauselistPermission with value-of roleuid to inroleuid,  value-of controlcode to incontrolcode, list1uid binds-to outlist1uid, list2uid binds-to outlist2uid 
+				layout: Layout { grab: horizontal True vertical True }
+			}
+		}
+		TabItem {
+			text:$bwsod_rolesodproblemrootcauseanalysisNLS.rolecontent
+
+			IncludeFragment {
+				fragment:fragmentPermissionContentwSoDColors with value-of roleuid to inuid, value-of list1uid to inlist1uid, value-of list2uid to inlist2uid 
+				layout: Layout { grab: horizontal True vertical True }
+			}
+		}
+		TabItem {
+			text: $bwsod_rolesodproblemrootcauseanalysisNLS.affectedidentities
+			
+			IncludeFragment {
+				fragment:fragmentPermissionContentSoDAffectedIdentities with value-of roleuid to roleuid
+				layout: Layout { grab: horizontal True vertical True }
+			}
+		}
+	}
+}
+
+fragmentPermissionContentSoDAffectedIdentities = PageFragment {
+	roleuid = Variable { private:False } // parameter
+	
+	selectedIdentity = Variable
+	selectedAccount = Variable
+	
+	accounts = Dataset {
+		view: bwsod_rolesodaffectedidentities with roleuid to roleuid
+	}
+	
+	showAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(
+			selectedAccount to inuid,
+			True to inshowowner,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowdecisionhistory
+		)
+	)
+	
+	showIdentityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(
+			selectedIdentity to inuid,
+			True to inshowapplications,
+			True to inshowcontrols,
+			True to inshowtheoretical,
+			True to inshowposition,
+			True to inshowdecisionhistory
+		)
+	)
+	
+	Table {
+		data: accounts
+		show-filter: True
+		show-count: True
+		configurable:True
+		layout: Layout { grab: horizontal True vertical True }
+		Column {
+			column:identityhrcode
+			header:$pidentity.hrcode
+			initially-masked:False
+			sortable:True
+			filterable:True
+			width:100%
+		}
+		Column {
+			column:identityfullname
+			header:$pidentity.fullname
+			initially-masked:False
+			sortable:True
+			filterable:True
+			width:100%
+		}
+		Column {
+			column:organizationshortname
+			header:$porganisation.shortname
+			initially-masked:False
+			sortable:True
+			filterable:True
+			width:100%
+		}
+		Column {
+			column:accountlogin
+			header:$paccount.login
+			initially-masked:False
+			sortable:True
+			filterable:True
+			width:100%
+		}
+		Column {
+			column:repositorydisplayname
+			header:$prepository.displayname
+			initially-masked:False
+			sortable:True
+			filterable:True
+			width:100%
+		}
+		Column {
+			column: identityuid
+			hidden: True
+			selection:selectedIdentity
+		}
+		Column {
+			column: accountuid
+			hidden: True
+			selection:selectedAccount
+		}
+	}
+}
+
+bwsod_rolesodproblemrootcauselistActivity = PageFragment {
+	enter-event:TransferData rolecontentds(uid) to (rolecontent),
+				TransferData dataTolist1(transactionuid) to (outlist1uid),
+				TransferData dataTolist2(transactionuid) to (outlist2uid)
+
+	inroleuid = Variable { private:False } // parameter
+	incontrolcode = Variable { private:False } // parameter
+	
+	inlist1name = Variable { type:String initial:$fragmentPermissionContentNLS.firstlist}
+	inlist2name = Variable { type:String initial:$fragmentPermissionContentNLS.secondlist}
+
+	outlist1uid = Variable { multivalued:True private:False } // return value
+	outlist2uid = Variable { multivalued:True private:False } // return value
+
+	rolecontent = Variable { multivalued:True private:True }
+	
+	selectedPermission = Variable
+	
+	dataTolist1 = Dataset {
+		view: bwsod_rolesodproblemtransactionlistActivity with inroleuid to roleuid, incontrolcode to controlcode, 1 to listnumber, rolecontent to transactionfilter
+	}
+	dataTolist2 = Dataset {
+		view: bwsod_rolesodproblemtransactionlistActivity with inroleuid to roleuid, incontrolcode to controlcode, 2 to listnumber, rolecontent to transactionfilter
+	}
+	
+	rolecontentds = Dataset {
+		view:bwsod_rolepermissioncontent with inroleuid to roleuid
+	}
+	
+	showPermissionPath = NamedAction (
+		Dialog fragmentBusinessPermissionPathsDialog(selectedPermission to inpermissionuid)
+	)
+
+	/* Page content */
+	Splitter {
+		disposition: Horizontal
+		size: 50%
+		Group {
+			Table {
+				data:dataTolist1
+				label: Label { break: True value: $fragmentPermissionContentNLS.firstlist }
+				show-filter: True
+				show-count: True
+				configurable:True
+				layout: Layout { grab: horizontal True vertical True }
+				Column {
+					column:activitycode
+					header:$bwsod_rolesodproblemrootcauseanalysisNLS.activitycode
+					initially-masked:True
+					sortable:True
+					filterable:True
+					width:100%
+				}
+				Column {
+					column:activitydisplayname
+					header:$bwsod_rolesodproblemrootcauseanalysisNLS.activity
+					sortable:True
+					filterable:True
+					width:100%
+				}
+				Column {
+					column:transactioncode
+					header:$ppermission.code
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:transactiondisplayname
+					tooltip:Current transactiondisplayname
+					header:$permission.concept
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:applicationdisplayname
+					header:$application.concept
+					sortable:True
+					filterable:True
+					width:100%
+					initially-masked:True
+				}
+				Column {
+					column:transactionuid
+					hidden:True
+					selection:selectedPermission
+				}
+			}
+		}
+		Group {
+			Table {
+				data:dataTolist2
+				label: Label { break: True value: $fragmentPermissionContentNLS.secondlist }
+				show-filter: True
+				show-count: True
+				configurable:True
+				layout: Layout { grab: horizontal True vertical True }
+				Column {
+					column:activitycode
+					header:$bwsod_rolesodproblemrootcauseanalysisNLS.activitycode
+					initially-masked:True
+					sortable:True
+					filterable:True
+					width:100%
+				}
+				Column {
+					column:activitydisplayname
+					header:$bwsod_rolesodproblemrootcauseanalysisNLS.activity
+					sortable:True
+					filterable:True
+					width:100%
+				}
+				Column {
+					column:transactioncode
+					header:$ppermission.code
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:transactiondisplayname
+					tooltip:Current transactiondisplayname
+					header:$permission.concept
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:applicationdisplayname
+					header:$application.concept
+					sortable:True
+					filterable:True
+					width:100%
+					initially-masked:True
+				}
+				Column {
+					column:transactionuid
+					hidden:True
+					selection:selectedPermission
+				}
+			}
+		}
+	}
+}
+
+bwsod_rolesodproblemrootcauselistPermission = PageFragment {
+	enter-event:TransferData rolecontentds(uid) to (rolecontent),
+				TransferData dataTolist1(permissionuid) to (outlist1uid),
+				TransferData dataTolist2(permissionuid) to (outlist2uid)
+
+	inroleuid = Variable { private:False } // parameter
+	incontrolcode = Variable { private:False } // parameter
+	
+	inlist1name = Variable { type:String initial:$fragmentPermissionContentNLS.firstlist}
+	inlist2name = Variable { type:String initial:$fragmentPermissionContentNLS.secondlist}
+
+	outlist1uid = Variable { multivalued:True private:False } // return value
+	outlist2uid = Variable { multivalued:True private:False } // return value
+
+	rolecontent = Variable { multivalued:True private:True }
+	
+	selectedPermission = Variable
+	selectedApplication = Variable
+	
+	dataTolist1 = Dataset {
+		view: bwsod_rolesodproblemtransactionlistPermission with inroleuid to roleuid, incontrolcode to controlcode, 1 to listnumber, rolecontent to transactionfilter
+	}
+	dataTolist2 = Dataset {
+		view: bwsod_rolesodproblemtransactionlistPermission with inroleuid to roleuid, incontrolcode to controlcode, 2 to listnumber, rolecontent to transactionfilter
+	}
+	
+	rolecontentds = Dataset {
+		view:bwsod_rolepermissioncontent with inroleuid to roleuid
+	}
+	
+	showPermissionPath = NamedAction (
+		Dialog fragmentBusinessPermissionPathsDialog(selectedPermission to inpermissionuid)
+	)
+	
+	showApplicationDetails = NamedAction (
+		Dialog bwf_applicationDetailsDialog(
+			selectedApplication to inuid,
+			True to inshowperjob,
+			True to inshowperorg
+		)
+	)
+
+	/* Page content */
+	Splitter {
+		disposition: Horizontal
+		size: 50%
+		Group {
+			Table {
+				data:dataTolist1
+				label: Label { break: True value: $fragmentPermissionContentNLS.firstlist }
+				show-filter: True
+				show-count: True
+				configurable:True
+				layout: Layout { grab: horizontal True vertical True }
+				Column {
+					column:applicationdisplayname
+					header:$application.concept
+					sortable:True
+					filterable:True
+					width:100%
+					initially-masked:False
+				}
+				Column {
+					column:permissioncode
+					header:$ppermission.code
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:permissiondisplayname
+					tooltip:Current permissiondisplayname
+					header:$permission.concept
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:permissionuid
+					hidden:True
+					selection:selectedPermission
+				}
+				Column {
+					column:applicationuid
+					hidden:True
+					selection:selectedApplication
+				}
+			}
+		}
+		Group {
+			Table {
+				data:dataTolist2
+				label: Label { break: True value: $fragmentPermissionContentNLS.secondlist }
+				show-filter: True
+				show-count: True
+				configurable:True
+				layout: Layout { grab: horizontal True vertical True }
+				Column {
+					column:applicationdisplayname
+					header:$application.concept
+					sortable:True
+					filterable:True
+					width:100%
+					initially-masked:False
+				}
+				Column {
+					column:permissioncode
+					header:$ppermission.code
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:permissiondisplayname
+					tooltip:Current permissiondisplayname
+					header:$permission.concept
+					sortable:True
+					filterable:True
+					width:100%
+					actions:ExecuteNamedAction showPermissionPath
+				}
+				Column {
+					column:permissionuid
+					hidden:True
+					selection:selectedPermission
+				}
+			}
+		}
+	}
+}
+

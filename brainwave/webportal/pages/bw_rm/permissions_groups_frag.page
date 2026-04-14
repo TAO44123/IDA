@@ -1,0 +1,118 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_rm/utils.page"
+import "/webportal/pages/bw_rm/rolemining_nls.page"
+
+permGroupsNLS = NLS {
+	parentgroups [en "Parent groups" fr "Groupes parents"]
+	childgroups [en "sub groups" fr "Sous groupes"]
+
+}
+
+/**
+ * Display the selected group details
+ * 
+ * @param inuid the group uid
+ */
+permissionGroups = PageFragment {
+		
+	/* Variables here */
+	inuid = Variable  /*permissions uid */
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	
+	permById = Record {
+	  view: bwrm_permbyuid with inuid to uid unless-empty
+	 	disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	groupInfoByDn = Record {
+	   view:bwrm_groupbydn with permById.code to dn unless-empty
+		disabled:Not BooleanPredicate(inenabled)
+	}
+
+	dparentgroups = Dataset {
+		view:bwrm_dparentgroups with groupInfoByDn.uid to uid
+
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	childgroups = HierarchicalData {
+		view:bwf_groupchildgroups with inuid to uid
+		initial:parentuid = inuid
+		connect:parent uid to child parentuid
+		disabled:Not BooleanPredicate(inenabled)
+	}
+	
+	Header {
+		value:permById.displayname
+		styling:bigTitleStyle
+		//icon:"48/audit/permission_48.png"
+		layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False 
+		  hint:width 500
+		  }
+	}
+	
+	Text {
+	  value: Transform permById.type using bwrm_permType
+	  label: $permminingNLS.type
+	  compact: True
+	  
+	}
+	
+
+	Table {
+		data:dparentgroups
+		label: Label{value: $permGroupsNLS.parentgroups break: True}
+		configurable:True
+		layout:Layout {grab:horizontal True vertical True}
+		show-count: True
+		Column {
+			column:displayname
+			header:$group.displayname
+			width:50%
+			sortable: True
+		}
+		Column {
+		  column: type
+		  text: Transform Current type using bwrm_permType
+		  header: $permminingNLS.type
+		  sortable: True
+		}
+		Column {
+			column:comment
+			header:$group.comment
+			width:50%
+		}
+		Column {
+			column:code
+			header:$group.code
+			initially-masked:True
+		}
+		
+	}
+ 	Tree {
+		data:childgroups
+		label: Label {value: $permGroupsNLS.childgroups break: True}
+		configurable:True
+		expand-level:10
+		layout:Layout {grab:horizontal True vertical True }
+		Column {
+			column:displayname
+			header:$group.displayname
+			width:25%
+		}
+		Column {
+			column:comment
+			header:$group.comment
+			width:75%
+		}
+		Column {
+			column:code
+			header:$group.code
+			initially-masked:True
+		}
+		
+	}
+
+}

@@ -1,0 +1,386 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+
+import "/webportal/pages/bw_fragments/repository/resources.page"
+
+import "/webportal/pages/resources/constants.page"
+import "/webportal/pages/bw_portaluar_base/repository/search.page"
+import "/webportal/pages/bw_portaluar_base/parking.page"
+
+serverSearchPage_withtrends = UserVariable {
+		initial:False
+		type:Boolean
+		persistent:True
+}
+
+serverSearchPage = Page {
+	title: $search.server.title
+	tags: "server", "conceptsearch" priority 550
+	icon: %concept_32.server
+	large-icon: %concept_48.server
+	description: $searchlabel.server
+	conditional-redirect:ConditionalRedirect { condition:Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license)) target:Page bwias_parking with-current-parameters }  
+
+	initialUid = Parameter {
+		type: String
+		hidden: True
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	serverSearch = SearchDefinition {
+		entity: Repository
+		simple-mode-rule: br_server_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedRepositoryUid = Variable {
+		type: String
+	}
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	repositoryanalytics = Dataset {
+		pages: Pages{tags: "server" and "searchresults" }
+		count-variable:nbanalytics
+	}
+
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+
+	repositoryData = Dataset {
+		search: Search {
+			definition: serverSearch
+			view: br_allservers_searchpoint_trend with reftimeslot.timeslotuid to reftimeslotuid, UserVariable serverSearchPage_withtrends to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	repositoryData_count = Dataset {
+		search: Search {
+			definition: serverSearch
+			view: br_allservers_searchpoint_trend with reftimeslot.timeslotuid to reftimeslotuid, False to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	
+	goDetails = NamedAction (
+		GoTo Activity Repository Detail with selectedRepositoryUid to paramRepositoryUid
+	)
+	
+	// Search section
+	Group {
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		SearchEdition {
+			definition: serverSearch
+			layout: Layout { grab: horizontal True vertical False }
+			simple-mode-columns: 2
+			rule-mode-enabled:FeaturePredicate serversearch_rulemode
+			completion-view:[
+				Repository as br_allservers_repositoryautocompletion
+			
+			]
+			simple-mode-layout: SimpleModeLayout {
+				code { label: $repository.code },
+				name { label: $repository.displayname }
+			}
+		}
+	}
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: repositoryData
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex
+			selection-index: initialIndex
+			page-size:1000	
+			show-count-button: True				
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedRepositoryUid
+			}
+			Column {
+				column: code
+				header: $repository.code
+				width: 50%
+				sortable:True
+				initially-masked: True
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: displayname
+				header: $repository.displayname
+				width: 100%
+				sortable:True
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+			Column {
+				column: repositorytype
+				text:Transform Current repositorytype using bwfRepoType
+				header: $repository.repositorytype
+				width: 160px
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: repositoryfamily
+				text:Transform Current repositoryfamily using bwfRepoFamilyType
+				header: $repository.repositoryfamily
+				width: 160px
+				sortable:True
+				initially-masked: True
+			}
+			Column {
+				column: isnew
+				text:Transform Current isnew using booleanDisplayMapping
+				header: $searchlabel.isnew
+				width: 100px
+				styling:BooleanStyling(Current isnew) { when True then repositorySearchPage_highlightnew when False then default }				
+				initially-masked: True
+			}
+			Column {
+				column:nbaccount
+				text:Transform Current nbaccount using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.repository.nbaccounts.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbaccount).equals('null')?956487965:current.nbaccount-current.prevnbaccount") using bwf_trend
+				tooltip:$search.repository.ratiotooltip(Transform Current nbaccount using mayBeNullMapping, Transform Current prevnbaccount using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbgroup
+				text:Transform Current nbgroup using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.repository.nbgroups.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbgroup).equals('null')?956487965:current.nbgroup-current.prevnbgroup") using bwf_trend
+				tooltip:$search.repository.ratiotooltip(Transform Current nbgroup using mayBeNullMapping, Transform Current prevnbgroup using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbidentity
+				text:Transform Current nbidentity using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$search.repository.nbidentities.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbidentity).equals('null')?956487965:current.nbidentity-current.prevnbidentity") using bwf_trend
+				tooltip:$search.repository.ratiotooltip(Transform Current nbidentity using mayBeNullMapping, Transform Current prevnbidentity using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbshare
+				feature:unstructureddata_license
+				text:Transform Current nbshare using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.server.nbshares.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbshare).equals('null')?956487965:current.nbshare-current.prevnbshare") using bwf_trend
+				tooltip:$search.repository.ratiotooltip(Transform Current nbshare using mayBeNullMapping, Transform Current prevnbshare using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+			Column {
+				column:nbusage
+				text:Transform Current nbusage using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$search.repository.nbusage.header
+				image:TemplateImageSelection(Eval "(''+current.prevnbusage).equals('null')?956487965:current.nbusage-current.prevnbusage") using bwf_trend
+				tooltip:$search.repository.ratiotooltip(Transform Current nbusage using mayBeNullMapping, Transform Current prevnbusage using mayBeNullMapping)
+				align:Left
+				fixed-width:True
+				width:100px
+			}
+		}
+	}
+	Grid {
+		columns:GridColumn,GridColumn { width: grow }
+		layout: Layout { grab:horizontal True vertical False hint: height 38 }
+		GridRow {
+			GridCell {
+				Checkbox {
+					variable:UserVariable serverSearchPage_withtrends
+					text:$search.showkpitrends
+					tooltip:$search.showkpitrends.tooltip
+				}
+			}			
+			GridCell {
+				ButtonGroup {
+					nb-inline:2
+					align:Right
+					Button {
+						actions:ExecuteNamedAction goDetails
+						text:$search.showdetails
+						tooltip:$search.showdetailstooltip
+						disabled:StringPredicate(selectedRepositoryUid) { when IsEmpty then True }	
+						image:%browsing_16.link
+					}
+					Button {
+						actions: IntCase(Count repositoryData_count)	{
+										when > NonEmpty(ConfigurationVariable "search_repository_analyticserrorthreshold", Constant search_repository_analyticserrorthreshold) then [
+											Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_repository_analyticserrorthreshold", Constant search_repository_analyticserrorthreshold))
+										]
+										when > NonEmpty(ConfigurationVariable "search_repository_analyticswarningthreshold", Constant search_repository_analyticswarningthreshold) then [
+											Confirm $search.analyticswarningthreshold(Count repositoryData_count),
+											GoTo Page serverSearchAnalyticsPage with  SerializeSearch serverSearch to search
+												
+										]
+										otherwise [
+											GoTo Page serverSearchAnalyticsPage with  SerializeSearch serverSearch to search
+										]
+									}
+						text:$search.applyanalytics
+						tooltip:$search.applyanalyticstooltip
+						image:%report_16.analytics
+						feature:repositorysearch_analytics
+						disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+					}
+					Button {
+						actions:	TransferData repositoryData(uid) to (uids), 
+									Dialog fragmentRepositoryBulkAddTag(uids to uids),
+									Flash $search.flashaddingatag
+						text:$search.addingatag
+						image:%collection_16.tag
+						feature:serversearch_updatetags
+					}
+					Button {
+						actions:	TransferData repositoryData(uid) to (uids), 
+									Dialog fragmentRepositoryBulkRemoveTag(uids to uids, SerializeSearch serverSearch to repositorySearch),
+									Flash $search.flashremovingatag
+						text:$search.removingatag
+						image:%collection_16.tag
+						feature:serversearch_updatetags
+					}
+					Button {
+						actions:	TransferData repositoryData(uid) to (uids), 
+									Dialog fragmentRepositoryBulkRemoveAllTags(uids to uids),
+									Flash $search.flashremovingalltag
+						text:$search.removingalltag
+						image:%collection_16.tag
+						feature:serversearch_updatetags
+					}
+				}
+			}
+		}
+	}
+}
+
+
+serverSearchAnalyticsPage = Page {
+	title:$search.applyanalytics
+	feature: All(pam_license, Any(governance_license, compliance_license))
+
+	search = SearchDefinition {
+		entity:Repository
+		simple-mode-rule: br_server_simple_search
+	}
+
+	analytics = Dataset {
+		pages: Pages{tags: "server" and "searchresults" }
+	}
+
+	ConditionalGroup {
+		IntCondition(Count analytics) {
+			when =0 then [
+				Header {
+					value:$search.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:analytics
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:$search.back
+			image:%browsing_16.back
+		}
+	}
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA safes" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039375263_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039805315_1">
+		<Component name="C1617039805315_1" type="discoverysource" x="42" y="20" w="300" h="64" title="CA_safes">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_safes.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_safes.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617039830090_1" type="application" x="42" y="222" w="300" h="64" title="CA safe application">
+			<Application key="safename" error="true" event="ApplicationNullOrEmpty">
+				<Attribute name="displayname" attribute="safedisplayname"/>
+				<Attribute name="applicationtype" attribute="type"/>
+				<Attribute name="custom1" attribute="safenumber"/>
+				<Attribute name="custom2" attribute="creator_id"/>
+				<Attribute name="custom3" attribute="location"/>
+				<Attribute name="custom4" attribute="olacenabled"/>
+				<Attribute name="custom5" attribute="managingcpm"/>
+				<Attribute name="custom6" attribute="creationdate"/>
+			</Application>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepositoryNotFound"/>
+		</Component>
+		<Link name="L1617039865952_1" source="C1617039805315_1" target="C1617195444313_2" priority="1"/>
+		<Link name="L1617039868186_1" source="C1617039830090_1" target="C1659365465443" priority="1"/>
+		<Component name="C1617195444313_2" type="changefilter" x="42" y="115" w="300" h="64" title="Add type attribute">
+			<Actions>
+				<Action name="U1617195479883" action="add" attribute="type" type="String" multivalued="false" newvalue="ca_safe" errorexist="false"/>
+				<Action name="U1625471758621" action="add" attribute="safedisplayname" type="String" multivalued="false" newvalue="{dataset.safename.get()}" errorexist="false"/>
+				<Action name="U1624458360546" action="update" attribute="safename" newvalue="{&apos;SAFE_&apos;+dataset.safenumber.get()+&apos;_&apos;+dataset._APPLICATION_CODE_.get()}" errorunknown="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1617198784385" source="C1617195444313_2" target="C1617039830090_1" priority="1"/>
+		<Component name="C1659365465443" type="metadata" x="42" y="334" w="300" h="64" title="vault_safe_description">
+			<Metadata schema="bwa_applicationmetadata" key=" " application="safename" error="true" event="SafeDescriptionMetadata">
+				<Attribute name="value4string" attribute="description"/>
+			</Metadata>
+		</Component>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

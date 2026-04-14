@@ -1,0 +1,602 @@
+{
+  "uid" : "6e47f35a-4b1a-43aa-b544-886f03bda752",
+  "authorUid" : "1667553723625_871",
+  "status" : "Private",
+  "updated" : "20221104122017",
+  "header" : {
+    "priority" : 61,
+    "descriptionNls" : {
+      "v" : {
+        "en" : ""
+      }
+    },
+    "titleExprNls" : {
+      "v" : {
+        "fr" : "Groupes avec accès aux safes",
+        "en" : "Safe Access Groups"
+      }
+    },
+    "titleValueNls" : {
+      "v" : {
+        "fr" : "Groupes avec accès aux safes",
+        "en" : "Safe Access Groups"
+      }
+    },
+    "categoryName" : "myreports:100",
+    "categoryNls" : {
+      "v" : {
+        "fr" : "My Reports"
+      }
+    },
+    "authorName" : "Setup"
+  },
+  "contents" : {
+    "params" : [ {
+      "@type" : "Item",
+      "name" : "Vault",
+      "labelNls" : {
+        "v" : {
+          "en" : "Vault",
+          "fr" : "Vault"
+        }
+      },
+      "helpTextNls" : {
+        "v" : {
+          "en" : ""
+        }
+      },
+      "editable" : true,
+      "listSource" : {
+        "@type" : "View",
+        "emptyLabelNls" : {
+          "v" : {
+            "en" : "All Vaults",
+            "fr" : "Tous les Vaults"
+          }
+        },
+        "paramView" : {
+          "view" : "bwca_vault_list",
+          "paramValues" : { }
+        },
+        "valueCol" : "vault_code",
+        "labelCol" : "vault_name"
+      },
+      "cache" : true
+    }, {
+      "@type" : "Item",
+      "name" : "grouptag",
+      "labelNls" : {
+        "v" : {
+          "en" : "Group Tag",
+          "fr" : "Label des Groupes"
+        }
+      },
+      "helpTextNls" : {
+        "v" : {
+          "en" : "Group Tag",
+          "fr" : "Choisir un label de groupes sur lequel filtrer"
+        }
+      },
+      "editable" : true,
+      "listSource" : {
+        "@type" : "View",
+        "emptyLabelNls" : {
+          "v" : {
+            "en" : "All Groups",
+            "fr" : "Tous les groupes"
+          }
+        },
+        "paramView" : {
+          "view" : "bwca_groups_tags",
+          "paramValues" : { }
+        },
+        "valueCol" : "tag",
+        "labelCol" : "tag"
+      },
+      "cache" : true
+    } ],
+    "mashlets" : [ {
+      "@type" : "Indicator",
+      "id" : "1",
+      "layout" : {
+        "x" : 0,
+        "y" : 0,
+        "hspan" : 1,
+        "vspan" : 3
+      },
+      "titleNls" : {
+        "v" : {
+          "en" : "Selected Groups",
+          "fr" : "Groupes sélectionnés"
+        }
+      },
+      "link" : {
+        "@type" : "Dialog",
+        "columns" : [ "repo_grp_concat", "code", "creationdate", "modificationdate" ]
+      },
+      "requestSource" : {
+        "@type" : "search",
+        "request" : "group(*|saferight(*|vault(*eqCode[codeParam=^\"{param.Vault}\"])),eqbwa_grouptags_tag[valueStringParam=^\"{param.grouptag}\"])"
+      },
+      "cache" : true,
+      "tooltip" : {
+        "v" : { }
+      },
+      "inner" : false,
+      "mode" : "numeric",
+      "unit" : "",
+      "showPercentage" : false,
+      "dispOptions" : {
+        "template" : "default"
+      },
+      "valueViewSrc" : {
+        "data" : {
+          "@type" : "none"
+        },
+        "aggFunction" : "Count"
+      },
+      "maxFromRequest" : false,
+      "maxRequestSource" : {
+        "@type" : "search",
+        "request" : "group"
+      },
+      "maxViewSrc" : {
+        "data" : {
+          "@type" : "none"
+        },
+        "aggFunction" : "Count"
+      },
+      "maxFixedValue" : 1,
+      "evalOptions" : {
+        "enabled" : false,
+        "mode" : "HI",
+        "warning" : 0.0,
+        "critical" : 0.0
+      },
+      "trendOptions" : {
+        "enabled" : true,
+        "reference" : true
+      }
+    }, {
+      "@type" : "IndGrp",
+      "id" : "10",
+      "layout" : {
+        "x" : 1,
+        "y" : 0,
+        "hspan" : 1,
+        "vspan" : 3
+      },
+      "titleNls" : {
+        "v" : {
+          "en" : "# Groups per access type",
+          "fr" : "Droits d'accès des groupes"
+        }
+      },
+      "mode" : "radial",
+      "items" : [ {
+        "@type" : "Indicator",
+        "id" : "11",
+        "layout" : {
+          "x" : -1,
+          "y" : -1,
+          "hspan" : 1,
+          "vspan" : 1
+        },
+        "titleNls" : {
+          "v" : {
+            "en" : "admin rights",
+            "fr" : "Administration"
+          }
+        },
+        "link" : {
+          "@type" : "Dialog",
+          "columns" : [ "repo_grp_concat", "code", "creationdate", "modificationdate" ]
+        },
+        "requestSource" : {
+          "@type" : "search",
+          "request" : "group(*eqbwa_grouptags_tag[valueStringParam=^\"{param.grouptag}\"],|safeadminright(*|vault(*eqCode[codeParam=^\"{param.Vault}\"])))"
+        },
+        "cache" : true,
+        "tooltip" : {
+          "v" : { }
+        },
+        "inner" : true,
+        "mode" : "radial",
+        "unit" : "",
+        "showPercentage" : false,
+        "dispOptions" : {
+          "template" : "blueGrad"
+        },
+        "valueViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFromRequest" : true,
+        "maxRequestSource" : {
+          "@type" : "search",
+          "request" : "group(*eqbwa_grouptags_tag[valueStringParam=^\"{param.grouptag}\"],|saferight(*|vault(*eqCode[codeParam=^\"{param.Vault}\"])))"
+        },
+        "maxViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFixedValue" : 100,
+        "evalOptions" : {
+          "enabled" : false,
+          "mode" : "HI",
+          "warning" : 0.0,
+          "critical" : 0.0
+        },
+        "trendOptions" : {
+          "enabled" : true,
+          "reference" : true
+        }
+      }, {
+        "@type" : "Indicator",
+        "id" : "13",
+        "layout" : {
+          "x" : -1,
+          "y" : -1,
+          "hspan" : 1,
+          "vspan" : 1
+        },
+        "titleNls" : {
+          "v" : {
+            "en" : "User Rights",
+            "fr" : "Utilisation"
+          }
+        },
+        "link" : {
+          "@type" : "Dialog",
+          "columns" : [ "repo_grp_concat", "code", "creationdate", "modificationdate" ]
+        },
+        "requestSource" : {
+          "@type" : "search",
+          "request" : "group(*|safeuserright(*|vault(*eqCode[codeParam=^\"{param.Vault}\"])),eqbwa_grouptags_tag[valueStringParam=^\"{param.grouptag}\"])"
+        },
+        "cache" : true,
+        "tooltip" : {
+          "v" : { }
+        },
+        "inner" : true,
+        "mode" : "radial",
+        "unit" : "",
+        "showPercentage" : false,
+        "dispOptions" : {
+          "template" : "fc_lagoon"
+        },
+        "valueViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFromRequest" : true,
+        "maxRequestSource" : {
+          "@type" : "search",
+          "request" : "group(*eqbwa_grouptags_tag[valueStringParam=^\"{param.grouptag}\"],|saferight(*|vault(*eqCode[codeParam=^\"{param.Vault}\"])))"
+        },
+        "maxViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFixedValue" : 100,
+        "evalOptions" : {
+          "enabled" : false,
+          "mode" : "HI",
+          "warning" : 0.0,
+          "critical" : 0.0
+        },
+        "trendOptions" : {
+          "enabled" : true,
+          "reference" : true
+        }
+      } ]
+    }, {
+      "@type" : "MultiChart",
+      "id" : "15",
+      "layout" : {
+        "x" : 2,
+        "y" : 0,
+        "hspan" : 2,
+        "vspan" : 3
+      },
+      "titleNls" : {
+        "v" : {
+          "en" : "Groups With Safe Access"
+        }
+      },
+      "link" : {
+        "@type" : "MashletNoLink"
+      },
+      "requestSource" : {
+        "@type" : "search",
+        "request" : "group(*|saferight(*|vault(*eqCode[codeParam=^\"{param.Vault}\"])),eqbwa_grouptags_tag[valueStringParam=^\"{param.grouptag}\"])"
+      },
+      "paramView" : {
+        "@type" : "view",
+        "view" : "bwca_groups_byaccesstype_safe",
+        "paramValues" : { }
+      },
+      "cache" : true,
+      "chartType" : "BAR",
+      "dispOptions" : {
+        "template" : "contrast",
+        "staggerLabels" : true,
+        "insideLabels" : true,
+        "showLegend" : true,
+        "sunbeamLayout" : false,
+        "labelsOutside" : false,
+        "legendPosition" : "top",
+        "stackMode" : "none",
+        "showValues" : false,
+        "valuesMode" : "cat"
+      },
+      "labelColumn" : "timeslotcommitdate",
+      "valueColumn" : "nb_group",
+      "sortData" : {
+        "columnName" : "timeslotcommitdate",
+        "descending" : false
+      },
+      "rowLimit" : 4,
+      "other" : false,
+      "dateFormat" : "%x",
+      "refTimeslot" : false,
+      "serieColumn" : "GroupNb",
+      "serieLimit" : 4,
+      "serieOther" : false,
+      "serieSortData" : {
+        "columnName" : "GroupNb",
+        "descending" : true
+      }
+    }, {
+      "@type" : "Table",
+      "id" : "4",
+      "layout" : {
+        "x" : 0,
+        "y" : 3,
+        "hspan" : 3,
+        "vspan" : 4
+      },
+      "titleNls" : {
+        "v" : {
+          "en" : "Group list with access to safe",
+          "fr" : "Liste des groupes avec accès aux safes"
+        }
+      },
+      "link" : {
+        "@type" : "MashletDetailLink",
+        "linkColName" : "displayname",
+        "conceptName" : "Group",
+        "uidColName" : "uid"
+      },
+      "requestSource" : {
+        "@type" : "rule",
+        "requestName" : "bwca_groups_list",
+        "params" : {
+          "tag" : "{param.grouptag}",
+          "vault" : "{param.Vault}"
+        }
+      },
+      "paramView" : {
+        "@type" : "view",
+        "view" : "bwca_groups_list",
+        "paramValues" : { }
+      },
+      "cache" : true,
+      "allowFiltering" : false,
+      "displayColumns" : [ "displayname", "group_type", "bw_pam_groupmetrics_nb_safes", "bw_pam_groupmetrics_nb_vaults", "bw_pam_groupmetrics_nb_credentials", "bw_pam_groupmetrics_nb_contractors", "bw_pam_groupmetrics_nb_credentials_no_cpm", "bw_pam_groupmetrics_nb_child_groups" ],
+      "colsCfg" : {
+        "displayname" : {
+          "label" : "Group Name",
+          "width" : 200
+        },
+        "group_type" : {
+          "label" : "Group Type",
+          "width" : 100
+        },
+        "bw_pam_groupmetrics_nb_safes" : {
+          "label" : "Safes",
+          "width" : 80
+        },
+        "bw_pam_groupmetrics_nb_vaults" : {
+          "label" : "Vaults",
+          "width" : 80
+        },
+        "bw_pam_groupmetrics_nb_credentials" : {
+          "label" : "Credentials",
+          "width" : 100
+        },
+        "bw_pam_groupmetrics_nb_contractors" : {
+          "label" : "Contractors",
+          "width" : 100
+        },
+        "bw_pam_groupmetrics_nb_credentials_no_cpm" : {
+          "label" : "Creds Without CPM"
+        },
+        "bw_pam_groupmetrics_nb_child_groups" : {
+          "label" : "Chlid Groups",
+          "width" : 100
+        },
+        "bwa_groupmetadata_sensitivitylevel" : {
+          "label" : "sensibilité"
+        }
+      },
+      "sortData" : {
+        "columnName" : "bw_pam_groupmetrics_nb_safes",
+        "descending" : true
+      },
+      "rowLimit" : 2147483647,
+      "showChanges" : false
+    }, {
+      "@type" : "IndGrp",
+      "id" : "7",
+      "layout" : {
+        "x" : 3,
+        "y" : 3,
+        "hspan" : 1,
+        "vspan" : 4
+      },
+      "titleNls" : {
+        "v" : {
+          "en" : "# Groups with",
+          "fr" : "Groupes avec nouveaux utilisateurs"
+        }
+      },
+      "mode" : "radial",
+      "items" : [ {
+        "@type" : "Indicator",
+        "id" : "8",
+        "layout" : {
+          "x" : -1,
+          "y" : -1,
+          "hspan" : 1,
+          "vspan" : 1
+        },
+        "titleNls" : {
+          "v" : {
+            "en" : "new users",
+            "fr" : "Accès safes"
+          }
+        },
+        "link" : {
+          "@type" : "Dialog",
+          "columns" : [ "repo_grp_concat", "code", "creationdate", "modificationdate" ]
+        },
+        "requestSource" : {
+          "@type" : "rule",
+          "requestName" : "bwca_groups_safes_users",
+          "params" : {
+            "tag" : "{param.grouptag}",
+            "vault" : "{param.Vault}"
+          }
+        },
+        "cache" : true,
+        "tooltip" : {
+          "v" : { }
+        },
+        "inner" : true,
+        "mode" : "radial",
+        "unit" : "",
+        "showPercentage" : false,
+        "dispOptions" : {
+          "template" : "fc_violet"
+        },
+        "valueViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFromRequest" : true,
+        "maxRequestSource" : {
+          "@type" : "rule",
+          "requestName" : "bwca_groups_list",
+          "params" : { }
+        },
+        "maxViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFixedValue" : 100,
+        "evalOptions" : {
+          "enabled" : false,
+          "mode" : "HI",
+          "warning" : 0.0,
+          "critical" : 0.0
+        },
+        "trendOptions" : {
+          "enabled" : true,
+          "reference" : true
+        }
+      }, {
+        "@type" : "Indicator",
+        "id" : "9",
+        "layout" : {
+          "x" : -1,
+          "y" : -1,
+          "hspan" : 1,
+          "vspan" : 1
+        },
+        "titleNls" : {
+          "v" : {
+            "en" : "new safes",
+            "fr" : "Accès vaults"
+          }
+        },
+        "link" : {
+          "@type" : "Dialog",
+          "columns" : [ "repo_grp_concat", "code", "creationdate", "modificationdate" ]
+        },
+        "requestSource" : {
+          "@type" : "rule",
+          "requestName" : "bwca_groups_safes",
+          "params" : {
+            "tag" : "{param.grouptag}",
+            "vault" : "{param.Vault}"
+          }
+        },
+        "cache" : true,
+        "tooltip" : {
+          "v" : { }
+        },
+        "inner" : true,
+        "mode" : "radial",
+        "unit" : "",
+        "showPercentage" : false,
+        "dispOptions" : {
+          "template" : "default"
+        },
+        "valueViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFromRequest" : true,
+        "maxRequestSource" : {
+          "@type" : "rule",
+          "requestName" : "bwca_groups_list",
+          "params" : {
+            "tag" : "{param.grouptag}",
+            "vault" : "{param.Vault}"
+          }
+        },
+        "maxViewSrc" : {
+          "data" : {
+            "@type" : "none"
+          },
+          "aggFunction" : "Count"
+        },
+        "maxFixedValue" : 100,
+        "evalOptions" : {
+          "enabled" : false,
+          "mode" : "HI",
+          "warning" : 0.0,
+          "critical" : 0.0
+        },
+        "trendOptions" : {
+          "enabled" : true,
+          "reference" : true
+        }
+      } ]
+    } ],
+    "layout" : {
+      "template" : "4-2",
+      "nbGridRows" : 7,
+      "overrideTpl" : true,
+      "scrollEnabled" : false
+    },
+    "show" : false,
+    "style" : "1",
+    "nextId" : 15
+  }
+}

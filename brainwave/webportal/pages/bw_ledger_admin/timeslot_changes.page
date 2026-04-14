@@ -1,0 +1,249 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/pages_nls.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+import "/webportal/pages/bw_ledger_admin/manage_timeslot.page"
+
+timeslot_changes = Page {
+    title:$menusAndTitles.timeslotChanges	
+        enter-event: StringCase(timeslotuidParam) {when Not IsNull then[Set timeslotuidParam to currentTimeslotuid] } 
+
+    timeslotuidParam  = Parameter {
+        mandatory: False
+            hidden: True
+            type: String			
+    }
+
+    currentTimeslotuid = Variable{type:String }
+
+    timeslots = Dataset {
+        view:br_timeslotlist}
+
+
+    identities_stat = Dataset {
+        service: srv_identities_actions with currentTimeslotuid to timeslotUid
+    }
+
+    data_stat = Dataset {
+        service: srv_data_actions with currentTimeslotuid to timeslotUid
+    }
+
+
+    asset_stat = Dataset {
+        service: srv_asset_actions with currentTimeslotuid to timeslotUid
+    }
+
+    repository_stat = Dataset {
+        service: srv_repository_actions with currentTimeslotuid to timeslotUid
+    }
+
+    repository_stat_tree = HierarchicalData {	
+        service: srv_repository_actions with currentTimeslotuid to timeslotUid
+            connect:parent repository_ to child parent_ 
+            initial:parent_ = "racine"
+    }
+
+    /*
+    timeslot = Record {
+            view:br_timeslotlist with currentTimeslotuid to timeslot_uid
+    }
+    */
+  Group {
+  	styling:cssPageDashboard
+
+	Group {
+  		styling:cssRound
+  		layout:Layout { grab:horizontal True vertical False hint: height 52 }
+	
+	  Grid {
+	      columns: GridColumn { width: 100px}, GridColumn { width: 300px}, GridColumn { width: 100px}, GridColumn { width: 100px}, GridColumn{ width: grow}
+	      layout: Layout { 
+	        grab: horizontal False vertical False
+	      }
+	      GridRow {
+	        GridCell {
+		      Button {
+		        text: $menusAndTitles.timeslots
+		        image: "16/bw_ledger_admin/archive.png"
+		        actions: GoTo Page manage_timeslot 	
+		        tooltip:$navigation.gotoTimeslot	       
+		      }
+	        }
+	        GridCell {
+	          Combo {
+					variable: currentTimeslotuid
+					modify-event:ReloadData (identities_stat),ReloadData (data_stat),ReloadData (asset_stat),ReloadData (repository_stat),ReloadData (repository_stat_tree)									
+					label: $menusAndTitles.selectTimeslot						
+					allow-none: False
+					options: Dynamic {
+						data: timeslots
+						value: Current uid
+						text: Current displayname							
+					}
+	          }
+	        }
+	        GridCell {
+	           Button {
+		        text: $menusAndTitles.statistics
+		        image: "16/bw_ledger_admin/chart_bar.png"
+		        actions: GoTo Page timeslot_statistics with currentTimeslotuid to timeslotuidParam 
+		        tooltip:$navigation.gotoStatistics
+		      }
+	        }
+	        GridCell {
+	           Button {
+		        text: $menusAndTitles.changes
+		        image: "16/bw_ledger_admin/lightning.png"
+		        actions: GoTo Page timeslot_changes with currentTimeslotuid to timeslotuidParam 
+		        tooltip:$navigation.gotoAction
+		        disabled: True
+		      }
+	        }
+	        
+	      }
+	    }
+	}
+
+    Group {
+        styling:cssRound
+            Splitter
+            {
+            disposition:Horizontal
+                size:50%		
+                Group {
+            
+                Table {	   
+                    layout:Layout{grab: horizontal True vertical True}
+                    data:identities_stat
+
+                    Column {
+                    header: $statiscticTabLabel.identityAndOrgDisplayname
+                        column:identities_
+                        image: Transform Current identities_ using actionsIdentitiesIcons	
+                        text: Transform Current identities_ using actionsIdentities																					
+                        width: 40%									
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.added	
+                            column: added_									
+                            width: 20%								
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.updated
+                            column:updated_
+                            width: 20%																		
+                    }
+                    Column {
+                        header:$statiscticTabLabel.deleted
+                            column:deleted_
+                            width: 20%																		
+                    }
+
+                }
+
+                Table {	   
+                    layout:Layout{grab: horizontal True vertical True}
+                    data:data_stat								
+                        Column {
+                        header: $statiscticTabLabel.dataDisplayname	
+                            column:data_
+                            image: Transform Current data_ using statiscticDataIcons
+                            text: Transform Current data_ using statiscticData								
+                            width: 40%									
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.added	
+                            column: added_									
+                            width: 20%								
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.updated
+                            column:updated_
+                            width: 20%																		
+                    }
+                    Column {
+                        header:$statiscticTabLabel.deleted
+                            column:deleted_
+                            width: 20%																		
+                    }
+                }		
+
+                Table {	   
+                    layout:Layout{grab: horizontal True vertical True}
+                    data:asset_stat								
+                        Column {
+                        header: $statiscticTabLabel.assetsDisplayname	
+                            column:assets_								
+                            image: Transform Current assets_ using statiscticAssetsIcons
+                            text: Transform Current assets_ using statiscticAssets		
+                            width: 40%									
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.added	
+                            column: added_									
+                            width: 20%								
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.updated
+                            column:updated_
+                            width: 20%																		
+                    }
+                    Column {
+                        header:$statiscticTabLabel.deleted
+                            column:deleted_
+                            width: 20%																		
+                    }
+                }
+            }
+
+
+            Group {		
+                layout:Layout{grab: horizontal True vertical True}	
+                               						
+                Tree {
+                    layout:Layout{grab: horizontal True vertical True}				
+                    data: repository_stat_tree	
+                        Column {
+                        header: $statiscticTabLabel.repositoryDisplayname
+                            column:repository_	
+                            image: Transform Current repository_ using statiscticRepositoryIcons
+                            text: Transform Current repository_ using statiscticRepository												
+                            width: 40%									
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.added	
+                            column: added_									
+                            width: 20%								
+
+                    }
+                    Column {
+                        header:$statiscticTabLabel.updated
+                            column:updated_
+                            width: 20%																		
+                    }
+                    Column {
+                        header:$statiscticTabLabel.deleted
+                            column:deleted_
+                            width: 20%																		
+                    }
+
+                }
+
+
+            }		
+
+        }	
+
+    }
+  }
+}
+

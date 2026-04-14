@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwpam_identities_job" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="identity" displayname="identities job" notes="" begindate="" enddate="">
+	<ViewParam name="nbdays" displayname="nbdays" type="Integer">
+		<Value name="0" data="365"/>
+	</ViewParam>
+	<ViewParam name="loginday" displayname="loginday" type="Integer" defaultvalue="{(Date.now / 3600000 / 24) - param.nbdays.get()}"/>
+	<ViewParam name="vault_code" displayname="vault_code">
+		<Value name="0" data="BWVAULTSERVER"/>
+	</ViewParam>
+	<ViewSort name="sort" attribute1="1627588138888_2703" direction1="DESC"/>
+	<ViewJoin name="J1627419824099_720" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="allocation">
+		<ViewAttribute name="1627588082813_2689" attribute="jobtitledisplayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1627588082813_2690" attribute="jobtitleuid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewAttribute name="1627588138888_2703" attribute="recorduid" alias="nb_identities" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1627587672782_2651" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accountreconciliation">
+		<ViewJoin name="J1620218499229_898" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="bw_pam_userrefaccount_join_metadatavalue">
+			<ViewJoin name="J1620218504642_899" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+				<ViewAttribute name="1627985834526_609" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1627324085441_0" operation="eq" ignoreifempty="false">
+						<Value name="0" data="0"/>
+					</ViewAttributeFilter>
+					<ViewAttributeFilter name="F1627324112839_1" operation="isNull" ignoreifempty="false"/>
+				</ViewAttribute>
+				<ViewAttribute name="1638379044812_9141" attribute="custom4" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1638378643849_0" operation="ne" ignoreifempty="false">
+						<Value name="0" data="Built-InAdmins"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+				<ViewJoin name="J1627324127869_424" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+					<ViewAttribute name="1638379055268_9145" attribute="repositorytype" operator="or" removedfromprojection="true" globalfilter="false">
+						<ViewAttributeFilter name="F1627324140281_0" operation="in" ignoreifempty="false">
+							<Value name="0" data="ca_vault"/>
+							<Value name="1" data="ca_safe"/>
+							<Value name="2" data="CDS"/>
+						</ViewAttributeFilter>
+					</ViewAttribute>
+					<ViewAttribute name="1638379055268_9146" attribute="code" operator="or" removedfromprojection="true" globalfilter="false">
+						<ViewAttributeFilter name="F1634400309294_0" reference="vault_code" operation="eq" ignoreifempty="true"/>
+					</ViewAttribute>
+				</ViewJoin>
+				<ViewAttribute name="1727943447100_523" attribute="lastloginday" operator="or" removedfromprojection="true" globalfilter="false" enabled="! param.isEmpty(&apos;nbdays&apos;)">
+					<ViewAttributeFilter name="F1628008433065_0" reference="loginday" operation="lt" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="ad_managed_parents" prefix="app_" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="application" displayname="ad_managed_all" notes="" begindate="" enddate="">
+	<ViewParam name="domains" displayname="domains"/>
+	<ViewParam name="types" displayname="types"/>
+	<ViewParam name="managed" displayname="managed" type="Boolean"/>
+	<ViewComputedAttribute name="type" displayname="type" type="String" expression="dataset.objtype.get()==&apos;account&apos;?&apos;A&apos;:dataset.objtype.get()==&apos;group&apos;?&apos;G&apos;:dataset.dn.get().startsWith(&apos;DC=&apos;)?&apos;D&apos;:dataset.dn.get().startsWith(&apos;OU=&apos;)?&apos;O&apos;:&apos;C&apos;"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="1484056936305_1748" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1453733783130_0" operation="eq" ignoreifempty="false">
+			<Value name="0" data="ADTree"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewJoin name="J1453733808411_767" prefix="selected_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="permission">
+		<ViewAttribute name="1484056944284_1794" attribute="custom3" alias="objtype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1484303388774_0" reference="types" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewJoin name="J1484303778786_508" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="uppermission">
+			<ViewAttribute name="A1484303794500_510" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1484303794500_512" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1484057751635_1820" prefix="parent_" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="parentpermission">
+				<ViewAttribute name="1484303801438_528" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+			<ViewAttribute name="1484314943559_620" attribute="custom1" alias="dn" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="1484314946072_622" attribute="custom3" alias="objtype" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1484314949963_0" operation="eq" ignoreifempty="false">
+					<Value name="0" data="container"/>
+				</ViewAttributeFilter>
+			</ViewAttribute>
+			<ViewAttribute name="1608047135652_4125" attribute="bwa_permissionmetadata_managed" alias="managed" operator="or" removedfromprojection="false" globalfilter="true"/>
+		</ViewJoin>
+		<ViewAttribute name="1608047128093_4123" attribute="bwa_permissionmetadata_managed" alias="managed" operator="or" removedfromprojection="true" globalfilter="true">
+			<ViewAttributeFilter name="F1608047102361_0" operation="isTrue" ignoreifempty="false"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewJoin name="J1454674865932_1250" prefix="domain_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+		<ViewAttribute name="1484056958314_1800" attribute="repositorytype" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1454674878533_0" operation="eq" ignoreifempty="false">
+				<Value name="0" data="AD"/>
+			</ViewAttributeFilter>
+		</ViewAttribute>
+		<ViewAttribute name="1484056958314_1802" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+			<ViewAttributeFilter name="F1484056994456_0" reference="domains" operation="in" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewRule name="I1479726250396_1314" rule="is_ad_domain">
+		</ViewRule>
+	</ViewJoin>
+</View>

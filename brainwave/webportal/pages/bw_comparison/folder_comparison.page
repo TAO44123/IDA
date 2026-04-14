@@ -1,0 +1,602 @@
+/* Import other pages here */
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pickers.page"
+
+/* Nationalized labels here */
+bwc_folder_comparisonNLS = NLS {
+	title [en "Folder comparison" fr "Comparaison de données"]
+	dyntitle [en "comparing {0} with {1}" fr "comparaison de {0} avec {1}"]
+
+	refaccounts [en "only for {0}" fr "seulement pour {0}"]
+	joinaccounts [en "in common" fr "en commun"]
+	otheraccounts [en "only for {0}" fr "seulement pour {0}"]
+
+	accountlevel [en "Account level" fr "Comptes"]
+	
+	internal [en "internal" fr "interne"]
+	contractor [en "contractor" fr "prestataire"]
+	
+	refgroup [en "reference group" fr "groupe de référence"]
+	groupstocomparewith [en "groups to compare with" fr "groupes à comparer"]
+}
+
+BWCG_SELECTEDTAB_ACCOUNT 		= Constant { type:Integer value:0}
+
+bwc_folder_status = BooleanMapping {
+	when True then $bwc_folder_comparisonNLS.internal
+	when False then $bwc_folder_comparisonNLS.contractor
+}
+
+bwc_folder_comparison_search = Page {
+	title: $bwc_folder_comparisonNLS.title
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+//	tags:"permission", "byuids"
+	feature:bwc_groupcomparisonsearchanalytics
+	conditional-redirect:ConditionalRedirect{condition:True target:Page bwc_folder_comparison with uids to uids }
+	
+	uids = Parameter {
+		multivalued:True
+		mandatory:True
+	}
+	
+}
+
+bwc_folder_comparison = Page {
+	title: $bwc_folder_comparisonNLS.title
+	dynamic-title: $bwc_folder_comparisonNLS.dyntitle(Concat(refpermission.displayname,'/',refpermission.application_displayname) , Concat(otherpermission.displayname,'/',otherpermission.application_displayname))
+//	tags: "permission" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: bwc_groupcomparisonpage
+	enter-event:Set [] to groupperimeter, MultivaluedAdd uid to groupperimeter, MultivaluedAdd otheruid to groupperimeter
+	
+	mixins: simpleReport
+	/*
+	dock-left: Dock {
+		collapsed:True
+		collapsible:True
+		width:300
+		
+		ParametersEdition {
+			parameters:uids inline
+		}
+	}
+	*/
+	/* Parameters here */
+	uid = Parameter {
+		label:$bwc_folder_comparisonNLS.refgroup
+		multivalued:False
+		type:String
+		constraint:Picker {picker:groupPicker returning outUid display:Display { value: Concat(Current displayname, ' (',Current applicationdisplayname,')') data: permissions match uid  } }
+		mandatory:True
+		hidden:True
+	}
+	
+	uids = Parameter {
+		label:$bwc_folder_comparisonNLS.groupstocomparewith
+		multivalued:True
+		type:String
+		constraint:Picker {picker:groupPicker returning outUid display:Display { value: Concat(Current displayname, ' (',Current applicationdisplayname,')') data: permissions match uid  } }
+		mandatory:True
+		hidden:True
+	}
+	
+	/* Variables here */
+	selectedRepository = Variable
+	selectedShare = Variable
+	groupperimeter = Variable {multivalued:True}
+	otheruid = Variable
+	
+	// 0: account
+	selectedTab = Variable {initial:Constant BWCG_SELECTEDTAB_ACCOUNT type:Integer}
+	
+	/* Datasets and records here */
+	permissions = Dataset {
+		view:bwc_permissionslist
+	}
+	
+	refpermission = Record {
+		view:br_permissionDetail with uid to uid
+	}
+	otherpermission = Record {
+		view:br_permissionDetail with otheruid to uid
+	}
+
+	selectedPermissions = Dataset {
+		view:bwc_permissions with uids to uids
+	}
+
+	// ---------------------------------------
+	// application
+	permissionref = Dataset {
+		view:bwc_folder_accounts with uid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	permissionother = Dataset {
+		view:bwc_folder_accounts with otheruid to uid
+		disabled:IntPredicate(selectedTab) { when != Constant BWCG_SELECTEDTAB_ACCOUNT then True }
+	}
+	
+	joinaccounts = Dataset {
+		join:Join {
+			primary-dataset:permissionref
+			secondary-dataset:permissionother
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:mandatory
+		}
+	}
+
+	refaccounts = Dataset {
+		join:Join {
+			primary-dataset:permissionref
+			secondary-dataset:permissionother
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:other
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current otheridentifier) { when IsEmpty then False otherwise True }
+	}
+
+	otheraccounts = Dataset {
+		join:Join {
+			primary-dataset:permissionother
+			secondary-dataset:permissionref
+			primary-column:key
+			secondary-column:key
+			secondary-prefix:ref
+			primary-optional:False
+			secondary-cardinality:optional
+		}
+		excludes:StringPredicate(Current refidentifier) { when IsEmpty then False otherwise True }
+	}
+
+
+
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------------------------------------
+	// Page content
+	
+	SetNavigator {
+		data:selectedPermissions
+		column:uid
+		selection:otheruid
+		label:Concat(Current displayname, ' / ', Current applicationdisplayname)
+		label-width:320
+		show-count:True
+		selection-changed-event:Set [] to groupperimeter, MultivaluedAdd uid to groupperimeter, MultivaluedAdd otheruid to groupperimeter
+		show-first:True
+		show-last:True
+		dropdown:Dropdown {
+			height:300
+			text:Concat(Current displayname, ' / ', Current applicationdisplayname)
+		}
+		hidden:IntPredicate(Count selectedPermissions) { when <=1 then True }
+	}
+	
+	Grid {
+		columns:GridColumn{width:64 align:leading},GridColumn{width:grow group:a  align:leading},GridColumn{width:64},GridColumn{width:grow group:a}
+		layout:Layout {grab:horizontal True vertical False hint:height 120}
+		
+		GridRow {
+			GridCell {
+				Image {
+					image:"/48/audit/permission_48.png"				
+				}
+			}
+			GridCell {
+				align:leading
+				Text {
+					value:refpermission.displayname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False  hint:width 320}
+				}
+				Text {
+					value:refpermission.code
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:refpermission.description
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:refpermission.application_displayname
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+			}
+			GridCell {
+				Image {
+					image:"/48/audit/permission_48.png"				
+				}
+			}
+			GridCell {
+				align:leading
+				Text {
+					value:otherpermission.displayname
+					compact:True
+					styling:bigTitleStyle
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint:width 320}
+				}
+				Text {
+					value:otherpermission.code
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:otherpermission.description
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+				Text {
+					value:otherpermission.application_displayname
+					compact:True
+					styling:detailsText
+					align:Left
+					layout:Layout{align:horizontal Beginning vertical Center grab:horizontal True vertical False hint: height 16 width 320}
+				}
+			}
+		}
+	}
+
+	TabFolder {
+		TabItem {
+			text:$bwc_folder_comparisonNLS.accountlevel
+			icon:"/16/audit/account_16.png"
+			activation-event:Set  Constant BWCG_SELECTEDTAB_ACCOUNT to selectedTab
+
+			Grid {
+				columns:GridColumn,GridColumn,GridColumn
+				
+				GridRow {
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_folder_comparisonNLS.refaccounts(refpermission.displayname) to string, 30 to maxlength)
+							tooltip:$bwc_folder_comparisonNLS.refaccounts(refpermission.displayname)
+							compact:True
+						}
+						Table {
+							data:refaccounts
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+							persist-configuration:True
+						
+							Column {
+								column:basic
+								filterable:True
+								sortable:True
+								width:100px
+								header:$right.concept
+							}
+							Column {
+								column:identifier
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.identifier
+								initially-masked:True
+							}
+							Column {
+								column:login
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.login
+							}
+							Column {
+								column:username
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.username
+							}
+							Column {
+								column:mail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.mail
+								initially-masked:True
+							}
+							Column {
+								column:creationdate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.creationdate
+								initially-masked:True
+							}
+							Column {
+								column:lastlogindate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.lastlogindate
+								initially-masked:True
+							}
+							Column {
+								column:repositorydisplayname
+								filterable:True
+								sortable:True
+								width:100px
+								header:$repository.concept
+							}
+							Column {
+								column:service
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.service
+								initially-masked:True
+							}
+							Column {
+								column:identityhrcode
+								filterable:True
+								sortable:True
+								width:100px
+								header:$pidentity.hrcode
+								initially-masked:True
+							}
+							Column {
+								column:identityfullname
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.fullname
+								initially-masked:True
+							}
+							Column {
+								column:identitymail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.mail
+								initially-masked:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:$bwc_folder_comparisonNLS.joinaccounts
+							compact:True
+						}
+						Table {
+							data:joinaccounts
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+							persist-configuration:True
+						
+							Column {
+								column:basic
+								filterable:True
+								sortable:True
+								width:100px
+								header:$right.concept
+							}
+							Column {
+								column:identifier
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.identifier
+								initially-masked:True
+							}
+							Column {
+								column:login
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.login
+							}
+							Column {
+								column:username
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.username
+							}
+							Column {
+								column:mail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.mail
+								initially-masked:True
+							}
+							Column {
+								column:creationdate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.creationdate
+								initially-masked:True
+							}
+							Column {
+								column:lastlogindate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.lastlogindate
+								initially-masked:True
+							}
+							Column {
+								column:repositorydisplayname
+								filterable:True
+								sortable:True
+								width:100px
+								header:$repository.concept
+							}
+							Column {
+								column:service
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.service
+								initially-masked:True
+							}
+							Column {
+								column:identityhrcode
+								filterable:True
+								sortable:True
+								width:100px
+								header:$pidentity.hrcode
+								initially-masked:True
+							}
+							Column {
+								column:identityfullname
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.fullname
+								initially-masked:True
+							}
+							Column {
+								column:identitymail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.mail
+								initially-masked:True
+							}
+						}
+					}				
+					GridCell {
+						Text {
+							value:@srv_truncatestring($bwc_folder_comparisonNLS.otheraccounts(otherpermission.displayname) to string, 30 to maxlength)
+							tooltip:$bwc_folder_comparisonNLS.otheraccounts(otherpermission.displayname)
+							compact:True
+						}
+						Table {
+							data:otheraccounts
+							layout:Layout {grab:horizontal True vertical True}
+							configurable:True
+							show-count:True
+							show-filter:True
+							persist-configuration:True
+						
+							Column {
+								column:basic
+								filterable:True
+								sortable:True
+								width:100px
+								header:$right.concept
+							}
+							Column {
+								column:identifier
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.identifier
+								initially-masked:True
+							}
+							Column {
+								column:login
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.login
+							}
+							Column {
+								column:username
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.username
+							}
+							Column {
+								column:mail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$account.mail
+								initially-masked:True
+							}
+							Column {
+								column:creationdate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.creationdate
+								initially-masked:True
+							}
+							Column {
+								column:lastlogindate
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.lastlogindate
+								initially-masked:True
+							}
+							Column {
+								column:repositorydisplayname
+								filterable:True
+								sortable:True
+								width:100px
+								header:$repository.concept
+							}
+							Column {
+								column:service
+								filterable:True
+								sortable:True
+								width:100px
+								header:$account.service
+								initially-masked:True
+							}
+							Column {
+								column:identityhrcode
+								filterable:True
+								sortable:True
+								width:100px
+								header:$pidentity.hrcode
+								initially-masked:True
+							}
+							Column {
+								column:identityfullname
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.fullname
+								initially-masked:True
+							}
+							Column {
+								column:identitymail
+								filterable:True
+								sortable:True
+								width:160px
+								header:$pidentity.mail
+								initially-masked:True
+							}
+						}
+					}				
+				}
+			}
+		}
+	}
+}

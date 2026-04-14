@@ -1,0 +1,100 @@
+/* Import other pages here */
+import "/webportal/pages/bw_dsm/services/services.page"
+import "/webportal/pages/bw_dsm/resources/utils_javascript.page"
+import "/webportal/pages/bw_dsm/resources/styles.page"
+import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+import "/webportal/pages/bw_dsm/resources/dsm_icons.page"
+
+BWDSM_BATCH_LAUNCHED = UserVariable { type: Boolean initial: False}
+
+dsm_status_panel = PageFragment {
+
+      periodic-actions:  PeriodicAction {
+          label: "batch_status"
+           period: 10 //every 10sec
+           disabled: Not BooleanPredicate ( UserVariable BWDSM_BATCH_LAUNCHED)
+           actions: ExecuteNamedAction doUpdate
+      }
+      
+      mixins: defaultPage
+      
+      enter-event: ExecuteNamedAction checkAutoUpdate
+        
+      period = Variable { type: Integer initial: 10 }  
+
+		batchId = Variable { type: Integer }
+		success = Variable { type: Boolean }
+		message = Variable { }
+		
+		currentBatch = Record {
+		  service: bwdsm_getCurrentBatch
+		}
+
+		lastCompleted = Record {
+		  service: bwdsm_getLastCompletedBatch
+		}
+							
+		doLaunchBatch = NamedAction (
+		   Confirm $dsm_status_NLS.msg.launch_confirm,
+		   Call bwdsm_startBatch( Principal.fullname to principal, batchId from id , success from success , message from message),
+		   BooleanCase( success){
+		     when True then [
+		       Set True to UserVariable BWDSM_BATCH_LAUNCHED
+		      ]
+		     when False then [
+		       Message Error Concat( "Execution plan could not be sent: \n", message ) 
+		      ]	      
+		   },
+		   ExecuteNamedAction doUpdate
+		)
+		
+		doUpdate = NamedAction (
+		   ReloadData( currentBatch, lastCompleted),
+		   ExecuteNamedAction checkAutoUpdate
+		  
+		)
+		
+		checkAutoUpdate = NamedAction (		
+		    Set Eval "currentBatch.id != null " to UserVariable BWDSM_BATCH_LAUNCHED
+		)	
+
+		Group {
+		  title: $dsm_status_NLS.title.current_panel
+		  ConditionalGroup {
+		    IntCondition( currentBatch.id){
+		      when >= 0 then [
+		         Image { 
+		           image: TemplateImageSelection ( currentBatch.status) using dsm_batch_status_IconMapping image-size: 64 64
+		            layout: Layout { hint: width 80 height 70 }
+		          }
+		         Text { value: Transform currentBatch.status using batch_status_label label: ""  }
+		  			//Text { value: currentBatch.id label: "Id" }
+		  			Text { label: $dsm_status_NLS.label.submitted value: currentBatch.submit_date  }
+		  			Text { label: $dsm_status_NLS.label.duration value: @durationStringShort(Date(currentBatch.submit_date).valueLDAP to ^from )  }
+		      ]
+		      otherwise [
+		        Text { value:$dsm_status_NLS.label.nobatch }
+		        
+		        Button {
+				    text: $dsm_status_NLS.button.launch
+				    actions: ExecuteNamedAction doLaunchBatch
+				    styling: danger_button		      
+				    
+				  }
+		      ]
+		    }
+		  }		
+		}
+			
+		Group {
+		  title: $dsm_status_NLS.title.latest_panel
+		  Image { image: TemplateImageSelection ( lastCompleted.status) using dsm_batch_status_IconMapping }
+		  Text { value: Transform  lastCompleted.status using batch_status_label label: $dsm_status_NLS.header.status  }
+		 // Text { value: lastCompleted.id label: "Id" }	
+		  Text { value: lastCompleted.start_date label: $dsm_status_NLS.label.started}	  
+		  Text { value: lastCompleted.completed_date  label: $dsm_status_NLS.label.completed}
+		  Text { label: $dsm_status_NLS.label.duration value: @durationStringShort( Date(lastCompleted.start_date).valueLDAP to ^from, Date(lastCompleted.completed_date).valueLDAP to ^to)}		
+		}
+}
+
+

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwcdpamr_repository_similargroupmembers" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="repository" displayname="similar group members" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="uid" type="String"/>
+	<ViewParam name="nbmembersThreshold" displayname="nbmembersThreshold" type="Integer"/>
+	<ViewParam name="codefilter" displayname="codefilter" type="String"/>
+	<ViewParam name="codefilterflt" displayname="codefilterflt" type="String" defaultvalue="{!param.isEmpty(&apos;codefilter&apos;)?(&apos;%&apos;+param.codefilter.get()+&apos;%&apos;):&apos;&apos;}"/>
+	<ViewComputedAttribute name="similarity" displayname="similarity" type="Integer" expression="100*dataset.nbaccount.get()/(dataset.grp1nbaccount.get()&gt;dataset.grp2nbaccount.get()?dataset.grp1nbaccount.get():dataset.grp2nbaccount.get())"/>
+	<ViewComputedAttribute name="included" displayname="included" type="Integer" expression="((100*dataset.nbaccount.get())/dataset.grp1nbaccount.get())&gt;=100?100:((100*dataset.nbaccount.get())/dataset.grp1nbaccount.get())"/>
+	<ViewSort name="sort"/>
+	<ViewAttribute name="A1594041013407_429" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1594044660380_0" reference="uid" operation="eq" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewJoin name="J1594041084946_432" prefix="grp1" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="group">
+		<ViewJoin name="J1594041093776_433" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+			<ViewJoin name="J1594041136748_434" prefix="grp2" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="group">
+				<ViewAttribute name="1594041637998_443" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="1594041637999_444" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewAttribute name="A1594043338357_452" attribute="bwa_groupanalytics_nbdirectaccount" alias="grp2nbaccount" operator="or" removedfromprojection="false" globalfilter="true">
+					<ViewAttributeFilter name="F1594129467278_0" reference="nbmembersThreshold" operation="ge" ignoreifempty="true"/>
+				</ViewAttribute>
+				<ViewAttribute name="A1594044401724_867" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+				<ViewJoin name="J1594055143359_885" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+					<ViewAttribute name="1594055150047_887" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+						<ViewAttributeFilter name="F1594044660380_0" reference="uid" operation="eq" ignoreifempty="false"/>
+					</ViewAttribute>
+				</ViewJoin>
+				<ViewJoin name="J1620838211595_691" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="downpermission">
+					<ViewJoin name="J1620838218108_692" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+						<ViewAttribute name="1620838798927_719" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+							<ViewAttributeFilter name="F1620838226096_0" operation="in" ignoreifempty="false">
+								<Value name="0" data="ca_safe"/>
+								<Value name="1" data="ca_vault"/>
+							</ViewAttributeFilter>
+						</ViewAttribute>
+					</ViewJoin>
+				</ViewJoin>
+			</ViewJoin>
+			<ViewAttribute name="A1594041598920_437" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1594041611129_0" operation="isNull" ignoreifempty="false"/>
+				<ViewAttributeFilter name="F1594041615673_1" operation="isFalse" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1594041624345_439" attribute="recorduid" alias="nbaccount" displayname="nb account" operator="or" aggregate="COUNT DISTINCT" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1594048498431_0" reference="nbmembersThreshold" operation="ge" ignoreifempty="true"/>
+			</ViewAttribute>
+		</ViewJoin>
+		<ViewAttribute name="A1594041513139_435" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1594041524140_436" attribute="code" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1613413092559_0" reference="codefilterflt" operation="ilike" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewAttribute name="1594043352874_455" attribute="bwa_groupanalytics_nbdirectaccount" alias="grp1nbaccount" operator="or" removedfromprojection="false" globalfilter="true">
+			<ViewAttributeFilter name="F1594129447113_0" reference="nbmembersThreshold" operation="ge" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1594044398979_866" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewJoin name="J1620838211595_691" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="downpermission">
+			<ViewJoin name="J1620838218108_692" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+				<ViewAttribute name="1620838793608_715" attribute="applicationtype" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1620838226096_0" operation="in" ignoreifempty="false">
+						<Value name="0" data="ca_safe"/>
+						<Value name="1" data="ca_vault"/>
+					</ViewAttributeFilter>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+	</ViewJoin>
+</View>

@@ -1,0 +1,413 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_access360/searchanalytics/resources.page"
+
+tartimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tartimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tarmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	when IsNull then ''
+	otherwise current
+}
+
+access360analytics_identity_GroupslistNLS = NLS {
+	title [en "Groups list" fr "Liste des groupes"]
+	directrightsonly [en "only direct rights" fr "seulement les droits directs"]
+	description [
+		en "This report lists the identities groups. Only active accounts are taken into account. Only the groups directly associated with individuals are taken into account. It is possible to identify only changes that have occurred since a given date. It is possible to modify the columns or to export the results."
+		fr "Ce rapport liste les groupes des identités. Seuls les comptes actifs sont pris en compte. Seuls les groupes directement associés aux personnes sont pris en comptes. Il est possible d'identifier uniquement les changements survenus depuis une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats"
+	]
+	multicombotooltip [en "Click to configure the filter" fr "Cliquez pour configurer le filtre"]
+	sensitivitylevel [en "Group sensitivity level" fr "Niveau de sensibilité du groupe"]
+}
+
+access360analytics_identity_Groupslist= Page {
+	title: $access360analytics_identity_GroupslistNLS.title
+	description: $access360analytics_identity_GroupslistNLS.description
+	feature:bwsa_identitygroupslist
+	tags: "identity", "searchresults"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	mixins: simpleReport	
+	dock-left:Dock {
+		width:200
+		collapsible:True
+		collapsed:False
+		
+		Header {
+			value:$access360analytics_resourcesNLS.localfiltertitle
+			styling:bold
+			tooltip:$access360analytics_resourcesNLS.localfiltertooltip
+		}
+		Separator {
+			width:1
+		}
+		ParametersEdition {
+			allow-reset:True
+			parameters:	comparisontimeslot inline,		
+						exclRemoved inline,
+						exclSimilar inline,
+						repositories inline
+		}
+		
+		Spacer {
+			height:Fill
+		}
+		
+		Button {
+			actions:Dialog access360analytics_identity_FilterEdition(SerializeSearch search to identitySearch)
+			text:$access360analytics_resourcesNLS.displayfilterbutton
+			tooltip:$access360analytics_resourcesNLS.displayfiltertooltip
+		}
+		Button {
+			actions:GoTo Activity Identity Search with SerializeSearch search to identitySearch
+			text:$access360analytics_resourcesNLS.back
+			tooltip:$access360analytics_resourcesNLS.back_tooltip
+			layout:Layout { grab:horizontal True vertical False }
+		}
+	}
+
+	/* Parameters here */
+	comparisontimeslot = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:String
+		label:$session_comparisonTimeslotTeam360NLS.label
+		tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+		constraint:Lookup {
+			data:session_comparisontimeslots
+			text:Current commitdate
+			value:Current uid
+		}
+	}
+	exclRemoved = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:True
+		label:$session_exclRemovedNLS.label
+		tooltip:$session_exclRemovedNLS.tooltip
+	}
+	exclSimilar = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:False
+		type:Boolean
+		default:False
+		label:$session_exclSimilarNLS.label
+		tooltip:$session_exclSimilarNLS.tooltip
+	}
+	repositories = Parameter {
+		hidden:False
+		mandatory:False
+		multivalued:True
+		label:$repository.concept
+		tooltip:$access360analytics_identity_GroupslistNLS.multicombotooltip
+		type:String
+		constraint:Lookup {
+			data:repositorylist
+			text:Current repositorydisplayname
+			value:Current repositoryuid
+		}		
+	}
+	search = SearchDefinition {
+		entity: Identity
+		simple-mode-rule: br_identity_simple_search
+	}
+		
+	/* Variables here */
+	outidentityuid = Variable
+	outaccountuid = Variable
+	outgroupuid = Variable
+
+	incanshowdetails = Variable { initial:True type:Boolean }	
+	
+	/* Datasets and records here */
+	groups = Dataset {
+		search: Search {
+			view:a360s_identitygroups_bv with repositories to repositories unless-empty, comparisontimeslot to comparisontimeslot unless-empty, exclRemoved to excluderemoved, exclSimilar to excludesimilar
+			definition:search
+		}
+
+		timeout-configuration:TimeoutConfiguration [
+			{
+				short-timeout:30
+				long-timeout:300
+			}
+		]
+	}
+	
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	repositorylist = Dataset {
+		search: Search {
+			view:access360r_identityaccountgrouprepos
+			definition:search
+		}
+	}
+
+	goIdentityDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_identityDetailsDialog(outidentityuid to inuid,
+												True to inshowaccounts
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	goAccountDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid,
+												True to inshowgroups
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+	goGroupDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_groupDetailsDialog(outgroupuid to inuid,
+												True to inshowapplications,
+												True to inshowshares,
+												True to inshowperjob,
+												True to inshowperorg
+				)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				PaginatedTable {
+					data:groups
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					page-size:1000
+					//show-count:True
+					show-filter:True
+					persist-configuration:True
+					show-count-button: True
+					
+					Column {
+						column:identityuid
+						hidden:True
+						selection:outidentityuid
+					}
+			
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tartimeline_highlightnew360 when 'Removed' then tartimeline_highlightremoved360 when 'Invalid' then tartimeline_highlightremoved360 } text:Transform Current status using tarmapping360 }
+			
+					Column {
+						column:identityhrcode
+						header:$identity.hrcode
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identityfullname
+						header:$identity.fullname
+						sortable:True
+						filterable:True
+						width:160px
+						
+						actions: ExecuteNamedAction goIdentityDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:identitymail
+						header:$identity.mail
+						sortable:True
+						filterable:True
+						width:160px
+						initially-masked:True
+					}
+					Column {
+						column:identityinternal
+						header:$identity.internal
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:identityarrivaldate
+						header:$identity.arrivaldate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:identitydeparturedate
+						header:$identity.departuredate
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+			
+					Column {
+						column:jobtitledisplayname
+						header:$identity.jobtitledisplayname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgshortname
+						header:$porganisation.shortname
+						sortable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:orgdisplayname
+						header:$organisation.concept
+						sortable:True
+						width:160px
+						initially-masked:True
+					}
+			
+					Column {
+						column:accountuid
+						hidden:True
+						selection:outaccountuid
+					}
+					Column {
+						column:accountidentifier
+						header:$account.identifier
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlogin
+						header:$account.login
+						sortable:True
+						filterable:True
+						width:128px
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountusername
+						header:$paccount.username
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goAccountDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:accountlastlogindate
+						header:$account.lastlogindate
+						sortable:True
+						filterable:True
+						width:128px
+						initially-masked:True
+					}
+					Column {
+						column:repositorydisplayname
+						header:$repository.concept
+						sortable:True
+						filterable:True
+						width:128px
+					}
+			
+			
+					Column {
+						column:groupuid
+						hidden:True
+						selection:outgroupuid
+					}
+					Column {
+						column:groupcode
+						header:$pgroup.code
+						width:160px
+						sortable:True
+						filterable:True
+						initially-masked:True
+						
+						actions: ExecuteNamedAction goGroupDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:groupdisplayname
+						header:$group.concept
+						width:100%
+						sortable:True
+						filterable:True
+						
+						actions: ExecuteNamedAction goGroupDetails
+						actions-disabled: Not BooleanPredicate(incanshowdetails)
+						tooltip: $search_page.showdetails
+					}
+					Column {
+						column:groupbwa_groupmetadata_descr
+						header:$pgroup.comment
+						width:140px
+						sortable:True
+						filterable:True
+						initially-masked:True
+					}
+					Column {
+						column:groupbwa_groupmetadata_sensitivitylevel
+						header:$access360analytics_identity_GroupslistNLS.sensitivitylevel
+						width:140px
+						sortable:True
+						initially-masked:True
+					}
+				}
+			}
+		}	
+	}
+}

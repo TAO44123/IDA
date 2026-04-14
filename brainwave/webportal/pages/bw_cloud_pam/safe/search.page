@@ -1,0 +1,684 @@
+
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+
+import "/webportal/pages/resources/constants.page"
+
+import "/webportal/pages/bw_cloud_pam/resources/icons.page"
+
+casafeSearchPageNLS = NLS {
+	title [en "CyberArk Safes" fr "Safes CyberArk"]
+	vault [en "Vault" fr "Vault"]
+	safe [en "Safe" fr "Safe"]
+	safe.code [en "Safe Code" fr "Code du safe"]
+	table.columns.vaultname [ en "CyberArk \nVault" fr "Vault \nCyberArk" ]
+	table.columns.safename [ en "CyberArk\n Safe" fr "Safe \nCyberArk" ]
+	table.columns.safedescription [en "Description" fr "Description"]
+	table.columns.accountsnb [ en "# users" fr "Nb utilisateurs" ]
+	metrics_nb_secrets [en '# Credentials' fr "Secrets"]
+	metrics_nb_resources [en '# Resources\n(Address)' fr "Ressources\n(Adresses)"]
+	metrics_nb_platforms [en '# Platforms' fr "Plateformes"]
+	metrics_nb_other_users [en '# non EPV and \nnon Application Users' fr "Utilisateurs non EPV\n et non application"]
+	metrics_nb_app_users [en '# Application\n Accounts' fr "Utilisateurs de\n type application"]
+	metrics_nb_epv_users [en '# EPV Users' fr "Utilisateurs\n de type EPV"]
+	metrics_nb_builtin_users [en '# Default Built-in\n CyberArk Users' fr "Utilisateurs CyberArk\n présents par défaut"]
+	metrics_nb_users [en '# Users' fr "Utilisateurs"]
+	metrics_nb_cpm_failed [en '# Credentials with\n Failed CPM' fr "Secrets avec\n CPM en échec"]
+	metrics_nb_cpm_active [en '# Credentials with\n Active CPM' fr "Secrets avec\n CPM actif"]
+	metrics_nb_cpm_inactive [en '# Credentials with\n Inactive CPM' fr "Secrets sans\n CPM actif"]
+	metrics_nb_identities [en '# Identities' fr "Identités"]
+	metrics_nb_contractors [en '# Contractors' fr "Prestataires"]
+	metrics_nb_organizations [en '# Organizations' fr "Organisations"]
+	metrics_nb_active_users [en '# Active Users' fr "Utilisateurs actifs"]
+	metrics_nb_active_identities [en '# Active\n Identities' fr "Identités\n actives"]
+	metrics_nb_active_contractors [en '# Active\n Contractors' fr "Prestataires\n actifs"]
+}
+
+fragmentSafeTagsEditorNLS = NLS {
+	removealltitle [en "Remove all tags from the selected safes" fr "Suppression de tous les labels sur les safes sélectionnés"]
+	removetitle [en "Remove a tag from the selected safes" fr "Suppression d'un label sur les safes sélectionnés"]
+	addingatag [en "Bulk add a tag" fr "Ajout en masse d'un label"]
+	removingatag [en "Bulk remove a tag" fr "Suppression en masse d'un label"]
+	removingalltag [en "Bulk remove all tags" fr "Suppression en masse de tous les labels"]
+	
+}
+
+casafeSearchPage_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+
+casafeSearchPage_withtrends = UserVariable {
+		initial:False
+		type:Boolean
+		persistent:True
+}
+
+casafeSearchPage = Page {
+	title: $casafeSearchPageNLS.title
+	tags: "ca_safe" , "conceptsearch" priority 250
+	icon: %pam_cyberark_concepts_32.safe
+	large-icon: %pam_cyberark_concepts_48.safe
+	description: $casafeSearchPageNLS.title
+	
+	initialUid = Parameter {
+		type: String
+		hidden: True
+	}
+	
+	useNavigatorMode = Parameter {
+		type: Boolean
+		hidden: True
+		default: True
+	}
+	
+	paramInitialIndex = Parameter {
+		type: Integer
+		hidden: True
+	}
+	
+	casafeSearch = SearchDefinition {
+		entity: CASafe
+		simple-mode-rule: brpam_casafe_simple_search
+	}
+	
+	initialIndex = Variable {
+		type: Integer
+	}
+
+	nbanalytics = Variable {
+		type:Integer
+	}
+	
+	selectedSafeUid = Variable {
+		type: String
+	}
+
+	showAnalytics = Variable {type:String initial:'0'}
+	uids =  Variable {type:String multivalued:True}
+	casafeanalytics = Dataset {
+		pages: Pages{tags: "ca_safe" and "searchresults" }
+		count-variable:nbanalytics
+	}
+	
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+	
+	casafeData = Dataset {
+		search: Search {
+			definition: casafeSearch
+			view: brpam_casafe_searchpoint_trend with reftimeslot.timeslotuid to reftimeslotuid, UserVariable casafeSearchPage_withtrends to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	casafeData_count = Dataset {
+		search: Search {
+			definition: casafeSearch
+			view: brpam_casafe_searchpoint_trend with reftimeslot.timeslotuid to reftimeslotuid, False to withtrends
+		}
+		timeout-configuration: TimeoutConfiguration  [{
+			short-timeout:Default 
+			long-timeout:Default
+		}]
+	}
+	
+	
+	goDetails = NamedAction (
+		GoTo Activity CASafe ( ca_safe ) Detail with selectedSafeUid to paramSafeUid
+	)
+	
+	// Search section
+	Group {
+		layout: Layout { grab: horizontal True vertical False indent: horizontal 5 vertical 0 }
+		SearchEdition {
+			definition: casafeSearch
+			layout: Layout { grab: horizontal True vertical False }
+			simple-mode-columns: 2
+			simple-mode-layout: SimpleModeLayout {
+				vault { label: $casafeSearchPageNLS.vault },
+				safe { label: $casafeSearchPageNLS.safe }
+			}
+		}
+	}
+	Group {
+		layout: Layout { grab: horizontal True vertical True }
+		PaginatedTable {
+			data: casafeData
+//					show-count: True
+			layout: Layout { grab: horizontal True vertical True }
+			configurable: True
+			persist-configuration: True
+			initial-selection: initialUid using uid
+			initial-selection-index: paramInitialIndex
+			selection-index: initialIndex
+			page-size:1000
+			show-count-button: True				
+			
+			Column {
+				column: uid
+				hidden: True
+				selection: selectedSafeUid
+			}
+			
+			Column {
+				column: vault_displayname
+				sortable:True
+				header: $casafeSearchPageNLS.table.columns.vaultname
+				width: 50%
+				
+				initially-masked: False
+				//actions: ExecuteNamedAction goDetails
+			}
+			
+			
+			Column {
+				column: displayname
+				sortable:True
+				header: $casafeSearchPageNLS.table.columns.safename
+				width: 100%
+				
+				initially-masked: False
+				actions: ExecuteNamedAction goDetails
+			}
+
+			Column {
+				column: description
+				sortable:True
+				header: $casafeSearchPageNLS.table.columns.safedescription
+				width: 100%	
+				initially-masked: True
+			}
+			
+			Column {
+				column: isnew
+				text:Transform Current isnew using booleanDisplayMapping		
+				header: $searchlabel.isnew
+				width: 100px
+				styling:BooleanStyling(Current isnew) { when True then casafeSearchPage_highlightnew when False then default }				
+				initially-masked: True
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_secrets
+				text:Transform Current bw_pam_safemetrics_nb_secrets using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_secrets
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_secrets).equals('null')?956487965:current.bw_pam_safemetrics_nb_secrets-current.prev_bw_pam_safemetrics_nb_secrets") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_secrets using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_secrets using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_resources
+				text:Transform Current bw_pam_safemetrics_nb_resources using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_resources
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_resources).equals('null')?956487965:current.bw_pam_safemetrics_nb_resources-current.prev_bw_pam_safemetrics_nb_resources") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_resources using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_resources using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_platforms
+				text:Transform Current bw_pam_safemetrics_nb_platforms using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_platforms
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_platforms).equals('null')?956487965:current.bw_pam_safemetrics_nb_platforms-current.prev_bw_pam_safemetrics_nb_platforms") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_platforms using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_platforms using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_other_users
+				text:Transform Current bw_pam_safemetrics_nb_other_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_other_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_other_users).equals('null')?956487965:current.bw_pam_safemetrics_nb_other_users-current.prev_bw_pam_safemetrics_nb_other_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_other_users using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_other_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_app_users
+				text:Transform Current bw_pam_safemetrics_nb_app_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_app_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_app_users).equals('null')?956487965:current.bw_pam_safemetrics_nb_app_users-current.prev_bw_pam_safemetrics_nb_app_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_app_users using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_app_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_epv_users
+				text:Transform Current bw_pam_safemetrics_nb_epv_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_epv_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_epv_users).equals('null')?956487965:current.bw_pam_safemetrics_nb_epv_users-current.prev_bw_pam_safemetrics_nb_epv_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_epv_users using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_epv_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_builtin_users
+				text:Transform Current bw_pam_safemetrics_nb_builtin_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_builtin_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_builtin_users).equals('null')?956487965:current.bw_pam_safemetrics_nb_builtin_users-current.prev_bw_pam_safemetrics_nb_builtin_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_builtin_users using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_builtin_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_users
+				text:Transform Current bw_pam_safemetrics_nb_users using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_users).equals('null')?956487965:current.bw_pam_safemetrics_nb_users-current.prev_bw_pam_safemetrics_nb_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_users using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_cpm_failed
+				text:Transform Current bw_pam_safemetrics_nb_cpm_failed using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_cpm_failed
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_cpm_failed).equals('null')?956487965:current.bw_pam_safemetrics_nb_cpm_failed-current.prev_bw_pam_safemetrics_nb_cpm_failed") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_cpm_failed using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_cpm_failed using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_cpm_active
+				text:Transform Current bw_pam_safemetrics_nb_cpm_active using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_cpm_active
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_cpm_active).equals('null')?956487965:current.bw_pam_safemetrics_nb_cpm_active-current.prev_bw_pam_safemetrics_nb_cpm_active") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_cpm_active using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_cpm_active using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_cpm_inactive
+				text:Transform Current bw_pam_safemetrics_nb_cpm_inactive using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_cpm_inactive
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_cpm_inactive).equals('null')?956487965:current.bw_pam_safemetrics_nb_cpm_inactive-current.prev_bw_pam_safemetrics_nb_cpm_inactive") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_cpm_inactive using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_cpm_inactive using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_identities
+				text:Transform Current bw_pam_safemetrics_nb_identities using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_identities
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_identities).equals('null')?956487965:current.bw_pam_safemetrics_nb_identities-current.prev_bw_pam_safemetrics_nb_identities") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_identities using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_identities using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_contractors
+				text:Transform Current bw_pam_safemetrics_nb_contractors using bwf_defaultsTo0
+				initially-masked: False
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_contractors
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_contractors).equals('null')?956487965:current.bw_pam_safemetrics_nb_contractors-current.prev_bw_pam_safemetrics_nb_contractors") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_contractors using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_contractors using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_organizations
+				text:Transform Current bw_pam_safemetrics_nb_organizations using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_organizations
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_organizations).equals('null')?956487965:current.bw_pam_safemetrics_nb_organizations-current.prev_bw_pam_safemetrics_nb_organizations") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_organizations using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_organizations using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_active_users
+				text:Transform Current bw_pam_safemetrics_nb_active_users using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_active_users
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_active_users).equals('null')?956487965:current.bw_pam_safemetrics_nb_active_users-current.prev_bw_pam_safemetrics_nb_active_users") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_active_users using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_active_users using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_active_identities
+				text:Transform Current bw_pam_safemetrics_nb_active_identities using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_active_identities
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_active_identities).equals('null')?956487965:current.bw_pam_safemetrics_nb_active_identities-current.prev_bw_pam_safemetrics_nb_active_identities") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_active_identities using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_active_identities using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+			Column {
+				column:bw_pam_safemetrics_nb_active_contractors
+				text:Transform Current bw_pam_safemetrics_nb_active_contractors using bwf_defaultsTo0
+				initially-masked: True
+				sortable:True
+				header:$casafeSearchPageNLS.metrics_nb_active_contractors
+				image:TemplateImageSelection(Eval "(''+current.prev_bw_pam_safemetrics_nb_active_contractors).equals('null')?956487965:current.bw_pam_safemetrics_nb_active_contractors-current.prev_bw_pam_safemetrics_nb_active_contractors") using bwf_trend
+				tooltip:$search.application.ratiotooltip(Transform Current bw_pam_safemetrics_nb_active_contractors using mayBeNullMapping, Transform Current prev_bw_pam_safemetrics_nb_active_contractors using mayBeNullMapping)
+				align:Left
+				width:110px
+			}
+		}
+	}
+
+		Grid {
+			columns:GridColumn,GridColumn { width: grow }
+			layout: Layout { grab:horizontal True vertical False hint: height 38 }
+			GridRow {
+				GridCell {
+					Checkbox {
+						variable:UserVariable casafeSearchPage_withtrends
+						text:$search.showkpitrends
+					}
+				}			
+				GridCell {
+				ButtonGroup {
+					align:Right
+					Button {
+						actions: IntCase(Count casafeData_count)	{
+										when > NonEmpty(ConfigurationVariable "search_share_analyticserrorthreshold", Constant search_share_analyticserrorthreshold) then [
+											Message Error $search.analyticserrorthreshold(NonEmpty(ConfigurationVariable "search_share_analyticserrorthreshold", Constant search_share_analyticserrorthreshold))
+										]
+										when > NonEmpty(ConfigurationVariable "search_share_analyticswarningthreshold", Constant search_share_analyticswarningthreshold) then [
+											Confirm $search.analyticswarningthreshold(Count casafeanalytics),
+											GoTo Page casafeSearchAnalyticsPage with  SerializeSearch casafeSearch to search
+												
+										]
+										otherwise [
+											GoTo Page casafeSearchAnalyticsPage with  SerializeSearch casafeSearch to search
+										]
+									}
+						text:$search.applyanalytics
+						tooltip:$search.applyanalyticstooltip
+						image:%report_16.analytics
+						feature:safesearch_analytics
+						disabled: IntPredicate ( nbanalytics )  { when = 0 then True otherwise False }
+					}
+			
+					Button {
+						actions:	TransferData casafeData(uid) to (uids), 
+									Dialog fragmentSafeBulkAddTag(uids to uids),
+									Flash $search.flashaddingatag
+						text:$fragmentSafeTagsEditorNLS.addingatag
+						image:%collection_16.tag
+					}
+					Button {
+						actions:	TransferData casafeData(uid) to (uids), 
+									Dialog fragmentSafeBulkRemoveTag(uids to uids, SerializeSearch casafeSearch to applicationSearch),
+									Flash $search.flashremovingatag
+						text:$fragmentSafeTagsEditorNLS.removingatag
+						image:%collection_16.tag
+					}
+					
+					Button {
+						actions:	TransferData casafeData(uid) to (uids), 
+									Dialog fragmentSafeBulkRemoveAllTags(uids to uids),
+									Flash $search.flashremovingalltag
+						text:$fragmentSafeTagsEditorNLS.removingalltag
+						image:%collection_16.tag
+					}
+
+				}
+			}
+		}
+	}
+}
+
+
+casafeSearchAnalyticsPage = Page {
+	title:$search.applyanalytics
+
+	search = SearchDefinition {
+		entity:CASafe
+		simple-mode-rule: brpam_casafe_simple_search
+	}
+
+	analytics = Dataset {
+		pages: Pages{tags: "ca_safe" and "searchresults" }
+	}
+
+	ConditionalGroup {
+		IntCondition(Count analytics) {
+			when =0 then [
+				Header {
+					value:$search.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				TemplateTable {
+					data:analytics
+					layout:Layout { grab:horizontal True vertical True }
+					show-filter:True
+					pagination:10
+					row-height:100
+					double-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+										
+					ImageCell {
+						image:Current largeIcon
+						left:20
+						top:30
+						width:48
+						height:48
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:title							
+						left:10
+						top:10
+						width:970
+						height:20
+						filterable:True
+						styling:bwf_boldNG
+						on-click:GoTo Dynamic (Current type, Current name) with SerializeSearch search to search save-state				
+					}
+					TextCell {
+						column:description
+						vertical-align:Top
+						horizontal-align:Left
+						styling:bwf_notboldNG
+						filterable:True
+						wrap:True
+						left:80
+						top:30
+						width:900
+						height:60
+					}
+				}
+			]
+		}
+	}
+	ButtonGroup {
+		align:Right
+		Button {
+			actions:GoTo BackInHistoryTruncate
+			text:$search.back
+			image:%browsing_16.back
+		}
+	}
+}
+
+/*
+ * Bulk add a new tag for applications
+ * 
+ * @param uids selected applications
+ */
+fragmentSafeBulkAddTag = Dialog {
+	title:$fragmentApplicationTagsEditorNLS.addtitle
+	width:400
+	height:200
+ 	buttons:[CancelButton OkButton {
+			disabled:
+					OrPredicate {
+						AndPredicate {
+							Not BooleanPredicate(createtag)
+							StringPredicate(existingtag) { when IsEmpty then True }
+						}
+						AndPredicate {
+							BooleanPredicate(createtag)
+							Not BooleanPredicate(valid)
+						}
+					}
+			actions:
+					Confirm $fragmentApplicationTagsEditorNLS.addconfirmation(SizeOf uids),
+					BooleanCase(createtag) {
+						when True then [
+							Set Eval "newtag.get().toUpperCase()" to task.tag
+						]
+						when False then [
+							Set existingtag to task.tag
+						]
+					},
+					Set uids to task.uids,
+					TaskComplete task
+			}
+		]
+
+	uids = Variable
+
+	newtag = Variable {private:True}
+	existingtag = Variable {private:True}
+	valid = Variable {private:True}
+	createtag = Variable { type:Boolean }
+		
+	task = TaskRecord(create "bwa_bulkaddapplicationtag" in-timeslot PageTimeslot.PrevUID)
+	alltags = Dataset {
+		view:bwf_safealltags
+	}
+
+	Checkbox {
+		variable:createtag
+		text:$fragmentApplicationTagsEditorNLS.createnewtag
+	}
+
+	Edit {
+		variable:newtag
+		limit:24
+		not-empty:True
+		match:"^[0-9,a-z,A-Z,\\-,_,.][0-9,a-z,A-Z,\\-,_,.][0-9,a-z,A-Z,\\-,_,.]+"
+		error-tooltip:$fragmentApplicationTagsEditorNLS.addsyntaxerror
+		validity:valid
+		hidden:Not BooleanPredicate(createtag)
+	}
+	Combo {
+		variable:existingtag
+		allow-none:False
+		options:Dynamic {
+			data:alltags
+			text:Current tag
+			value:Current tag
+		}
+		hidden:BooleanPredicate(createtag)
+	}
+}
+
+/**
+ * Remove a tag from selected applications
+ * 
+ * @param uids application uids
+ */
+fragmentSafeBulkRemoveTag = Dialog {
+	title:$fragmentSafeTagsEditorNLS.removetitle
+	width:500
+	height:150
+ 	buttons:[CancelButton OkButton {
+			disabled:StringPredicate(tag) { when IsEmpty then True }
+			actions:
+				Set uids to task.uids,
+				Set tag to task.tag,
+				TaskComplete task
+			}
+		]
+
+	applicationSearch = SearchDefinition {
+		entity: CASafe
+		simple-mode-rule: brpam_casafe_simple_search
+	}
+
+	uids = Variable { multivalued:True }
+	tag = Variable { multivalued:False }
+
+	task = TaskRecord(create "bwa_bulkremoveallapplicationtag" in-timeslot PageTimeslot.PrevUID)
+	taglist = Dataset {
+		search: Search {
+			definition: applicationSearch
+			view: bwa_safetagsfromsearch
+		}
+	}
+	
+	Combo {
+		variable:tag
+		allow-none:True
+		label:Label { break:True value:$fragmentApplicationTagsEditorNLS.removepicker }
+		options:Dynamic {
+			data:taglist
+			text:Current tag		
+			value:Current tag		
+		}
+	}
+}
+
+/**
+ * Remove all tags from selected applications
+ * 
+ * @param uids application uids
+ */
+fragmentSafeBulkRemoveAllTags = Dialog {
+	title:$fragmentSafeTagsEditorNLS.removealltitle
+	width:500
+	height:150
+ 	buttons:[CancelButton OkButton {
+			actions:
+				Set uids to task.uids,
+				TaskComplete task
+			}
+		]
+
+	uids = Variable { multivalued:True }
+	
+	task = TaskRecord(create "bwa_bulkremoveallapplicationtag" in-timeslot PageTimeslot.PrevUID)
+
+	Header {
+		value:$fragmentApplicationTagsEditorNLS.removeallconfirmation(SizeOf uids)
+	}
+}

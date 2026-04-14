@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="0200 groups" scriptfile="/collectors/bw_okta/0200 groups.javascript" name="P1741094261552" startingpoint="C1741094275856">
+		<Component name="C1741094275856" type="discoverysource" x="158" y="71" w="300" h="64" title="groups">
+			<Discovery file="/discovery/bw_okta/groups.discovery" datafile="{config.siloIteratedFileFullname.left(config.siloIteratedFileFullname.length-10)}/groups.csv"/>
+		</Component>
+		<Component name="C1741094287733" type="changefilter" x="158" y="214" w="300" h="64" title="update">
+			<Actions>
+				<Action name="U1741287204546" action="siloname" newvalue="{config.paramSiloName}"/>
+				<Action name="U1741287669092" action="add" attribute="SILO" type="String" multivalued="false" newvalue="{config.paramSiloName}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1741094292532" type="group" x="158" y="362" w="300" h="64" title="okta groups">
+			<Group code="id">
+				<Attribute name="displayname" attribute="name"/>
+				<Attribute name="creationdate" attribute="created"/>
+				<Attribute name="modificationdate" attribute="lastupdated"/>
+				<Attribute name="grouptype" attribute="type"/>
+			</Group>
+			<Media code="SILO"/>
+		</Component>
+		<Link name="L1741094302291" source="C1741094275856" target="C1741094287733" priority="1"/>
+		<Link name="L1741094302840" source="C1741094287733" target="C1741094292532" priority="1"/>
+		<Component name="C1741094436966" type="metadata" x="154" y="508" w="300" h="50" title="okta group description">
+			<Metadata schema="bwa_groupmetadata" key=" " group1="id" group1Repository="SILO">
+				<Attribute name="value4string" attribute="description"/>
+			</Metadata>
+		</Component>
+		<Link name="L1741094445717" source="C1741094292532" target="C1741094436966" priority="1" expression="(! dataset.isEmpty(&apos;description&apos;))"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="paramSiloName" description="paramSiloName"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

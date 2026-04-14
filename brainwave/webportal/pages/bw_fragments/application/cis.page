@@ -1,0 +1,56 @@
+/* Import other pages here */
+import "/webportal/pages/bw_htmlwidgets/tree.page"
+
+fragmentApplicationCIs = PageFragment {
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	outSelectionType = Variable
+
+	outSelectedcode = Variable
+	outSelectedlabel = Variable
+	outSelectedGroup = Variable
+	
+	outFromNode = Variable
+	outToNode = Variable
+
+	dataviz = Dataset {
+		view: bwcpam_tree_application_cis with inuid to application_uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+		}
+	}
+
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical True }
+		template: network
+		datasets:dataviz(target_uid, target_tooltip, target_family, target_tooltip, source_uid, node, edge) to chartdata(code, label, group, description, parentcode, nodeattributes, edgeattributes)
+		bindings:
+			value-of True to hierarchical,
+			value-of 'box' to shape,
+			value-of 'UD' to hierarchical_direction,// UD, DU, LR, RL
+			value-of True to navigationButtons
+		widget-events: {
+			when onclick then [
+				Set 'node' to outSelectionType,
+				Set Current code to outSelectedcode,
+				Set Current label to outSelectedlabel,
+				Set Current group to outSelectedGroup,
+				Set '' to outFromNode,
+				Set '' to outToNode
+			]
+			when onedgeclick then [
+				Set 'edge' to outSelectionType,
+				Set Current _from to outFromNode,
+				Set Current _to to outToNode,
+				Set '' to outSelectedcode,
+				Set '' to outSelectedlabel,
+				Set '' to outSelectedGroup
+			]
+		}
+	}
+}

@@ -1,0 +1,548 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_timeline/timelinenls.page"
+
+import "/webportal/pages/bw_timelinewidget/timeline.page"
+
+/* Nationalized labels here */
+identitytimelineNLS = NLS {
+	title [en "Identity timeline" fr "Evolutions de la personne"]
+	dyntitle [en "{0} timeline" fr "Evolutions de {0}"]
+	joborg [en "{0} in {1}" fr "{0} chez {1}"]
+	share [en "Share" fr "Partage"]
+	folder [en "Data" fr "Données"]
+	description [
+		en "This report presents the evolutions that have occurred over time. The timeline presents the different timeslots as well as the major events that occurred at each loading. It is possible to select a date to display the details of the identified changes. It is also possible to select a time range by pressing the Ctrl key and clicking on two dates in the timeline."
+		fr "Ce rapport présente les évolutions survenues au fil du temps. la timeline présente les différents points de chargement ainsi que les evenements majeurs survenus à chaque chargement. Il est posible de sélectionner une date pour afficher le détail des changements identifiés. Il est aussi posible de sélectionner une page de temps en appuyant sur la touche Ctrl et en cliquant sur deux dates dans la timeline."
+	]	
+}
+
+identitytimeline_highlightnew = Style {
+	foreground:white
+	background:Color green
+}
+identitytimeline_highlightremoved = Style {
+	foreground:white
+	background:Color red
+}
+
+identitytimelinepicker = Dialog {
+	title:$timelineNLS.selecttimeslot
+	width:640
+	height:200
+	buttons:[OkButton CancelButton]
+	
+	selectedTimeslot = Variable
+	
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+
+	Combo {
+		variable:selectedTimeslot
+		
+		options:Dynamic {
+			data:timeslots
+			text:Concat (Current displayname, ' (', Current commitdate, ')')
+			value:Current uid
+		}
+	}
+
+}
+
+identitytimeline = Page {
+	title: $identitytimelineNLS.title
+	dynamic-title: $identitytimelineNLS.dyntitle(identity.fullname)
+	description:$identitytimelineNLS.description
+	tags: "identity" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:bwt_identitytimeline
+	
+	uid = Parameter {
+		label:"Concept Uid"
+		type:String
+		hidden:True
+		mandatory:True
+	}
+	initialTimeslot = Parameter { default:PortalTimeslot.UID }
+
+	/* Parameters here */
+	currentTimeslot = Variable
+	refTimeslot = Variable
+	
+	selectedRepository = Variable
+	selectedApplication = Variable
+	selectedShare = Variable
+	
+	showonlydiffaccounts = Variable {initial:True}
+	showonlydiffgroups = Variable {initial:True}
+	showonlydiffapplications = Variable {initial:True}
+	showonlydiffpermissions = Variable {initial:True}
+	showonlydiffshares = Variable {initial:True}
+	showonlydiffdata = Variable {initial:True}
+	
+	
+	currentTab = Variable {initial:0}
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	timeslots = Dataset {
+		view:bwt_timeslots
+	}
+	previoustimeslot = Record {
+		view:bwt_previoustimeslot with currentTimeslot to uid
+	}
+	reftimeslot = Record {
+		view:bwt_timeslot with refTimeslot to uid
+	}
+		
+	identity = Record {
+		view:br_identityDetail with uid to uid
+		timeslot:currentTimeslot
+	}
+	
+	identityorg = Dataset {
+		view:bwt_identityorgs with uid to uid
+		timeslot:currentTimeslot
+	}
+
+	identityaccounts = Dataset {
+		view:bwt_identityaccounts with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+		disabled:IntPredicate(currentTab) { when !=0 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffaccounts)
+		}
+	}
+	
+	identityapplications = Dataset {
+		view:bwt_identityapplications with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffapplications)
+		}
+
+		disabled:IntPredicate(currentTab) { when !=2 then True otherwise False}
+	}
+
+	identityapplicationspicker = Dataset {
+		view:bwt_identityapplications with uid to uid
+		disabled:IntPredicate(currentTab) { when !=3 then True otherwise False}
+	}
+	
+	identityRepositories = Dataset {
+		view:bwt_identityrepositories with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		disabled:IntPredicate(currentTab) { when !=1 then True otherwise False}
+	}
+
+	identityGroups = Dataset {
+		view:bwt_identitygroups with uid to uid, selectedRepository to repositoryuid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+		disabled:IntPredicate(currentTab) { when !=1 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffgroups)
+		}
+	}
+
+	identityPermissions = Dataset {
+		view:bwt_identitypermissions with uid to uid, selectedApplication to applicationuid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+		disabled:IntPredicate(currentTab) { when !=3 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffpermissions)
+		}
+	}
+	
+	identityshares = Dataset {
+		view:bwt_identityshares with uid to uid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+		
+		disabled:IntPredicate(currentTab) { when !=4 then True otherwise False}
+
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffshares)
+		}
+	}
+
+	identitysharespicker = Dataset {
+		view:bwt_identityshares with uid to uid
+		timeslot:currentTimeslot
+		
+		disabled:IntPredicate(currentTab) { when !=5 then True otherwise False}
+	}
+
+	identityData = Dataset {
+		view:bwt_identitydata with uid to uid, selectedShare to shareuid, refTimeslot to dummy
+		timeslot:currentTimeslot
+		trend:Trend {
+			exclude-same:False
+			exclude-new:False
+			include-removed:True
+			join-column:uid
+			value-column:val
+			timeslot:refTimeslot
+			status-column-name:status
+		}
+		disabled:IntPredicate(currentTab) { when !=5 then True otherwise False}
+		
+		excludes:AndPredicate {
+			StringPredicate(Current status) { when 'Identical' then True }
+			BooleanPredicate(showonlydiffdata)
+		}
+	}
+
+	timeline = Dataset {
+		view:bwt_identitycomputechanges with uid to uid
+	}
+	
+	/* Page content */
+	IncludeHTMLWidget {
+		layout: Layout { grab:horizontal True vertical False hint:height 130 }
+		label:Label {break:True}
+		template: timeline
+		datasets:timeline(previoustimeslotuid, timeslotuid, previoustimeslotcommitdate, timeslotcommitdate, label, description, group) to chartdata(from_timeslotuid,  to_timeslotuid, from_ts, to_ts, label, description, group)
+		bindings:
+			value-of True to navigationButtons,
+			value-of "background" to itemType
+		widget-events: {
+			when onclick then [
+				Set Current to_timeslotuid to currentTimeslot, Set Current from_timeslotuid to refTimeslot  
+			]
+		}
+	}
+	
+	ConditionalGroup {
+		StringCondition(currentTimeslot) {
+		when IsEmpty then [
+			Header {
+				value:$timelineNLS.help
+			}
+		]
+		otherwise [
+			TabFolder {
+				TabItem {
+					text:$identity.concept
+
+					Text {
+						label:$identity.hrcode
+						compact:True
+						value:identity.hrcode
+					}
+					Text {
+						label:$identity.givenname
+						compact:True
+						value:identity.givenname
+					}
+					Text {
+						label:$identity.surname
+						compact:True
+						value:identity.surname
+					}
+					Text {
+						label:$identity.fullname
+						compact:True
+						value:identity.fullname
+					}
+					Text {
+						label:$identity.arrivaldate
+						compact:True
+						value:identity.arrivaldate
+					}
+					Text {
+						label:$identity.departuredate
+						compact:True
+						value:identity.departuredate
+					}
+					Text {
+						label:$identity.internal
+						compact:True
+						value:identity.internal
+					}
+					Text {
+						label:$identity.mobile
+						compact:True
+						value:identity.mobile
+					}
+					Text {
+						label:$identity.phone
+						compact:True
+						value:identity.phone
+					}
+					Text {
+						iterate-on:identityorg
+						label:$organisation.concept
+						value:$identitytimelineNLS.joborg(Current jobtitledisplayname, Current organisationdisplayname)
+						compact:True
+					}
+				}
+				TabItem {
+					text:$account.concept
+					activation-event:Set 0 to currentTab
+	
+				
+					Checkbox {
+						variable:showonlydiffaccounts
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:identityaccounts
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then identitytimeline_highlightnew when 'Removed' then identitytimeline_highlightremoved } }
+						Column {filterable:True width:160px header:$account.login column:login}
+						Column {filterable:True width:320px header:$account.username column:username}
+						Column {filterable:True width:160px header:$repository.concept column:repositorydisplayname}
+					}			
+				}
+				TabItem {
+					text:$group.concept
+					activation-event:Set 1 to currentTab
+				
+					Combo {
+						options:Dynamic {
+							data:identityRepositories
+							text:Current displayname
+							value:Current uid
+						}
+						variable:selectedRepository
+						label:Label { break:True  value:$repository.concept }
+					}
+					
+					Spacer {
+						height:16
+					}
+					
+				
+					Checkbox {
+						variable:showonlydiffgroups
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:identityGroups
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						label:Label { break:True  value:$group.concept }
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then identitytimeline_highlightnew when 'Removed' then identitytimeline_highlightremoved } }
+						Column {initially-masked:True filterable:True width:320px header:$group.code column:code}
+						Column {filterable:True width:320px header:$group.displayname column:displayname}
+						Column {initially-masked:True filterable:True width:160px header:$group.comment column:comment}
+					}
+				}
+				TabItem {
+					text:$application.concept
+					activation-event:Set 2 to currentTab
+
+				
+					Checkbox {
+						variable:showonlydiffapplications
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:identityapplications
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then identitytimeline_highlightnew when 'Removed' then identitytimeline_highlightremoved } }
+						Column {filterable:True width:160px header:$application.code column:code}
+						Column {filterable:True width:320px header:$application.displayname column:displayname}
+					}
+				}
+				TabItem {
+					text:$permission.concept
+					activation-event:Set 3 to currentTab
+				
+					Combo {
+						options:Dynamic {
+							data:identityapplicationspicker
+							text:Current displayname
+							value:Current uid
+						}
+						variable:selectedApplication
+						label:Label { break:True  value:$application.concept }
+					}
+					
+					Spacer {
+						height:16
+					}
+					
+				
+					Checkbox {
+						variable:showonlydiffpermissions
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:identityPermissions
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						label:Label { break:True  value:$permission.concept }
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then identitytimeline_highlightnew when 'Removed' then identitytimeline_highlightremoved } }
+						Column {initially-masked:True filterable:True width:320px header:$permission.code column:code}
+						Column {filterable:True width:320px header:$permission.displayname column:displayname}
+						Column {filterable:True width:160px header:$timelineNLS.description column:description}
+					}
+				}
+				TabItem {
+					text:$identitytimelineNLS.share
+					activation-event:Set 4 to currentTab
+					feature:unstructureddata_license
+
+				
+					Checkbox {
+						variable:showonlydiffshares
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:identityshares
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then identitytimeline_highlightnew when 'Removed' then identitytimeline_highlightremoved } }
+						Column {filterable:True width:160px header:$application.code column:code}
+						Column {filterable:True width:320px header:$application.displayname column:displayname}
+					}
+				}
+				TabItem {
+					text:$identitytimelineNLS.folder
+					activation-event:Set 5 to currentTab
+					feature:unstructureddata_license
+				
+					Combo {
+						options:Dynamic {
+							data:identitysharespicker
+							text:Current displayname
+							value:Current uid
+						}
+						variable:selectedShare
+						label:Label { break:True  value:$identitytimelineNLS.share }
+					}
+					
+					Spacer {
+						height:16
+					}
+					
+				
+					Checkbox {
+						variable:showonlydiffdata
+						text:$timelineNLS.showdiffonly
+					}	
+						
+					Spacer {
+						height:16
+					}
+
+					Table {
+						data:identityData
+						layout:Layout {grab:horizontal True vertical True}
+						show-count:True
+						show-filter:True
+						configurable:True
+						label:Label { break:True  value:$identitytimelineNLS.folder }
+						
+						Column {sortable:True header:'' column:status text:Transform Current status using timelineChangeMapping styling:StringStyling(Current status) { when 'New' then identitytimeline_highlightnew when 'Removed' then identitytimeline_highlightremoved } }
+						Column {sortable:True initially-masked:False width:100px header:$right.concept column:basic}
+						Column {initially-masked:False filterable:True width:320px header:$permission.code column:code}
+						Column {initially-masked:True filterable:True width:320px header:$permission.displayname column:displayname}
+						Column {initially-masked:True filterable:True width:160px header:$timelineNLS.description column:description}
+					}
+				}
+			}		
+		]
+		}
+	}
+}
+

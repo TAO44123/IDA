@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<script src="bw_pages.js"></script>
+	<script src="countUp.umd.js" type="module"></script>
+	<title>CountUp Indicator</title>
+	<style>
+		body {
+			font-family: "anton, 'arial black', sans-serif";
+			font-size: 48px;
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		.jumbo {
+			font-family: anton, "arial black", sans-serif;
+			font-size: 48px;
+			color: #555555;
+			text-align: center;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="jumbo" id="counter">0</div>
+	<script>
+
+		document.documentElement.style.overflow = 'hidden';
+		document.body.scroll = "no";
+
+		var start = 0;
+		var end = 0;
+		var delay = 0;
+		var duration = 2.5;
+		var easing = true;
+		var grouping = true;
+
+		var backgroundColor;
+		var fontColor;
+		var fontSize;
+		var separator = ' ';
+		var prefix = '';
+		var suffix = '';
+
+
+		//left, center, right
+		function setTextAlign(cls, textalign) {
+			var cols = document.getElementsByClassName(cls);
+			for (i = 0; i < cols.length; i++) {
+				cols[i].style['text-align'] = textalign;
+			}
+		}
+
+		function setFont(cls, font) {
+			var cols = document.getElementsByClassName(cls);
+			for (i = 0; i < cols.length; i++) {
+				cols[i].style['font-family'] = font;
+			}
+		}
+
+		function setFontColor(cls, color) {
+			var cols = document.getElementsByClassName(cls);
+			for (i = 0; i < cols.length; i++) {
+				cols[i].style.color = color;
+			}
+		}
+
+		function setFontSize(cls, size) {
+			var cols = document.getElementsByClassName(cls);
+			for (i = 0; i < cols.length; i++) {
+				cols[i].style["font-size"] = size;
+			}
+		}
+
+		function setBackgroundColor(cls, color) {
+			var cols = document.getElementsByClassName(cls);
+			for (i = 0; i < cols.length; i++) {
+				cols[i].style.backgroundColor = color;
+			}
+		}
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "start") {
+				start = initialValue;
+			}
+			if (varName == "count") {
+				end = initialValue;
+			}
+			if (varName == "delay") {
+				delay = initialValue * 100;
+			}
+			if (varName == "duration") {
+				duration = initialValue / 10;
+			}
+			if (varName == "separator") {
+				separator = initialValue;
+			}
+			if (varName == "easing") {
+				easing = initialValue;
+			}
+			if (varName == "grouping") {
+				grouping = initialValue;
+			}
+			if (varName == "prefix1") {
+				prefix = initialValue;
+			}
+			if (varName == "suffix1") {
+				suffix = initialValue;
+			}
+			if (varName == "backgroundColor") {
+				backgroundColor = initialValue;
+				setBackgroundColor("jumbo", backgroundColor);
+			}
+			if (varName == "fontColor") {
+				fontColor = initialValue;
+				setFontColor("jumbo", fontColor);
+			}
+			if (varName == "fontSize") {
+				fontSize = initialValue + 'px';
+				setFontSize("jumbo", fontSize);
+			}
+			if (varName == "font") {
+				setFont("jumbo", font);
+			}
+			if (varName == "textAlign") {
+				setTextAlign("jumbo", initialValue);
+			}
+		});
+
+
+		var indicatorWidget = null;
+		animateIndicator = function () {
+			var options = {
+				startVal: start,
+				decimalPlaces: 0,
+				duration: duration,
+				useEasing: easing,
+				useGrouping: grouping,
+				separator: separator,
+				decimal: '.',
+				prefix: prefix,
+				suffix: suffix
+			};
+			if (indicatorWidget == null) {
+				indicatorWidget = new countUp.CountUp('counter', end, options);
+				if (!indicatorWidget.error) {
+					indicatorWidget.start();
+				} else {
+					console.error(indicatorWidget.error);
+				}
+			}
+			else {
+				indicatorWidget.update(end);
+			}
+
+		};
+
+
+		Pages.listenInitDone(function () {
+			setTimeout(animateIndicator, delay);
+
+			Pages.listenTo("count", function (newValue) {
+				start = end;
+				end = newValue;
+				setTimeout(animateIndicator, delay);
+			});
+		});
+
+	</script>
+</body>
+
+</html>

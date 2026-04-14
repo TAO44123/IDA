@@ -1,0 +1,144 @@
+/* Import other pages here */
+import "/webportal/pages/mixins/workflow_mixins.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/pickers.page"
+import "/webportal/pages/resources/workflow_pickers.page"
+
+/* Nationalized labels here */
+revokeactionpermissionNLS = NLS {
+	mandatoryfields [en "*: mandatory fields" fr "* : champs obligatoires"]
+	actionsection [en "Actions" fr "Actions"]
+	cancel.buttontext [en "Cancel" fr "Annuler"]
+	cancel.confirm [en "Cancel current edition ?" fr "Annuler l'édition en cours ?"]
+	complete.buttontext [en "Task completed" fr "Tâche terminée"]
+	complete.confirm [en "Complete current task ?" fr "Terminer la tâche en cours ?"]
+	complete.flashmessage [en "Task completed" fr "Tâche terminée"]
+	title [en "Please revoke permission access" fr "Please revoke permission access"]
+	_permission [en "permission" fr "permission"]
+	_approvalstatus [en "approval status" fr "approval status"]
+	_organisationcode [ en "Organisation code" fr "Code de l'organisation"]
+	_organisationname [ en "Organisation name" fr "Nom de l'organisation"]
+	approvalstatus.value0 [en "approve" fr "approve"]
+	approvalstatus.value1 [en "deny" fr "deny"]
+	_requestername [en "requester name" fr "requester name"]
+}
+
+
+revokeactionpermission = Page {
+	title: $revokeactionpermissionNLS.title
+	mixins: workflowDefaultMixin
+	
+	/* Parameters here */
+	taskId = Parameter {
+		type: String
+		mandatory: True
+	}
+	
+	/* variables here */
+	
+	
+	/* Datasets and records here */
+	task = TaskRecord(taskId)
+	
+	
+	/* Page content */
+	
+	permissionDataset = Dataset {
+		view: workflow_permissiondisplayname_all with task.permission to uid  
+	}
+	
+	organisation = Record {
+	    view: getidentityorganisations with task.requester to uid
+	}   
+	
+	  
+	Flow {
+
+    disposition: Vertical
+    	
+	Group { 
+	//layout: Layout{hint:height 100}
+	title: "Requester"
+	Text {
+		label: $revokeactionpermissionNLS._requestername
+		value: task.requestername
+	    }
+	
+	Text {
+		label: $revokeactionpermissionNLS._organisationcode
+		value: organisation.code
+	     }
+	
+	Text {
+		label: $revokeactionpermissionNLS._organisationname
+		value: organisation.displayname
+	     }
+	
+	   }
+	
+	Group {
+	title: "Permission"
+	/* Page content */
+	MultiEdit {
+		//label: $revokeactionNLS._application
+		hide-remove: True
+		Element {
+			variable: task.permission
+			filterable: True
+			display: Display {
+				data: permissionDataset match uid
+				value: Current code
+			}
+		}
+	}
+	}
+	
+	
+	Group {
+		title: $revokeactionpermissionNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		Combo {
+		label: Concat($revokeactionpermissionNLS._approvalstatus,"*")
+		variable: task.approvalstatus
+		options: Static {
+			Option {
+				value: "approve"
+				text: $revokeactionpermissionNLS.approvalstatus.value0
+			}
+			Option {
+				value: "deny"
+				text: $revokeactionpermissionNLS.approvalstatus.value1
+			}
+		}
+	   }
+	
+	
+	Group {
+		title: $revokeactionpermissionNLS.actionsection
+		mixins: workflowActionsMixin
+		
+		ButtonGroup {
+			Button { 
+				text: $revokeactionpermissionNLS.cancel.buttontext
+				actions: Confirm $revokeactionpermissionNLS.cancel.confirm, TaskCancel task, GoTo HomePage
+			}
+			Button { 
+				disabled: StringPredicate (task.approvalstatus) { when IsEmpty then True }
+				
+				text: $revokeactionpermissionNLS.complete.buttontext
+				actions: StringCase (TaskValidation task) { 
+					when IsNull then [ 
+					Confirm $revokeactionpermissionNLS.complete.confirm, TaskComplete task, Flash Information $revokeactionpermissionNLS.complete.flashmessage, GoTo HomePage
+					]
+					otherwise [
+					Message Error TaskValidation task
+					]
+				}
+			}
+		}
+	}
+	}
+  } // End of Flow
+}
+

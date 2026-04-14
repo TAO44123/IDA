@@ -1,0 +1,418 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+
+/* Nationalized labels here */
+bw_usersubscriptionNLS = NLS {
+	title [en "Reports subscription" fr "Souscription aux rapports"]
+	dyntitle [en "Reports subscription for {0}" fr "Souscription aux rapports pour {0}"]
+	description [
+		en "This page is used to subscribe to managed ressources reports and analytics. You can both download those reports and subscribe to those reports. When a subscription is made, the report will be sent by email on a regular basis."
+		fr "Cette page est utilisée pour souscrire aux rapports concernant les ressources gérées. Vous pouvez à la fois télécharger ces rapports et vous abonner à ces derniers. Une fois abonné, vous recevrez ces rapports régulièrement par email."
+	]
+	
+	subscribed [en "subscribed"fr "abonné"] 
+	subscribe [en "Subscribe" fr "Abonnement"]
+	subscribe_tooltip[en "Subscribe to this report.\nOnce subscribed, you will automatically receive this report by email on a regular basis." fr "Souscrire à ce rapport.\nUne fois souscrit vous recevrez automatiquement ce rapport régulièrement par email"]
+	unsubscribe [en "Unsubscribe" fr "Désabonnement"]
+	unsubscribe_tooltip[en "Unsubscribe from this report.\nYou will no longer receive this report by email." fr "Se désabonner de ce rapport.\nUne fois désabonné, vous ne recevrez plus ce rapport régulièrement par email"]
+	getreport [en "Build Report" fr "Générer le rapport"]
+	getreport_tooltip[en "Build and get this report" fr "Générer et récupérer ce rapport"]
+	generating_flash [en "Report is being generated, you will receive it by email" fr "Le rapport est en cours de génération, vous allez le recevoir par mail"]
+
+	subscriptionstatus [en "Subscription \nstatus" fr "Statut \nd'abonnement"]
+	
+	lang [en "en" fr "fr"]
+}
+
+subscribedMapping = StringMapping {
+	when IsEmpty then ""
+	otherwise $bw_usersubscriptionNLS.subscribed
+}
+
+subscribedImage = StringImageTemplate {
+	when IsEmpty then ""
+	otherwise %report_16.xls
+}
+
+bw_usersubscriptiondetail = Page {
+	title: $bw_usersubscriptionNLS.title
+	description:$bw_usersubscriptionNLS.description
+	tags: "identityext" priority 200, "byuid" , "browsing", "applicationmanager"
+	icon: "16/details/printable_16.png" large-icon: "48/details/printable_48.png"
+	feature:All(Any(subscription_canselfdownload, subscription_canselfsubscribe), Any(governance_license, compliance_license))
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page bw_usersubscription with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+bw_usersubscription360hp = Page {
+	title: $bw_usersubscriptionNLS.title
+	description:$bw_usersubscriptionNLS.description
+	tags: "myapp_access360" , "myrepository_access360" priority 1
+	icon: "16/details/printable_16.png" large-icon: "48/details/printable_48.png"
+	feature:All(Any(subscription_canselfdownload, subscription_canselfsubscribe), Any(governance_license, compliance_license))
+
+	conditional-redirect: ConditionalRedirect {
+		condition:BooleanPredicate(True)
+		target:Page bw_usersubscription with-current-parameters
+	}
+
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+}
+
+bw_usersubscription = Page {
+	title: $bw_usersubscriptionNLS.title
+	dynamic-title: $bw_usersubscriptionNLS.dyntitle(identity.fullname)
+	icon: "16/details/printable_16.png" large-icon: "48/details/printable_48.png"
+	description:$bw_usersubscriptionNLS.description
+	feature:All(Any(subscription_canselfdownload, subscription_canselfsubscribe), Any(governance_license, compliance_license))
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedapplicationuid = Variable
+	selectedapplicationsubscriptionuid = Variable
+	selectedApplicationName = Variable
+
+	selectedrepositoryuid = Variable
+	selectedrepositorysubscriptionuid = Variable
+	selectedrepositoryName = Variable
+
+	currentIdentity = Variable { initial:Principal.uid }
+	
+	/* Datasets and records here */
+	// ///////////////////////////////	
+	identity = Record {
+		view:bwf_identityDetail with uid to uid
+	}
+	
+	// ///////////////////////////////	
+	innerapplications = Dataset {
+		view:bws_userapplications with uid to uid
+	}
+	innerapplicationsubscription = Dataset {
+		view:bws_subscribedapplications with uid to uid
+	}
+	applications = Dataset {
+		join:Join {
+			primary-dataset:innerapplications
+			secondary-dataset:innerapplicationsubscription
+			primary-column:applicationuid
+			secondary-column:applicationuid
+			primary-optional:False
+			secondary-cardinality:optional
+			secondary-prefix:sub
+		}
+	}
+	
+	// ///////////////////////////////	
+	innerrepositories = Dataset {
+		view:bws_userrepositories with uid to uid
+	}
+	innerrepositorysubscription = Dataset {
+		view:bws_subscribedrepositories with uid to uid
+	}
+	repositories = Dataset {
+		join:Join {
+			primary-dataset:innerrepositories
+			secondary-dataset:innerrepositorysubscription
+			primary-column:repositoryuid
+			secondary-column:repositoryuid
+			primary-optional:False
+			secondary-cardinality:optional
+			secondary-prefix:sub
+		}
+	}
+	
+	addapplicationsubscription = TaskRecord(create "bw_subscription_addapplicationsubscriber")
+	addrepositorysubscription = TaskRecord(create "bw_subscription_addrepositorysubscriber")
+	removesubscription = TaskRecord(create "bw_subscription_removesubscription")
+
+	
+	showApplication = NamedAction (
+		Dialog bwf_applicationDetailsDialog(
+			selectedapplicationuid to inuid,
+			True to inshowaccounts,
+			True to inshowcontrols,
+			True to inshowdecisionhistory,
+			True to inshowperjob,
+			True to inshowperorg,
+			True to inshowpermissions,
+			True to inshowbusinessactivities,
+			True to inshowusages
+		)
+	)
+	
+	doSubscribeApplication = NamedAction (
+		Set Principal.uid to addapplicationsubscription.subscriber,
+		Set selectedapplicationuid to addapplicationsubscription.application,
+		TaskComplete addapplicationsubscription wait-end timeout-seconds 30,
+		ReloadData(applications)
+	)
+
+	doUnsubscribeApplication = NamedAction (
+		Set selectedapplicationsubscriptionuid to removesubscription.metadatauid,
+		TaskComplete removesubscription wait-end timeout-seconds 30,
+		ReloadData(applications)
+	)
+
+	doSubscribeRepository = NamedAction (
+		Set Principal.uid to addrepositorysubscription.subscriber,
+		Set selectedrepositoryuid to addrepositorysubscription.repository,
+		TaskComplete addrepositorysubscription wait-end timeout-seconds 30,
+		ReloadData(repositories)
+	)
+
+	doUnsubscribeRepository = NamedAction (
+		Set selectedrepositorysubscriptionuid to removesubscription.metadatauid,
+		TaskComplete removesubscription wait-end timeout-seconds 30,
+		ReloadData(repositories)
+	)
+	
+	TabFolder {
+		TabItem {
+			text:$application.concept
+			
+			ButtonGroup {
+				Button {
+					actions:ExecuteNamedAction doSubscribeApplication
+					text:$bw_usersubscriptionNLS.subscribe
+					tooltip:$bw_usersubscriptionNLS.subscribe_tooltip
+					image:%collection_16.mail
+					disabled:
+					OrPredicate {
+						Not FeaturePredicate subscription_canselfsubscribe				
+						BooleanPredicate(Eval "!selectedapplicationsubscriptionuid.isEmpty() || selectedapplicationuid.isEmpty()") 
+					}
+				}
+				Button {
+					actions:ExecuteNamedAction doUnsubscribeApplication				
+					text:$bw_usersubscriptionNLS.unsubscribe
+					tooltip:$bw_usersubscriptionNLS.unsubscribe_tooltip
+					image:%collection_16.delete
+					disabled:
+					OrPredicate {
+						Not FeaturePredicate subscription_canselfsubscribe				
+						StringPredicate(selectedapplicationsubscriptionuid) { when IsEmpty then True otherwise False }
+					} 
+				}
+				Button {
+					actions:Message "todo" // never displayed button, for layouting purposes
+					disabled:True
+					presentation:Link
+					text:''
+				}
+				Button {
+				    actions:
+				    	ExecuteNotifyRule bws_application with currentIdentity to identityuid, selectedapplicationuid to applicationuid, selectedApplicationName to applicationname,
+						Flash $bw_usersubscriptionNLS.generating_flash
+						
+					text:$bw_usersubscriptionNLS.getreport
+					tooltip:$bw_usersubscriptionNLS.getreport_tooltip
+					image:%report_16.xls
+					disabled:
+					OrPredicate {
+						Not FeaturePredicate subscription_canselfdownload				
+						StringPredicate(selectedapplicationuid) { when IsEmpty then True otherwise False }
+					} 
+				}
+			}
+
+			Table {
+				data:applications
+				layout: Layout { grab: horizontal True vertical True }
+				show-filter:True
+				configurable:True
+				
+				Column {
+					column:applicationcode
+					header:$application.code
+					align:Right
+					sortable:True
+					filterable:True
+					actions:ExecuteNamedAction showApplication
+				}	
+				Column {
+					column:applicationdisplayname
+					header:$application.displayname
+					selection:selectedApplicationName
+					align:Right
+					sortable:True
+					filterable:True
+					width:360px
+					actions:ExecuteNamedAction showApplication
+				}	
+				Column {
+					column:applicationsensitivitylevel
+					text:Transform Current applicationsensitivitylevel using bwfApplicationSensitivityLevelMapping
+					header:$application.sensitivitylevel
+					align:Right
+					width:160px
+				}	
+				Column {
+					column:applicationsensitivityreason
+					header:$application.sensitivityreason
+					initially-masked:True
+					align:Right
+					width:160px
+				}	
+				Column {
+					column:applicationdescription
+					header:$application.description
+					tooltip:Current applicationdescription
+					align:Right
+					width:100%
+				}	
+				Column {
+					column:subreportid
+					text:Transform Current subreportid using subscribedMapping
+					header:$bw_usersubscriptionNLS.subscriptionstatus
+					image:TemplateImageSelection (Current subreportid) using subscribedImage
+					align:Left
+					width:160px
+				}	
+				Column {
+					column:applicationuid
+					selection:selectedapplicationuid
+					hidden:True
+				}	
+				Column {
+					column:subbw_subscription_application_uid
+					selection:selectedapplicationsubscriptionuid
+					hidden:True
+				}	
+			}
+		}	
+
+		TabItem {
+			text:$repository.concept
+			
+			ButtonGroup {
+				Button {
+					actions:ExecuteNamedAction doSubscribeRepository
+					text:$bw_usersubscriptionNLS.subscribe
+					tooltip:$bw_usersubscriptionNLS.subscribe_tooltip
+					image:%collection_16.mail
+					disabled:
+					OrPredicate {
+						Not FeaturePredicate subscription_canselfsubscribe				
+						BooleanPredicate(Eval "!selectedrepositorysubscriptionuid.isEmpty() || selectedrepositoryuid.isEmpty()")
+					} 
+				}
+				Button {
+					actions:ExecuteNamedAction doUnsubscribeRepository				
+					text:$bw_usersubscriptionNLS.unsubscribe
+					tooltip:$bw_usersubscriptionNLS.unsubscribe_tooltip
+					image:%collection_16.delete
+					disabled:
+					OrPredicate {
+						Not FeaturePredicate subscription_canselfsubscribe				
+						StringPredicate(selectedrepositorysubscriptionuid) { when IsEmpty then True otherwise False }
+					} 
+				}
+				Button {
+					actions:Message "todo" // never displayed button, for layouting purposes
+					disabled:True
+					presentation:Link
+					text:''
+				}
+				Button {
+				    actions:
+				    	ExecuteNotifyRule bws_repository with currentIdentity to identityuid, selectedrepositoryuid to repositoryuid, selectedrepositoryName to repositoryname,
+						Flash $bw_usersubscriptionNLS.generating_flash
+						
+					text:$bw_usersubscriptionNLS.getreport
+					tooltip:$bw_usersubscriptionNLS.getreport_tooltip
+					image:%report_16.xls
+					disabled:
+					OrPredicate {
+						Not FeaturePredicate subscription_canselfdownload				
+						StringPredicate(selectedrepositoryuid) { when IsEmpty then True otherwise False }
+					} 
+				}
+			}
+
+			Table {
+				data:repositories
+				layout: Layout { grab: horizontal True vertical True }
+				show-filter:True
+				configurable:True
+				persist-configuration:True
+				
+				Column {
+					column:repositorycode
+					header:$repository.code
+					align:Right
+					sortable:True
+					filterable:True
+					actions:ExecuteNamedAction showApplication
+				}	
+				Column {
+					column:repositorydisplayname
+					header:$repository.displayname
+					selection:selectedrepositoryName
+					align:Right
+					sortable:True
+					filterable:True
+					width:360px
+					actions:ExecuteNamedAction showApplication
+				}	
+				Column {
+					column:repositorysensitivitylevel
+					text:Transform Current repositorysensitivitylevel using bwfApplicationSensitivityLevelMapping
+					header:$application.sensitivitylevel
+					align:Right
+					width:160px
+				}	
+				Column {
+					column:repositorysensitivityreason
+					header:$application.sensitivityreason
+					initially-masked:True
+					align:Right
+					width:160px
+				}	
+				Column {
+					column:repositorydescription
+					header:$application.description
+					tooltip:Current repositorydescription
+					align:Right
+					width:100%
+				}	
+				Column {
+					column:subreportid
+					text:Transform Current subreportid using subscribedMapping
+					header:$bw_usersubscriptionNLS.subscriptionstatus
+					image:TemplateImageSelection (Current subreportid) using subscribedImage
+					align:Left
+					width:160px
+				}	
+				Column {
+					column:repositoryuid
+					selection:selectedrepositoryuid
+					hidden:True
+				}	
+				Column {
+					column:subbw_subscription_repository_uid
+					selection:selectedrepositorysubscriptionuid
+					hidden:True
+				}	
+			}
+		}	
+	}
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa360_latest_review_status" displayname="Access360: Application rights latest review status">
+	<Definition scriptfile="views/bw_access360/empty.javascript" name="D1630050188918" description="Get the rights for an application with the latest review status for each right if any">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1630050188918" title="Application rights">
+			<InnerView name="bwa360_application_rights">
+				<Param name="F1630050522769" viewparam="app_uid" viewparamvalue="{param.app_uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1630050193336" type="joinview" x="498" y="309" w="300" h="50" title="Rights review statuses">
+			<InnerView name="bwa360_app_rights_review_status" prefix="rs_">
+				<Param name="F1630050515435" viewparam="app_uid" viewparamvalue="{param.app_uid.get()}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset._key.get()}" key2="{dataset.rs__key.get()}"/>
+			<FilterList>
+				<Filter name="F1630050382771" expression="dataset._key.get()" comment="Remove duplicate review status keys (keep latest review status only)" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Link name="L1630050193499" source="C1630050188918" target="C1630050193336" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1630050384686" type="note" x="413" y="123" w="270" h="118" title="The review status view can return mulitple&#xA;entries for a given right (key)&#xA;But since the view is sorted by the ticketreview&apos;s recorduid&#xA;We can deduplicate the _key&#xA;to keep the latest review status only"/>
+		<Component name="C1631284936439" type="joinview" x="303" y="293" w="300" h="50" title="Get identities jobs">
+			<InnerView name="bwa360_identities_jobs" prefix="job_"/>
+			<Join jointype="left" key1="{dataset.rs_ticket_actoruid.get()}" key2="{dataset.job_idt_uid.get()}"/>
+		</Component>
+		<Link name="L1631284936619" source="C1630050193336" target="C1631284936439" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="app_uid" displayname="Application Uid" type="String">
+		<Value name="V1630050526640_1" data="AP2663_1626942690525_8861186"/>
+	</ViewParam>
+</View>

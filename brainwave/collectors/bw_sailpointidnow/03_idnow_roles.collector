@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="03 idnow roles" scriptfile="/collectors/bw_sailpointidnow/EMPTY.javascript" name="P1751452480414_L9lmFaa20El7Y6ZiG3xg" startingpoint="C1751456757124">
+		<Component name="C1751456757124" type="discoverysource" x="448" y="46" w="300" h="64" title="idnow_roles">
+			<Discovery file="/discovery/bw_sailpointidnow/idnow_roles.discovery" datafile="{config.siloIteratedFileFullname.firstToken(&quot;accounts.csv&quot;)}/roles.csv"/>
+		</Component>
+		<Component name="C1751456808148" type="permission" x="448" y="624" w="300" h="64" title="IdNow roles">
+			<Permission code="id" application="_idnow_id" type="Role">
+				<Attribute name="displayname" attribute="name"/>
+				<Attribute name="description" attribute="description"/>
+			</Permission>
+		</Component>
+		<Component name="C1751457959516" type="changefilter" x="448" y="204" w="300" h="64" title="Get IdNow id">
+			<Actions>
+				<Action name="U1751458011379" action="add" attribute="_idnow_id" type="String" multivalued="false" newvalue="IdentityNow" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1751457962754" source="C1751456757124" target="C1751457959516" priority="1"/>
+		<Component name="C1752048609791" type="group" x="448" y="501" w="300" h="64" title="Roles as groups">
+			<Group code="id">
+				<Attribute name="displayname" attribute="name"/>
+				<Attribute name="comment" attribute="description"/>
+			</Group>
+			<Media code="_idnow_id"/>
+		</Component>
+		<Link name="L1752048620399" source="C1752048609791" target="C1751456808148" priority="1"/>
+		<Component name="C1752048706998" type="right" x="448" y="791" w="300" h="64" title="Groups access to respective perms">
+			<Domain repository="_idnow_id"/>
+			<Right account="id" application="_idnow_id" permission="id"/>
+		</Component>
+		<Link name="L1752048714057" source="C1751456808148" target="C1752048706998" priority="1"/>
+		<Link name="L1752764473227" source="C1751457959516" target="C1752048609791" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

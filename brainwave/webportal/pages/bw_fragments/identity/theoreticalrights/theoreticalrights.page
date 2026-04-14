@@ -1,0 +1,173 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+
+fragmentIdentityTheoreticalRightsListNLS = NLS {
+	filteredto [en "filtered to {0}" fr "filtré sur {0}"]
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display theoretical rights for a given identity
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * <li><b>inapplicationuids </b>optional filter to display only some applications</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outpermissionuid </b>the selected permission</li>
+ * <li><b>outpermissionname </b>the selected permission name</li>
+ * <li><b>outapplicationname </b>the selected application</li>
+ * <li><b>outrolename </b>the selected role</li>
+ * </ul>
+ * </span>
+ */
+ 
+fragmentIdentityTheoreticalRightsList = PageFragment {
+	feature:iam_license
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable { type: String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inapplicationuids = Variable {multivalued: True}
+
+	outpermissionuid = Variable
+	outpermissionname = Variable
+	outapplicationname = Variable
+	outrolename = Variable
+	
+	/* Dataset here */
+	application = Record {
+		view: br_applicationDetail with inapplicationuids to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	data = Dataset {
+		view: bwf_identitytheoreticalrights with
+			inuid to uid,
+			inapplicationuids to app_uid unless-empty
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_permissionDetailsDialog(outpermissionuid to inuid,
+													False to inshowaccounts, 
+													True to inshowperjob,
+													True to inshowperorg
+												  )
+			]
+			when False then [
+			
+			]
+		}
+	)
+	
+	Header {
+		hidden:StringPredicate(inapplicationuids) { when IsEmpty then True otherwise False }
+		value:$fragmentIdentityTheoreticalRightsListNLS.filteredto(application.displayname)
+	}
+	ConditionalGroup {
+		IntCondition ( Count data ) {
+			when < 1 then [
+				Text {
+					value: $bwf_theoreticalrightsNLS.noTR
+					compact: True
+				}
+			] otherwise [
+				Group {
+					// title: $bwf_theoreticalrightsNLS.TR
+					Table {
+						data: data
+						layout: Layout { grab: horizontal True vertical True }
+						configurable: True
+						show-count: True
+						show-filter: True
+						persist-configuration:True
+						double-click:ExecuteNamedAction goDetails
+						
+						
+						Column {
+							column: role
+							selection: outrolename
+							initially-masked: False
+							header: $bwf_theoreticalrightsNLS.role
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+						Column {
+							column: app_displayname
+							selection: outapplicationname
+							initially-masked: False
+							header: $application.concept
+							width: 100%
+							sortable: True
+							filterable:True
+						}
+						Column {
+							column: perm_uid
+							initially-masked: True
+							header: $ppermission.uid
+							width: 100%
+							sortable: True
+							filterable: True
+							selection:outpermissionuid
+						}
+						Column {
+							column: perm_code
+							initially-masked: False
+							header: $ppermission.code
+							width: 100%
+							sortable: True
+							filterable: True
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column: perm_displayname
+							selection: outpermissionname
+							initially-masked: False
+							header: $ppermission.displayname
+							width: 100%
+							sortable: True
+							filterable: True
+							actions: ExecuteNamedAction goDetails
+							actions-disabled: Not BooleanPredicate(incanshowdetails)
+							tooltip: $search_page.showdetails
+						}
+						Column {
+							column: comment
+							initially-masked: True
+							header: $bwf_theoreticalrightsNLS.comment
+							width: 100%
+							sortable: True
+							filterable: True
+						}
+					}
+				}
+			]
+		}
+	}
+}

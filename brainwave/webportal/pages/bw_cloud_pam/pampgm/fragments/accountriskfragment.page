@@ -1,0 +1,85 @@
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_risk.page"
+import "/webportal/pages/bw_cloud_pam/resources/styles.page"
+
+customRiskColors = Constant { type:String value:"#80cbc4,#81d4fa,#ffcc80,#ef5350" }
+
+pampgm_risk_accountriskfragment_searchparam_mapping = StringMapping {
+	otherwise current prefix "maccount(*|controldiscrepancy(*|controllog(*eqRiskLevel[riskLevelParam=\"" suffix "\"],eqTagScope[tagScopeParam=^\"notonboarded\"])"
+}
+
+pampgm_risk_accountriskfragment = PageFragment {
+	mixins: dashboardMixin
+	
+	loading = Variable { type: Boolean }
+	
+	risklevels = Dataset {
+		values: [
+			( risklevel -> 1 ),
+			( risklevel -> 2 ),
+			( risklevel -> 3 ),
+			( risklevel -> 4 )
+		]
+	}
+	
+	accountriskdistribution = Dataset {
+		view: pampgm_risk_accountriskdistribution	
+	}
+	
+	accountriskdistribution_display = Dataset {
+		join: Join {
+			primary-dataset: risklevels
+			primary-column: risklevel
+			secondary-dataset: accountriskdistribution
+			secondary-column: risklevel
+			secondary-prefix: display_
+			primary-optional: False
+			secondary-cardinality: optional
+		}
+	}
+	
+	refresh = NamedAction (
+		ReloadData ( accountriskdistribution),
+		ReloadData ( accountriskdistribution_display )
+	)
+	
+	Group {
+		mixins: homePanelMixin
+		styling: cssRound
+		Header { 
+			value: $bwcd_pam_ciso_risk_NLS.group.accountsrisks.title
+			icon: %concept.account
+		}
+		Grid {
+			columns: GridColumn { width: grow }, GridColumn { width: 20 }
+			layout: Layout { indent: horizontal 0 vertical 40 }
+			gap: 0
+			insets: 0
+			GridRow {
+				GridCell{
+					IncludeHTMLWidget {
+						layout: Layout { grab: horizontal True vertical True }
+						template: barChart
+						datasets: accountriskdistribution_display ( risklevel, risklevel, display_count ) to chartdata ( label, code , count )
+						bindings:
+							value-of $bwcd_pam_ciso_risk_NLS.group.accountsrisks.chart.xlabel to xlabel,
+							value-of $bwcd_pam_ciso_risk_NLS.group.accountsrisks.chart.ylabel to ylabel,
+							value-of False to showxAxesGrid,
+							value-of True to showyAxesGrid,
+							value-of True to beginAtZero,
+							value-of $bwcd_pam_ciso_risk_NLS.group.accountsrisks.chart.tooltipSuffix to tooltipSuffix,
+							value-of False to maintainAspectRatio,
+							value-of True to tooltipShowPercent,
+							value-of Constant customRiskColors to customColors
+						widget-events: {
+							when onclick then [
+								GoTo Activity Account (CAusers) Search with Transform Current code using pampgm_risk_accountriskfragment_searchparam_mapping to accountSearch
+							]
+						}
+					}
+				}
+			}
+		}
+	}
+}

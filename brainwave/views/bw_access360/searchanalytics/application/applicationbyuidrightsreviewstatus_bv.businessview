@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="access360r_applicationbyuidrightsreviewstatus_bv" displayname="identityrights bv">
+	<Definition scriptfile="/views/bw_access360/searchanalytics/application/applicationrights_bv.javascript" name="D1609939955419">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1609939955417" title="application rights">
+			<InnerView name="access360r_applicationbyuidrights">
+				<Param name="F1644512952051" viewparam="uid" viewparamvalue="{param.uid}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1644237565362" type="joinview" x="827" y="237" w="300" h="50" title="review status">
+			<InnerView name="access360r_applicationbyuidrightsreviewstatus">
+				<Param name="F1644512967069" viewparam="uid" viewparamvalue="{param.uid}"/>
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.key.get()}"/>
+			<FilterList>
+				<Filter name="F1644237703738" expression="dataset.key.get()" comment="keep only the latest review status" type="Deduplicate"/>
+			</FilterList>
+			<ViewComputedAttribute name="compliancestatus" displayname="compliancestatus" type="Boolean" expression="!dataset.isEmpty(&apos;reviewactionday&apos;) &amp;&amp; dataset.reviewactionday.get()&gt;param.reviewdaythreshold.get()"/>
+			<ViewComputedAttribute name="compliancenbdayslate" displayname="compliancenbdayslate" type="Integer" expression="dataset.isEmpty(&apos;reviewstatus&apos;)?999:(dataset.reviewactionday.get()-param.reviewdaythreshold.get())&lt;0?(param.reviewdaythreshold.get()-dataset.reviewactionday.get()):0"/>
+			<ViewComputedAttribute name="compliancenbdaysleft" displayname="compliancenbdaysleft" type="Integer" expression="dataset.isEmpty(&apos;reviewstatus&apos;)?0:(param.reviewdaythreshold.get()-dataset.reviewactionday.get())&lt;0?(dataset.reviewactionday.get()-param.reviewdaythreshold.get()):0"/>
+		</Component>
+		<Link name="L1644237565459" source="C1609939955417" target="C1644237565362" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1644237708695" type="note" x="349" y="125" w="300" h="107" title="review status are sorted by recorduid z-&gt;a, as a result, the most recent results are presented on the top of the list"/>
+	</Definition>
+	<ViewParam name="complianceThreshold" displayname="complianceThreshold" type="Integer" defaultvalue="90"/>
+	<ViewParam name="reviewdaythreshold" displayname="reviewdaythreshold" type="Integer" defaultvalue="{(new Date().getTime()/(1000*3600*24))-param.complianceThreshold.get()}"/>
+	<ViewParam name="uid" displayname="uid" type="String"/>
+</View>

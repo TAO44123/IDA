@@ -1,0 +1,362 @@
+import "/webportal/pages/bw_iasremediation/nls.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/lib/constants.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+// Create remediation for rights
+bw_iasremediation_rights_create = Dialog {
+	title: $bw_iasremediation_rights_create.title
+	width: 800
+	height: 600
+	
+	buttons:
+		[
+			OkButton {
+				actions:
+					Set 'New' to task.status_remediation,
+					Set [ status repeat SizeOf accountUids ] to task.status_ticketreview,
+					Set [ comment repeat SizeOf accountUids ] to task.comment,
+					Set accountUids to task.accountuid,
+					Set permissionUids to task.permissionuid,
+					Set perimeterUids to task.perimeteruid,
+					Set Principal.uid to task.accountableuid,
+					TaskSave task,
+					TaskComplete task wait-end timeout-seconds 30
+				disabled:
+					OrPredicate {
+						StringPredicate ( accountUids ) {
+							when IsEmpty then True
+						}
+						StringPredicate ( status ) {
+							when IsEmpty then True
+						}
+						StringPredicate ( comment ) {
+							when IsEmpty then True
+						}
+					}
+			}
+			CancelButton
+		]
+	
+	accountUids = Variable { type: String multivalued: True }
+	permissionUids = Variable { type: String multivalued: True }
+	perimeterUids = Variable { type: String multivalued: True }
+	status = Variable { type: String }
+	comment = Variable { type: String }
+	
+	task = TaskRecord ( create "bwiasr_rightsremediationrequest" )
+	
+	rights = Dataset {
+		view: bw_iasremediation_rights with
+			accountUids to acc_uid,
+			perimeterUids to perim_uid unless-empty,
+			permissionUids to perm_uid
+		disabled:
+			OrPredicate {
+				StringPredicate ( accountUids ) {
+					when IsEmpty then True
+				}
+				StringPredicate ( permissionUids ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	Group {
+		title: $bw_iasremediation.accounts
+		layout: Layout { grab: horizontal True vertical True }
+		Table {
+			data: rights
+			layout: Layout { grab: horizontal True vertical True }
+			show-count: True
+			show-filter: True
+			configurable: True
+			Column {
+				column: repo_code
+				header: $prepository.code
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: repo_displayname
+				header: $prepository.displayname
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: acc_login
+				header: $paccount.login
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: acc_username
+				header: $paccount.username
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: acc_employeenumber
+				header: $paccount.employeenumber
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: idt_hrcode
+				header: $pidentity.hrcode
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: idt_fullname
+				header: $pidentity.fullname
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: perimetercode
+				header: $right.perimetercode
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: perimeterdisplayname
+				header: $right.perimeterdisplayname
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: perm_code
+				header: $ppermission.code
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: perm_displayname
+				header: $ppermission.displayname
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: app_code
+				header: $papplication.code
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: app_displayname
+				header: $papplication.displayname
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+		}
+	}
+	Group {
+		title: $bw_iasremediation.remediation
+		layout: Layout { grab: horizontal True vertical False }
+		Combo {
+			variable: status
+			label: $bw_iasremediation.status
+			tooltip: $bw_iasremediation.statusTt
+			options:
+				Static {
+					Option {
+						value: Constant bw_reviewStatusCode_revoke
+						text: $fragmentDefaultReviewStatusNLS.revoke
+					}
+					Option {
+						value: Constant bw_reviewStatusCode_update
+						text: $fragmentDefaultReviewStatusNLS.update
+					}
+				}
+		}
+		Edit {
+			variable: comment
+			label: $bw_iasremediation.comment
+			tooltip: $bw_iasremediation.commentTt
+		}
+	}
+}
+
+// Create remediation for accounts
+bw_iasremediation_accounts_create = Dialog {
+	title: $bw_iasremediation_accounts_create.title
+	width: 800
+	height: 600
+	
+	buttons:
+		[
+			OkButton {
+				actions:
+					ExecuteNamedAction updateTask,
+					TaskSave task,
+					TaskComplete task wait-end timeout-seconds 30
+				disabled:
+					OrPredicate {
+						StringPredicate ( accountUids ) {
+							when IsEmpty then True
+						}
+						StringPredicate ( status ) {
+							when IsEmpty then True
+						}
+						StringPredicate ( comment ) {
+							when IsEmpty then True
+						}
+					}
+			}
+			CancelButton
+		]
+	
+	accountUids = Variable { type: String multivalued: True }
+	status = Variable { type: String }
+	type = Variable { type: String }
+	comment = Variable { type: String }
+	
+	task = TaskRecord ( create "bwiasr_accountsremediationrequest" )
+	
+	accounts = Dataset {
+		view: br_accounts with
+			accountUids to acc_uids
+		disabled:
+			StringPredicate ( accountUids ) {
+				when IsEmpty then True
+			}
+	}
+	
+	updateTask = NamedAction (
+		Set 'New' to task.status_remediation,
+		Set [ status repeat SizeOf accountUids ] to task.status_ticketreview,
+		Set [ comment repeat SizeOf accountUids ] to task.comment,
+		Set accountUids to task.accountuid,
+		Set Principal.uid to task.accountableuid,
+		StringCase(type) { 
+			when Not IsEmpty then [
+				Set type to task.remediationtype
+			]
+		}
+	)
+	
+	Group {
+		title: $bw_iasremediation.accounts
+		layout: Layout { grab: horizontal True vertical True }
+		Text {
+			value: $bw_iasremediation_accounts_create.sod_explanation
+			compact: True
+			hidden: StringPredicate(type) { when "SoD-control" then False otherwise True }
+		}
+		Table {
+			data: accounts
+			layout: Layout { grab: horizontal True vertical True }
+			show-count: True
+			show-filter: True
+			configurable: True
+			Column {
+				column: repo_code
+				header: $prepository.code
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: True
+			}
+			Column {
+				column: repo_displayname
+				header: $prepository.displayname
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: acc_login
+				header: $paccount.login
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: acc_username
+				header: $paccount.username
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: acc_employeenumber
+				header: $paccount.employeenumber
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: idt_hrcode
+				header: $pidentity.hrcode
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+			Column {
+				column: idt_fullname
+				header: $pidentity.fullname
+				width: 100%
+				filterable: True
+				sortable: True
+				initially-masked: False
+			}
+		}
+	}
+	Group {
+		title: $bw_iasremediation.remediation
+		layout: Layout { grab: horizontal True vertical False }
+		Combo {
+			variable: status
+			label: $bw_iasremediation.status
+			tooltip: $bw_iasremediation.statusTt
+			options:
+				Static {
+					Option {
+						value: Constant bw_reviewStatusCode_update
+						text: $fragmentDefaultReviewStatusNLS.update
+					}
+					Option {
+						value: Constant bw_reviewStatusCode_revoke
+						text: $fragmentDefaultReviewStatusNLS.revoke
+					}
+				}
+		}
+		Edit {
+			variable: comment
+			label: $bw_iasremediation.comment
+			tooltip: $bw_iasremediation.commentTt
+		}
+	}
+}

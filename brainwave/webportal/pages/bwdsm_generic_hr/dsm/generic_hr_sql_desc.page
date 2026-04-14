@@ -1,0 +1,195 @@
+/* Connector descriptor */
+import "/webportal/pages/bw_fragments/application/resources.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+ds_generic_hr_sql_NLS = NLS {
+  title [ en "Generic HR - SQL" fr "RH Générique - SQL"]
+  description [
+   en "Retrieves people, organisation and manager information through an SQL query"
+   fr "Extrait les personnes, organisations et informations de management via une requête SQL "]
+   cfg.label_repo_code [ en "HR Repository code" fr "Clé du référentiel RH"]
+   cfg.label_repo_label  [ en "HR Repository label" fr "Nom du référentiel RH"]
+   cfg.connection [ en "Connection" fr "Connexion"]
+   cfg.driver [ en "Driver" fr "Driver"]
+   cfg.server [ en "Server" fr "Serveur"]
+   cfg.server.tooltip [ 
+     en "Database server IP Address\nfollowed by :port_number if necessary" 
+     fr "Adresse IP du serveur de base de données\nsuivie de :numéro_de_port si besoin"]
+   cfg.database [ en "Database" fr "Base de données"]
+   cfg.user [ en "User" fr "Utilisateur"]
+   cfg.password [ en "Password" fr "Mot de passe"]
+   cfg.query [ en "SQL Query" fr "Requête SQL"]  
+   cfg.repository [ en "Repository" fr "Référentiel"]
+}
+
+ds_generic_hr_sql = Page {
+	title: $ds_generic_hr_sql_NLS.title
+	tags: "bwds_connector" , "sql", "live", "hr"
+	description: $ds_generic_hr_sql_NLS.description
+	icon: "bw_dsm/L/bw_genericapp.png"
+	large-icon: "bw_dsm/XL/bw_genericapp.png"
+	metadata: (  
+	 category -> "identity", 
+	 collector -> "bwdsm_generic_hr",
+	 action ->"sqlodbc",
+	 destPathVar -> "bw_generic_hr_sourceFolder",
+	 filePattern -> "*.csv",
+	 multiFile -> False  ,
+	 hasMapping -> True,
+    imodelcolumns -> "hrcode;givenname;surname;altname;fullname;titlecode;mail;phone;mobile;internal;employeetype;arrivaldate;departuredate;active;jobtitlecode;jobtitledisplayname;organisationcode;organisationshortname;organisationdisplayname;organisationtype;parentorganisationcode;linemanagerhrcode;linemanagerfullname;managedorgcode",
+    imodelcolumnsmandatory ->"False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False;False",
+	 imodelcolumnsdescription -> "Employee ID number;First name;Last name;Alternative or maiden name;Complete name;Civil title;Email address;Home phone;Cell phone;Employee? (true for Employee false for Contractor);Type of employee or contract;Hire date;Departure date;Is the employee still in the company? (T/F);Job function code;Job function display name;Department code;Department short name;Display name of job function;Department display name;Parent department code;Manager’s employee ID number;Manager’s employee fullname;Manager’s department code",
+	 imodelcolumnsexample -> "ID0000183;Denis;GEOFFRAY;JACOB;Denis GEOFFRAY;Mr;DGEOFFRAY@gmail.com;+1 212-330-3296;+1 212-879-4401;true;CDD;20200121000000;20210530000000;true;TecQu;Qualification;STECQU;STECQU;Quality Assurance;Service;DTECPR;ID0000121;John DOE;STECRD",
+	 imodelcolumnstype -> "String;String;String;String;String;String;String;String;String;Boolean;String;Date;Date;Boolean;String;String;String;String;String;String;String;String;String;String"
+   )	
+}
+
+
+/* config dynamic fragment */
+generic_hr_sql_params = Constant { value: "_code,_label,driver,server,database,user,password,querystring"}
+
+deserializeOptions_generic_hr_sql = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant generic_hr_sql_params }
+  options = Input
+  _code = Output 
+  _label = Output
+  driver=Output
+  server=Output
+  database=Output
+  user=Output
+  password=Output
+  querystring=Output
+    
+}
+
+serializeOptions_generic_hr_sql = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant generic_hr_sql_params }
+  secretnames = Input { default: "password"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/  
+  _code = Input
+  _label = Input
+  driver=Input
+  server=Input
+  database=Input
+  user=Input
+  password=Input
+  querystring=Input       
+}
+
+//TODO validation des options
+
+ds_generic_hr_sql_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  outValid = Variable { type: Boolean initial: False } 
+ 
+  code = Variable
+  label = Variable
+
+  driver=Variable
+  server=Variable
+  database=Variable
+  user=Variable
+  password=Variable
+  querystring=Variable
+  
+  
+  // state vars 
+	codeisvalid = Variable { type: Boolean }
+	nameisvalid = Variable { type: Boolean }
+
+   doInit = NamedAction(
+     Call deserializeOptions_generic_hr_sql ( options to options,  code from _code, label from _label,     
+      driver from driver, server from server, database from database , user from user, password from password, querystring from querystring
+       ),
+     ExecuteNamedAction doUpdateValid  
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_generic_hr_sql (dsname to secretdsname, 
+      code to _code, label to _label,
+      driver to driver, server to server, database to database, user to user, password to password, querystring to querystring
+       ) to options
+   )
+   
+   doUpdateValid = NamedAction (
+     Set Eval "codeisvalid.get() && nameisvalid.get()" to outValid
+   )
+   
+   TabFolder { 
+     layout: Layout { grab: horizontal True vertical True }
+     TabItem {
+        text: $ds_generic_hr_sql_NLS.cfg.connection
+       
+        Combo {
+		    variable: driver
+		    label: $ds_generic_hr_sql_NLS.cfg.driver
+		    allow-none: False		    
+		    options: Static {
+		      //Option { text: "SQL Server" value: "sqlserver" } 
+		      //Option { text: "Oracle" value: "oracle"}    
+		      Option { text: "PostgreSQL" value: "postgresql"}   
+		      //Option { text: "MariaDB/MySQL" value: "mysql"}   
+		    }	    	    
+		   }
+	  	   
+	  	   Edit {
+		    variable: server
+		    label: $ds_generic_hr_sql_NLS.cfg.server
+		    tooltip: $ds_generic_hr_sql_NLS.cfg.server.tooltip
+		    not-empty: True
+		  }
+		  Edit {
+		    variable: database
+		    label: $ds_generic_hr_sql_NLS.cfg.database
+		    not-empty: True
+		  }
+		  Edit {
+		    variable: user
+		    label: $ds_generic_hr_sql_NLS.cfg.user
+		    not-empty: True
+		  }
+		  Edit {
+		   variable: password
+		   label: $ds_generic_hr_sql_NLS.cfg.password
+		   password-mode: True
+		   not-empty: True
+		  }
+		  Edit {
+			 variable: querystring
+			 label: $ds_generic_hr_sql_NLS.cfg.query
+			 multi-lines: True
+			 layout: Layout { hint: height 60 }
+			 not-empty: True
+		  }
+     }  
+   
+      TabItem {
+        text: $ds_generic_hr_sql_NLS.cfg.repository
+        Edit {
+			   variable: code 
+			   label: $ds_generic_hr_sql_NLS.cfg.label_repo_code
+			   match:"[0-9a-zA-Z_]+"
+			   not-empty: True
+			   validity: codeisvalid
+			   modify-event: ExecuteNamedAction doUpdateValid
+			 }
+		  	 Edit {
+			   variable: label 
+			   label: $ds_generic_hr_sql_NLS.cfg.label_repo_label
+			   validity: nameisvalid
+			   not-empty: True
+			   modify-event: ExecuteNamedAction doUpdateValid
+			 }
+      }
+  }
+	  
+}
+
+

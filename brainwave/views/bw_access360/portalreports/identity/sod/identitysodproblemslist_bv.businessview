@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa360_identitysodproblemslist_bv" displayname="identitysodproblemslist bv">
+	<Definition scriptfile="/views/bw_access360/portalreports/identity/sod/identitysodproblemslist_bv.javascript" name="D1757926175806">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1757926175805" title="SoD problems">
+			<InnerView name="bwa360_identitysodproblemslist">
+				<Param name="F1757926272514" viewparam="activity1uidfilter" viewparamvalue="{param.activity1uidfilter.get()}"/>
+				<Param name="F1757926278056" viewparam="activity2uidfilter" viewparamvalue="{param.activity2uidfilter.get()}"/>
+				<Param name="F1757926282984" viewparam="controlcode" viewparamvalue="{param.controlcode.get()}"/>
+				<Param name="F1757926288893" viewparam="identityuid" viewparamvalue="{param.identityuid}"/>
+				<Param name="F1757926295565" viewparam="minimumRiskLevel" viewparamvalue="{param.minimumRiskLevel.get()}"/>
+				<Param name="F1757926300908" viewparam="organisationuid" viewparamvalue="{param.organisationuid}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1757604363744_1" type="joinview" x="354" y="275" w="300" h="50" title="filter on sod matrix" enable="{param.sodmatrixuid.get()!=null}">
+			<Join jointype="left" key1="{dataset.controldisplayname.get()}" key2="{dataset.permission_pair_controldisplayname.get()}"/>
+			<InnerView name="identitysodproblemsmatrix">
+				<Param name="F1757604520757" viewparam="uid" viewparamvalue="{param.sodmatrixuid.get()}"/>
+			</InnerView>
+			<FilterList>
+				<Filter name="F1757605287597" expression="dataset.matrix_uid.get()==null" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Component name="C1758641417149" type="joinview" x="269" y="37" w="300" h="50" title="Problem source">
+			<InnerView name="bwa360_identitysodproblemssource" prefix="source_"/>
+			<Join jointype="left" key1="{dataset.key_defect_type.get()}" key2="{dataset.source_key_defect_type.get()}"/>
+			<ViewComputedAttribute name="defect_type" displayname="Defect type" type="String" expression="dataset.source_key_defect_type.get()!=null?&quot;role&quot;:&quot;direct&quot;"/>
+			<FilterList>
+				<Filter name="F1758642835756" expression="param.defectcausetype.get()==&quot;role&quot;&amp;&amp;dataset.defect_type.get()!=&quot;role&quot;" type="Exclude"/>
+				<Filter name="F1758642855261" expression="param.defectcausetype.get()==&quot;direct&quot;&amp;&amp;dataset.defect_type.get()!=&quot;direct&quot;" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1758642623330" source="C1758641417149" target="C1757604363744_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1758188261136_3" type="joinview" x="384" y="122" w="300" h="50" title="Exceptions">
+			<InnerView name="bwa360_identitysodexceptions">
+			</InnerView>
+			<Join jointype="left" key1="{dataset.key.get()}" key2="{dataset.exception_key.get()}"/>
+			<FilterList>
+				<Filter name="F1758612514650" expression="param.exceptionsOnly.get()&amp;&amp;dataset.exception_controlcode.get()==null" type="Exclude"/>
+				<Filter name="F1758612682020" expression="param.rejectExceptions.get()&amp;&amp;dataset.exception_controlcode.get()!=null" type="Exclude"/>
+			</FilterList>
+		</Component>
+		<Link name="L1758642626033" source="C1757926175805" target="C1758188261136_3" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1758642626808" source="C1758188261136_3" target="C1758641417149" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="identityuid" displayname="identityuid"/>
+	<ViewParam name="organisationuid" displayname="organisationuid"/>
+	<ViewParam name="controlcode" displayname="controlcode"/>
+	<ViewParam name="minimumRiskLevel" displayname="minimumRiskLevel" type="Integer"/>
+	<ViewParam name="activity1uidfilter" displayname="activity1uidfilter"/>
+	<ViewParam name="activity2uidfilter" displayname="activity2uidfilter"/>
+	<ViewParam name="sodmatrixuid" displayname="sodmatrixuid"/>
+	<ViewParam name="exceptionsOnly" displayname="exceptionsOnly" defaultvalue="false" type="Boolean">
+	</ViewParam>
+	<ViewParam name="rejectExceptions" displayname="rejectExceptions" type="Boolean" defaultvalue="true"/>
+	<ViewParam name="defectcausetype" displayname="defectcausetype" type="String"/>
+</View>

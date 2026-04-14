@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="accounts" scriptfile="/collectors/bw_aad_connector/AAD.javascript" name="P1670516193256" startingpoint="C1670516256203">
+		<Component name="C1670516256203" type="discoverysource" x="130" y="14" w="300" h="64" title="aad_users">
+			<Discovery file="/discovery/bw_aad_connector/aad_users.discovery" datafile="{config.siloIteratedFileFullname}"/>
+		</Component>
+		<Component name="C1670516770765" type="account" x="125" y="189" w="300" h="64" title="aad_account">
+			<Account key="id">
+				<Attribute name="username" attribute="displayname"/>
+				<Attribute name="mail" attribute="mail"/>
+				<Attribute name="login" attribute="userprincipalname"/>
+				<Attribute name="surname" attribute="surname"/>
+				<Attribute name="disabled" attribute="accountdisabled"/>
+				<Attribute name="dontexpirepassword" attribute="passwordneverexpire"/>
+				<Attribute name="guid" attribute="id"/>
+				<Attribute name="sid" attribute="id"/>
+				<Attribute name="creationdate" attribute="createddatetime"/>
+				<Attribute name="custom1" attribute="usertype"/>
+				<Attribute name="custom2" attribute="passwordpolicies"/>
+				<Attribute name="givenname" attribute="givenname"/>
+			</Account>
+			<Media code="_REPOSITORY_CODE_"/>
+		</Component>
+		<Component name="C1670577360990" type="changefilter" x="127" y="99" w="300" h="64" title="Add EEEU attribute">
+			<Actions>
+				<Action name="U1670577426162" action="add" attribute="EEEU_id" type="String" multivalued="false" newvalue="EVERYONE_EXCEPT_EXTERNAL_USERS_{dataset._REPOSITORY_CODE_.get()}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="N1670577462255" type="note" x="470" y="88" w="300" h="71" title="EEEU = Everyone except external users"/>
+		<Link name="L1670577606989" source="C1670516256203" target="C1670577360990" priority="1"/>
+		<Link name="L1670577609137" source="C1670577360990" target="C1670516770765" priority="1"/>
+		<Component name="C1670578007054" type="groupmembers" x="123" y="307" w="300" h="64" title="Add internal account to EEEU group">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Group code="EEEU_id"/>
+			<Content members="id"/>
+		</Component>
+		<Link name="L1671540898509" source="C1670516770765" target="C1670578007054" priority="1" expression="dataset.usertype.get().equals(&apos;Member&apos;) &amp;&amp; !dataset.userprincipalname.get().contains(&quot;#EXT#@&quot;)"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

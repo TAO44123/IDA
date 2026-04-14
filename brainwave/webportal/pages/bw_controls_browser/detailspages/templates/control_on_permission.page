@@ -1,0 +1,273 @@
+/* ITmport other pages here */
+import "/webportal/pages/bw_controls_browser/fragments/permission/permission_details_table.page"
+import "/webportal/pages/bw_controls_browser/fragments/root_causes/root_cause_details_table.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_controls_browser/resources/NLS.page"
+import "/webportal/pages/bw_controls_browser/resources/picker.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/workflow/bw_exception_manager/resources/dialogs.page"
+import "/webportal/pages/bw_controls_browser/resources/constants.page"
+import "/webportal/pages/bw_controls_browser/fragments/permission/permission_exceptions.page"
+import "/webportal/pages/bw_controls_browser/details_panel.page"
+import "/webportal/pages/bw_controls_browser/resources/mappings.page"
+
+/**
+ * <span style="white-space: pre-line">
+ * Template of detailed page for control on permissions
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>controlType</b> (in) the designed control type</li>
+ * <li><b>controlCode</b> (in) the designed control code</li>
+ * </ul>
+ * </span>
+ */
+bw_control_browser_control_on_permission = PageFragment {
+	
+	/* Variables here */
+	selectedPermUid = Variable { type: String }
+	selectedPermUids = Variable { type: String multivalued: True }
+	selectedExceptionPermUid = Variable { type: String }
+	selectedExceptionPermUids = Variable { type: String multivalued: True }
+	controlCode = Variable { type: String }
+	loadDetailsTab = Variable { type: String initial: False }
+	controlType = Variable { type: String }
+	hasRootCause = Variable { type: Boolean initial: False }
+	nbExceptions = Variable { type: Integer }
+	includedPermissionUid= Variable { type: String multivalued: True }
+	includedRootCauseUid = Variable { type: String multivalued: True }
+	includedPermissionDisplayname = Variable { type: String multivalued: True }
+	includedRootcauseDisplayname = Variable { type: String multivalued: True }
+	updateRequired = Variable { type: Boolean }
+	useExceptions = Variable { type: Boolean }
+	// Type of entity (Account, Perm, ... or Right, Share, etc.)
+	type = Variable { type: String }
+	// KPI information
+	selectedDiscrepancies = Variable { type: Integer }
+	selectedException = Variable { type: Integer }
+	selectedDiscrepanciesTrend = Variable { type: Integer }
+	selectedExceptionTrend = Variable { type: Integer }
+	// Active tabs
+	activePermissionsTab = Variable { type: Boolean initial: False }
+	activeImpactsTab = Variable { type: Boolean initial: False }
+		
+	/* Datasets and records here */
+	control_info = Record {
+		view: bw_control_browser_get_control_from_code with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	control_root_cause = Dataset {
+		view: bw_control_browser_all_root_cause with
+			controlCode to controlCode
+		disabled:
+			StringPredicate ( controlCode ) {
+				when IsEmpty then True
+			}
+	}
+	
+	resetPickerValue = NamedAction (
+		Unset includedPermissionUid,
+		Unset includedRootCauseUid
+	)
+	
+	reload = NamedAction (
+		ExecuteFragmentNamedAction exceptions.reload,
+		ExecuteFragmentNamedAction discrepancies.reload
+	)
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text: $detailpanel.control
+			IncludeFragment {
+				fragment: bw_control_browser_details_tab with
+					value-of controlCode to selectedControlCode,
+					value-of selectedDiscrepancies to selectedDiscrepancies,
+					value-of selectedDiscrepanciesTrend to selectedDiscrepanciesTrend,
+					value-of selectedException to selectedException,
+					value-of selectedExceptionTrend to selectedExceptionTrend,
+					hasRootCause binds-to hasRootCause
+			}
+		}
+		TabItem {
+			text: Transform type using perms_type_mapping
+			activation-event:
+				BooleanCase ( activePermissionsTab ) {
+					when False then [
+						Set True to activePermissionsTab,
+						ExecuteFragmentNamedAction discrepancies.updateFilters
+					] when True then [
+						// Nothing to do			
+					]
+				}
+			Group {
+				discrepancies = IncludeFragment {
+					fragment: bw_control_browser_permission_details_table with 
+						value-of controlCode to controlCode,
+						value-of useExceptions to useExceptions,
+						selectedPermUid binds-to selectedPermUid,
+						value-of controlType to controlType,
+						updateRequired binds-to updateRequired,
+						value-of activePermissionsTab to isActive,
+						value-of type to type
+				}
+			}
+		}
+		TabItem {
+			text: $detailspages.exception
+			badge: nbExceptions
+			feature: bw_control_browser_exceptions
+			hidden:
+				IntPredicate (nbExceptions) {
+					when =0 then True
+				}
+			ButtonGroup {
+				layout: Layout { align: horizontal End vertical End }
+				Button {
+					actions:
+						StringCase ( selectedExceptionPermUids ) {
+							when IsEmpty then [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionPermUid to targetuid,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							] otherwise [
+								Dialog deleteControlExceptionDialog (
+									selectedExceptionPermUids to targetuids,
+									controlCode to controlcode,
+									Constant _Account to controlresulttype
+								)
+							]
+						},
+						Set True to updateRequired,
+						ExecuteNamedAction reload,
+						Unset selectedExceptionPermUids
+					presentation: Button
+					text: $detailspages.removeexception
+					image: %collection_16.remove_user
+					disabled:
+						AndPredicate {
+							StringPredicate ( selectedExceptionPermUid ) {
+								when IsEmpty then True
+							}
+							StringPredicate ( selectedExceptionPermUids ) {
+								when IsEmpty then True
+							}
+						}
+				}
+			}
+			exceptions = IncludeFragment {
+				fragment: bw_control_browser_permission_exceptions with
+					value-of controlCode to controlCode,
+					nbExceptions binds-to nbExceptions,
+					selectedExceptionPermUid binds-to selectedPermUid,
+					selectedExceptionPermUids binds-to selectedPermUids
+			}
+		}
+		TabItem {
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			text: $rootcause.concept
+			IncludeFragment {
+				fragment: bw_control_browser_root_cause with
+					value-of controlCode to controlCode
+			}
+		}
+		TabItem {
+			hidden:
+				Not BooleanPredicate ( hasRootCause )
+			activation-event:
+				Set True to activeImpactsTab
+			text: $detailspages.analytics 
+			Grid {
+				columns: GridColumn { width: grow 1 }, GridColumn {}, GridColumn {}
+				layout: Layout { grab: horizontal True vertical False }
+				GridRow {
+				 	GridCell {
+						Text {
+							label: $detailspages.filteron.permissions
+							value: Eval "includedPermissionDisplayname.toString().slice(1, -1)"
+							tooltip: Eval "includedPermissionDisplayname.toString().slice(1, -1)"
+							compact: True
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Dialog bw_control_browser_permission_picker (
+									controlCode to controlCode,
+									includedPermissionUid to outUid, 
+									includedPermissionUid from outUid,
+									includedPermissionDisplayname from outDisplayname
+								)
+							image: %collection_16.plus
+							presentation: Link 
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Unset includedPermissionUid,
+								Unset includedPermissionDisplayname
+							image: %collection_16.delete
+							presentation: Link
+							disabled:
+								StringPredicate ( includedPermissionUid ) {
+									when IsEmpty then True
+								} 
+						}
+					}
+				}
+				GridRow {
+					GridCell {
+						Text {
+							label: $detailspages.filteron.rootcause
+							value: Eval "includedRootcauseDisplayname.toString().slice(1, -1)"
+							tooltip: "includedRootcauseDisplayname.toString().slice(1, -1)"
+							compact: True
+						}
+					}
+					GridCell {
+						Button {
+							actions:
+								Dialog bw_control_browser_rootcause_picker (
+									controlCode to controlCode,
+									includedRootCauseUid to outUid,
+									includedRootCauseUid from outUid,
+									includedRootcauseDisplayname from outDisplayname
+								)
+							image: %collection_16.plus
+							presentation: Link 
+						}
+					}
+					GridCell {
+						Button {
+							image: %collection_16.delete
+							actions:
+								Unset includedRootCauseUid,
+								Unset includedRootcauseDisplayname
+							presentation: Link
+							disabled:
+								StringPredicate ( includedRootCauseUid ) {
+									when IsEmpty then True
+								} 					
+						}
+					}
+				}
+			}
+			IncludeFragment {
+				fragment: bw_control_browser_permission_details_table_with_root_cause with 
+					value-of controlCode to controlCode, 
+					selectedPermUid binds-to selectedPermUid, 
+					includedPermissionUid binds-to includedPermissionUid,
+					includedRootCauseUid binds-to includedRootCauseUid,
+					value-of activeImpactsTab to isActive
+			}
+		}
+	}
+}

@@ -1,0 +1,304 @@
+import "/webportal/pages/bw_cloud_pam/permission/CAdetails.page"
+import "/webportal/pages/bw_fragments/permission/details.page"
+import "/webportal/pages/bw_fragments/permission/content.page"
+import "/webportal/pages/bw_fragments/permission/parentpaths.page"
+import "/webportal/pages/bw_fragments/permission/accounts.page"
+import "/webportal/pages/bw_fragments/permission/accountperimeters.page"
+import "/webportal/pages/bw_fragments/permission/perorg.page"
+import "/webportal/pages/bw_fragments/permission/perjob.page"
+import "/webportal/pages/bw_fragments/permission/controls.page"
+import "/webportal/pages/bw_fragments/permission/usages.page"
+import "/webportal/pages/bw_fragments/permission/decisionhistory.page"
+import "/webportal/pages/bw_fragments/permission/coremodelsoddefects.page"
+import "/webportal/pages/bw_fragments/permission/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/permission/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/custom/permissionExtendedDetails.page"
+
+bwf_CApermissionDetailsDialogNLS = NLS {
+	title [en 'CyberArk Profile Detail' fr 'Détails du profile CyberArk']
+	permission [en "Profile" fr "Profile"]
+	extended [en "Additional Information" fr "Informations complémentaires"]
+	content [en "Content" fr "Contenu"]
+	parentpaths [en "Parent Paths" fr "Chemins parents"]
+	theoretical [en "Granted Rights" fr "Droits assignés"]
+	overallocated [en "Overallocated Rights" fr "Droits suralloués"]
+	usages [en "Usages" fr "Usages"]
+	accounts [en "Users" fr "Utilisateurs"]
+	perimeters [en "Perimeters" fr "Périmètres"]
+	oorigin [en "Organizations Origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs Origin" fr "Métiers d'origine"]
+	controls [en "Controls" fr "Contrôles"]
+	coremodelsoddefects [en "Core Model SoD Problems" fr "Problèmes de SoD interne"]
+	decisionhistory [en "Decision History" fr "Historique des décisions"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Permission details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>permission uid</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show accounts tab, false by default</li>
+ * <li><b>inshowaccountsfororganisation </b>optional boolean, true to show accounts tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default</li>
+ * <li><b>inshowaccountperimeters </b>optional boolean, true to show accounts perimeters tab, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show permission origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show permission origin per job tab, false by default</li>
+ * <li><b>inshowtheoretical </b>optional boolean, true to show granted rights tab, false by default</li>
+ * <li><b>inshowtheoreticalfororganisation </b>optional boolean, true to show granted rights tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default, false by default</li>
+ * <li><b>inshowoverallocated </b>optional boolean, true to show over allocated rights tab, false by default</li>
+ * <li><b>inshowoverallocatedfororganisation </b>optional boolean, true to show over allocated rights tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowsodmodeldefects </b>optional boolean, true to show SoD defects at a core model level (shown only if defects are found), false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * </ul>
+ * </span>
+ */
+bwf_CApermissionDetailsDialog = Dialog {
+	title:$bwf_CApermissionDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	enter-event:IntCase(permission.bwa_permissionanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+				IntCase(permission.bwa_permissionanalytics_nbsubpermission) { when >0 then [ Set True to hascontent ] },
+				IntCase(permission.bwa_permissionanalytics_nbtheoretical) { when >0 then [ Set True to hastheoreticalrights ] },
+				Set permission.bwa_permissionanalytics_isroot to isroot
+				
+	inuid = Variable
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowaccountsfororganisation = Variable { type:Boolean initial:False }
+	inshowaccountrights = Variable { type:Boolean initial:False }
+	inshowaccountperimeters = Variable { type:Boolean initial:False }
+	inshowgrouprights = Variable { type:Boolean initial:False }	
+	inshowperorg = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowtheoretical = Variable { type:Boolean initial:False }
+	inshowtheoreticalfororganisation = Variable { type:Boolean initial:False }
+	inshowoverallocated = Variable { type:Boolean initial:False }
+	inshowoverallocatedfororganisation = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowsodmodeldefects = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inorganisationuid = Variable { multivalued:False }
+	inrepositoryuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inapplicationuids = Variable { type:String multivalued:True }
+	inpermissiontypes = Variable { type:String multivalued:True }
+	inaccountuids = Variable { type:String multivalued:True }
+	ingroupuids = Variable { type:String multivalued:True }
+	groupuids = Variable { type:String multivalued:True }
+		
+	nbdefects = Variable { private:True }
+	nbsodmodeldefects = Variable { private:True }
+	nboverallocated = Variable { private:True }
+	nboverallocatedfororganisation = Variable { private:True }
+	hascontent = Variable { private:True }
+	hastheoreticalrights = Variable { private:True }
+	hasusages = Variable { private:True initial:False }
+	isroot = Variable { initial:True }
+
+	grouptype = Variable { private:True }
+
+	showextended = Variable { private:True initial:False }
+	
+	active_permission = Variable { initial:False multivalued:False type:Boolean }
+	active_rights = Variable { initial:False multivalued:False type:Boolean }
+	active_grouprights = Variable { initial:False multivalued:False type:Boolean }	
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_parentpaths = Variable { initial:False multivalued:False type:Boolean }
+	active_content = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_accountsfororganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_perimeter = Variable { initial:False multivalued:False type:Boolean }
+	active_theoretical = Variable { initial:False multivalued:False type:Boolean }
+	active_theoreticalfororganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_overallocated = Variable { initial:False multivalued:False type:Boolean }
+	active_overallocatedfororganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_sodmodeldefects = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+
+	permission = Record {
+		view: bwf_permissionDetail with inuid to uid
+	}
+	application = Record {
+		view: bwf_applicationDetail with permission.application_uid to uid
+	}
+	rightlist = Record {
+		view: 	bwf_CApermissionRightsDetail with inuid to uid, inaccountuids to useruid
+		disabled: Not BooleanPredicate(inshowaccountrights)
+	}
+	grouprightlist = Record {
+		view: 	bwf_CApermissionGroupRightsDetail with inuid to uid, groupuids to groupuid
+		disabled: Not BooleanPredicate(inshowgrouprights)
+	}
+	
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.permission
+			activation-event: Set True to active_permission
+			
+			IncludeFragment (fragmentPermissionFullDetails with value-of inuid to inuid, value-of active_permission to inenabled )
+		}
+		TabItem  {
+			text:$fragmentCAPermissionDetailsNLS.rightslist
+			activation-event: Set True to active_rights
+			hidden:
+				OrPredicate {
+					StringPredicate(rightlist.rightsaction) { when IsEmpty then True otherwise False }		
+					Not BooleanPredicate(inshowaccountrights)
+				}			
+			IncludeFragment (CAfragmentPermissionRightsDetails with value-of inuid to inuid, value-of inaccountuids to inuseruids, value-of active_rights to inenabled)
+		}
+		TabItem  {
+			text:$fragmentCAPermissionDetailsNLS.rightslist
+			activation-event: Set True to active_grouprights
+			hidden:
+				OrPredicate {
+					StringPredicate(grouprightlist.rightsaction) { when IsEmpty then True otherwise False }		
+					Not BooleanPredicate(inshowgrouprights)
+				}			
+			IncludeFragment (CAfragmentGroupPermissionRightsDetails with value-of inuid to inuid, value-of ingroupuids to ingroupuids, value-of active_grouprights to inenabled)
+		}				
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentPermissionExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+			activation-event: Set True to active_accounts
+			
+			IncludeFragment (fragmentPermissionAccounts with value-of inuid to inuid, inrepositoryuid binds-to inrepositoryuid, value-of True to incanshowdetails,  value-of active_accounts to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.accounts
+			hidden:Not BooleanPredicate(inshowaccountsfororganisation)
+			activation-event: Set True to active_accountsfororganisation
+			
+			IncludeFragment (fragmentPermissionAccountsForOrg with value-of inuid to inuid,  
+							inorganisationuid binds-to inorganisationuid,
+							inonlydirectselection binds-to inonlydirectselection,
+							value-of True to incanshowdetails,
+							value-of active_accountsfororganisation to inenabled )
+		}
+		TabItem  { // Shown only if the permission has a right perimeters
+			text:$bwf_CApermissionDetailsDialogNLS.perimeters
+			hidden:
+				OrPredicate {
+					IntPredicate(application.bwa_applicationanalytics_nbperimeter) { when >0 then False otherwise True }		
+					Not BooleanPredicate(inshowaccountperimeters)
+				}
+			activation-event: Set True to active_perimeter
+			
+			IncludeFragment (fragmentPermissionAccountPerimeters with value-of inuid to inuid, inrepositoryuid binds-to inrepositoryuid, value-of True to incanshowdetails,  value-of active_perimeter to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.theoretical
+			feature:iam_license
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowtheoretical)
+					Not BooleanPredicate(hastheoreticalrights)
+				}
+			activation-event: Set True to active_theoretical
+			
+			IncludeFragment (fragmentPermissionTheoreticalRightsList with value-of inuid to inuid, value-of active_theoretical to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.theoretical
+			feature:iam_license
+			hidden:Not BooleanPredicate(inshowtheoreticalfororganisation)
+			activation-event: Set True to active_theoreticalfororganisation
+			
+			IncludeFragment (fragmentPermissionTheoreticalRightsListfororganisation with value-of inuid to inuid, 
+							inorganisationuid binds-to inorganisationuid,
+							inonlydirectselection binds-to inonlydirectselection,
+							value-of active_theoreticalfororganisation to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.overallocated
+			feature:iam_license
+			hidden:Not BooleanPredicate(inshowoverallocated)
+			activation-event: Set True to active_overallocated
+			badge: Eval "nboverallocated.get()>0?nboverallocated.get():''"
+			
+			IncludeFragment (fragmentPermissionOverAllocationsList with value-of inuid to inuid, nboverallocated binds-to outnbproblems, value-of inshowoverallocated to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.overallocated
+			feature:iam_license
+			hidden:Not BooleanPredicate(inshowoverallocatedfororganisation)
+			activation-event: Set True to active_overallocatedfororganisation
+			badge: Eval "nboverallocatedfororganisation.get()>0?nboverallocatedfororganisation.get():''"
+			
+			IncludeFragment (fragmentPermissionOverAllocationsListfororganisation with value-of inuid to inuid, 
+							inorganisationuid binds-to inorganisationuid,
+							inonlydirectselection binds-to inonlydirectselection,
+							nboverallocatedfororganisation binds-to outnbproblems, value-of inshowoverallocatedfororganisation to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.oorigin
+			hidden:Not BooleanPredicate(inshowperorg)
+			activation-event: Set True to active_perorg
+			
+			IncludeFragment (fragmentPermissionPerOrg with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perorg to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.jorigin
+			hidden:Not BooleanPredicate(inshowperjob)
+			activation-event: Set True to active_perjob
+			
+			IncludeFragment (fragmentPermissionPerJob with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perjob to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.usages
+			hidden:
+			OrPredicate {
+				Not BooleanPredicate(inshowusages)
+				Not BooleanPredicate(hasusages)
+			}
+			activation-event: Set True to active_usages
+			
+			IncludeFragment (fragmentPermissionUsages with value-of inuid to inuid, value-of active_usages to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.coremodelsoddefects
+			hidden:	// tab showns only if model SoD defects are found
+				OrPredicate {
+					Eval "nbsodmodeldefects.get()==0"
+					Not BooleanPredicate(inshowsodmodeldefects)
+				}
+			activation-event: Set True to active_sodmodeldefects
+			badge: Eval "nbsodmodeldefects.get()>0?nbsodmodeldefects.get():''"
+			feature:sod_license
+			
+			IncludeFragment (fragmentPermissionCoreModelSoDdefect with value-of inuid to inuid, nbsodmodeldefects binds-to outnbdefects, value-of True to incanshowdetails, value-of inshowsodmodeldefects to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentPermissionAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_CApermissionDetailsDialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentPermissionDecisionHistory with value-of inuid to inuid, value-of active_decision to inenabled )
+		}
+	}
+}

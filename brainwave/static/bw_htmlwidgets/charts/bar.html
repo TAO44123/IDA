@@ -1,0 +1,445 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>Bar Chart</title>
+	<script src="bw_pages.js"></script>
+	<script src="chart.umd.min.js"></script>
+	<script src="chartjs-plugin-datalabels.min.js"></script>
+	<style>
+		html,
+		body,
+		#canvas-holder {
+			height: 100%;
+			width: 100%;
+		}
+
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="loading" class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+
+	<div id="canvas-holder" style="width:100%">
+		<canvas id="chart-area"></canvas>
+	</div>
+
+	<script>
+		document.documentElement.style.overflow = 'hidden';
+		document.body.scroll = "no";
+
+		var tooltipPrefix = '';
+		var tooltipSuffix = '';
+		var tooltipShowPercent = false;
+		var legendTitle = '';
+		var showTitle = false;
+		var titlePosition = 'top';
+		var titleFontSize = 12;
+		var bartype = 'bar';
+		var indexAxis = 'x';
+		var customColors = null;
+		var xlabel = null;
+		var ylabel = null;
+		var showLabelsInside = false;
+		var hideLabels = false;
+		var xAxesdisplay = true;
+		var yAxesdisplay = true;
+		var showxAxesGrid = true;
+		var showyAxesGrid = true;
+		var maintainAspectRatio = true;
+		var datasetMinSize = 0;
+		var insideLabelColor = "#000000";
+		var backgroundcolor = '#FFFFFF';
+		var beginAtZero = false;
+		var defaultColors = [
+			"#61bd6d",
+			"#54acd2",
+			"#9365b8",
+			"#553982",
+			"#eb6b56",
+			"#75706b",
+			"#f37934",
+			"#475577",
+			"#d1d5d8",
+			"#2969b0"
+		];
+
+		Pages.listenInit(function (varName, initialValue) {
+			if (varName == "title") {
+				legendTitle = initialValue;
+				showTitle = true;
+			}
+			if (varName == "titlePosition") {
+				titlePosition = initialValue;
+			}
+			if (varName == "titleFontSize") {
+				titleFontSize = initialValue;
+			}
+			if (varName == "tooltipPrefix") {
+				tooltipPrefix = initialValue;
+			}
+			if (varName == "tooltipSuffix") {
+				tooltipSuffix = initialValue;
+			}
+			if (varName == "tooltipShowPercent") {
+				tooltipShowPercent = initialValue;
+			}
+			if (varName == "showxAxesGrid") {
+				showxAxesGrid = initialValue;
+			}
+			if (varName == "showyAxesGrid") {
+				showyAxesGrid = initialValue;
+			}
+			if (varName == "xAxesdisplay") {
+				xAxesdisplay = initialValue;
+			}
+			if (varName == "yAxesdisplay") {
+				yAxesdisplay = initialValue;
+			}
+			if (varName == "maintainAspectRatio") {
+				maintainAspectRatio = initialValue;
+			}
+			if (varName == "datasetMinSize") {
+				datasetMinSize = initialValue;
+			}
+			if (varName == "customColors") {
+				var colors = initialValue.split(',');
+				defaultColors = colors.slice(0);
+			}
+			if (varName == 'isHorizontal') {
+				if (initialValue) {
+					bartype = 'bar';
+					indexAxis = 'y';
+				}
+			}
+			if (varName == 'beginAtZero') {
+				beginAtZero = initialValue;
+			}
+			if (varName == "hideLabels") {
+				if (bartype == 'bar')
+					hideLabels = initialValue;
+			}
+			if (varName == 'isLabelInside') {
+				if (bartype == 'bar')
+					showLabelsInside = initialValue;
+			}
+			if (varName == "insideLabelColor") {
+				insideLabelColor = initialValue;
+			}
+			if (varName == "xlabel") {
+				xlabel = initialValue;
+			}
+			if (varName == "ylabel") {
+				ylabel = initialValue;
+			}
+			if (varName == "backgroundColor") {
+				backgroundcolor = initialValue;
+			}
+		});
+
+		var newLegendClickHandler = function (event, legendItem, legend) {
+			var index = legendItem.index;
+			var code = window.myDoughnut.data.codes[index];
+			var label = window.myDoughnut.data.labels[index];
+			Pages.sendEvent('onlegendclick', { code: code, label: label });
+		};
+
+
+
+		createChart = function () {
+			var mydata = [];
+			var mylabels = [];
+			var mycodes = [];
+			var mydescriptions = [];
+
+			var options = {
+				responsive: true,
+				maintainAspectRatio: maintainAspectRatio,
+				indexAxis: indexAxis,
+				barThickness: 'flex',
+				onHover: function (e) {
+					var point = this.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false)
+					if (point.length) e.native.target.style.cursor = 'pointer';
+					else e.native.target.style.cursor = 'default';
+				},
+				plugins: {
+					datalabels: {
+						color: insideLabelColor,
+						anchor: 'end',
+						align: function (context) {
+							var max = context.chart.scales['x'].end;
+							var min = context.chart.scales['x'].min;
+							var mid = (max + min) / 2;
+							var value = context.chart.data.datasets[0].data[context.dataIndex];
+							return (value < mid) ? 'end' : 'start';
+						},
+						display: function (context) {
+							var show = !hideLabels && showLabelsInside;
+							if (show) {
+								var height = context.chart.height;
+								var nblabels = context.chart.data.labels.length;
+								var size = height / nblabels;
+								var h = size / 14;
+								var step = 1 / h;
+								var step = Math.ceil(step);
+
+								var index = context.dataIndex;
+								return index % step == 0;
+							}
+
+							return show;
+						},
+						formatter: function (value, context) {
+							return context.chart.data.labels[context.dataIndex];
+						},
+					},
+					legend: {
+						position: 'top',
+						onClick: newLegendClickHandler,
+						reverse: false,
+						display: false,
+						onHover: function (event, legendItem, legend) {
+							event.native.target.style.cursor = 'pointer';
+						}
+					},
+					title: {
+						display: showTitle,
+						text: legendTitle,
+						position: titlePosition,
+						fontSize: titleFontSize
+					},
+					tooltip: {
+						callbacks: {
+							label: function (tooltipItem) {
+								var dataset = tooltipItem.dataset;
+								var pTotal = dataset.data.reduce(function (acum, current) { return Number(acum) + Number(current) });
+								var pCurrent = dataset.data[tooltipItem.dataIndex];
+								var pDescription = tooltipItem.chart.data.descriptions[tooltipItem.dataIndex];
+								if (pDescription != null)
+									return pDescription;
+								else
+									return (tooltipPrefix + ' ' + pCurrent + ' ' + tooltipSuffix + (tooltipShowPercent ? (" (" + ((pCurrent / pTotal) * 100).toFixed(2) + "%)") : ''));
+							}
+						}
+					},
+				},
+				animation: {
+					animateScale: true,
+					animateRotate: true
+				},
+				//	      layout: {
+				//	            padding: {
+				//	                left: showLabelsInside?50:0,
+				//	                right: showLabelsInside?50:0
+				//	            }
+				//	      },
+				scales: {
+					x: {
+						display: xAxesdisplay,
+						grid: {
+							display: showxAxesGrid
+						},
+						title: {
+							display: xlabel != null,
+							text: xlabel
+						},
+						beginAtZero: beginAtZero
+					},
+					y: {
+						display: yAxesdisplay && (!showLabelsInside && !hideLabels),
+						grid: {
+							display: showyAxesGrid
+						},
+						title: {
+							display: ylabel != null,
+							text: ylabel
+						},
+						beginAtZero: beginAtZero
+					}
+				},
+			}
+
+			Pages.fetchDataset("chartdata", function (rows) {
+				var customColors = [];
+				for (index = 0; index < rows.length; index++) {
+					mydata.push(rows[index]["count"]);
+					mylabels.push(rows[index]["label"]);
+					mycodes.push(rows[index]["code"]);
+					mydescriptions.push(rows[index]["description"]);
+					var /*String*/ color = rows[index]["color"];
+					if (color != null && color.indexOf('#') == 0 && color.length == 7)
+						customColors.push(color);
+					else
+						customColors.push(defaultColors[index % defaultColors.length]);
+				}
+
+				while (mydata.length < datasetMinSize) {
+					mydata.push(null);
+					mylabels.push("");
+				}
+				var data = {
+					datasets: [{
+						data: mydata,
+						backgroundColor: customColors
+					}],
+					labels: mylabels,
+					codes: mycodes,
+					descriptions: mydescriptions
+				};
+
+
+
+				var ctx = document.getElementById('chart-area').getContext('2d');
+				document.getElementById('loading').style.display = 'none';
+
+				// used to configure a background color in the canvas
+				var plugin = {
+					id: 'custom_canvas_background_color',
+					beforeDraw: (chart) => {
+						const ctx = chart.canvas.getContext('2d');
+						ctx.save();
+						ctx.globalCompositeOperation = 'destination-over';
+						ctx.fillStyle = backgroundcolor;
+						ctx.fillRect(0, 0, chart.width, chart.height);
+						ctx.restore();
+					}
+				};
+
+				var config = {
+					type: bartype,
+					data: data,
+					options: options,
+					plugins: [plugin, ChartDataLabels]
+				};
+				
+				window.myDoughnut = new Chart(ctx, config);
+
+				document.getElementById("chart-area").onclick = function (evt) {
+					var activePoints = window.myDoughnut.getElementsAtEventForMode(evt, 'index', { intersect: true }, false);
+					if (activePoints.length) {
+						var firstPoint = activePoints[0];
+						var label = window.myDoughnut.data.labels[firstPoint.index];
+						var value = window.myDoughnut.data.datasets[firstPoint.datasetIndex].data[firstPoint.index];
+						var code = window.myDoughnut.data.codes[firstPoint.index];
+						Pages.sendEvent('onclick', { code: code, label: label, count: value });
+					}
+				};
+
+
+			});
+		};
+
+		var myTimeout = null;
+
+		var fetchInvalidated = function () {
+
+			window.myDoughnut.data.codes = [];
+			window.myDoughnut.data.labels = [];
+			window.myDoughnut.data.descriptions = [];
+			window.myDoughnut.data.datasets[0].data = [];
+			window.myDoughnut.data.datasets[0].backgroundColor = [];
+
+			Pages.fetchDataset("chartdata", function (rows) {
+				var customColors = [];
+				for (index = 0; index < rows.length; index++) {
+					window.myDoughnut.data.datasets[0].data.push(rows[index]["count"]);
+					window.myDoughnut.data.labels.push(rows[index]["label"]);
+					window.myDoughnut.data.codes.push(rows[index]["code"]);
+					window.myDoughnut.data.descriptions.push(rows[index]["description"]);
+
+					var /*String*/ color = rows[index]["color"];
+					if (color != null && color.indexOf('#') == 0 && color.length == 7)
+						window.myDoughnut.data.datasets[0].backgroundColor.push(color);
+					else
+						window.myDoughnut.data.datasets[0].backgroundColor.push(defaultColors[index % defaultColors.length]);
+				}
+				while (window.myDoughnut.data.datasets[0].data.length < datasetMinSize) {
+					window.myDoughnut.data.datasets[0].data.push(null);
+					window.myDoughnut.data.labels.push("");
+				}
+				window.myDoughnut.update();
+				document.getElementById('loading').style.display = 'none';
+				document.getElementById('canvas-holder').style.display = 'block';
+				myTimeout = null;
+			});
+		};
+
+		Pages.listenToDatasetInvalidation("chartdata", function () {
+			if (myTimeout != null) {
+				clearTimeout(myTimeout);
+				myTimeout = setTimeout(fetchInvalidated, 500);
+				return;
+			}
+			//		document.getElementById('loading').style.display = 'block';
+			//		document.getElementById('canvas-holder').style.display = 'none';
+			myTimeout = setTimeout(fetchInvalidated, 500);
+		});
+
+		Pages.listenInitDone(function () {
+			createChart();
+		});
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="access360r_repositorygroupmemberslastreviews" prefix="review" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="ticketreview" displayname="repository group members last reviews" notes="" begindate="" enddate="">
+	<ViewParam name="filterminimumreviewdate" displayname="filterminimumreviewdate" type="Date">
+		<Value name="0" data="20230419105430"/>
+	</ViewParam>
+	<ViewParam name="includelatestreviewstatus" displayname="include latest review status" type="String"/>
+	<ViewParam name="repositorylist" displayname="repositorylist" type="String">
+		<Value name="0" data="ACME_1639568842077_5647"/>
+	</ViewParam>
+	<ViewSqlFilter name="F1626107361306" expression="1=0" enabled="!param.includelatestreviewstatus.get().equals(&apos;1&apos;)"/>
+	<ViewComputedAttribute name="key" displayname="key" type="String" expression="dataset.accountuid.get()+&apos;$$&apos;+dataset.groupuid.get()"/>
+	<ViewSort name="sort" attribute1="A1626080974700_494" direction1="DESC"/>
+	<ViewAttribute name="A1625825504889_2207" attribute="status" operator="or" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1625825896543_0" operation="in" ignoreifempty="false">
+			<Value name="0" data="ok"/>
+			<Value name="1" data="revoke"/>
+			<Value name="2" data="update"/>
+		</ViewAttributeFilter>
+	</ViewAttribute>
+	<ViewAttribute name="A1625825505700_2208" attribute="comment" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1625825548140_2209" attribute="actorfullname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1626080974700_494" attribute="actiondate" operator="and" removedfromprojection="false" globalfilter="false">
+		<ViewAttributeFilter name="F1626080987802_0" reference="filterminimumreviewdate" operation="ge" ignoreifempty="false"/>
+		<ViewAttributeFilter name="F1626081439161_1" operation="isNotNull" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="A1627291807322_2211" attribute="custom2" alias="reviewidentitypositionkey" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewJoin name="J1698401629796_28704" prefix="accountgrouplink" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="accountgroups">
+		<ViewJoin name="J1698401635555_28705" prefix="account" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+			<ViewAttribute name="A1698401712032_28709" attribute="uid" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewJoin name="J1698401640055_28706" prefix="group" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="group">
+			<ViewAttribute name="A1698401727708_28710" attribute="uid" removedfromprojection="false" globalfilter="false"/>
+			<ViewJoin name="J1697373186551_481" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="repository">
+				<ViewAttribute name="1698401738421_28713" attribute="uid" operator="or" removedfromprojection="true" globalfilter="false">
+					<ViewAttributeFilter name="F1697373196266_0" reference="repositorylist" operation="in" ignoreifempty="false"/>
+				</ViewAttribute>
+			</ViewJoin>
+		</ViewJoin>
+		<ViewAttribute name="A1698401651311_28707" attribute="recorduid" operator="or" removedfromprojection="true" globalfilter="false"/>
+	</ViewJoin>
+</View>

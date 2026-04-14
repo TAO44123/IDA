@@ -1,0 +1,355 @@
+/* Import other pages here */
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+
+/* Nationalized labels here */
+access360r_application_roi360NLS = NLS {
+	title [en "Unused Accounts Revocation ROI" fr "Optimisation des coûts"]
+	dyntitle [en "Unused Accounts Revocation ROI for {0}" fr "Optimisation des coûts pour {0}"]
+	description [
+		en "This report presents the savings that can be achieved by revoking unused accounts on the application. It is possible to set the period of account inactivity as well as the monthly unit cost per account. This cost corresponds to a subscription cost in the case of a cloud application or an environmental cost in the case of a traditional application. The results are presented in the form of a dashboard. It is also possible to extract the list of accounts to be deactivated."	
+		fr "Ce rapport présente les économies qu'il est possible de réaliser en révoquant les comptes non utilisés sur l'application. Il est possible de paramétrer la période d'inactivité du compte ainsi que le cout unitaire mensuel par compte. Ce cout correspond à un cout de souscription dans le cas d'une application cloud ou d'un cout environnementé dans le cas d'une application traditionnelle. Les résultats sont présentés sous la forme d'un tableau de bord. Il est aussi possible d'extraire la liste des comptes à désactiver"
+	]
+
+	lastconnection [en 'Last Connection X Days Ago' fr 'Dernière connexion il y a X jours']
+	monthlycost [en 'Account Monthly Cost' fr 'Coût mensuel par compte']
+	monthlycost.tooltip [en 'in USD' fr 'en $ US']
+	includeempty [en 'Include Empty Last Login Entries' fr 'Inclure les comptes sans date de dernière connexion']
+	
+	synthesis [en "Synthesis" fr "Synthèse"]
+	
+	totalnbaccount [en 'Total Number of Active Accounts' fr 'Nombre total de comptes actifs']
+	totalnbaccount.subtitle [en "Active Accounts" fr "Comptes actifs"]
+	
+	nbunused [en 'Number of Unused Active Accounts' fr 'Nombre de comptes non utilisés']
+	nbunused.subtitle [en "Unused Accounts" fr "Comptes non utilisés"]
+	
+	totalmonthly [en "Total Monthly Savings" fr "Economies mensuelles"]
+	totalannual [en "Total Annual Savings" fr "Economies annuelles"]
+	
+	lastloginperiod [en 'Last Login Period' fr 'Période de dernière connexion']
+	nbactiveaccounts [en "Number of Active Accounts" fr "Nombre de comptes actifs"]
+	
+	top8 [en 'Top 8 Organization Origin' fr "Top 8 des organisations à l'origine des comptes"]
+
+	details [en "Details" fr "Détails"]
+
+	accounts [en "Accounts" fr "comptes"]
+}
+
+access360r_application_roi360_script = StringService {
+	javascript-file:"/webportal/pages/bw_access360/portalreports/application/roi.javascript"
+	javascript-method:getDate
+
+    currentdate = Input {
+        type: String
+        mandatory: True
+    }	
+
+    nbdays = Input {
+        type: Integer
+        mandatory: True
+    }	
+}
+
+access360r_application_roi360 = Page {
+	title: $access360r_application_roi360NLS.title
+	dynamic-title: $access360r_application_roi360NLS.dyntitle(application.displayname)
+	description: $access360r_application_roi360NLS.description
+	tags: "application" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: All(bwa_applicationroi, Any(governance_license, compliance_license))
+		
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	includeNullLatlogindate = Variable { initial:False multivalued:False type:Boolean }
+	unitcost = Variable { initial:50 multivalued:False type:Integer }
+	nbdays = Variable { initial:180 multivalued:False type:Integer }
+	selectedAccount = Variable 
+	
+	/* Datasets and records here */
+	application = Record {
+		view:bwf_applicationDetail with uid to uid
+	}
+
+	roi = Record {
+		view:bwaccess360r_application_unusedaccountroi with 	uid to uid, 
+																unitcost to unitcost, 
+																includeNullLatlogindate to includenull, 
+																@access360r_application_roi360_script(Date(PageTimeslot.CommitDate).valueLDAP to currentdate, nbdays to nbdays) to lastlogindate
+	}
+
+	roilist = Dataset {
+		view:bwaccess360r_application_unusedaccountrolroilist with 	uid to uid, 
+																unitcost to unitcost, 
+																includeNullLatlogindate to includenull, 
+																@access360r_application_roi360_script(Date(PageTimeslot.CommitDate).valueLDAP to currentdate, nbdays to nbdays) to lastlogindate
+	}
+	
+	lastLoginBuckets = Dataset {
+		view:bwaccess360r_application_nbunusedaccountperbucket with uid to uid
+	}
+	
+	origin = Dataset {
+		view:bwaccess360r_application_unusedaccountroiorigin with 	uid to uid, 
+																unitcost to unitcost, 
+																includeNullLatlogindate to includenull, 
+																@access360r_application_roi360_script(Date(PageTimeslot.CommitDate).valueLDAP to currentdate, nbdays to nbdays) to lastlogindate
+		limit:8
+	}
+	
+	/* Page content */
+	showDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog (
+					selectedAccount to inuid,
+					True to inshowowner,
+					True to inshowgroups,
+					True to inshowapplications,
+					True to inshowshares
+		)
+	
+	)
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn { width:grow }
+		layout:Layout { grab:horizontal True vertical False hint: height 24 } 
+		GridRow {
+			GridCell {
+				Spinner {
+					variable:nbdays
+					label:$access360r_application_roi360NLS.lastconnection
+					minimum:1
+					maximum:10000
+					modify-event:ReloadData (roi), ReloadData(roilist), ReloadData(origin)
+					tooltip:DateLDAP(@access360r_application_roi360_script(Date(PageTimeslot.CommitDate).valueLDAP to currentdate, nbdays to nbdays)).value
+				}
+			}
+			GridCell {
+				Spinner {
+					variable:unitcost
+					label:$access360r_application_roi360NLS.monthlycost
+					minimum:1
+					maximum:10000
+					tooltip:$access360r_application_roi360NLS.monthlycost.tooltip
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:includeNullLatlogindate
+					text:$access360r_application_roi360NLS.includeempty
+				}
+			}
+			GridCell {
+			
+			}
+		}
+	}
+
+	TabFolder {
+		TabItem {
+			text:$access360r_application_roi360NLS.synthesis	
+
+			Flow {
+				disposition: Horizontal
+				
+				Group {
+					border:True
+					title:$access360r_application_roi360NLS.totalnbaccount
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 200 width 150 align: horizontal Center vertical Center }
+						template: mashupGaugeIndicator
+						bindings:
+							value-of $access360r_application_roi360NLS.totalnbaccount.subtitle to title, 
+							value-of "numeric" to mode, // radial, numeric, row
+							value-of False to hasLink,
+							value-of False to hasThresholds,
+							value-of NonEmpty(application.bwa_applicationanalytics_nbaccount, 0) to count,
+							value-of "#9400D3" to gaugeColor
+					}
+				}
+				Group {
+					border:True
+					title:$access360r_application_roi360NLS.nbunused
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 200 width 150 align: horizontal Center vertical Center }
+						template: mashupGaugeIndicator
+						bindings:
+							value-of $access360r_application_roi360NLS.nbunused.subtitle to title, 
+							value-of "numeric" to mode, // radial, numeric, row
+							value-of False to hasLink,
+							value-of False to hasThresholds,
+							value-of NonEmpty(roi.nb, 0) to count,
+							value-of "#9400D3" to gaugeColor
+					}
+				}
+				Group {
+					border:True
+					title:$access360r_application_roi360NLS.totalmonthly
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 200 width 250 align: horizontal Center vertical Center }
+						template: countUpIndicator
+						bindings:
+							value-of roi.consolidatedcost to count,
+							value-of True to grouping,
+							value-of '$' to prefix1
+					}
+				}
+				Group {
+					border:True
+					title:$access360r_application_roi360NLS.totalannual
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 200 width 250 align: horizontal Center vertical Center }
+						template: countUpIndicator
+						bindings:
+							value-of roi.annualcost to count,
+							value-of True to grouping,
+							value-of '$' to prefix1
+					}
+				}
+			}
+		
+			Flow {
+				disposition:Horizontal
+			
+				Group {
+					border:True
+					title:$access360r_application_roi360NLS.lastloginperiod
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 220 width 450 align: horizontal Center vertical Center }
+						template: barChart
+						datasets: lastLoginBuckets ( bucketlabel, bucket, nb ) to chartdata ( label, code , count)
+						bindings: 
+							value-of True to maintainAspectRatio,
+							value-of True to beginAtZero,
+							value-of $access360r_application_roi360NLS.nbactiveaccounts to ylabel,
+							value-of $access360r_application_roi360NLS.accounts to tooltipSuffix,
+							value-of Constant defaultPalette to customColors
+					}
+				}
+				Group {
+					border:True
+					title:$access360r_application_roi360NLS.top8
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 220 width 450 align: horizontal Center vertical Center }
+						template: doughnutChart
+						datasets: origin ( displayname, uid, nb ) to chartdata ( label, code , count )
+						bindings: 
+							value-of False to showLegend,
+							value-of True to tooltipShowPercent,
+							value-of "right" to legendPosition,
+							value-of Constant contrastedPalette to customColors
+					}
+				}
+			}		
+		}
+		TabItem {
+			text:$access360r_application_roi360NLS.details		
+		
+			Table {
+				data:roilist
+				layout:Layout { grab:horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				persist-configuration:True
+				
+				Column {
+					column:uid
+					hidden:True
+					selection:selectedAccount
+				}
+				Column {
+					column:identifier
+					header:$account.identifier
+					initially-masked:True
+					sortable:True
+					filterable:True
+					width:160px
+					actions:ExecuteNamedAction showDetails
+				}
+				Column {
+					column:login
+					header:$account.login
+					sortable:True
+					filterable:True
+					width:160px
+					actions:ExecuteNamedAction showDetails
+				}
+				Column {
+					column:username
+					header:$account.username
+					sortable:True
+					filterable:True
+					width:160px
+					actions:ExecuteNamedAction showDetails
+				}
+				Column {
+					column:mail
+					header:$account.mail
+					initially-masked:True
+					sortable:True
+					filterable:True
+					width:160px
+					actions:ExecuteNamedAction showDetails
+				}
+				Column {
+					column:creationdate
+					header:$account.creationdate
+					initially-masked:True
+					sortable:True
+					width:160px
+				}
+				Column {
+					column:lastlogindate
+					header:$account.lastlogindate
+					sortable:True
+					width:160px
+				}
+				Column {
+					column:repositorydisplayname
+					header:$repository.concept
+					sortable:True
+					filterable:True
+					width:160px
+				}
+
+				Column {
+					column:identityhrcode
+					header:$pidentity.hrcode
+					sortable:True
+					filterable:True
+					width:160px
+					initially-masked:True
+				}
+				Column {
+					column:identityfullname
+					header:$pidentity.fullname
+					sortable:True
+					filterable:True
+					width:160px
+					initially-masked:True
+				}
+				Column {
+					column:identityinternal
+					header:$pidentity.internal
+					sortable:True
+					filterable:True
+					width:160px
+					initially-masked:True
+				}
+				Column {
+					column:identityjoborg
+					header:$organisation.concept
+					sortable:True
+					filterable:True
+					width:320px
+				}
+			}
+		}
+	}
+}

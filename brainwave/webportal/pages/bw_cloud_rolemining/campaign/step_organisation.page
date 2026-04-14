@@ -1,0 +1,119 @@
+/* Import other pages here */
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_rolemining/resources/nls/stagechecks.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_rm/campaign/campaign_start.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+
+bwcdrm_scope_organisation = PageFragment {
+   // mixins: dashboardMixin
+    enter-event: ExecuteNamedAction doInit 
+   
+   currentStep = Variable     
+   scopeOrganisations = Variable { multivalued: True }    
+    
+   nb_orgs = Variable { type: Integer }	
+	selectedOrgs = Variable { multivalued: True }	
+	selectedSingleOrgUID = Variable
+	
+	master = Dataset {
+		view:bw_rm_organisation_masterview
+	}
+	
+	orgtree = HierarchicalData {
+		dataset: master
+		connect: parent recorduid to child parentorg_recorduid
+		initial: parentorg_uid IsNull
+	}
+		
+	doInit = NamedAction (
+	   Set scopeOrganisations to selectedOrgs
+	)
+	
+	doPrevious = NamedAction (
+	   Set "info" to currentStep
+	)
+	
+	doNext = NamedAction (
+	  Set "permissions" to currentStep,
+	  Set selectedOrgs to scopeOrganisations
+	)
+		
+	Group {
+		margins: Right 20 Left 20
+		
+		Header {
+			value: $bwcdrm_scopeNLS.organisation.title
+		}
+				
+		Tree {
+			data: orgtree
+			expand-level: 2
+			layout: Layout { grab: horizontal True vertical True }
+			checkboxes:uid to selectedOrgs
+			checkboxes-changed-event:
+			   Set SizeOf selectedOrgs to nb_orgs	
+			show-count:True
+		   show-filter:True 
+		   configurable: True
+		     	
+			Column {
+				column: uid
+				hidden: True
+			}   						
+			Column {
+				column: shortname
+				width: 30%
+				filterable:True
+				header: $bw_rm_startNLS.orgShortName
+				actions: Dialog bwf_organisationDetailsDialog ( Current uid to inuid, True to inshowteam )
+			}
+
+			Column {
+				column: displayname
+				width: 70%
+				header:$bw_rm_startNLS.orgHeader
+				filterable:True
+				actions: Dialog bwf_organisationDetailsDialog ( Current uid to inuid, True to inshowteam )
+			}
+													
+			Column {
+				column:organisationtypedisplayname
+				header:$bw_rm_startNLS.orgType
+				initially-masked:False
+				width: 100px
+				sortable:True
+				filterable:False
+			}
+			
+			Column {
+				column:people
+				header:$bw_rm_startNLS.orgPeople
+				initially-masked:False
+				width: 80px
+				sortable:True
+				filterable:False
+				align: Right
+			}
+				
+
+		}
+		  
+	}
+	
+	ButtonGroup {
+		mixins: wizardButtonBarMixin
+		Button {
+			text: $bwcdrm_wizardsNLS.button.back
+			mixins: secondaryButtonMixin
+			actions: ExecuteNamedAction doPrevious
+		}
+		Button {
+			text: $bwcdrm_wizardsNLS.button.next
+			disabled: Eval " selectedOrgs.length == 0 "
+			actions: ExecuteNamedAction doNext
+		}
+	}
+	
+	
+}

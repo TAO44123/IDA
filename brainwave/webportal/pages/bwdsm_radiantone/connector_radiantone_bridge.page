@@ -1,0 +1,107 @@
+ds_radiantone_bridge_NLS = NLS {
+  title [ en "RadiantOne - Generic Bridge" fr "RadiantOne - Passerelle générique" ]
+  description [ 
+    en "Extracts custom directory entries through an LDAP query to be processed by custom collect"
+    fr "Extrait des entrées d'un répertoire à travers une requête LDAP pour qu'ils soient pris en charge par une collecte personnalisée."]
+    
+  label_searchbase [en "Search base" fr "Base de recherche"]
+  label_searchbaseTT [
+   en "LDAP search base to perform the data extraction, such as DC=mycompany,DC=com"
+   fr "Base de recherche LDAP pour l'extraction de données, par exemple DC=acme,DC=com"]
+  label_searchcriteria [en "Search filter" fr "Filtre de recherche"]
+  label_searchcriteriaTT [
+    en "LDAP filter of objects to retrieve. For instance (|(objectClass=groupofnames)(objectClass=inetOrgPerson))"
+   fr "Filtre LDAP pour préciser les objets à remonter. Par exemple (|(objectClass=groupofnames)(objectClass=inetOrgPerson))"
+  ]
+  label_attributes [ en "Attributes" fr "Attributs" ]
+  label_attributes_TT [ en "Optional attributes list to retrieve as a comma separated string. Retrieves all attributes if omitted."
+  fr "Liste optionnelle d'attributs à extraire, sous forme de chaines séparés par des virgules. Extrait tous les attributs si omis."
+   ]
+}
+
+ds_radiantone_bridge = Page {
+	title: $ds_radiantone_bridge_NLS.title
+	tags: "bwds_connector" , "live" , "radiantone", "ldap"
+	icon: "bw_dsm/L/radiantone.png"
+	large-icon: "bw_dsm/XL/radiantone.png"
+	description: $ds_radiantone_bridge_NLS.description
+
+	 metadata: ( 	  
+	    category -> "infrastructure", 
+	    family -> "Custom",
+	    hasMapping -> False,
+	    multiFile -> False,
+	    hasDestDir -> True,
+	    action ->"radiantbridgeldap"
+	 )
+}
+
+/* config dynamic fragment */
+
+ds_radiantone_bridge_params = Constant { value: "searchbase,searchcriteria,attributes" }
+
+deserializeOptions_robridge = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant ds_radiantone_bridge_params }
+  options = Input
+  
+  searchbase = Output { }
+  searchcriteria = Output
+  attributes = Output
+}
+
+serializeOptions_robridge = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant ds_radiantone_bridge_params }
+  secretnames = Input { default: "password"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+  
+  searchbase = Input { }  
+  searchcriteria = Input { }
+  attributes = Input 
+}
+
+
+ds_radiantone_bridge_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */ 
+  outValid = Variable { type: Boolean initial: False } 
+  searchbase = Variable
+  searchcriteria = Variable
+  attributes = Variable
+  
+   doInit = NamedAction(
+   	 Call deserializeOptions_robridge ( options to options , searchbase from searchbase, searchcriteria from searchcriteria, attributes from attributes )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_robridge ( dsname to secretdsname, searchbase to searchbase, searchcriteria to searchcriteria, attributes to attributes  ) to options
+   )
+   
+   doUpdateValid = NamedAction (
+     Set True to outValid
+   )
+   
+   Edit { 
+     label: $ds_radiantone_bridge_NLS.label_searchbase 
+     variable: searchbase
+     not-empty:True
+     tooltip: $ds_radiantone_bridge_NLS.label_searchbaseTT
+  }
+  Edit { 
+     label: $ds_radiantone_bridge_NLS.label_searchcriteria 
+     variable: searchcriteria
+     not-empty:True
+     tooltip: $ds_radiantone_bridge_NLS.label_searchcriteriaTT
+  }
+  Edit { 
+     label: $ds_radiantone_bridge_NLS.label_attributes
+     variable: attributes
+     not-empty:False
+     tooltip: $ds_radiantone_bridge_NLS.label_attributes_TT
+  } 
+}

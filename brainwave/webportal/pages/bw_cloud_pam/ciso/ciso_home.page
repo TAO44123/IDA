@@ -1,0 +1,342 @@
+/* styles OK */
+
+/* Import other pages here */
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+import "/webportal/pages/bw_cloud_base/widgets/protips/protipsfragments.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/mappings.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/general.page"
+import "/webportal/pages/bw_cloud_base/resources/nls/dashboard.page"
+import "/webportal/pages/bw_cloud_base/widgets/stepper/stepper.page"
+import "/webportal/pages/bw_cloud_pam/resources/icons.page"
+import "/webportal/pages/bw_cloud_pam/resources/mapping.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_quality_nls.page"
+import "/webportal/pages/bw_cloud_pam/resources/globals.page" 
+import "/webportal/pages/bw_cloud_pam/resources/nls/home_admin.page"
+
+//import "/webportal/pages/bw_cloud_pam/analytics/analytics.page"
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_risk.page"
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_quality.page"
+import "/webportal/pages/bw_cloud_pam/ciso/fragments/tile_ind_fragment.page"
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_secrets_details.page"
+import "/webportal/pages/bw_cloud_pam/pampgm/pampgm_risk.page" 
+import "/webportal/pages/bw_cloud_pam/resources/nls/scope_nls.page"
+import "/webportal/pages/bw_cloud_pam/resources/pamdocumentation.page"
+import "/webportal/pages/bw_cloud_base/widgets/help_widget.page"
+
+import "/webportal/pages/bw_cloud_pam/ciso/ciso_accounts_details.page"
+
+
+referenceCube_Mapping = StringMapping {
+	when IsEmpty then $bwcd_mias_home_NLS.group.referencedatacube.nonefound
+	otherwise current
+}
+
+bwcpam_home_ciso = Page {
+	homepage-for: pam_ciso_home priority 7000
+	title: $ciso_homepageNLS.title
+	mixins: dashboardMixin
+	icon: %steps_32.home
+	large-icon: %steps_48.home
+	feature: All(pam_license, Any(governance_license, compliance_license))
+//	enter-event: ExecuteNamedAction doInit
+	//header: PageHeader {
+	//	IncludeFragment ( notificationsFragment )
+	//}	
+	header: PageHeader {
+     IncludeFragment { fragment: bw_help_frag with  
+        value-of "static/bw_cloud_pam/guides/guide_home_ciso.html" to url , 
+        value-of "en,fr" to locales,
+        value-of "30%" to ^width 
+        inline: True }
+   }
+
+	language = Variable { type: String initial: $bwcdrm_mylang.currentnls  }
+		
+	// kpis
+	nb_nonboarded = Variable { type: Integer initial: 0}
+	nb_nonboarded_prev = Variable { type: Integer initial: 0}
+		
+	nb_privileged = Variable { type: Integer initial: 0}
+	nb_privileged_prev = Variable { type: Integer initial: 0}
+	
+/* datasets */
+	
+	nb_notonboarded_discrepencies = Record {
+	  view: pam_notonboarded_nbdiscrepancies
+	}
+	nb_notonboarded_discrepencies_prev = Record {
+	  view: pam_notonboarded_nbdiscrepancies
+	  timeslot: FromPage(-1) 
+	}
+		
+	nb_quality_discrepencies = Record {
+	  view: ca_quality_nbdiscrepancies
+	}
+	nb_quality_discrepencies_prev = Record {
+	  view: ca_quality_nbdiscrepancies
+	  timeslot: FromPage(-1)
+	}
+		
+	nb_risk_discrepencies_nocpm = Record {
+	  view: ca_risk_asset_nbdiscrepancies with Constant CTRL_CA_SAFE_ASSET01_nocpm to controlname 
+	}	
+	nb_risk_discrepencies_nocpm_prev = Record {
+	  view: ca_risk_asset_nbdiscrepancies with Constant CTRL_CA_SAFE_ASSET01_nocpm to controlname
+	  timeslot: FromPage(-1) 
+	}	
+			
+	nb_risk_discrepencies = Record {
+	  view: ca_risk_nbdiscrepancies
+	}	
+	nb_risk_discrepencies_prev = Record {
+	  view: ca_risk_nbdiscrepancies
+	  timeslot: FromPage(-1)
+	}	
+	
+	nb_risk_discrepencies_leavers_safeaccess = Record {
+	  view: ca_risk_nbdiscrepancies_leavers_safeaccess
+	}		
+	nb_risk_discrepencies_leavers_safeaccess_prev = Record {
+	  view: ca_risk_nbdiscrepancies_leavers_safeaccess
+	  timeslot: FromPage(-1)
+	}
+	
+	nb_pam_privileged_nbdiscrepancies_leavers = Record {
+	  view: pam_privileged_nbdiscrepancies_leavers
+	}		
+	nb_pam_privileged_nbdiscrepancies_leavers_prev = Record {
+	  view: pam_privileged_nbdiscrepancies_leavers
+	  timeslot: FromPage(-1)
+	}
+	
+	nb_pam_privileged_nbdiscrepancies_orphan = Record {
+	  view: pam_privileged_nbdiscrepancies_orphan
+	}		
+	nb_pam_privileged_nbdiscrepancies_orphan_prev = Record {
+	  view: pam_privileged_nbdiscrepancies_orphan
+	  timeslot: FromPage(-1)
+	}
+	
+	/* cpm */
+	nb_secrets = Record {
+	  view: bwpam_cpm_accounts_nb
+	}	
+	nb_secrets_prev = Record {
+	  view: bwpam_cpm_accounts_nb
+	  timeslot: FromPage(-1)
+	}
+		
+	referenceCube = Record { view: bwpam_referencecube }	
+		
+//	doInit = NamedAction(
+//		ExecuteFragmentNamedAction scope_kpi_mgr.doUpdateCounters
+//	)
+	
+	/* Page Content */		
+	
+//		scope_kpi_mgr = IncludeFragment {
+//			  fragment: bwpam_scope_kpi_manager with
+//			  nb_nonboarded binds-to out_nb_nonboarded,
+//			  nb_privileged binds-to out_nb_privileged,
+//			  nb_nonboarded_prev binds-to out_nb_nonboarded_prev,
+//			  nb_privileged_prev binds-to out_nb_privileged_prev			  
+//		  inline: True // no rendering 
+//		}
+//		
+//		IncludeFragment {
+//			fragment: bwpam_pgminit
+//			inline: True
+//			fragment-events: {
+//				when "programCreated" then [
+//					ExecuteNamedAction doInit
+//				]
+//			}
+//		}
+	    		
+    Group {  
+       layout: Layout { grab:horizontal True vertical True  }
+       styling: cssPageDashboard
+       
+       Grid {
+       	columns: GridColumn{ width: grow },GridColumn{ width: grow },GridColumn { width: 350 }, GridColumn { width: grow }
+       	mixins: gridPageLayout
+       	layout: Layout { grab:horizontal True vertical False  }
+       	GridRow {
+       		GridCell {
+        		Group {
+			        styling: cssRound
+			        Header { value: $ciso_homepageNLS.header.ca.risk}
+			        			        Grid {
+			        	columns: GridColumn{},GridColumn{}
+			        	gap: 6
+			        	GridRow {
+			        		GridCell {
+			        		  //5  comptes sans CPM 
+			        			IncludeFragment { inline: True fragment: pam_indicator_tile with 
+			        			  value-of Constant CISO_IND5 to type,
+			        			  value-of "diff" to evalMode,
+			        			  value-of Transform Constant CISO_IND5 using ciso_home_icons to icon, 			        			   
+			        			  value-of $ciso_homepageNLS.cpm to title,
+			        			  value-of nb_risk_discrepencies_nocpm.nb_discrepencies to val, 
+			        			  value-of nb_secrets.nb to total ,
+			        			  value-of nb_risk_discrepencies_nocpm_prev.nb_discrepencies to val_prev, 
+			        			  value-of nb_secrets_prev.nb to total_prev ,	
+			        			  value-of True to hasLink	        			  
+			        			  fragment-events: {
+			        			    when "click" then [
+			        			      GoTo Page bwcpam_secrets_discrepancies_details with Constant CTRL_CA_SAFE_ASSET01_nocpm to controlid
+			        			    ]
+			        			  }			        			  		        			  
+			        			}
+			        			 //7 quality Cyberark nb
+			        			IncludeFragment { inline: True fragment: pam_indicator_tile with 
+			        			  value-of Constant CISO_IND7 to type, 
+			        			  value-of "diff" to evalMode,
+			        			  value-of Transform Constant CISO_IND7 using ciso_home_icons to icon, 
+			        			  value-of $ciso_homepageNLS.quality to title ,
+			        			  value-of nb_quality_discrepencies.nb_discrepencies to val,
+			        			  value-of nb_quality_discrepencies_prev.nb_discrepencies to val_prev, 
+			        			  value-of True to hasLink
+			        			  fragment-events: {
+			        			    when "click" then [
+			        			      GoTo Page bwcpam_quality
+			        			    ]
+			        			  }			        			  
+			        			}
+			        		}
+			        		GridCell {
+			        			//6 Risques CA  
+			        			IncludeFragment { inline: True fragment: pam_indicator_tile with 
+			        			  value-of Constant CISO_IND6 to type, 
+			        			  value-of "diff" to evalMode,
+			        			  value-of Transform Constant CISO_IND6 using ciso_home_icons to icon, 
+			        			  value-of $ciso_homepageNLS.ca.access to title,
+			        			  value-of nb_risk_discrepencies.nb_discrepencies to val ,
+			        			  value-of nb_risk_discrepencies_prev.nb_discrepencies to val_prev,			        			  
+			        			  value-of True to hasLink	        			  
+			        			  fragment-events: {
+			        			    when "click" then [
+			        			      GoTo Page bwcpam_risk
+			        			    ]
+			        			  }
+			        			  
+			        			}
+			        			 //Leavers with access to a CA safe
+			        			
+			        			IncludeFragment { inline: True fragment: pam_indicator_tile with 
+			        			  value-of Constant CISO_IND9 to type, 
+			        			  value-of "diff" to evalMode,
+			        			  value-of Transform Constant CISO_IND9 using ciso_home_icons to icon, 
+			        			  value-of $ciso_homepageNLS.ca.acess.leavers to title ,
+			        			  value-of nb_risk_discrepencies_leavers_safeaccess.nb_discrepencies to val,
+			        			  value-of nb_risk_discrepencies_leavers_safeaccess_prev.nb_discrepencies to val_prev,
+			        			  value-of True to hasLink	        			  
+			        			  fragment-events: {
+			        			    when "click" then [
+			        			      GoTo Page bwcpam_accounts_leavers_details with "CA_SAFE_ACCOUNT03" to controlid
+			        			    ]
+			        			  }
+			        			}
+			        		}       		
+			        	}	
+			        }
+			      }      			
+       		} 
+       		GridCell {
+       			Group {
+			        styling: cssRound
+			         layout: Layout { hint:  height 200}
+			         Header { value:   $bwcd_mias_home_NLS.group.datacube.title align: Center}
+							 Text {
+										value: PortalTimeslot.CommitDate
+										 align: Center
+										styling: stdText
+							 }
+							 Header { value:   $bwcd_mias_home_NLS.group.referencedatacube.title  align: Center}								
+							 Text {
+									value: Transform referenceCube.commitdate using referenceCube_Mapping
+									 align: Center
+									styling: stdText
+							 }
+			      }
+			      Group {
+			        styling: cssRound
+					mixins: linksPanelMixin
+			        layout: Layout { hint:  height 200}
+			        Header { value:  $ciso_homepageNLS.links}
+
+					Button {
+						actions: GoTo Page bwcpam_documentation_ciso_guide
+						text: $home_pageNLS.button.cisodocumentation
+						image: %dashboardicons_24.help
+						align: Left
+					}
+//					Button {
+//						actions: GoTo Activity Organisation Search
+//						text: $home_pageNLS.button.search.orgs
+//						image: %concept_24.organisation
+//						align: Left
+//					}
+//					Button {
+//						actions: GoTo Activity Identity Search
+//						text: $home_pageNLS.button.search.identitites
+//						image: %concept_24.identity
+//						align: Left
+//					}
+			      }
+       		}      		
+       	}	
+       }
+       
+    }
+}
+
+bwpam_sensitive_assets_tile = PageFragment {
+
+   nb_sensitive_assets = Variable { type: Integer }
+   nb_sensitive_assets_prev = Variable { type: Integer }
+  
+    sensitive_assets = Dataset {
+      view: bwpam_sensitive_assets
+      count-variable: nb_sensitive_assets      
+    }
+    
+    sensitive_assets_prev = Dataset {
+      view: bwpam_sensitive_assets
+      timeslot: FromPage(-1)
+      count-variable: nb_sensitive_assets_prev      
+    }
+    
+    
+    nb_assets = Record {
+      view: bwpam_nb_assets
+    }
+    
+    nb_assets_prev = Record {
+      view: bwpam_nb_assets
+      timeslot: FromPage(-1)
+    }
+    
+		IncludeFragment {
+		  inline: True 
+		  fragment: pam_indicator_tile with 
+		  value-of Constant CISO_IND3 to type, 
+		  value-of Transform Constant CISO_IND3 using ciso_home_icons to icon, 
+		  value-of $ciso_homepageNLS.active to title, 
+		  nb_sensitive_assets binds-to val, 
+		  value-of nb_assets.nb_assets to total,
+		  nb_sensitive_assets_prev binds-to val_prev, 
+		  value-of nb_assets_prev.nb_assets to total_prev
+		}           
+    
+    
+}
+
+
+	
+			   
+
+

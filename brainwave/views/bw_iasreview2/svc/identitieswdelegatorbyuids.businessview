@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwr_identitiesmailwdelegetationbyuids" displayname="identity mails with delegator info">
+	<Definition scriptfile="/views/bw_iasreview2/svc/identitieswdelegatorbyuids.javascript" name="D1692778834413" description="view for resolving delegators for notify rules&#xA;the view is passed the uids of identities / delegatees">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1692778834412" title="base identities by uids">
+			<InnerView name="bwr_identitiesmailbyuids_notifrule">
+				<Param name="F1704136468327" viewparam="uids" viewparamvalue="{param.uids}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1692778856241" type="joinview" x="570" y="240" w="300" h="50" title="active delegations">
+			<InnerView name="bwaccess360_activedelegations" prefix="view_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.view_delegateeuid.get()}"/>
+			<ViewComputedAttribute name="isdelegated" displayname="isdelegated" type="Boolean" expression="(!param.isEmpty(&apos;disableviewdelegation&apos;) &amp;&amp; param.disableviewdelegation.get()) ? !param.isEmpty(&apos;delegatoruid&apos;) : !dataset.isEmpty(&apos;view_delegateeuid&apos;)"/>
+			<ExcludeList>
+				<Exclude name="view_delegateefullname"/>
+				<Exclude name="view_delegateehrcode"/>
+				<Exclude name="view_delegateemail"/>
+				<Exclude name="view_delegateepreferredlanguage"/>
+				<Exclude name="view_delegateeuid"/>
+				<Exclude name="view_delegatorfullname"/>
+				<Exclude name="view_delegatorhrcode"/>
+				<Exclude name="view_delegatormail"/>
+				<Exclude name="view_delegatorpreferredlanguage"/>
+				<Exclude name="view_delegatoruid"/>
+			</ExcludeList>
+			<ViewComputedAttribute name="delegatorfullname" displayname="delegatorfullname" type="String" expression="(!param.isEmpty(&apos;disableviewdelegation&apos;) &amp;&amp; param.disableviewdelegation.get()) ? param.delegatorfullname.get() : dataset.view_delegatorfullname.get()"/>
+			<ViewComputedAttribute name="delegatormail" displayname="delegatormail" type="String" expression="(!param.isEmpty(&apos;disableviewdelegation&apos;) &amp;&amp; param.disableviewdelegation.get()) ? param.delegatormail.get() : dataset.view_delegatormail.get()"/>
+			<ViewComputedAttribute name="delegatoruid" displayname="delegatoruid" type="String" expression="(!param.isEmpty(&apos;disableviewdelegation&apos;) &amp;&amp; param.disableviewdelegation.get()) ? param.delegatoruid.get() : dataset.view_delegatoruid.get()"/>
+			<ViewComputedAttribute name="delegatorhrcode" displayname="delegatorhrcode" type="String" expression="(!param.isEmpty(&apos;disableviewdelegation&apos;) &amp;&amp; param.disableviewdelegation.get()) ? param.delegatorhrcode.get() : dataset.view_delegatorhrcode.get()"/>
+			<ViewComputedAttribute name="delegatorpreferredlanguage" displayname="delegatorpreferredlanguage" type="String" expression="(!param.isEmpty(&apos;disableviewdelegation&apos;) &amp;&amp; param.disableviewdelegation.get()) ? param.delegatorpreferredlanguage.get() : dataset.view_delegatorpreferredlanguage.get()"/>
+			<ViewComputedAttribute name="taskActor" displayname="Task Actor uid (the one the list of entries to review are assigned to; needed for report)" type="String" expression="dataset.isEmpty( &apos;delegatoruid&apos; ) ? dataset.uid.get() : dataset.delegatoruid.get() "/>
+			<ViewComputedAttribute name="taskActorName" displayname="Task Actor Name (the one the list of entries to review are assigned to; needed for report)" type="String" expression="dataset.isEmpty( &apos;delegatoruid&apos; ) ? dataset.fullname.get() : dataset.delegatorfullname.get() "/>
+		</Component>
+		<Link name="L1692778856410" source="C1692778834412" target="C1692778856241" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="N1704198759850" type="note" x="417" y="57" w="219" h="119" title="uids are target or delegatees&#xA;view for resolving delegators for notify rules&#xA;the view is passed the uids of identities / delegatees"/>
+		<Component name="N1760107943905" type="note" x="406" y="222" w="409" h="216" title="We need a taskActor computed variable because:&#xA;even if there is an active delegation in the portal,&#xA;the review tickets are still assigned to the delegator.&#xA;So when we send the notification with the attached report,&#xA;we need to call the view for the delegator to list the entries to review&#xA;when sending the email to the delegatee!"/>
+	</Definition>
+	<ViewParam name="uids" displayname="uids" type="String">
+		<Value name="V1760104447795_1" data="BOSCH_MARTIN_1672911141976_1318589"/>
+	</ViewParam>
+	<ViewParam name="delegatoruid" displayname="delegatoruid" type="String"/>
+	<ViewParam name="delegatorfullname" displayname="delegatorfullname" type="String"/>
+	<ViewParam name="delegatormail" displayname="delegatormail" type="String"/>
+	<ViewParam name="delegatorhrcode" displayname="delegatorhrcode" type="String"/>
+	<ViewParam name="delegatorpreferredlanguage" displayname="delegatorpreferredlanguage" type="String"/>
+	<ViewParam name="delegatoractive" displayname="delegatoractive" type="Boolean"/>
+	<ViewParam name="disableviewdelegation" displayname="disableviewdelegation" type="Boolean"/>
+</View>

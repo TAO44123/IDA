@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwf_repositoryalldecisionhistory" displayname="alldecisionhistory">
+	<Definition scriptfile="/views/bw_fragments/repository/alldecisionhistory.javascript" name="D1586183641262">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1586183641261" title="account">
+			<InnerView name="bwf_repositoryaccountdecisionhistory">
+				<Param name="F1586184499678" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1586184510685" viewparam="statusToFilter" viewparamvalue="{param.statusToFilter}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1586183657220" type="unionview" x="558" y="204" w="300" h="50" title="group membership">
+			<InnerView name="bwf_repositorygroupmemberdecisionhistory">
+				<Param name="F1586184456646" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1586184465688" viewparam="statusToFilter" viewparamvalue="{param.statusToFilter}"/>
+			</InnerView>
+			<Union primary_discriminator="account" secondary_discriminator="membership" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1586183657265" source="C1586183641261" target="C1586183657220" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1586184682988" type="unionview" x="453" y="386" w="300" h="50" title="group">
+			<InnerView name="bwf_groupdecisionhistory">
+				<Param name="F1586184720709" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1586184731047" viewparam="statusToFilter" viewparamvalue="{param.statusToFilter}"/>
+			</InnerView>
+			<Union primary_discriminator="prim" secondary_discriminator="group" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1586184683122" source="C1586183657220" target="C1586184682988" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1586184682988_1" type="unionview" x="462" y="399" w="300" h="50" title="repository">
+			<InnerView name="bwf_repositorydecisionhistory">
+				<Param name="F1586184720709" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+				<Param name="F1586184731047" viewparam="statusToFilter" viewparamvalue="{param.statusToFilter}"/>
+			</InnerView>
+			<Union primary_discriminator="sec" secondary_discriminator="repository" discriminatorcolumn="discr"/>
+		</Component>
+		<Link name="L1601656562934" source="C1586184682988" target="C1586184682988_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid"/>
+	<ViewParam name="statusToFilter" displayname="statusToFilter"/>
+	<ViewSort name="sort" attribute1="actiondate" direction1="DESC"/>
+</View>

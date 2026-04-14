@@ -1,0 +1,471 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/account/details.page"
+import "/webportal/pages/bw_fragments/account/groups.page"
+import "/webportal/pages/bw_fragments/account/owner.page"
+import "/webportal/pages/bw_fragments/account/rights.page"
+import "/webportal/pages/bw_fragments/account/fsrights.page"
+import "/webportal/pages/bw_fragments/account/controls.page"
+import "/webportal/pages/bw_fragments/account/analytics.page"
+import "/webportal/pages/bw_fragments/account/decisionhistory.page"
+
+import "/webportal/pages/bw_fragments/application/details.page"
+import "/webportal/pages/bw_fragments/application/accounts.page"
+import "/webportal/pages/bw_fragments/application/profiles.page"
+import "/webportal/pages/bw_fragments/application/perorg.page"
+import "/webportal/pages/bw_fragments/application/perprofile.page"
+import "/webportal/pages/bw_fragments/application/analytics.page"
+import "/webportal/pages/bw_fragments/application/controls.page"
+import "/webportal/pages/bw_fragments/application/decisionhistory.page"
+import "/webportal/pages/bw_fragments/application/permissions.page"
+import "/webportal/pages/bw_fragments/application/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/application/theoreticalrights/overallocations.page"
+
+
+import "/webportal/pages/bw_fragments/identity/details.page"
+import "/webportal/pages/bw_fragments/identity/accounts.page"
+import "/webportal/pages/bw_fragments/identity/colleagues.page"
+import "/webportal/pages/bw_fragments/identity/controls.page"
+import "/webportal/pages/bw_fragments/identity/organisationtree.page"
+import "/webportal/pages/bw_fragments/identity/applications.page"
+import "/webportal/pages/bw_fragments/identity/rights.page"
+
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/theoreticalrights.page"
+import "/webportal/pages/bw_fragments/identity/theoreticalrights/overallocations.page"
+import "/webportal/pages/bw_fragments/identity/analytics.page"
+import "/webportal/pages/bw_fragments/identity/managedorganisations.page"
+import "/webportal/pages/bw_fragments/identity/managedresources.page"
+import "/webportal/pages/bw_fragments/identity/team.page"
+
+import "/webportal/pages/bw_fragments/permission/details.page"
+import "/webportal/pages/bw_fragments/permission/accounts.page"
+import "/webportal/pages/bw_fragments/permission/perorg.page"
+
+import "/webportal/pages/bw_fragments/repository/details.page"
+import "/webportal/pages/bw_fragments/repository/accounts.page"
+import "/webportal/pages/bw_fragments/repository/groups.page"
+
+import "/webportal/pages/bw_fragments/group/details.page"
+import "/webportal/pages/bw_fragments/group/accounts.page"
+
+/* Nationalized labels here */
+bw_fragmentsShowCaseNLS = NLS {
+	title [en "fragments showcase" fr "demonstration des fragments"]
+}
+
+
+bw_fragmentsShowCase = Page {
+	title: $bw_fragmentsShowCaseNLS.title
+	feature:bw_fragments_showcaseDisplay
+	tags:"admin"
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	selectedIdentity = Variable
+	selectedGroup = Variable
+	selectedRepository = Variable
+	selectedApplication = Variable
+	selectedPermission = Variable
+	selectedAccount = Variable
+	
+	/* Datasets and records here */
+	identity = Dataset {
+		view:br_identity
+	}
+	account = Dataset {
+		view:bwf_accounts with selectedRepository to uid 
+	}
+	group = Dataset {
+		view:bwf_groups with selectedRepository to uid 
+	}
+	repository = Dataset {
+		view:br_repository
+	}
+	applications = Dataset {
+		view:br_application
+	}
+	permissions = Dataset {
+		view:bwf_permissionsfromapp with selectedApplication to uid 
+	}
+	
+	
+	/* Page content */
+	TabFolder {
+		TabItem {
+			text:'account'
+			Grid {
+				columns:GridColumn { width:160px } ,GridColumn { width:grow }
+				GridRow {
+					GridCell {
+						Combo {
+							variable:selectedRepository
+							
+							options: Dynamic {
+								data:repository
+								text:Current repositorydisplayname
+								value:Current repositoryuid
+							}
+						}
+						Combo {
+							variable:selectedAccount
+							
+							options: Dynamic {
+								data:account
+								text:Current login
+								value:Current uid
+							}
+						}
+					}
+					GridCell {
+						TabFolder {
+							TabItem {
+								text:'details'
+								IncludeFragment (fragmentAccountDetails with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'owner'
+								IncludeFragment (fragmentAccountOwner with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'groups hierarchy'
+								IncludeFragment (fragmentAccountGroupsHierarchy with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'direct groups'
+								IncludeFragment (fragmentAccountDirectGroupsList with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'all groups'
+								IncludeFragment (fragmentAccountAllGroupsList with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'rights hierarchy'
+								IncludeFragment (fragmentAccountRightsHierarchy with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'direct rights'
+								IncludeFragment (fragmentAccountDirectRightsList with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'all rights'
+								IncludeFragment (fragmentAccountAllRightsList with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'all fs rights'
+								IncludeFragment (fragmentAccountAllFSRightsList with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'controls'
+								IncludeFragment (fragmentAccountControlDefectsList with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'decision'
+								IncludeFragment (fragmentAccountDecisionHistory with selectedAccount binds-to inuid) 
+							}
+							TabItem {
+								text:'analytics'
+								IncludeFragment (fragmentAccountAnalytics with selectedAccount binds-to inuid) 
+							}
+						}
+					}
+				}
+			}
+		}
+		TabItem {
+			text:'group'
+			Grid {
+				columns:GridColumn { width:160px } ,GridColumn { width:grow }
+				GridRow {
+					GridCell {
+						Combo {
+							variable:selectedRepository
+							
+							options: Dynamic {
+								data:repository
+								text:Current repositorydisplayname
+								value:Current repositoryuid
+							}
+						}
+						Combo {
+							variable:selectedGroup
+							
+							options: Dynamic {
+								data:group
+								text:Current displayname
+								value:Current uid
+							}
+						}
+					}
+					GridCell {
+						TabFolder {
+							TabItem {
+								text:'details'
+								IncludeFragment (fragmentGroupDetails with selectedGroup binds-to inuid) 
+							}
+							TabItem {
+								text:'accounts'
+								IncludeFragment (fragmentGroupAccounts with selectedGroup binds-to inuid) 
+							}
+							TabItem {
+								text:'direct accounts'
+								IncludeFragment (fragmentGroupDirectAccounts with selectedGroup binds-to inuid) 
+							}
+						}
+					}
+				}
+			}
+		}					
+		TabItem {
+			text:'application'
+			
+			Grid {
+				columns:GridColumn { width:160px } ,GridColumn { width:grow }
+				GridRow {
+					GridCell {
+						Combo {
+							variable:selectedApplication
+							
+							options: Dynamic {
+								data:applications
+								text:Current displayname
+								value:Current uid
+							}
+						}
+					}
+					GridCell {
+						TabFolder {
+							TabItem {
+								text:'details'
+								IncludeFragment (fragmentApplicationDetails with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'accounts'
+								IncludeFragment (fragmentApplicationAccounts with selectedApplication binds-to inuid, value-of True to incanshowdetails) 
+							}
+							TabItem {
+								text:'rights'
+								IncludeFragment (fragmentApplicationProfiles with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'rights crosstab'
+								IncludeFragment (fragmentApplicationProfilesCrosstab with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'permission'
+								IncludeFragment (fragmentApplicationPermissions with selectedApplication binds-to inuid, value-of True to incanshowdetails) 
+							}
+							TabItem {
+								text:'per org'
+								IncludeFragment (fragmentApplicationPerOrg with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'per profile'
+								IncludeFragment (fragmentApplicationPerProfile with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'theoretical'
+								IncludeFragment (fragmentApplicationTheoreticalRightsList with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'theoretical m/d'
+								IncludeFragment (fragmentApplicationTheoreticalRightsMasterDetails with selectedApplication binds-to inuid, value-of True to incanshowdetails) 
+							}
+							TabItem {
+								text:'overallocation'
+								IncludeFragment (fragmentApplicationOverAllocationsList with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'analytics'
+								IncludeFragment (fragmentApplicationAnalytics with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'controls'
+								IncludeFragment (fragmentApplicationAllControlDefectsList with selectedApplication binds-to inuid) 
+							}
+							TabItem {
+								text:'decision'
+								IncludeFragment (fragmentApplicationDecisionHistory with selectedApplication binds-to inuid) 
+							}
+						}
+					}
+				}
+			}
+		}
+		TabItem {
+			text:'identity'
+
+			Grid {
+				columns:GridColumn { width:100px } ,GridColumn { width:grow }
+				GridRow {
+					GridCell {
+						Combo {
+							variable:selectedIdentity
+							
+							options: Dynamic {
+								data:identity
+								text:Current fullname
+								value:Current uid
+							}
+						}
+					}				
+					GridCell {
+						TabFolder {
+							TabItem {
+								text:'details'
+								IncludeFragment (fragmentIdentityDetails with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'accounts'
+								IncludeFragment (fragmentIdentityAccounts with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'org hierarchy'
+								IncludeFragment (fragmentIdentityOrgHierarchy with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'colleagues'
+								IncludeFragment (fragmentIdentityColleagues with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'all colleagues'
+								IncludeFragment (fragmentIdentityAllColleagues with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'applications'
+								IncludeFragment (fragmentIdentityApplications with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'rights'
+								IncludeFragment (fragmentIdentityRights with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'controls'
+								IncludeFragment (fragmentIdentityControlDefectsList with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'all controls'
+								IncludeFragment (fragmentIdentityAllControlDefectsList with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'analytics'
+								IncludeFragment (fragmentIdentityAnalytics with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'theoretical'
+								IncludeFragment (fragmentIdentityTheoreticalRightsList with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'overallocation'
+								IncludeFragment (fragmentIdentityOverAllocationsList with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'team'
+								IncludeFragment (fragmentIdentityTeamSelection with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'mngt orgs'
+								IncludeFragment (fragmentIdentityManagedOrganisations with selectedIdentity binds-to inuid) 
+							}
+							TabItem {
+								text:'mngt rsc'
+								IncludeFragment (fragmentIdentityManagedResources with selectedIdentity binds-to inuid) 
+							}
+						}
+					}				
+				}
+			}
+		}
+		TabItem {
+			text:'permission'
+			Grid {
+				columns:GridColumn { width:160px } ,GridColumn { width:grow }
+				GridRow {
+					GridCell {
+						Combo {
+							variable:selectedApplication
+							
+							options: Dynamic {
+								data:applications
+								text:Current displayname
+								value:Current uid
+							}
+						}
+						Combo {
+							variable:selectedPermission
+							
+							options: Dynamic {
+								data:permissions
+								text:Current displayname
+								value:Current uid
+							}
+						}
+					}
+					GridCell {
+						TabFolder {
+							TabItem {
+								text:'details'
+								IncludeFragment (fragmentPermissionDetails with selectedPermission binds-to inuid) 
+							}
+							TabItem {
+								text:'accounts'
+								IncludeFragment (fragmentPermissionAccounts with selectedPermission binds-to inuid) 
+							}
+							TabItem {
+								text:'per org'
+								IncludeFragment (fragmentPermissionPerOrg with selectedPermission binds-to inuid) 
+							}
+						}
+					}
+				}
+			}
+		}
+		TabItem {
+			text:'repository'
+				
+			Grid {
+				columns:GridColumn { width:160px } ,GridColumn { width:grow }
+				GridRow {
+					GridCell {
+						Combo {
+							variable:selectedRepository
+							
+							options: Dynamic {
+								data:repository
+								text:Current repositorydisplayname
+								value:Current repositoryuid
+							}
+						}
+					}
+					GridCell {
+						TabFolder {
+							TabItem {
+								text:'details'
+								IncludeFragment (fragmentRepositoryDetails with selectedRepository binds-to inuid) 
+							}
+							TabItem {
+								text:'accounts'
+								IncludeFragment (fragmentRepositoryAccounts with selectedRepository binds-to inuid) 
+							}
+							TabItem {
+								text:'groups'
+								IncludeFragment (fragmentRepositoryGroups with selectedRepository binds-to inuid) 
+							}
+							TabItem {
+								text:'groups with accounts number'
+								IncludeFragment (fragmentRepositoryGroupsWithAccountsNumber with selectedRepository binds-to inuid) 
+							}
+							TabItem {
+								text:'groups hierarchy'
+								IncludeFragment (fragmentRepositoryGroupsHierarchy with selectedRepository binds-to inuid) 
+							}
+							TabItem {
+								text:'groups hierarchy with accounts number'
+								IncludeFragment (fragmentRepositoryGroupsHierarchyWithAccountsNumber with selectedRepository binds-to inuid) 
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

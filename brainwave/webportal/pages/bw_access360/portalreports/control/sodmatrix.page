@@ -1,0 +1,219 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+
+import "/webportal/pages/bw_fragments/businessactivity/details/businessActivityDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/control/details/controlDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+/* Nationalized labels here */
+bwa360_sodmatrixNLS = NLS {
+	title [en "SoD Matrix" fr "Matrices de SoD"]
+	risktitle [en "Selected risk information" fr "Détails sur le risque sélectionné"]
+	risklevel [en "risk level" fr "niveau de risque"]
+	riskinfo [en "risk information" fr "description du risque"]
+	mitigation [en "suggested mitigation" fr "correction suggérée"]
+	altrisktext [en "Pick a risk to see its details" fr "Sélectionnez un risque pour afficher les détails"]
+	activity [en "Activities" fr "Activités"]
+	showcontroldetails [en "Selected control details" fr "Détails du contrôle sélectionné"]
+	showcontroldetailstooltip [en "Show selected control details" fr "Afficher les détails du contrôle sélectionné"]
+	minrisklevel [en "Minimum Risk Level" fr "Niveau de risque minimum"]
+	matrix [en "Matrix" fr "Matrice"]
+	matrixdetails [en "Matrix details" fr "Détails de la matrice"]
+	risklevelprefix [en "Risk Level: " fr "Niveau de risque : "]
+}
+
+bwa360_sodmatrix = Page {
+	title: $bwa360_sodmatrixNLS.title
+	feature:All(sod_license, bwa_controlsodmatrix)
+	enter-event: StringCase(inmatrixuid) { 
+		when Not IsEmpty then [
+			Set inmatrixuid to selectedsodmatrix
+		]
+	}
+	
+	/* Parameters here */
+	inmatrixuid = Parameter { type:String mandatory:False}
+	
+	/* Variables here */
+	selectedsodmatrix = Variable
+	
+	currentRiskID = Variable {multivalued:True}
+	currentRiskLevel = Variable {multivalued:True}
+	currentRiskInfo = Variable {multivalued:True}
+	currentSuggestedMitigation = Variable {multivalued:True}
+	
+	selectedKey1uid = Variable
+	selectedKey2uid = Variable
+	
+	selectedApplication = Variable 
+	selectedBusinessactivity = Variable 
+
+	selectedMinimumRiskLevel = Variable
+
+	/* Datasets and records here */
+	sodmatrix = Dataset {
+		view:bwa360_matrix
+	}
+	
+	sodrules = Dataset {
+		view:bwa360_matrixkeypair with selectedsodmatrix to uid, selectedMinimumRiskLevel to minimumRiskLevel
+		disabled:StringPredicate(selectedsodmatrix) { when IsEmpty then True }
+	}
+	
+	selectedsodrule = Dataset {
+		view:bwa360_matrixkeypair with selectedsodmatrix to uid
+		disabled:StringPredicate(selectedsodmatrix) { when IsEmpty then True }
+		includes:AndPredicate {
+			SameValuePredicate(selectedKey1uid, Current key1uid)
+			SameValuePredicate(selectedKey2uid, Current key2uid)
+		}
+	}
+	
+	showApplicationDetail = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedApplication to inuid,
+												True to inshowperjob,
+												True to inshowperorg
+		)
+	)
+	showActivityDetail = NamedAction (
+		Dialog bwf_businessActivityDetailsDialog(selectedBusinessactivity to inuid,
+												True to inshowaccounts,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsoddefects
+		)
+	)
+	
+	showDetail = NamedAction (
+		BooleanCase(Eval "!selectedApplication.isEmpty() && selectedBusinessactivity.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showApplicationDetail
+			]
+			when False then [
+			]
+		},
+		BooleanCase(Eval "!selectedBusinessactivity.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showActivityDetail
+			]
+			when False then [
+			]
+		}
+	)
+
+	showControlDetail = NamedAction (
+		Dialog bwf_controlDetailsDialog(currentRiskID to incontrolcode)
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn {width:grow}, GridColumn
+		layout: Layout { grab: horizontal True vertical False hint: height 36 }
+		GridRow {
+			GridCell {
+				Combo {
+					options:Dynamic {data:sodmatrix text:Current displayname value:Current uid}
+					allow-none: False
+					variable:selectedsodmatrix
+					label:$bwa360_sodmatrixNLS.matrix
+				}
+			}
+			GridCell {
+				Combo {
+					variable:selectedMinimumRiskLevel
+					label:$bwa360_sodmatrixNLS.minrisklevel
+					allow-none:True
+					options:Static {
+						Option { value:4 text:$bwf_ControlLevel_NLS._4 }
+						Option { value:3 text:$bwf_ControlLevel_NLS._3 }
+						Option { value:2 text:$bwf_ControlLevel_NLS._2 }
+						Option { value:1 text:$bwf_ControlLevel_NLS._1 }
+						Option { value:0 text:$bwf_ControlLevel_NLS._0 }
+					}
+				}
+			}
+			GridCell {
+			}
+			GridCell {
+				ButtonGroup {
+					align: Right
+					uniform: True
+					Button {
+						actions:ExecuteNamedAction showControlDetail 
+						image: %concept_16.control
+						align: Center
+						text:$bwa360_sodmatrixNLS.showcontroldetails
+						disabled: StringPredicate(currentRiskID) { when IsEmpty then True otherwise False }
+					}
+				}
+			}
+		}
+	}
+	Group {
+		title: $bwa360_sodmatrixNLS.matrixdetails
+		CrossTable {
+			data:sodrules
+			layout: Layout{
+				cell-width: 30px 
+				cell-height: 24px 
+				row-headers-max-width: 80% 
+				grab:horizontal True vertical True
+			}
+			multi-selection:False		
+			cluster-sortable:True
+			selection-changed-event: 
+					ReloadData(selectedsodrule),
+					TransferData selectedsodrule(uid, risklevel, riskinfo, suggestedmitigation) to (currentRiskID, currentRiskLevel, currentRiskInfo, currentSuggestedMitigation)
+			column-header-click:ExecuteNamedAction showDetail
+			row-header-click:ExecuteNamedAction showDetail
+			columns:
+				Dim {
+					value:app1uid 
+					label:app1displayname 
+					header:$application.concept 
+					header-click:selectedApplication
+				}, 
+				Dim {
+					value:key1uid 
+					label:key1displayname 
+					header:$bwa360_sodmatrixNLS.activity 
+					selection:selectedKey1uid 
+					header-click:selectedBusinessactivity
+				}
+			rows:
+				Dim {
+					value:app2uid 
+					label:app2displayname 
+					header:$application.concept 
+					header-click:selectedApplication
+					width: 100px
+				}, Dim {
+					value:key2uid 
+					label:key2displayname 
+					header:$bwa360_sodmatrixNLS.activity 
+					selection:selectedKey2uid 
+					header-click:selectedBusinessactivity
+				}
+			cell-content:CellContent {
+				text:NonEmpty(Current risklevel, 'X') 
+				tooltip:Concat(Current controldisplayname, '\n', $bwa360_sodmatrixNLS.risklevelprefix, Transform Current risklevel using bwf_ControlLevelMapping) /*Current risklevel*/ 
+				align:Center 
+				styling:
+					IntStyling(Current risklevel) {
+						when =1 then bwsod_sodmatrix_risklevel1 
+						when =2 then bwsod_sodmatrix_risklevel2 
+						when =3 then bwsod_sodmatrix_risklevel3 
+						when =4 then bwsod_sodmatrix_risklevel4 
+						when >=5 then bwsod_sodmatrix_risklevel5 
+					}
+			}
+		}
+	}
+}

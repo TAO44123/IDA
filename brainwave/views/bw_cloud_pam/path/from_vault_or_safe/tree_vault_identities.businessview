@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwcpam_tree_vault_identities" displayname="tree vault identities">
+	<Definition scriptfile="/views/bw_cloud_pam/path/from_vault_or_safe/tree_vault_identities.javascript" name="D1624819664760">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1624819664760" title="View 1">
+			<InnerView name="bwcpam_va_vault_accounts">
+				<Param name="F1624819876672" viewparam="vault_uid" viewparamvalue="{param.vault_uid.get()}"/>
+				<Param name="F1624875217504" viewparam="secrets_only" viewparamvalue="{param.secrets_only.get()}"/>
+				<Param name="F1635513735814" viewparam="showpredefined" viewparamvalue="{param.showpredefined.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1624819684720" type="unionview" x="760" y="144" w="300" h="50" title="View 2">
+			<InnerView name="bwcpam_va_vault_groups">
+				<Param name="F1624819886283" viewparam="vault_uid" viewparamvalue="{param.vault_uid.get()}"/>
+				<Param name="F1624875234118" viewparam="secrets_only" viewparamvalue="{param.secrets_only.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="origin" discriminatorcolumn="origin2" secondary_discriminator="part2"/>
+			<ExcludeList>
+				<Exclude name="origin2"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1624819684898" source="C1624819664760" target="C1624819684720" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1624819733174" type="unionview" x="621" y="367" w="300" h="50" title="View 3">
+			<InnerView name="bwcpam_va_group_groups">
+				<Param name="F1624819896302" viewparam="vault_uid" viewparamvalue="{param.vault_uid.get()}"/>
+				<Param name="F1624879732727" viewparam="secrets_only" viewparamvalue="{param.secrets_only.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="origin" discriminatorcolumn="origin3" secondary_discriminator="part3"/>
+			<ExcludeList>
+				<Exclude name="origin3"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1624819733365" source="C1624819684720" target="C1624819733174" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1624819764056" type="unionview" x="757" y="352" w="300" h="50" title="View 4">
+			<InnerView name="bwcpam_va_group_accounts_indirect">
+				<Param name="F1624819916658" viewparam="vault_uid" viewparamvalue="{param.vault_uid.get()}"/>
+				<Param name="F1624879741915" viewparam="secrets_only" viewparamvalue="{param.secrets_only.get()}"/>
+				<Param name="F1635514110131" viewparam="showpredefined" viewparamvalue="{param.showpredefined.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="origin" discriminatorcolumn="origin4" secondary_discriminator="part4"/>
+			<ExcludeList>
+				<Exclude name="origin4"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1624819764475" source="C1624819733174" target="C1624819764056" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1624819799777" type="unionview" x="678" y="407" w="300" h="50" title="View 5">
+			<InnerView name="bwcpam_va_group_accounts_direct">
+				<Param name="F1624819927650" viewparam="vault_uid" viewparamvalue="{param.vault_uid.get()}"/>
+				<Param name="F1624879750539" viewparam="secrets_only" viewparamvalue="{param.secrets_only.get()}"/>
+				<Param name="F1635514127340" viewparam="showpredefined" viewparamvalue="{param.showpredefined.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="origin" discriminatorcolumn="origin5" secondary_discriminator="part5"/>
+			<ExcludeList>
+				<Exclude name="origin5"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1624819799951" source="C1624819764056" target="C1624819799777" priority="5" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1624819829964" type="unionview" x="787" y="356" w="300" h="50" title="View 6">
+			<InnerView name="bwcpam_va_account_identities">
+				<Param name="F1624819934956" viewparam="vault_uid" viewparamvalue="{param.vault_uid.get()}"/>
+				<Param name="F1624879759447" viewparam="secrets_only" viewparamvalue="{param.secrets_only.get()}"/>
+				<Param name="F1635514146433" viewparam="showpredefined" viewparamvalue="{param.showpredefined.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="origin" discriminatorcolumn="origin6" secondary_discriminator="part6"/>
+			<ExcludeList>
+				<Exclude name="origin6"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1624819830172" source="C1624819799777" target="C1624819829964" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1624827048785" type="unionview" x="991" y="255" w="300" h="50" title="View 7">
+			<InnerView name="bwcpam_va_vault">
+				<Param name="F1624827088296" viewparam="vault_uid" viewparamvalue="{param.vault_uid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="origin" secondary_discriminator="part7" discriminatorcolumn="origin7"/>
+			<ExcludeList>
+				<Exclude name="origin7"/>
+			</ExcludeList>
+			<FilterList>
+				<Filter name="F1624874944370" expression="dataset.source_uid.get()+&apos;_&apos;+dataset.target_uid.get()" comment="Remove duplicates" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Link name="L1624827049487" source="C1624819829964" target="C1624827048785" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1652868611224" type="unionview" x="1171" y="525" w="300" h="50" title="View 8">
+			<InnerView name="bwcpam_va_safe">
+				<Param name="F1652868715293" viewparam="safe_uid" viewparamvalue="{param.vault_uid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="origin" secondary_discriminator="part8" discriminatorcolumn="origin8"/>
+			<FilterList>
+				<Filter name="F1652869074872" expression="dataset.source_uid.get()+&apos;_&apos;+dataset.target_uid.get()" comment="Remove duplicates" type="Deduplicate"/>
+			</FilterList>
+		</Component>
+		<Link name="L1652868612492" source="C1624827048785" target="C1652868611224" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="vault_uid" displayname="vault_uid">
+		<Value name="V1652868999212_1" data="TRAINER_EXTERNAL_1651912101315_87896"/>
+	</ViewParam>
+	<ViewParam name="secrets_only" displayname="secrets_only" type="Boolean">
+		<Value name="V1624875170965_1" data="true"/>
+	</ViewParam>
+	<ViewParam name="showpredefined" displayname="showpredefined" type="Boolean"/>
+</View>

@@ -1,0 +1,594 @@
+/* Import other pages here */
+
+import "/webportal/pages/bw_ad_schema/reports/selectedobject_explore_access.page"
+import "/webportal/pages/bw_ad_schema/reports/selectedobject_managedexplore_access.page"
+import "/webportal/pages/bw_ad_schema/reports/selectedadminaccounts_explore_access.page"
+import "/webportal/pages/bw_ad_schema/reports/AccountsOutOfScopeReport.page"
+
+import "/webportal/pages/bw_ad_schema/reports/accountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/reactivatedAccountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/reactivatedPrivilegedAccountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/justdisabledAccountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/justdisabledPrivilegedAccountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/severalAccountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/accountsFromOrgReport.page"
+
+import "/webportal/pages/bw_ad_schema/reports/groupsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/groupsoneaccountReport.page"
+import "/webportal/pages/bw_ad_schema/reports/emptygroupsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/disabledgroupsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/groupsmostaccountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/groupsleastaccountsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/groupsmembershipincrease100.page"
+import "/webportal/pages/bw_ad_schema/reports/accountsMostGroupsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/accountsLeastGroupsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/groupsMovementsReport.page"
+import "/webportal/pages/bw_ad_schema/reports/groupsIncludingDomainUsersReport.page"
+import "/webportal/pages/bw_ad_schema/reports/PrivilegedAccountsReport.page"
+
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/resources.page"
+import "/webportal/pages/bw_ad_schema/resources/dbfragments.page"
+
+/* Nationalized labels here */
+bw_adschema_reportsNLS = NLS {
+	title [en "" fr ""]
+
+	objects.domains [en "Domains" fr "Domaines"]
+	
+	titletop [en "Top ACL Check Reports" fr "Top rapports de vérification ACL"]
+	title1 [en "Account Status" fr "Statut des comptes"]
+	title2 [en "Active Accounts Controls on Date" fr "Contrôles sur les dates des comptes actifs"]
+	title3 [en "Accounts and Owners" fr "Comptes et propriétaires"]
+	title4 [en "Active Accounts Status Controls" fr "Statut des contrôles sur les comptes actifs"]
+
+	ACLadminaccounts [en "Accounts With ACL on Administrator Accounts' Parent Object" fr "Comptes avec droits ACL sur les objets parents des comptes à privileges"]
+	ACLadmingroups [en "Accounts With ACL on Security Groups' Parent Object" fr "Comptes avec droits ACL sur les objets parents des groupes de sécurité"]
+	ACLadminSDholder [en "Accounts With ACL on AdminSDHolder Objects" fr "Comptes avec droits ACL sur les objets AdminSDHolder"]
+	ACLGPO [en "Accounts With ACL on GPOs Objects" fr "Comptes avec droits ACL sur les objects GPO"]
+	ACLsensitiveobjects [en "Accounts With ACL on Objects Set Sensitive" fr "Comptes avec droits ACL sur les objects sensibles"]
+	AccountsOutOfScopeReport [en "Accounts or Groups Out of Scope"]
+	UserWithNullPwd [en "Accounts With Possibility to Set Password to $null" fr "Comptes pouvant mettre un password à $null"]
+	UserKerberosPreAuthDisabled [en "Accounts Without Pre-authentication Kerberos" fr "Comptes sans pré-authentification Kerberos"]
+	
+	^all [en "All Accounts" fr "Tous les comptes"]
+	active [en "Active Accounts" fr "Comptes actifs"]
+	disabled [en "Disabled Accounts" fr "Comptes désactivés"]
+	user [en "Active User Accounts" fr "Comptes Utilisateurs actifs"]
+	noowner [en "Active No Owner Accounts" fr "Comptes sans propriétaires actifs"]
+	privileged [en "Active Privileged Accounts" fr "Comptes à privilèges actifs"]
+	orphan [en "Active Orphaned Accounts" fr "Comptes orphelins actifs"]
+	new [en "New User Accounts" fr "Nouveaux comptes utilisateurs"]
+	nnoowner [en "New No Owner Accounts" fr "Nouveaux comptes sans propriétaires"]
+	nprivileged [en "New Privileged Accounts" fr "Nouveaux comptes à privilèges"]
+	norphan [en "New Orphaned Accounts" fr "Nouveaux comptes orphelins"]
+	deleted [en "Deleted User Accounts" fr "Comptes utilisateurs supprimés"]
+	delnoowner [en "Deleted No Owner Accounts" fr "Comptes sans propriétaire supprimés"]
+	delprivileged [en "Deleted Privileged Accounts" fr "Comptes à privilèges supprimés"]
+	delorphan [en "Deleted Orphaned Accounts" fr "Comptes orphelins supprimés"]
+	ndisabled [en "Newly Disabled User Accounts" fr "Compte utilisateur nouvellement désactivés"]
+	ndisablednoowner [en "Newly Disabled Privileged Accounts" fr "Comptes à privilèges nouvellement désactivés"]
+	ndisabledprivileged [en "Newly Disabled Privileged Accounts" fr "Comptes à privilèges nouvellement désactivés"]
+	ndisabledorphan [en "Newly Disabled Orphaned Accounts" fr "Comptes orphelins nouvellement désactivés"]
+	reactivated [en "Reactivated User Accounts" fr "Comptes utilisateurs réactivés"]
+	reactivatednoowner [en "Reactivated No Owner Accounts" fr "Comptes sans propriétaire réactivés"]
+	reactivatedprivileged [en "Reactivated Privileged Accounts" fr "Comptes à privilèges réactivés"]
+	reactivatedorphan [en "Reactivated Orphaned Accounts" fr "Comptes orphelins réactivés"]
+	usergroupchange [en "User Accounts With Group Changes" fr "Comptes utilisateurs avec changements de groupes"]
+	noownergroupchange [en "No Owner Accounts With Group Changes" fr "Comptes sans propriétaire avec changement de groupes"]
+	privilegedgroupchange [en "Privileged Accounts With Group Changes" fr "Comptes à privilèges avec changement de groupes"]
+	orphangroupchange [en "Orphaned Accounts With Group Changes" fr "Comptes orphelins avec changement de groupes"]
+	terminated [en "Active Accounts Belonging to Terminated Users" fr "Comptes actifs appartenant à des utilisateurs partis"]
+	morethan1 [en "Users With More Than One Account" fr "Utilisateurs avec plus d'un compte"]
+	fromorg [en "All Accounts from Users Attached to a Given Organization" fr "Tous les comptes d'utilisateurs appartenant à une organisation donnée"]
+	unused30 [en "Unused Accounts (>30 days)" fr "Comptes non utilisés (>30 jours)"]
+	unused60 [en "Unused Accounts (>60 days)" fr "Comptes non utilisés (>60 jours)"]
+	unused90 [en "Unused Accounts (>90 days)" fr "Comptes non utilisés (>90 jours)"]
+	unused120 [en "Unused Accounts (>120 days)" fr "Comptes non utilisés (>120 jours)"]
+	unused150 [en "Unused Accounts (>150 days)" fr "Comptes non utilisés (>150 jours)"]
+	unused180 [en "Unused Accounts (>180 days)" fr "Comptes non utilisés (>180 jours)"]
+	pwdchanged30 [en "User Account With Password Last Changed (>30 days)" fr "Compte utilisateur avec changement de mot de passe (>30 jours)"]
+	pwdchanged45 [en "User Account With Password Last Changed (>45 days)" fr "Compte utilisateur avec changement de mot de passe (>45 jours)"]
+	pwdchanged60 [en "User Account With Password Last Changed (>60 days)" fr "Compte utilisateur avec changement de mot de passe (>60 jours)"]
+	pwdchanged90 [en "User Account With Password Last Changed (>90 days)" fr "Compte utilisateur avec changement de mot de passe (>90 jours)"]
+	noownerchanged30 [en "No Owner Account With Password Last Changed (>30 days)" fr "Comptes sans propriétaire avec changement de mot de passe (>30 jours)"]
+	noownerchanged45 [en "No Owner Account With Password Last Changed (>45 days)" fr "Comptes sans propriétaire avec changement de mot de passe (>45 jours)"]
+	noownerchanged60 [en "No Owner Account With Password Last Changed (>60 days)" fr "Comptes sans propriétaire avec changement de mot de passe (>45 jours)"]
+	noownerchanged90 [en "No Owner Account With Password Last Changed (>90 days)" fr "Comptes sans propriétaire avec changement de mot de passe (>90 jours)"]
+	privpwdchanged30 [en "Privileged Account With Password Last Changed (>30 days)" fr "Comptes à privilèges avec changement de mot de passe (>30 jours)"]
+	privpwdchanged45 [en "Privileged Account With Password Last Changed (>45 days)" fr "Comptes à privilèges avec changement de mot de passe (>45 jours)"]
+	privpwdchanged60 [en "Privileged Account With Password Last Changed (>60 days)" fr "Comptes à privilèges avec changement de mot de passe (>45 jours)"]
+	privpwdchanged90 [en "Privileged Account With Password Last Changed (>90 days)" fr "Comptes à privilèges avec changement de mot de passe (>90 jours)"]
+	orphanpwdchanged30 [en "Orphaned Account With Password Last Changed (>30 days)" fr "Comptes orphelins avec changement de mot de passe (>30 jours)"]
+	orphanpwdchanged45 [en "Orphaned Account With Password Last Changed (>45 days)" fr "Comptes orphelins avec changement de mot de passe (>45 jours)"]
+	orphanpwdchanged60 [en "Orphaned Account With Password Last Changed (>60 days)" fr "Comptes orphelins avec changement de mot de passe (>60 jours)"]
+	orphanpwdchanged90 [en "Orphaned Account With Password Last Changed (>90 days)" fr "Comptes orphelins avec changement de mot de passe (>90 jours)"]
+	noexpiration [en "Internal User Account With no Expiration Date" fr "Compte utilisateur interne sans date d'expiration"]
+	expiration30 [en "Internal User Account With Expiration Date (<30 days)" fr "Compte utilisateur interne avec date d'expiration (<30 days)"]
+	expiration60 [en "Internal User Account With Expiration Date (<60 days)" fr "Compte utilisateur interne avec date d'expiration (<60 days)"]
+	expiration90 [en "Internal User Account With Expiration Date (<90 days)" fr "Compte utilisateur interne avec date d'expiration (<90 days)"]
+	expiration120 [en "Internal User Account With Expiration Date (<120 days)" fr "Compte utilisateur interne avec date d'expiration (<120 days)"]
+	contractornoexpiration [en "Contractor User Account With no Expiration Date" fr "Compte utilisateur externe sans date d'expiration"]
+	contractorexpiration30 [en "Contractor User Account With Expiration Date (<30 days)" fr "Compte utilisateur externe avec date d'expiration (<30 days)"]
+	contractorexpiration60 [en "Contractor User Account With Expiration Date (<60 days)" fr "Compte utilisateur externe avec date d'expiration (<60 days)"]
+	contractorexpiration90 [en "Contractor User Account With Expiration Date (<90 days)" fr "Compte utilisateur externe avec date d'expiration (<90 days)"]
+	contractorexpiration120 [en "Contractor User Account With Expiration Date (<120 days)" fr "Compte utilisateur externe avec date d'expiration (<120 days)"]
+	noownnoexpiration [en "No owner Account With no Expiration Date" fr "Comptes à privilèges sans date d'expiration"]
+	noownexpiration30 [en "No owner Account With Expiration Date (<30 days)" fr "Comptes sans propriétaire avec date d'expiration (<30 days)"]
+	noownexpiration60 [en "No owner Account With Expiration Date (<60 days)" fr "Comptes sans propriétaire avec date d'expiration (<30 days)"]
+	noownexpiration90 [en "No owner Account With Expiration Date (<90 days)" fr "Comptes sans propriétaire avec date d'expiration (<90 days)"]
+	noownexpiration120 [en "No owner Account With Expiration Date (<120 days)" fr "Comptes sans propriétaire avec date d'expiration (<120 days)"]
+	privnoexpiration [en "Privileged Account With no Expiration Date" fr "Comptes à privilèges sans date d'expiration"]
+	privexpiration30 [en "Privileged Account With Expiration Date (<30 days)" fr "Comptes à privilèges avec date d'expiration (<30 days)"]
+	privexpiration60 [en "Privileged Account With Expiration Date (<60 days)" fr "Comptes à privilèges avec date d'expiration (<30 days)"]
+	privexpiration90 [en "Privileged Account With Expiration Date (<90 days)" fr "Comptes à privilèges avec date d'expiration (<90 days)"]
+	privexpiration120 [en "Privileged Account With Expiration Date (<120 days)" fr "Comptes à privilèges avec date d'expiration (<120 days)"]
+	orphannoexpiration [en "Orphaned Account With no Expiration Date" fr "Comptes orphelins sans date d'expiration"]
+	orphanexpiration30 [en "Orphaned Account With Expiration Date (<30 days)" fr "Comptes orphelins avec date d'expiration (<30 days)"]
+	orphanexpiration60 [en "Orphaned Account With Expiration Date (<60 days)" fr "Comptes orphelins avec date d'expiration (<60 days)"]
+	orphanexpiration90 [en "Orphaned Account With Expiration Date (<90 days)" fr "Comptes orphelins avec date d'expiration (<90 days)"]
+	orphanexpiration120 [en "Orphaned Account With Expiration Date (<120 days)" fr "Comptes orphelins avec date d'expiration (<120 days)"]
+	locked [en "Locked User Accounts" fr "Comptes utilisateurs vérouillés"]
+	noownerlocked [en "Locked No Owner Accounts" fr "Comptes sans propriétaire vérouillés"]
+	privlocked [en "Locked Privileged Accounts" fr "Comptes à privilèges vérouillés"]
+	orphanlocked [en "Locked Orphaned Accounts" fr "Comptes orphelins vérouillés"]
+	neverused [en "Never Used User Accounts (logincount = 0)" fr "Comptes utilisateurs jamais utilisés (logincount = 0)"]
+	noownerneverused [en "Never Used No Owner Accounts (logincount = 0)" fr "Comptes sans propriétaire jamais utilisés (logincount = 0)"]	
+	privneverused [en "Never Used Privileged Accounts (logincount = 0)" fr "Comptes à privilèges jamais utilisés (logincount = 0)"]
+	orphanneverused [en "Never Used Orphaned Accounts (logincount = 0)" fr "Comptes orphelins jamais utilisés (logincount = 0)"]
+	badpwd5 [en "User Accounts With Bad Passwords (>5)" fr "Comptes utilisateurs avec mauvais mot de passe (>5)"]
+	noownbadpwd5 [en "No Owner Accounts With Bad Passwords (>5)" fr "Comptes sans propriétaire avec mauvais mot de passe (>5)"]
+	privbadpwd5 [en "Privileged Accounts With Bad Passwords (>5)" fr "Comptes à privilèges avec mauvais mot de passe (>5)"]
+	orphanbadpwd5 [en "Orphaned Accounts With Bad Passwords (>5)" fr "Comptes orphelins avec mauvais mot de passe (>5)"]
+	nopassword [en "User Accounts Without Password Required" fr "Comptes utilisateurs sans mot de passe requis"]
+	noownernopassword [en "No Owner Accounts Without Password Required" fr "Comptes sans propriétaire sans mot de passe requis"]
+	privnopassword [en "Privileged Accounts Without Password Required" fr "Comptes à privilèges sans mot de passe requis"]
+	orphannopassword [en "Orphaned Accounts Without Password Required" fr "Comptes orphelins sans mot de passe requis"]
+	cantchangepwd [en "User Accounts Who Can't Change Password" fr "Comptes utilisateurs ne pouvant pas changer de mot de passe"]
+	noownercantchangepwd [en "No Owner Accounts Who Can't Change Password" fr "Comptes sans propriétaire ne pouvant pas changer de mot de passe"]
+	privcantchangepwd [en "Privileged Accounts Who Can't Change Password" fr "Comptes à privilèges ne pouvant pas changer de mot de passe"]
+	orphancantchangepwd [en "Orphaned Accounts Who Can't Change Password" fr "Comptes orphelins ne pouvant pas changer de mot de passe"]
+	notnormal [en "User Accounts With Not Normal Account Flag" fr "Comptes utilisateurs avec le flag 'not normal account'"]
+	noownernotnormal [en "No Owner Accounts With Not Normal Account Flag" fr "Comptes sans propriétaire avec le flag 'not normal account'"]
+	privnotnormal [en "Privileged Accounts With Not Normal Account Flag" fr "Comptes à privilèges avec le flag 'not normal account'"]
+	orphannotnormal [en "Orphaned Accounts With Not Normal Account Flag" fr "Comptes orphelins avec le flag 'not normal account'"]
+	neverexpiring [en "User Accounts With Never Expiring Password" fr "Comptes utilisateurs avec mot de passe qui n'expire pas"]
+	noownerneverexpiring [en "No Owner Accounts With Never Expiring Password" fr "Comptes sans propriétaire avec mot de passe qui n'expire pas"]
+	privneverexpiring [en "Privileged Accounts With Never Expiring Password" fr "Comptes à privilèges avec mot de passe qui n'expire pas"]
+	orphanneverexpiring [en "Orphaned Accounts With Never Expiring Password" fr "Comptes orphelins avec mot de passe qui n'expire pas"]
+	expired [en "User Accounts With Expired Password" fr "Comptes utilisateurs avec mot de passe expiré"]
+	noownerexpired [en "No Owner Accounts With Expired Password" fr "Comptes sans propriétaire avec mot de passe expiré"]
+	privexpired [en "Privileged Accounts With Expired Password" fr "Comptes à privilèges avec mot de passe expiré"]
+	orphanexpired [en "Orphaned Accounts With Expired Password" fr "Comptes orphelins avec mot de passe expiré"]
+	smartcard [en "User Accounts With Strong Authentication Required" fr "Comptes utilisateurs avec authentification forte requise"]
+	noownersmartcard [en "No Owner Accounts With Strong Authentication Required" fr "Comptes sans propriétaire avec authentification forte requise"]
+	privsmartcard [en "Privileged Accounts With Strong Authentication Required" fr "Comptes à privilèges avec authentification forte requise"]
+	orphansmartcard [en "Orphaned Accounts With Strong Authentication Required" fr "Comptes orphelins avec authentification forte requise"]
+	newgroups [en "New Groups" fr "Nouveaux groupes"]
+	deletedgroups [en "Deleted Groups" fr "Groupes supprimés"]
+	emptygroups [en "Empty Groups" fr "Groupes vides"]
+	groupinactaccount [en "Groups Containing Only Inactive Accounts" fr "Groupes contenant seulement des comptes inactifs"]
+	group1account [en "Groups With Only One Account" fr "Groupes avec seulement un compte"]
+	groupmostaccount [en "Groups With the Most Accounts" fr "Groupes avec le plus de comptes"]
+	groupleastaccount [en "Groups With the Least Accounts" fr "Groupes avec le moins de comptes"]
+	groupmembershipincrease100 [en "Groups With Large Membership Increase (>=100)" fr "Groupes ayant eu une forte hausse du nombre de membres (>=100)"]
+	accountsmostgroup [en "Accounts With the Most Groups" fr "Comptes avec le plus de groupes"]
+	accountsleastgroup [en "Accounts With the Least Groups" fr "Comptes avec le moins de groupes"]
+	groupchanges [en "Changes in Given Groups" fr "Changements dans un groupe donné"]
+	groupincludingpublic [en "Groups Including 'Domain Users'" fr "Groupes comprenant 'Domain Users'"]
+
+	Access_Control_Assistance_Operators	[en "Accounts Member of the 'Access Control Assistance Operators' group" fr "Comptes membres du groupe 'Access Control Assistance Operators'"]
+	Account_Operators	[en "Accounts Member of the 'Account Operators' group" fr "Comptes membres du groupe 'Account Operators'"]
+	Administrators	[en "Accounts Member of the 'Administrators' group" fr "Comptes membres du groupe 'Administrators'"]
+	Allowed_RODC_Password_Replication_Group	[en "Accounts Member of the 'Allowed RODC Password Replication Group' group" fr "Comptes membres du groupe 'Allowed RODC Password Replication Group'"]
+	Backup_Operators	[en "Accounts Member of the 'Backup Operators' group" fr "Comptes membres du groupe 'Backup Operators'"]
+	Cert_Publishers	[en "Accounts Member of the 'Cert Publishers' group" fr "Comptes membres du groupe 'Cert Publishers'"]
+	Certificate_Service_DCOM_Access	[en "Accounts Member of the 'Certificate Service DCOM Access' group" fr "Comptes membres du groupe 'Cert Publishers'"]
+	Cloneable_Domain_Controllers	[en "Accounts Member of the 'Cloneable Domain Controllers' group" fr "Comptes membres du groupe 'Cloneable Domain Controllers'"]
+	Cryptographic_Operators	[en "Accounts Member of the 'Cryptographic Operators' group" fr "Comptes membres du groupe 'Cryptographic Operators'"]
+	Denied_RODC_Password_Replication_Group	[en "Accounts Member of the 'Denied RODC Password Replication Group' group" fr "Comptes membres du groupe 'Denied RODC Password Replication Group'"]
+	Distributed_COM_Users	[en "Accounts Member of the 'Distributed COM Users' group" fr "Comptes membres du groupe 'Distributed COM Users'"]
+	DnsAdmins	[en "Accounts Member of the 'DnsAdmins' group" fr "Comptes membres du groupe 'DnsAdmins'"]
+	DnsUpdateProxy	[en "Accounts Member of the 'DnsUpdateProxy' group" fr "Comptes membres du groupe 'DnsUpdateProxy'"]
+	Domain_Admins	[en "Accounts Member of the 'Domain Admins' group" fr "Comptes membres du groupe 'Domain Admins'"]
+	Domain_Computers	[en "Accounts Member of the 'Domain Computers' group" fr "Comptes membres du groupe 'Domain Computers'"]
+	Domain_Controllers	[en "Accounts Member of the 'Domain Controllers' group" fr "Comptes membres du groupe 'Domain Controllers'"]
+	Domain_Guests	[en "Accounts Member of the 'Domain Guests' group" fr "Comptes membres du groupe 'Domain Guests'"]
+	Domain_Users	[en "Accounts Member of the 'Domain Users' group" fr "Comptes membres du groupe 'Domain Users'"]
+	Enterprise_Admins	[en "Accounts Member of the 'Enterprise Admins' group" fr "Comptes membres du groupe 'Enterprise Admins'"]
+	Enterprise_Read_Only_Domain_Controllers	[en "Accounts Member of the 'Enterprise Read-Only Domain Controllers' group" fr "Comptes membres du groupe 'Enterprise Read-Only Domain Controllers'"]
+	Event_Log_Readers	[en "Accounts Member of the 'Event Log Readers' group" fr "Comptes membres du groupe 'Event Log Readers'"]
+	Group_Policy_Creators_Owners	[en "Accounts Member of the 'Group Policy Creators Owners' group" fr "Comptes membres du groupe 'Group Policy Creators Owners'"]
+	Guests	[en "Accounts Member of the 'Guests' group" fr "Comptes membres du groupe 'Guests'"]
+	Hyper_V_Administrators	[en "Accounts Member of the 'Hyper-V Administrators' group" fr "Comptes membres du groupe 'Hyper-V Administrators'"]
+	IIS_IUSRS	[en "Accounts Member of the 'IIS_IUSRS' group" fr "Comptes membres du groupe 'IIS_IUSRS'"]
+	Incoming_Forest_Trust_Builders	[en "Accounts Member of the 'Incoming Forest Trust Builders' group" fr "Comptes membres du groupe 'Incoming Forest Trust Builders'"]
+	list	[en "Accounts Member of the 'list' group" fr "Comptes membres du groupe 'list'"]
+	Network_Configuration_Operators	[en "Accounts Member of the 'Network Configuration Operators' group" fr "Comptes membres du groupe 'Network Configuration Operators'"]
+	Performance_Log_Users	[en "Accounts Member of the 'Performance Log Users' group" fr "Comptes membres du groupe 'Performance Log Users'"]
+	Performance_Monitor_Users	[en "Accounts Member of the 'Performance Monitor Users' group" fr "Comptes membres du groupe 'Performance Monitor Users'"]
+	Pre_Windows_2000_Compatible_Access	[en "Accounts Member of the 'Pre-Windows 2000 Compatible Access' group" fr "Comptes membres du groupe 'Pre-Windows 2000 Compatible Access'"]
+	Print_Operators	[en "Accounts Member of the 'Print Operators' group" fr "Comptes membres du groupe 'Print Operators'"]
+	Protected_Users	[en "Accounts Member of the 'Protected Users' group" fr "Comptes membres du groupe 'Protected Users'"]
+	RAS_and_IAS_Servers	[en "Accounts Member of the 'RAS and IAS Servers' group" fr "Comptes membres du groupe 'RAS and IAS Servers'"]
+	RDS_Endpoint_Servers	[en "Accounts Member of the 'RDS Endpoint Servers' group" fr "Comptes membres du groupe 'RDS Endpoint Servers'"]
+	RDS_Management_Servers	[en "Accounts Member of the 'RDS Management Servers' group" fr "Comptes membres du groupe 'RDS Management Servers'"]
+	RDS_Remote_Access_Servers	[en "Accounts Member of the 'RDS Remote Access Servers' group" fr "Comptes membres du groupe 'RDS Remote Access Servers'"]
+	Read_Only_Domain_Controllers	[en "Accounts Member of the 'Read-Only Domain Controllers' group" fr "Comptes membres du groupe 'Read-Only Domain Controllers'"]
+	Remote_Desktop_Users	[en "Accounts Member of the 'Remote Desktop Users' group" fr "Comptes membres du groupe 'Remote Desktop Users'"]
+	Remote_Management_Users	[en "Accounts Member of the 'Remote Management Users' group" fr "Comptes membres du groupe 'Remote Management Users'"]
+	Replicator	[en "Accounts Member of the 'Replicator' group" fr "Comptes membres du groupe 'Replicator'"]
+	Schema_Admins	[en "Accounts Member of the 'Schema Admins' group" fr "Comptes membres du groupe 'Schema Admins'"]
+	Server_Operators	[en "Accounts Member of the 'Server Operators' group" fr "Comptes membres du groupe 'Server Operators'"]
+	Terminal_Server_License_Servers	[en "Accounts Member of the 'Terminal Server License Servers' group" fr "Comptes membres du groupe 'Terminal Server License Servers'"]
+	Users	[en "Accounts Member of the 'Users' group" fr "Comptes membres du groupe 'Users' group"]
+	Windows_Authorization_Access_Group	[en "Accounts Member of the 'Windows Authorization Access Group' group" fr "Comptes membres du groupe 'Windows Authorization Access Group'"]
+	WinRMRemoteWMIUser	[en "Accounts Member of the 'WinRMRemoteWMIUsers' group" fr "Comptes membres du groupe 'WinRMRemoteWMIUsers'"]
+
+}
+
+bw_adschema_titleStyling = Style {
+	size:24px
+	bold:False
+}
+
+bwNbDaysSince1970 = EventService {
+	javascript-file:"/webportal/pages/bw_ad_schema/home/utils.javascript"
+	javascript-method:getNbDaysSince1970
+	currentDate = Input { type: Date multivalued: False } 
+	nbdays = Output {type:Integer multivalued:False}
+	d30 = Output {type:Integer multivalued:False}
+	d45 = Output {type:Integer multivalued:False}
+	d60 = Output {type:Integer multivalued:False}
+	d90 = Output {type:Integer multivalued:False}
+	d120 = Output {type:Integer multivalued:False}
+	d150 = Output {type:Integer multivalued:False}
+	d180 = Output {type:Integer multivalued:False}
+
+	dd30 = Output {type:Integer multivalued:False}
+	dd45 = Output {type:Integer multivalued:False}
+	dd60 = Output {type:Integer multivalued:False}
+	dd90 = Output {type:Integer multivalued:False}
+	dd120 = Output {type:Integer multivalued:False}
+	dd150 = Output {type:Integer multivalued:False}
+	dd180 = Output {type:Integer multivalued:False}
+}
+
+bw_adschema_reports = Page {
+	title: $bw_adschema_reportsNLS.title
+	mixins: dashboardPageMixin
+	tags: "ADreports"
+	enter-event:
+		TransferData domainperimeterdataset(uid) to ( domainperimeter ), TransferData domainperimeterdataset(uid) to ( domainsCriteria ),
+	Call bwNbDaysSince1970( Date.valueLDAP to currentDate , nbdayssince1970 from nbdays, d30 from d30, d45 from d45, d60 from d60, d90 from d90, d120 from d120, d150 from d150, d180 from d180,
+	dd30 from dd30, dd45 from dd45, dd60 from dd60, dd90 from dd90, dd120 from dd120, dd150 from dd150, dd180 from dd180
+	)
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	
+	/* selection and filtering variables */
+	domainperimeter = Variable { multivalued: True }
+	domainsCriteria = Variable { type: String multivalued: True }
+
+	nbdayssince1970 = Variable
+	d30 = Variable
+	d45 = Variable
+	d60 = Variable
+	d90 = Variable
+	d120 = Variable
+	d150 = Variable
+	d180 = Variable
+	
+	dd30 = Variable
+	dd45 = Variable
+	dd60 = Variable
+	dd90 = Variable
+	dd120 = Variable
+	dd150 = Variable
+	dd180 = Variable
+	/* Datasets and records here */
+	
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	
+	/* Page content */
+	
+	Grid {
+		columns: GridColumn { width:120 },GridColumn { width: grow }
+		mixins: separatorBar
+		GridRow {
+			GridCell {
+				Text { value: $bw_adschema_reportsNLS.objects.domains mixins: whiteCenteredHeaderMixin layout: Layout { indent: horizontal 0 vertical 8 } }
+			}
+			GridCell {
+				IncludeFragment {
+					fragment: domainSelectorCombo with domainsCriteria binds-to domainsCriteria
+					margins: Left 0 Bottom 0 Right 0 Top 5
+					
+					compact: True
+					
+				}
+			}
+		}
+	}
+	
+	Flow {
+		disposition:Horizontal
+		Group {
+			Group {
+			layout: Layout { grab: horizontal True vertical False }
+			background: Color white
+			Text {compact:True styling: bigLabel value:$bw_adschema_reportsNLS.titletop}
+			Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ACLsensitiveobjects target:Page selected_managedobject_schema_explorer with domainsCriteria to domainuid, $bw_adschema_reportsNLS.user to title}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ACLadminSDholder target:Page selected_object_schema_explorer with domainsCriteria to domainuid, $bw_adschema_reportsNLS.ACLadminSDholder to title, "AdminSDHolder" to selectedObjectLabel, domainsCriteria to domainuid}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ACLGPO target:Page selected_object_schema_explorer with domainsCriteria to domainuid, $bw_adschema_reportsNLS.ACLGPO to title, "Policies" to selectedObjectLabel, domainsCriteria to domainuid}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.AccountsOutOfScopeReport target:Page bw_adschema_AccountsOutOfScopeReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.AccountsOutOfScopeReport to title}	
+			//Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ACLadminaccounts target:Page selectedadminaccounts_explore_access with domainsCriteria to domainuid, $bw_adschema_reportsNLS.ACLadminaccounts to title}		
+			//Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ACLadmingroups target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.disabled to title, "True" to disabled}		
+			Spacer { height:8}
+			}
+			
+			Group {
+			layout: Layout { grab: horizontal True vertical False }
+			background: Color white					
+			Text {compact:True styling: bigLabel value:$bw_adschema_reportsNLS.title1}
+			Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.^all target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.^all to title}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.active target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.active to title, "False" to disabled}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.disabled target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.disabled to title, "True" to disabled}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.user target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.user to title, "False" to disabled, "user" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noowner target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noowner to title, "False" to disabled, "noowner" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphan target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphan to title, "False" to disabled, "orphan" to recontype}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privileged target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privileged to title, "False" to disabled}		
+			Spacer { height:8}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.new target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.new to title, "False" to disabled, "C" to importaction, "user" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.nnoowner target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.nnoowner to title, "False" to disabled, "C" to importaction, "noowner" to recontype}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.norphan target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.norphan to title, "False" to disabled, "C" to importaction, "orphan" to recontype}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.nprivileged target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.nprivileged to title, "False" to disabled, "C" to importaction }
+			Spacer { height:8}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.deleted target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.deleted to title, "False" to disabled, "D" to deletedaction, "user" to recontype timeslot:FromPage(-1)}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.delnoowner target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.delnoowner to title, "False" to disabled, "D" to importaction, "noowner" to recontype timeslot:FromPage(-1)}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.delorphan target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.delorphan to title, "False" to disabled, "D" to importaction, "orphan" to recontype timeslot:FromPage(-1)}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.delprivileged target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.delprivileged to title, "False" to disabled, "D" to importaction timeslot:FromPage(-1)}
+			Spacer { height:8}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ndisabled target:Page bw_adschema_justdisabledAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.ndisabled to title, "user" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ndisablednoowner target:Page bw_adschema_justdisabledAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.ndisablednoowner to title, "noowner" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ndisabledorphan target:Page bw_adschema_justdisabledAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.ndisabledorphan to title, "orphan" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.ndisabledprivileged target:Page bw_adschema_justdisabledPrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.ndisabledprivileged to title}		
+			Spacer { height:8}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.reactivated target:Page bw_adschema_reactivatedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.reactivated to title, "user" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.reactivatednoowner target:Page bw_adschema_reactivatedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.reactivatednoowner to title, "noowner" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.reactivatedorphan target:Page bw_adschema_reactivatedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.reactivatedorphan to title, "orphan" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.reactivatedprivileged target:Page bw_adschema_reactivatedPrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.reactivatedprivileged to title }		
+			Spacer { height:8}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.usergroupchange target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.usergroupchange to title, "False" to disabled, "True" to groupchanged, "user" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownergroupchange target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownergroupchange to title, "False" to disabled, "True" to groupchanged, "noowner" to recontype}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphangroupchange target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphangroupchange to title, "False" to disabled, "True" to groupchanged, "orphan" to recontype}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privilegedgroupchange target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privilegedgroupchange to title, "False" to disabled, "True" to groupchanged}		
+			}
+			
+			Group {
+			layout: Layout { grab: horizontal True vertical False }
+			background: Color white
+			Text {compact:True styling: bigLabel value:$bw_adschema_reportsNLS.title3}
+			Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.terminated target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.terminated to title, "False" to disabled, "True" to terminated}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.morethan1 target:Page bw_adschema_severalaccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.morethan1 to title, "False" to disabled}		
+			Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.fromorg target:Page bw_adschema_accountsFromOrgReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.fromorg to title, "False" to disabled}		
+			}
+		}
+		Group {
+			Group {
+				layout: Layout { grab: horizontal True vertical False }
+				background: Color white
+				Text {compact:True styling: bigLabel value:$bw_adschema_reportsNLS.title2 lines: 2}		
+				Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png"  value:$bw_adschema_reportsNLS.unused30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.unused30 to title, "False" to disabled, d30 to lastlogin}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.unused60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.unused60 to title, "False" to disabled, d60 to lastlogin}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.unused90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.unused90 to title, "False" to disabled, d90 to lastlogin}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.unused120 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.unused120 to title, "False" to disabled, d120 to lastlogin}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.unused150 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.unused150 to title, "False" to disabled, d150 to lastlogin}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.unused180 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.unused180 to title, "False" to disabled, d180 to lastlogin}
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.pwdchanged30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.pwdchanged30 to title, "False" to disabled, d30 to passwordlastchanged, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.pwdchanged45 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.pwdchanged45 to title, "False" to disabled, d45 to passwordlastchanged, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.pwdchanged60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.pwdchanged60 to title, "False" to disabled, d60 to passwordlastchanged, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.pwdchanged90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.pwdchanged90 to title, "False" to disabled, d90 to passwordlastchanged, "user" to recontype}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerchanged30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerchanged30 to title, "False" to disabled, d30 to passwordlastchanged, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerchanged45 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerchanged45 to title, "False" to disabled, d45 to passwordlastchanged, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerchanged60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerchanged60 to title, "False" to disabled, d60 to passwordlastchanged, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerchanged90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerchanged90 to title, "False" to disabled, d90 to passwordlastchanged, "noowner" to recontype}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanpwdchanged30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanpwdchanged30 to title, "False" to disabled, d30 to passwordlastchanged, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanpwdchanged45 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanpwdchanged45 to title, "False" to disabled, d45 to passwordlastchanged, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanpwdchanged60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanpwdchanged60 to title, "False" to disabled, d60 to passwordlastchanged, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanpwdchanged90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanpwdchanged90 to title, "False" to disabled, d90 to passwordlastchanged, "orphan" to recontype}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privpwdchanged30 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privpwdchanged30 to title, "False" to disabled, d30 to passwordlastchanged }		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privpwdchanged45 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privpwdchanged45 to title, "False" to disabled, d45 to passwordlastchanged }		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privpwdchanged60 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privpwdchanged60 to title, "False" to disabled, d60 to passwordlastchanged }		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privpwdchanged90 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privpwdchanged90 to title, "False" to disabled, d90 to passwordlastchanged }		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noexpiration target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noexpiration to title, "False" to disabled, "True" to noexpirationdate, "True" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.expiration30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.expiration30 to title, "False" to disabled, dd30 to expirationdate, "True" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.expiration60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.expiration60 to title, "False" to disabled, dd60 to expirationdate, "True" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.expiration90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.expiration90 to title, "False" to disabled, dd90 to expirationdate, "True" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.expiration120 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.expiration120 to title, "False" to disabled, dd120 to expirationdate, "True" to internal}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.contractornoexpiration target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.contractornoexpiration to title, "False" to disabled, "True" to noexpirationdate, "False" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.contractorexpiration30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.contractorexpiration30 to title, "False" to disabled, dd30 to expirationdate, "False" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.contractorexpiration60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.contractorexpiration60 to title, "False" to disabled, dd60 to expirationdate, "False" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.contractorexpiration90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.contractorexpiration90 to title, "False" to disabled, dd90 to expirationdate, "False" to internal}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.contractorexpiration120 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.contractorexpiration120 to title, "False" to disabled, dd120 to expirationdate, "False" to internal}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownnoexpiration target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownnoexpiration to title, "False" to disabled, "True" to noexpirationdate, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownexpiration30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownexpiration30 to title, "False" to disabled, dd30 to expirationdate, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownexpiration60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownexpiration60 to title, "False" to disabled, dd60 to expirationdate, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownexpiration90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownexpiration90 to title, "False" to disabled, dd90 to expirationdate, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownexpiration120 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownexpiration120 to title, "False" to disabled, dd120 to expirationdate, "noowner" to recontype}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphannoexpiration target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphannoexpiration to title, "False" to disabled, "True" to noexpirationdate, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanexpiration30 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanexpiration30 to title, "False" to disabled, dd30 to expirationdate, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanexpiration60 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanexpiration60 to title, "False" to disabled, dd60 to expirationdate, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanexpiration90 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanexpiration90 to title, "False" to disabled, dd90 to expirationdate, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanexpiration120 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanexpiration120 to title, "False" to disabled, dd120 to expirationdate, "orphan" to recontype}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privnoexpiration target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privnoexpiration to title, "False" to disabled, "True" to noexpirationdate}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privexpiration30 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privexpiration30 to title, "False" to disabled, dd30 to expirationdate}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privexpiration60 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privexpiration60 to title, "False" to disabled, dd60 to expirationdate}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privexpiration90 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privexpiration90 to title, "False" to disabled, dd90 to expirationdate}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privexpiration120 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privexpiration120 to title, "False" to disabled, dd120 to expirationdate}		
+			}
+		}
+		Group {
+			Group {
+				layout: Layout { grab: horizontal True vertical False }
+				background: Color white
+				Text {compact:True styling: bigLabel value:$bw_adschema_reportsNLS.title4 lines: 2}		
+				Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.locked target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.locked to title, "False" to disabled, "True" to locked, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerlocked target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerlocked to title, "False" to disabled, "True" to locked, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanlocked target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanlocked to title, "False" to disabled, "True" to locked, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privlocked target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privlocked to title, "False" to disabled, "True" to locked}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.neverused target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.neverused to title, "False" to disabled, 0 to logincount, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerneverused target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerneverused to title, "False" to disabled, 0 to logincount, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanneverused target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanneverused to title, "False" to disabled, 0 to logincount, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privneverused target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privneverused to title, "False" to disabled, 0 to logincount}		
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.badpwd5 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.badpwd5 to title, "False" to disabled, 5 to badpasswordcount, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownbadpwd5 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownbadpwd5 to title, "False" to disabled, 5 to badpasswordcount, "noowner" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanbadpwd5 target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanbadpwd5 to title, "False" to disabled, 5 to badpasswordcount, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privbadpwd5 target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privbadpwd5 to title, "False" to disabled, 5 to badpasswordcount}
+
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.nopassword target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.nopassword to title, "False" to disabled, "True" to passwordnotrequired, "user" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownernopassword target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownernopassword to title, "False" to disabled, "True" to passwordnotrequired, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphannopassword target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphannopassword to title, "False" to disabled, "True" to passwordnotrequired, "orphan" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privnopassword target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privnopassword to title, "False" to disabled, "True" to passwordnotrequired}		
+
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.cantchangepwd target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.cantchangepwd to title, "False" to disabled, "True" to passwordcantchange, "user" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownercantchangepwd target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownercantchangepwd to title, "False" to disabled, "True" to passwordcantchange, "noowner" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphancantchangepwd target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphancantchangepwd to title, "False" to disabled, "True" to passwordcantchange, "orphan" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privcantchangepwd target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privcantchangepwd to title, "False" to disabled, "True" to passwordcantchange}		
+
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.notnormal target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.notnormal to title, "False" to disabled, "True" to notnormalaccount, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownernotnormal target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownernotnormal to title, "False" to disabled, "True" to notnormalaccount, "noowner" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphannotnormal target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphannotnormal to title, "False" to disabled, "True" to notnormalaccount, "orphan" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privnotnormal target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privnotnormal to title, "False" to disabled, "True" to notnormalaccount}
+
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.neverexpiring target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.neverexpiring to title, "False" to disabled, "True" to dontexpirepassword, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerneverexpiring target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerneverexpiring to title, "False" to disabled, "True" to dontexpirepassword, "noowner" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanneverexpiring target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanneverexpiring to title, "False" to disabled, "True" to dontexpirepassword, "orphan" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privneverexpiring target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privneverexpiring to title, "False" to disabled, "True" to dontexpirepassword}
+
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.expired target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.expired to title, "False" to disabled, "True" to passwordexpired, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownerexpired target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownerexpired to title, "False" to disabled, "True" to passwordexpired, "noowner" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphanexpired target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphanexpired to title, "False" to disabled, "True" to passwordexpired, "orphan" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privexpired target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privexpired to title, "False" to disabled, "True" to passwordexpired}
+
+				Spacer { height:8}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.smartcard target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.smartcard to title, "False" to disabled, "True" to smartcardrequired, "user" to recontype}		
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.noownersmartcard target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.noownersmartcard to title, "False" to disabled, "True" to smartcardrequired, "noowner" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.orphansmartcard target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.orphansmartcard to title, "False" to disabled, "True" to smartcardrequired, "orphan" to recontype}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.privsmartcard target:Page bw_adschema_PrivilegedAccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.privsmartcard to title, "False" to disabled, "True" to smartcardrequired}
+
+			}
+		}
+		Group {
+			Group {
+				layout: Layout { grab: horizontal True vertical False }
+				background: Color white
+				Text {compact:True styling: bigLabel value:"Groups"}		
+				Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+				// groupes dont le contenu a changé (comptes)
+				// groupes dont le contenu a changé en plus uniq (comptes)
+				// groupes dont le contenu a changé en moins uniq (comptes)
+				// groupes dont le contenu a changé (sous groupes)
+				// groupes dont le contenu a changé en plus uniq (sous groupes)
+				// groupes dont le contenu a changé en moins uniq (sous groupes)
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.newgroups target:Page bw_adschema_groupsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.newgroups to title, "C" to importaction}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.deletedgroups target:Page bw_adschema_groupsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.deletedgroups to title, "D" to deletedaction timeslot:FromPage(-1)}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.emptygroups target:Page bw_adschema_emptygroupsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.emptygroups to title}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.groupinactaccount target:Page bw_adschema_disabledgroupsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.groupinactaccount to title}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.group1account target:Page bw_adschema_groupsoneaccountReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.group1account to title}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.groupmostaccount target:Page bw_adschema_groupsmostaccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.groupmostaccount to title}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.groupleastaccount target:Page bw_adschema_groupsleastaccountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.groupleastaccount to title}
+				//Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.groupmembershipincrease100 target:Page bw_adschema_groupsmembershipincrease100Report with domainsCriteria to domainuid, $bw_adschema_reportsNLS.groupmembershipincrease100 to title}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.groupincludingpublic target:Page bw_adschema_groupsincludingdomainusersReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.groupincludingpublic to title}
+				Spacer { height:8}
+				}
+			
+			Group {
+				layout: Layout { grab: horizontal True vertical False }
+				background: Color white
+				Text {compact:True styling: bigLabel value:"Accounts and groups"}		
+				Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.accountsmostgroup target:Page bw_adschema_accountsMostGroupsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.accountsmostgroup to title}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.accountsleastgroup target:Page bw_adschema_accountsLeastGroupsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.accountsleastgroup to title}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.groupchanges target:Page bw_adschema_groupsMovementsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.groupchanges to title}
+				Spacer { height:8}
+				}
+				
+			Group {
+				layout: Layout { grab: horizontal True vertical False }
+				background: Color white			
+				Text {compact:True styling: bigLabel value:"Groups members"}		
+				Image {image:"bw_ad_schema/others/line.png" layout:Layout{hint:width 300 height 1}}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Access_Control_Assistance_Operators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Access_Control_Assistance_Operators to title, "False" to disabled, "S-1-5-32-579" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Account_Operators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Account_Operators to title, "False" to disabled, "S-1-5-32-548" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Administrators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Administrators to title, "False" to disabled, "S-1-5-32-544" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Allowed_RODC_Password_Replication_Group target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Allowed_RODC_Password_Replication_Group to title, "False" to disabled, "S-1-5-21-*-571" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Backup_Operators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Backup_Operators to title, "False" to disabled, "S-1-5-32-551" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Cert_Publishers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Cert_Publishers to title, "False" to disabled, "S-1-5-*-517" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Certificate_Service_DCOM_Access target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Certificate_Service_DCOM_Access to title, "False" to disabled, "S-1-5-32-*-574" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Cloneable_Domain_Controllers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Cloneable_Domain_Controllers to title, "False" to disabled, "S-1-5-21-*-522" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Cryptographic_Operators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Cryptographic_Operators to title, "False" to disabled, "S-1-5-32-569" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Denied_RODC_Password_Replication_Group target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Denied_RODC_Password_Replication_Group to title, "False" to disabled, "S-1-5-21-*-572" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Distributed_COM_Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Distributed_COM_Users to title, "False" to disabled, "S-1-5-32-562" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.DnsAdmins target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.DnsAdmins to title, "False" to disabled, "S-1-5-21-*-1102" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.DnsUpdateProxy target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.DnsUpdateProxy to title, "False" to disabled, "S-1-5-21-*-1103" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Domain_Admins target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Domain_Admins to title, "False" to disabled, "S-1-5-*-512" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Domain_Computers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Domain_Computers to title, "False" to disabled, "S-1-5-*-515" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Domain_Controllers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Domain_Controllers to title, "False" to disabled, "S-1-5-*-516" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Domain_Guests target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Domain_Guests to title, "False" to disabled, "S-1-5-*-514" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Domain_Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Domain_Users to title, "False" to disabled, "S-1-5-*-513" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Enterprise_Admins target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Enterprise_Admins to title, "False" to disabled, "S-1-5-21-*-519" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Enterprise_Read_Only_Domain_Controllers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Enterprise_Read_Only_Domain_Controllers to title, "False" to disabled, "S-1-5-21-*-498" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Event_Log_Readers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Event_Log_Readers to title, "False" to disabled, "S-1-5-32-573" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Group_Policy_Creators_Owners target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Group_Policy_Creators_Owners to title, "False" to disabled, "S-1-5-*-520" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Guests target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Guests to title, "False" to disabled, "S-1-5-32-546" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Hyper_V_Administrators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Hyper_V_Administrators to title, "False" to disabled, "S-1-5-32-578" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.IIS_IUSRS target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.IIS_IUSRS to title, "False" to disabled, "S-1-5-32-568" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Incoming_Forest_Trust_Builders target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Incoming_Forest_Trust_Builders to title, "False" to disabled, "S-1-5-32-557" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Network_Configuration_Operators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Network_Configuration_Operators to title, "False" to disabled, "S-1-5-32-556" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Performance_Log_Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Performance_Log_Users to title, "False" to disabled, "S-1-5-32-559" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Performance_Monitor_Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Performance_Monitor_Users to title, "False" to disabled, "S-1-5-32-558" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Pre_Windows_2000_Compatible_Access target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Pre_Windows_2000_Compatible_Access to title, "False" to disabled, "S-1-5-32-554" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Print_Operators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Print_Operators to title, "False" to disabled, "S-1-5-32-550" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Protected_Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Protected_Users to title, "False" to disabled, "S-1-5-21-*-525" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.RAS_and_IAS_Servers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.RAS_and_IAS_Servers to title, "False" to disabled, "S-1-5-21-*-553" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.RDS_Endpoint_Servers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.RDS_Endpoint_Servers to title, "False" to disabled, "S-1-5-21-*-553" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.RDS_Management_Servers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.RDS_Management_Servers to title, "False" to disabled, "S-1-5-32-577" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.RDS_Remote_Access_Servers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.RDS_Remote_Access_Servers to title, "False" to disabled, "S-1-5-32-575" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Read_Only_Domain_Controllers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Read_Only_Domain_Controllers to title, "False" to disabled, "S-1-5-21-*-521" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Remote_Desktop_Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Remote_Desktop_Users to title, "False" to disabled, "S-1-5-32-555" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Remote_Management_Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Remote_Management_Users to title, "False" to disabled, "S-1-5-32-580" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Replicator target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Replicator to title, "False" to disabled, "S-1-5-32-552" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Schema_Admins target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Schema_Admins to title, "False" to disabled, "S-1-5-*-518" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Server_Operators target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Server_Operators to title, "False" to disabled, "S-1-5-32-549" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Terminal_Server_License_Servers target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Terminal_Server_License_Servers to title, "False" to disabled, "S-1-5-32-561" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Users target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Users to title, "False" to disabled, "S-1-5-32-545" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.Windows_Authorization_Access_Group target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.Windows_Authorization_Access_Group to title, "False" to disabled, "S-1-5-32-560" to groupsid}
+				Link {icon:"16/famfamfam_silk_icons_v013/page_white.png" value:$bw_adschema_reportsNLS.WinRMRemoteWMIUser target:Page bw_adschema_accountsReport with domainsCriteria to domainuid, $bw_adschema_reportsNLS.WinRMRemoteWMIUser to title, "False" to disabled, "S-1-5-21-*-1000" to groupsid}		}		
+		}
+	}
+}

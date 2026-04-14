@@ -1,0 +1,217 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+/* Nationalized labels here */
+access360r_application_analytics360NLS = NLS {
+	title [en "Self-service analytics" fr "Analytics en self-service"]
+	dyntitle [en "{0} self-service analytics" fr "Analytics en self-service pour {0}"]
+	empty [en "{0} does not contain any right" fr "{0} ne contient pas de droits"]
+	description [
+		en "This report presents the access rights of the application in the form of a dynamic pivot table where it is possible to select the analysis dimensions. Only the 'application profile' type rights directly associated with the active accounts are taken into account. It is possible to identify only the changes made since a given date. The columns displayed are configurable and the results can be exported, right-click on the table to do so."
+		fr "Ce rapport présente les droits d'accès de l'application sous la forme d'un tableau croisé dynamique où il est possible de sélectionner les dimensions d'analyse. Seuls les droits de type 'profil applicatif' directement associés aux comptes actifs sont pris en compte. Il est possible d'identifier uniquement les changements réalisés depuis une date donnée. Les colonnes affichées sont configurables et les résultats exportables, faites un clic droit sur le tableau pour cela."
+		]
+	access [en "Access" fr "Accès"]
+	applicationaccess [en "Application Access" fr "Accès à l'application"]
+}
+
+access360r_application_analytics = Page {
+	title: $access360r_application_analytics360NLS.title
+	dynamic-title: $access360r_application_analytics360NLS.dyntitle(application.displayname)
+	description:$access360r_application_analytics360NLS.description
+	tags: "application" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature: bwa_applicationanalytics
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+	uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view: bw360_prevtimeslot with
+			PortalTimeslot.UID to currentuid
+	}
+	
+	application = Record {
+		view: bwf_applicationDetail with
+			uid to uid
+	}
+
+	rights = Dataset {
+		view: bwaccess360r_application_rightsanalytics with
+			uid to uid,
+			UserVariable session_comparisonTimeslotTeam360 to dummy
+		trend:
+			Trend {
+				exclude-new: False
+				exclude-same: False
+				join-column: key
+				value-column: val
+				status-column-name: status		
+				timeslot: UserVariable session_comparisonTimeslotTeam360
+			}
+		excludes:
+			OrPredicate {
+				AndPredicate {
+					StringPredicate(Current status) { when 'Invalid' then True }
+					BooleanPredicate(UserVariable session_exclRemoved)
+				}
+				AndPredicate {
+					StringPredicate(Current status) { when 'Identical' then True }
+					BooleanPredicate(UserVariable session_exclSimilar)
+				}
+			}
+	}
+
+	managedapps = Dataset {
+		view: enduser360_managedapplications with
+			uid to uid
+	}
+	
+	/* Page content */
+	ConditionalGroup {
+		IntCondition(application.bwa_applicationanalytics_nbdirectaccountright) {
+			when >0 then [
+				Grid {
+					columns:GridColumn, GridColumn, GridColumn
+					layout:Layout { grab:horizontal True vertical True } 
+					GridRow {
+						height:64
+						GridCell {
+							Combo {
+								variable:UserVariable session_comparisonTimeslotTeam360
+								layout:Layout { hint: width 200 }
+								label:$session_comparisonTimeslotTeam360NLS.label
+								tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+								options:Dynamic {
+									data:session_comparisontimeslots
+									text:Current commitdate
+									value:Current uid
+								}
+							}
+						}
+						GridCell {
+							Checkbox {
+								variable:UserVariable session_exclSimilar
+								text:$session_exclSimilarNLS.label
+								tooltip:$session_exclSimilarNLS.tooltip
+							}
+						}
+						GridCell {
+						}
+					}
+					GridRow {
+						height: grow
+						GridCell {
+							span: 3
+							DynamicCrossTable {
+								data: rights
+								layout:
+									Layout {
+										grab: horizontal True vertical True
+										row-headers-max-width: 70%
+									}
+								dimensions:
+									Dim {
+										value: applicationuid
+										label: applicationdisplayname
+										header: $application.concept
+									},
+									Dim {
+										value: permissioncode
+										label: permissioncode
+										header: $ppermission.code
+									},
+									Dim {
+										value: permissionuid
+										label: permissiondisplayname
+										header: $permission.concept
+									},
+									Dim {
+										value: orguid
+										label: orgdisplayname
+										header: $organisation.concept
+									},
+									Dim {
+										value: orgcode
+										label: orgshortname
+										header: $porganisation.shortname
+									},
+									Dim {
+										value: jobtitleuid
+										label: jobtitledisplayname
+										header: $allocation.jobtitledisplayname
+									},
+									Dim {
+										value: uid
+										label: login
+										header: $paccount.login
+									},
+									Dim {
+										value: service
+										label: service
+										header: $paccount.service
+									},
+									Dim {
+										value: noownercode
+										label: noownercode
+										header: $reconciliation.noownercode
+									},
+									Dim {
+										value: ownerhrcode
+										label: ownerhrcode
+										header: $pidentity.hrcode
+									},
+									Dim {
+										value: owneruid
+										label: ownerfullname
+										header: $pidentity.fullname
+									},
+									Dim {
+										value: ownerinternal
+										label: ownerinternal
+										header: $pidentity.internal
+									},
+									Dim {
+										value: owneractive
+										label: owneractive
+										header: $pidentity.active
+									}
+								measures:
+									Measure {
+										value: key
+										header: $access360r_application_analytics360NLS.access
+									},
+									Measure {
+										value: keyapplication
+										header: $access360r_application_analytics360NLS.applicationaccess
+									},
+									Measure {
+										value: orguid
+										header: $organisation.concept
+									},
+									Measure {
+										value: jobtitleuid
+										header: $identity.jobtitledisplayname
+									},
+									Measure {
+										value: noownercode
+										header: $reconciliation.noownercode
+									}
+							}
+						}
+					}
+				}
+			] otherwise [
+				Header {
+					value: $access360r_application_analytics360NLS.empty( application.displayname )
+				}
+			]
+		}
+	}
+}

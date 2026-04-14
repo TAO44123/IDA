@@ -1,0 +1,122 @@
+import "/webportal/pages/bw_fragments/lib/nls.page"
+import "/webportal/pages/bw_fragments/lib/constants.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_iasreview/resources.page"
+
+// IAS review type selection
+bw_ias_review_typeSelection = PageFragment {
+	
+	reviewtype = Variable { type: String }
+	
+	Grid {
+		columns:
+			GridColumn { width: grow },
+			GridColumn
+		layout: Layout { grab: horizontal True vertical False hint: height 32 }
+		GridRow {
+			GridCell {}
+			GridCell {
+				Combo {
+					variable: reviewtype
+					tooltip: $bw_iasReview.rexperience
+					layout: Layout { grab: horizontal False vertical False hint: width 300 }
+					options:
+						Static {
+							Option {
+								text: $bw_iasReview.rlist
+								value: Constant review_typeMode_list
+							}
+							Option {
+								text: $bw_iasReview.rgrouped
+								value: Constant review_typeMode_group
+							}
+							Option {
+								text: $bw_iasReview.rpivot
+								value: Constant review_typeMode_pivot
+							}
+						}
+				}
+			}
+		}
+	}
+}
+
+// IAS Review filters
+bw_ias_review_filters = PageFragment {
+	
+	// Hide already reviewed entries
+	filterreviewed = Variable { type: Boolean initial: True }
+	// Hide delegated entries	
+	filterdelegated = Variable { type: Boolean initial: True }
+	
+	Grid {
+		columns:
+			GridColumn {},
+			GridColumn {}
+		layout: Layout { grab: horizontal False vertical False }
+		GridRow {
+			GridCell {
+				Checkbox {
+					variable: filterreviewed
+					label: Label { break: True }
+					text: $bw_iasReview.reviewedcheckbox.label
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable: filterdelegated
+					label: Label { break: True }
+					text: $bw_iasReview.reassignedcheckbox.label
+				}
+			}
+		}
+	}
+}
+
+// Review status selection
+bw_fragments_review_status_selector = PageFragment {
+	
+	statusToFilter  = Variable { type: String multivalued: True }
+	
+	Combo {
+		label: $fragmentDecisionHistoryNLS.filterlabels
+		variable: statusToFilter
+		multi-selection: True
+		layout: Layout { hint: width 400 grab: horizontal True vertical False }
+		options:
+			Static {
+				Option {
+					value: Constant bw_reviewStatusCode_ok
+					text: $fragmentDefaultReviewStatusNLS.ok
+				}
+				Option {
+					value: Constant bw_reviewStatusCode_update
+					text: $fragmentDefaultReviewStatusNLS.update
+				}
+				Option {
+					value: Constant bw_reviewStatusCode_revoke
+					text: $fragmentDefaultReviewStatusNLS.revoke
+				}
+				Option {
+					value: Constant bw_reviewStatusCode_notReviewed
+					text: $fragmentDefaultReviewStatusNLS.notreviewed
+				}
+				Option {
+					value: Constant bw_reviewStatusCode_toBeReviewed
+					text: $fragmentDefaultReviewStatusNLS.toboreviewed
+				}
+			}
+		commands:
+			Commands {
+				Command {
+					icon: %status.delete
+					actions:
+						Unset statusToFilter
+					disabled:
+						IntPredicate ( SizeOf statusToFilter ) {
+							when <1 then True
+						}
+				}
+			}
+	}
+}

@@ -1,0 +1,191 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/repository/shares.page"
+
+fragmentServerSharesNLS = NLS {
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected server shares
+ * (shares hosted on the server)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the application uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate permissions details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outshareuid </b>the share uid</li>
+ * </ul>
+ * </span>
+ */
+fragmentServerShares = PageFragment {
+	feature:All(pam_license, Any(governance_license, compliance_license), unstructureddata_license)
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	outshareuid = Variable
+
+	selectedFamily = Variable
+	selectedApplication = Variable
+
+	families = Dataset {
+		view: bwf_serverfsrightsfamily with inuid to uid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	shares = Dataset {
+		view:bwf_servershares with
+			inuid to uid,
+			selectedFamily to family unless-empty
+		trend: Trend {
+		 	join-column:key
+		 	status-column-name:trends
+			value-column:val
+			timeslot:FromPage(-1)		 	
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_applicationDetailsDialog(outshareuid to inuid,
+													True to inshowacls,
+													False to inshowaccounts,
+													False to inshowcontrols,
+													False to inshowdecisionhistory,
+													False to inshowusages,
+													True to inshowperjob,
+													True to inshowperorg
+												  )
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Grid {
+		columns: GridColumn, GridColumn, GridColumn, GridColumn { width: grow }
+		layout: Layout { grab: horizontal True vertical False hint: height 32 }
+		GridRow {
+			GridCell {
+				Combo {
+					variable: selectedFamily
+					allow-none: True
+					label: $fragmentRepositorySharesNLS.sharefamily
+					layout: Layout { hint: width 120 }
+					options:
+						Dynamic {
+							data: families
+							text: Current applicationfamily
+							value: Current applicationfamily
+						}
+					disabled:
+						IntPredicate ( Count families ) {
+							when < 1 then True
+						}
+				}
+			}
+			GridCell {
+			}
+			GridCell {
+			}
+			GridCell {
+			}
+		}
+	}
+	ConditionalGroup {
+		IntCondition(Count shares) {
+			when =0 then [
+				Header {
+					value:$fragmentRepositorySharesNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data:shares
+					layout:Layout {grab: horizontal True vertical True}
+					configurable:True
+					show-count:True
+					show-filter:True
+					persist-configuration:True
+					double-click:ExecuteNamedAction goDetails
+
+					Column {
+						column:applicationuid
+						hidden:True
+						selection:outshareuid
+					}
+			
+					Column {
+						column:applicationapplicationfamily
+						header:$fragmentRepositorySharesNLS.sharefamily
+						sortable:True
+						filterable:True
+						width:128px
+					}
+					Column {
+						column:applicationcode
+						header:$fragmentRepositorySharesNLS.sharecode
+						sortable:True
+						filterable:True
+						initially-masked:True
+						width:160px
+						
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+					Column {
+						column:applicationdisplayname
+						header:$fragmentRepositorySharesNLS.share
+						sortable:True
+						filterable:True
+						width:100%
+
+						actions:ExecuteNamedAction goDetails
+						actions-disabled:Not BooleanPredicate(incanshowdetails)
+					}
+			
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}	
+}

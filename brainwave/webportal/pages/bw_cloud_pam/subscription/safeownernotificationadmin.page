@@ -1,0 +1,297 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_fragments/identity/details/identityDetails.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_cloud_pam/subscription/safepickers.page"
+import "/webportal/pages/bw_cloud_base/widgets/help_widget.page"
+
+/* Nationalized labels here */
+bwpam_safeownernotificationadminNLS = NLS {
+	title [en "Safe Owner Reports Notification Administration" fr "Gestion des abonnements aux rapports des propriétaires de safe"]
+
+	subscribed [en "subscribed"fr "abonné"] 
+	subscribe [en "New Subscription" fr "Nouvel Abonnement"]
+	subscribe_tooltip[en "Subscribe to this report.\nOnce subscribed, the user will automatically receive the report by email on a regular basis." fr "Souscrire à ce rapport.\nUne fois souscrit l'utilisateur recevra automatiquement le rapport régulièrement par email"]
+	unsubscribe [en "Unsubscribe" fr "Désabonnement"]
+	unsubscribe_tooltip[en "Unsubscribe from this report.\nThe user will no longer receive this report by email." fr "Se désabonner de ce rapport.\nUne fois désabonné, l'utilisateur ne recevra plus ce rapport régulièrement par email"]
+	getreport [en "Get Report" fr "Récupérer le rapport"]
+	getreport_tooltip[en "Build and receive this report" fr "Générer et recevoir ce rapport"]
+	generating_flash [en "Report is being generated, you will receive it by email" fr "Le rapport est en cours de génération, vous allez le recevoir par mail"]
+	editsubscription [en "Modify" fr "Modifier"]
+	editsubscription_tooltip  [en "Edit subscription to modify the safes perimeter." fr "Editer la souscription pour modifier le périmètre de safes."]
+	send [en "Send Report" fr "Envoyer le rapport"]
+	send_confirm [en "This will send the report by email to the manager now\nAre your sure?" fr "Cela va envoyer le rapport au responsable par email maintenant\nEtes vous sur?"]
+	send_tooltip[en "Send selected report by email to the manager now" fr "Envoi immédiatement le rapport sélectionné au responsable par email"]
+	send_flash [en "Sending report" fr "Envoi du rapport"]
+	sendall [en "Send All Reports" fr "Envoyer tous les rapports"]
+	sendall_confirm [en "This will send all reports by email to the managers now\nAre your sure?" fr "Cela va envoyer tous les rapports aux responsables par email maintenant\nEtes vous sur?"]
+	sendall_tooltip[en "Send all reports by email now" fr "Envoi immédiatement tous les rapports par email"]
+	sendall_flash [en "Sending reports" fr "Envoi de tous les rapports"]
+	
+	subscriptionstatus [en "Subscription\nstatus" fr "Statut\nd'abonnement"]
+	
+	lang [en "en" fr "fr"]
+	
+	col_report [en "Report" fr "Rapport"]
+	col_subscribed [en "Subscribed" fr "Abonné"]
+	col_safe [en "Safes" fr "Safes"]
+	
+	safelist.title [en "Safes List" fr "Liste des safes"]
+	selectedsafelist.title [en "Selected Safes List" fr "Liste des safes sélectionnés"]
+}
+
+SafeListDialog = Dialog {
+	title: $bwpam_safeownernotificationadminNLS.selectedsafelist.title
+
+	width: 750
+	height: 650
+
+	inIdUid = Variable
+	inNotifUid = Variable
+
+	// database view
+	safeList = Dataset {
+		view: br_ownedsafe_picker_listselected with
+			inIdUid to paramSafeOwner, 
+			inNotifUid to paramNotifUid
+	}
+	Table {
+		data: safeList
+		layout: Layout {
+			grab: horizontal True vertical True
+		}
+
+		show-count: True
+
+		Column {
+			column: uid
+			hidden: True
+		}
+		Column {
+			column: displayname
+			header: $picker.safe.dislayname
+			image: %safeimage_16.safe
+			width: 35%
+			sortable: True
+		}
+		Column {
+			column: vaultdisplayname
+			header: $picker.vault.dislayname
+			width: 35%
+			sortable: True
+		}
+		Column {
+			column: bw_pam_safemetrics_nb_epv_users
+			header: $picker.nbepv
+			width: 10%
+			sortable: True
+		}		
+		Column {
+			column: bw_pam_safemetrics_nb_app_users
+			header: $picker.nbaim
+			width: 10%
+			sortable: True
+		}
+		Column {
+			column: bw_pam_safemetrics_nb_secrets
+			header: $picker.nbcred
+			width: 10%
+			sortable: True
+		}		
+	}	
+}
+
+bwpam_safeownernotificationadmin = Page {
+	title: $bwpam_safeownernotificationadminNLS.title
+	icon:%collection_32.mail
+	large-icon:%collection_48.mail
+	feature:pamnotification_admin
+	header: PageHeader {
+     IncludeFragment { fragment: bw_help_frag with  
+        value-of "static/bw_cloud_pam/guides/guide_report_subscription.html" to url , 
+        value-of "en,fr" to locales,
+        value-of "30%" to ^width 
+        inline: True }
+   }	
+	/* Parameters here */
+
+	/* Page content */
+//	TabFolder {
+//		TabItem {
+//			text:$bwf_casafeDetailsDialogNLS.casafe
+IncludeFragment { 
+	fragment: bwpam_safeownernotificationadmin 
+	}
+}
+
+bwpam_safeownernotificationadmin = PageFragment {
+
+	/* Variables here */
+	selectedsafesubscriptionuid = Variable
+	newsafes = Variable { multivalued: True }
+	updatedsafes = Variable { multivalued: True }
+	
+	selectedidentity = Variable
+	newidentity = Variable
+	currentIdentity = Variable { initial:Principal.uid }
+
+	
+	/* Datasets and records here */
+	safesubscriptions = Dataset {
+		view:bwpam_safeownersubscriptionsall
+	}
+
+	addsafereportsubscription = TaskRecord(create "bwpam_notification_addsafesubscriber" in-timeslot PageTimeslot.PrevUID)
+	removesubscription = TaskRecord(create "bw_subscription_removesubscription" in-timeslot PageTimeslot.PrevUID)
+
+	identityDetails = NamedAction (
+		Dialog bwf_identityDetailsDialog(
+						selectedidentity to inuid,
+						True to inshowposition
+		)
+	)
+
+	safeListDetails = NamedAction (
+		Dialog SafeListDialog(
+						selectedidentity to inIdUid, 
+						selectedsafesubscriptionuid to inNotifUid
+		)
+	)
+	
+	doSubscribeSafe = NamedAction (
+		Dialog safeownerPicker(newidentity from outUid),
+		Dialog ownedsafeMultiPicker(newsafes from outUid, newidentity to inIncludedOwnerUid unless-empty),
+		Set newidentity to addsafereportsubscription.subscriber,
+		Set newsafes to addsafereportsubscription.insafes,
+		TaskComplete addsafereportsubscription wait-end timeout-seconds 30,
+		ReloadData(safesubscriptions)
+	)
+
+	EditSubscribeSafe = NamedAction (			/** A REVOIR **/
+		Dialog ownedsafeMultiPicker(selectedidentity to inIncludedOwnerUid unless-empty, updatedsafes from outUid),	
+		Set selectedidentity to addsafereportsubscription.subscriber,
+		Set updatedsafes to addsafereportsubscription.insafes,
+		TaskComplete addsafereportsubscription wait-end timeout-seconds 30,
+		ReloadData(safesubscriptions)
+	)
+
+	doUnsubscribeSafe = NamedAction (
+		Set selectedsafesubscriptionuid to removesubscription.metadatauid,
+		TaskComplete removesubscription wait-end timeout-seconds 30,
+		ReloadData(safesubscriptions)
+	)
+
+		Group {
+			ButtonGroup {
+				Button {
+					actions:ExecuteNamedAction doSubscribeSafe
+					text:$bwpam_safeownernotificationadminNLS.subscribe
+					tooltip:$bwpam_safeownernotificationadminNLS.subscribe_tooltip
+					image:%collection_16.mail
+				}
+				Button {
+					actions:ExecuteNamedAction EditSubscribeSafe				
+					text:$bwpam_safeownernotificationadminNLS.editsubscription
+					tooltip:$bwpam_safeownernotificationadminNLS.editsubscription_tooltip
+					image:%collection_16.pencil
+					disabled:StringPredicate(selectedsafesubscriptionuid) { when IsEmpty then True otherwise False } 
+				}				
+				Button {
+					actions:ExecuteNamedAction doUnsubscribeSafe				
+					text:$bwpam_safeownernotificationadminNLS.unsubscribe
+					tooltip:$bwpam_safeownernotificationadminNLS.unsubscribe_tooltip
+					image:%collection_16.delete
+					disabled:StringPredicate(selectedsafesubscriptionuid) { when IsEmpty then True otherwise False } 
+				}
+					
+				Button {
+					actions:Message "todo" // never displayed button, for layouting purposes
+					disabled:True
+					presentation:Link
+					text:''
+				}
+				Button {
+					actions:
+						Confirm $bwpam_safeownernotificationadminNLS.send_confirm, 
+						ExecuteNotifyRule bwpam_safeowner with selectedsafesubscriptionuid to subscriptionuid,
+						Flash $bwpam_safeownernotificationadminNLS.send_flash
+					disabled:StringPredicate(selectedsafesubscriptionuid) { when IsEmpty then True otherwise False }
+					text:$bwpam_safeownernotificationadminNLS.send
+					tooltip:$bwpam_safeownernotificationadminNLS.send_tooltip
+					image:%collection_16.mail
+				}
+				Button {
+					actions:
+						Confirm $bwpam_safeownernotificationadminNLS.sendall_confirm, 
+						ExecuteNotifyRule bwpam_safeowner, 
+						Flash $bwpam_safeownernotificationadminNLS.send_flash
+					text:$bwpam_safeownernotificationadminNLS.sendall
+					tooltip:$bwpam_safeownernotificationadminNLS.sendall_tooltip
+					image:%collection_16.mail
+				}
+			}
+
+			Table {
+				data:safesubscriptions
+				layout: Layout { grab: horizontal True vertical True }
+				show-count:True
+				show-filter:True
+				configurable:True
+				
+				
+				Column {
+					column:hrcode
+					header:$identity.hrcode
+					actions:ExecuteNamedAction identityDetails
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:fullname
+					header:$identity.fullname
+					actions:ExecuteNamedAction identityDetails
+					width:300px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:mail
+					header:$identity.mail
+					actions:ExecuteNamedAction identityDetails
+					width:300px
+					filterable:True
+					sortable:True
+				}
+				Column {
+					column:safes
+					header:$bwpam_safeownernotificationadminNLS.col_safe
+					actions:ExecuteNamedAction safeListDetails 
+					filterable:True
+					sortable:True
+				}
+				Column {
+					header:$bwpam_safeownernotificationadminNLS.col_report
+					column:bwpam_notification_safes_subkey
+					width:160px					
+					filterable:True
+					sortable:True
+				}
+				Column {
+					header:$bwpam_safeownernotificationadminNLS.col_subscribed
+					column:bwpam_notification_safes_subscribed
+					sortable:True
+					initially-masked:True
+				}
+				Column {
+					column:uid
+					selection:selectedidentity
+					hidden:True
+				}
+				Column {
+					column:bwpam_notification_safes_uid
+					selection:selectedsafesubscriptionuid
+					hidden:True
+				}		
+			}
+		}
+	}

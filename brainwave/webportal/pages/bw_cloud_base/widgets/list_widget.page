@@ -1,0 +1,70 @@
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+bw_list = JsWidgetTemplate {
+	source-directory: "static/bw_cloud_base/widgets/list" 
+	bindings: 
+	  sortable as in Boolean , 
+	  sorted as in out multivalued String,
+	  columns as in multivalued String, 
+	  headers as in multivalued String, 
+	  widths as in multivalued String, 	  
+	  styles as in multivalued String,
+	  icons as in multivalued String
+	datasets: 
+	  listData( uid as String, displayName as String , text1 as String, text2 as String, icon1 as Image, icon2 as Image, num1 as Integer, num2 as Integer, num3 as Integer, date1 as Date, date2 as Date ),
+	  config ( column as String, header as String, ^width as String, style as String , text as String) 	
+}
+
+/* demo page */
+
+bw_demo_list = Page {
+  title: "List demo"
+ // homepage-for: All
+  enter-event: ExecuteNamedAction doInit
+  
+  sortedIds = Variable { multivalued: True }
+  repos_uids = Variable { multivalued: True}
+  repos_icons = Variable { multivalued: True}
+
+
+  repos = Dataset {
+    view: br_repository  
+  }
+  
+  _repos_info = Dataset {
+    columns: repos_icons
+  }
+  
+  doInit = NamedAction (
+    TransferData repos(repositoryuid) to ( repos_uids) 
+  )
+   
+	Table {
+	  data: repos
+	  show-count: True
+	  show-filter: True
+	  label: Label { value: "---" break: True}
+	  layout: Layout { grab: horizontal True vertical True }
+	  Column { column: repositorydisplayname }
+	  Column { column: repositorytype }
+	  Column { column: repositoryuid image: %concept_16.repository }
+	  Column { column: nbaccount }
+	} 
+	
+	IncludeHTMLWidget {
+	  template: bw_list
+	  
+	  layout: Layout { grab: horizontal True vertical True }
+	  datasets: repos(repositoryuid, repositorydisplayname, repositorytype, repositoryextractdate, nbaccount ) to listData(uid, displayName, text1, text2, num1)
+	  bindings: 
+	    value-of [ "displayName" ,  "text1", "text2", "num1"] to columns,
+	    value-of [ "Référentiel", "Type", "Date extraction", "Nombre comptes"] to headers,
+	    value-of [ "200px", "100px", "200px", "100px"] to widths,
+	    value-of [ "font-size: 20px; font-weight: bold", "", "", "text-align:right"] to styles,
+	    
+	    value-of True to sortable, 
+	    sortedIds binds-to sorted
+	} 
+	
+
+}

@@ -1,0 +1,194 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+
+import "/webportal/pages/bw_fragments/businessactivity/details/businessActivityDetails.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_access360/portalreports/control/sodmatrix.page"
+
+/* Nationalized labels here */
+bwa360_identitysodmatrixNLS = NLS {
+	title [en "SoD defects matrix" fr "Matrice des écarts de SoD"]
+	dyntitle [en "SoD defects matrix for {0}" fr "Matrice des écarts de SoD pour {0}"]
+
+	description [
+		en "This report provides a summary of the segregation of duties (SOD) control deviations found for this individual. The gaps are presented in the form of a SOD matrix. The background color represents the level of risk associated with the control. It is possible to analyze the permissions involved by clicking on the relevant activities (rows or columns)."
+		fr "Ce rapport présente la synthèse des écarts de contrôle de séparation des tâches (SOD) trouvés pour cette personne. Les écarts sont présentés sous la forme d'une matrice de SOD. La couleur de fond représente le niveau de risque associé au contrôle. Il est possible d'analyser les permissions en cause en cliquant sur les activités concernées (lignes ou colonnes)."
+	]
+
+	activity [en "Activity" fr "Activité"]
+	
+	empty [
+		fr "Pas de problèmes de SoD trouvés pour cette identité"
+		en "No SoD problems found for this identity"
+	]
+}
+
+
+bwsod_sodmatrix_risklevel1 = Style {
+	background:Color RGB(255, 196, 196)
+}
+bwsod_sodmatrix_risklevel2 = Style {
+	background:Color RGB(255, 128, 128)
+}
+bwsod_sodmatrix_risklevel3 = Style {
+	background:Color RGB(255, 64, 64)
+}
+bwsod_sodmatrix_risklevel4 = Style {
+	background:Color RGB(255, 32, 32)
+}
+bwsod_sodmatrix_risklevel5 = Style {
+	background:Color RGB(255, 0, 0)
+}
+
+bwa360_identitysodmatrixDeprecated = Page {
+	title: $bwa360_identitysodmatrixNLS.title
+	description: $bwa360_identitysodmatrixNLS.description
+	dynamic-title: $bwa360_identitysodmatrixNLS.dyntitle(identity.fullname)
+//	tags: "identity" priority 200, "byuid" , "analytics" // TODO: REMOVE THIS DEPRECATED ANALYTICS
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(sod_license, bwa_identitysodmatrix)
+
+	dock-right: Dock {
+		collapsed:True
+		collapsible:True
+		width:300
+
+			ConditionalGroup {
+				StringCondition(currentRiskID) {
+					when IsEmpty then [
+						Text {
+							value:$bwa360_sodmatrixNLS.altrisktext
+							compact:True
+						}
+					
+					]
+					otherwise [
+						Group {
+							Header { value:$bwa360_sodmatrixNLS.risktitle styling:bigTitleStyle }
+						
+							Text {
+								label:Label {value:$bwa360_sodmatrixNLS.risklevel}
+								value:currentRiskLevel
+								compact:True
+							}
+							Text {
+								label:Label {break:True value:$bwa360_sodmatrixNLS.riskinfo}
+								layout:Layout{ hint: height 160 }
+								value:currentRiskInfo
+								lines:20
+								compact:True
+							}
+							Text {
+								label:Label {break:True value:$bwa360_sodmatrixNLS.mitigation}
+								layout:Layout{ hint: height 160 }
+								value:currentSuggestedMitigation
+								lines:20
+								compact:True
+							}
+						
+						}
+					]
+				}
+			}
+		}
+
+
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	
+	/* Variables here */
+	currentRiskID = Variable {multivalued:True}
+	currentRiskLevel = Variable {multivalued:True}
+	currentRiskInfo = Variable {multivalued:True}
+	currentSuggestedMitigation = Variable {multivalued:True}
+
+	selectedKey1uid = Variable
+	selectedKey2uid = Variable
+	
+	selectedactivityuid = Variable
+	selectedapplicationuid = Variable
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:br_identityDetail with uid to uid
+	}
+	
+	sodrules = Dataset {
+		view:bwa360_identitysodproblems with uid to identityuid unless-empty
+	}
+	selectedsodrule = Dataset {
+		view:bwa360_matrixkeypair
+		includes:AndPredicate {
+			SameValuePredicate(selectedKey1uid, Current key1uid)
+			SameValuePredicate(selectedKey2uid, Current key2uid)
+		}
+	}
+	
+	showApplicationDetail = NamedAction (
+		Dialog bwf_applicationDetailsDialog(selectedapplicationuid to inuid,
+												True to inshowperjob,
+												True to inshowperorg
+		)
+	)
+	showActivityDetail = NamedAction (
+		Dialog bwf_businessActivityDetailsDialog(selectedactivityuid to inuid,
+												uid to inidentityuid,
+												True to inshowperjob,
+												True to inshowperorg,
+												True to inshowsoddefects
+		)
+	)
+	
+	showDetail = NamedAction (
+		BooleanCase(Eval "!selectedapplicationuid.isEmpty() && selectedactivityuid.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showApplicationDetail
+			]
+			when False then [
+			]
+		},
+		BooleanCase(Eval "!selectedactivityuid.isEmpty()") {
+			when True then [
+				ExecuteNamedAction showActivityDetail
+			]
+			when False then [
+			]
+		}
+	)
+
+	/* Page content */
+	ConditionalGroup {
+		IntCondition(Count sodrules) {
+			when =0 then [
+				Header {
+					value:$bwa360_identitysodmatrixNLS.empty
+				}
+			]
+			otherwise [
+				CrossTable {
+					data:sodrules
+					layout:Layout {grab:horizontal True vertical True cell-width:30px cell-height:24px}
+					multi-selection:False
+					cluster-sortable:True
+					selection-changed-event: 
+							TransferData selectedsodrule(uid, risklevel, riskinfo, suggestedmitigation) to (currentRiskID, currentRiskLevel, currentRiskInfo, currentSuggestedMitigation)
+					
+					columns:Dim {value:app1uid label:app1displayname header:$application.concept header-click:selectedapplicationuid}, Dim {value:key1uid label:key1displayname header: $bwa360_identitysodmatrixNLS.activity selection:selectedKey1uid header-click:selectedactivityuid}
+					rows:Dim {value:app2uid label:app2displayname header:$application.concept header-click:selectedapplicationuid}, Dim {value:key2uid label:key2displayname header:$bwa360_identitysodmatrixNLS.activity selection:selectedKey2uid header-click:selectedactivityuid}
+					column-header-click:ExecuteNamedAction showDetail
+					row-header-click:ExecuteNamedAction showDetail
+					cell-content:CellContent { text:Current risklevel cluster-value:'X' align:Center styling:IntStyling(Current risklevel) { 
+						when =1 then bwsod_sodmatrix_risklevel1 
+						when =2 then bwsod_sodmatrix_risklevel2 
+						when =3 then bwsod_sodmatrix_risklevel3 
+						when =4 then bwsod_sodmatrix_risklevel4 
+						when =5 then bwsod_sodmatrix_risklevel5 
+						when >5 then bwsod_sodmatrix_risklevel5 
+					  }
+					}
+				}
+			]
+		}	
+	}
+}

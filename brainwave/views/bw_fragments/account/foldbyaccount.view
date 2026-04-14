@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View name="bwf_foldbyaccount" prefix="perm_" errorifempty="false" distinct="true" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" concept="permission" displayname="Folders by Account" notes="" begindate="" enddate="">
+	<ViewParam name="uid" displayname="Account Uid" type="String"/>
+	<ViewParam name="maxdepth" displayname="Max folder depth" type="Integer"/>
+	<ViewParam name="aclonly" displayname="ACL Only" type="Boolean"/>
+	<ViewParam name="family" displayname="Application family" type="String"/>
+	<ViewParam name="application" displayname="Application Uid" type="String"/>
+	<ViewComputedAttribute name="trend" type="Integer" expression="dataset.rightsbasic.get().indexOf(&apos;LU&apos;)==0?3:(dataset.rightsbasic.get().indexOf(&apos;L&apos;)==0?2:1)"/>
+	<ViewComputedAttribute name="uniqid" displayname="concat of account uid and folder uid" type="String" expression="dataset.accountuid.get()+dataset.perm_uid.get()"/>
+	<ViewComputedAttribute name="right" displayname="right" type="String" expression="dataset.rightsbasic.get().right(3).replace(&apos;L&apos;,&apos;R&apos;).replace(&apos;U&apos;,&apos;W&apos;)"/>
+	<ViewComputedAttribute name="simplerights" displayname="simplerights" type="String" expression="dataset.rightsbasic.get().indexOf(&apos;LU&apos;)!=-1?&apos;Read Write&apos;:dataset.rightsbasic.get().indexOf(&apos;U&apos;)!=-1?&apos;Write&apos;:dataset.rightsbasic.get().indexOf(&apos;L&apos;)!=-1?&apos;Read&apos;:&apos;?&apos;"/>
+	<ViewSort name="sort"/>
+	<ViewJoin name="J1304366295534_311" prefix="rights" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="fsright">
+		<ViewJoin name="J1304366301814_312" prefix="account" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="account">
+			<ViewJoin name="J1304342752410_68" prefix="identity_" kind="left" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="identityreconciliation">
+				<ViewAttribute name="1516206027807_39077" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+			</ViewJoin>
+			<ViewAttribute name="1516210474700_39306" attribute="disabled" operator="or" removedfromprojection="true" globalfilter="false">
+				<ViewAttributeFilter name="F1511286568633_0" operation="isFalse" ignoreifempty="false"/>
+				<ViewAttributeFilter name="F1511774996228_1" operation="isNull" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1516385327288_555" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+				<ViewAttributeFilter name="F1658179782892_0" reference="uid" operation="eq" ignoreifempty="false"/>
+			</ViewAttribute>
+			<ViewAttribute name="A1516385338768_556" attribute="login" operator="or" removedfromprojection="false" globalfilter="false"/>
+			<ViewAttribute name="A1517840035603_689" attribute="fsrightchanged" operator="or" removedfromprojection="false" globalfilter="false"/>
+		</ViewJoin>
+		<ViewAttribute name="1516206027812_39112" attribute="action" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1516206027812_39113" attribute="basic" operator="or" removedfromprojection="false" globalfilter="false"/>
+	</ViewJoin>
+	<ViewJoin name="J1305892806775_7037" prefix="app_" kind="inner" identitysecure="false" applicationsecure="false" repositorysecure="false" searchpoint="false" join="application">
+		<ViewAttribute name="1516206077712_39130" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="1516206077712_39131" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+		<ViewAttribute name="A1516374369810_411" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1590842335976_0" reference="application" operation="eq" ignoreifempty="true"/>
+		</ViewAttribute>
+		<ViewAttribute name="A1533653066284_1444" attribute="applicationfamily" operator="or" removedfromprojection="false" globalfilter="false">
+			<ViewAttributeFilter name="F1590842322302_0" reference="family" operation="eq" ignoreifempty="true"/>
+		</ViewAttribute>
+	</ViewJoin>
+	<ViewAttribute name="A1516206186905_39144" attribute="uid" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1516206188619_39145" attribute="code" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1516206190007_39146" attribute="displayname" operator="or" removedfromprojection="false" globalfilter="false"/>
+	<ViewAttribute name="A1556110352680_419" attribute="folderdepth" operator="or" removedfromprojection="true" globalfilter="false">
+		<ViewAttributeFilter name="F1556110387605_0" reference="maxdepth" operation="le" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="1588059010613_924" attribute="inherited" operator="or" removedfromprojection="true" globalfilter="false" enabled="!param.isEmpty(&apos;aclonly&apos;)&amp;&amp;param.aclonly.get()">
+		<ViewAttributeFilter name="F1586705330222_0" operation="isFalse" ignoreifempty="false"/>
+	</ViewAttribute>
+	<ViewAttribute name="1608049141711_5193" attribute="bwa_permissionmetadata_sensitivityreason" alias="metadata_sensitivityreason" operator="or" removedfromprojection="false" globalfilter="true"/>
+	<ViewAttribute name="1608049141714_5194" attribute="bwa_permissionmetadata_sensitivitylevel" alias="metadata_sensitivitylevel" operator="or" removedfromprojection="false" globalfilter="true"/>
+	<ViewAttribute name="1608049141717_5195" attribute="bwa_permissionmetadata_descr" alias="metadata_description" operator="or" removedfromprojection="false" globalfilter="true"/>
+	<ViewAttribute name="1608049141719_5196" attribute="bwa_permissionmetadata_managed" alias="metadata_managed" operator="or" removedfromprojection="false" globalfilter="true"/>
+</View>

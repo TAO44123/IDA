@@ -1,0 +1,373 @@
+/* Import other pages here */
+import "/webportal/pages/bw_ad_schema/resources/basestyles.page"
+import "/webportal/pages/bw_ad_schema/resources/dbstyle.page"
+import "/webportal/pages/bw_ad_schema/resources/pages_nls.page"
+import "/webportal/pages/bw_ad_schema/resources/dialogs.page"
+
+import "/webportal/pages/bw_ad_schema/resources/concepts_nls.page"
+
+import "/webportal/pages/resources/mappings.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+
+ManagedText = BooleanMapping {
+	when True then $adschema_managed_explorer.labels.managed
+	when False then ""
+}
+BooleanToInt = BooleanMapping {
+	when True then 1
+	when False then 0
+}
+
+managedIconInt16 = IntImageTemplate {
+	when <=0 then  ""
+	when >0 then  "bw_ad_schema/16/mark_16.png"
+}
+
+typeDisplay = StringMapping {
+	when "container" then $ad_domain.container
+	when "account" then $ad_domain.account
+	when "group" then $ad_domain.group
+}
+
+// DISABLED FOR NOW
+ad_managed_explorer = Page {
+	title: $adschema_managed_explorer.title
+	dynamic-title: $adschema_managed_explorer.title
+	description: $adschema_managed_explorer.description
+	tags:"admin"
+	
+	feature:adbooster_license
+	
+	mixins: base_pageMixin
+	enter-event:  Set repository.recorduid to selectedDomainRecorduid, Set uid to filterByDomain, Set "container" to filterByType,
+		TransferData domainperimeterdataset(uid) to ( domainperimeter )
+
+    icon: %adschema_icons.windows_32 large-icon: %adschema_icons.windows_48
+	
+	/* Parameters here */
+    uid = Parameter { type: String hidden: True }	
+	
+	/* Variables here */
+	domainperimeter = Variable { multivalued: True }
+	filterByDomain = Variable { type: String multivalued: True }
+	filterByType = Variable { type: String multivalued: True }
+	filterOnlyManaged = Variable { type: Boolean initial: False }
+	
+	// Selection
+	selectedManaged = Variable 
+	selectedObjectUid = Variable
+	selectedDomainRecorduid = Variable
+	
+	/* Datasets and records here */
+	repository = Record {
+		view:br_repositoryDetail with uid to uid	
+	}
+	domainperimeterdataset = Dataset { view: ad_domainperimeter }
+	managedAll = Dataset {
+		view: ad_managed_all with filterByDomain to domains unless-empty, filterByType to types unless-empty, filterOnlyManaged to managed
+	}
+	
+	parentsOfSelected = Dataset {
+		view: ad_managed_parents with filterByDomain to domains unless-empty, filterByType to types unless-empty, filterOnlyManaged to managed
+		
+		disabled:
+			AndPredicate {
+				
+				OrPredicate {
+					IntPredicate ( SizeOf filterByType ) { when =0 then True otherwise False }
+					MultivaluedPredicate ( filterByType contains "container")
+				}
+				Not BooleanPredicate ( filterOnlyManaged )
+			}
+	}
+	
+	dataToDisplay = Dataset {
+		union: Union {
+			datasets: managedAll discriminator "selected" , parentsOfSelected discriminator "parentsOfSelected"
+			discriminator-column: source
+		}
+	}
+	
+	allDomains = Dataset {
+		view: getdomains with domainperimeter to domains
+	}
+	
+	firstDomain = Record {
+		view: getdomains with domainperimeter to domains
+	}
+	
+	allTypes = Dataset {
+		values: [ ( type -> "container" ) , ( type -> "account") , ( type -> "group") ]
+	}
+	
+	managedContainers = Record {
+		view: ad_managed_objects_count with selectedDomainRecorduid to domain , "container" to objtype
+	}
+	managedAccounts = Record {
+		view: ad_managed_objects_count with selectedDomainRecorduid to domain , "account" to objtype
+	}
+	managedGroups = Record {
+		view: ad_managed_objects_count with selectedDomainRecorduid to domain , "group" to objtype
+	}
+	managedTotal = Record {
+		view: ad_managed_objects_count with selectedDomainRecorduid to domain
+	}
+	
+	
+	tree = HierarchicalData {
+		dataset: dataToDisplay
+		connect: parent uid to child parent_uid
+		initial: parent_uid IsNull
+	}
+	
+	refreshAll  = NamedAction (
+		ReloadData(tree),
+		ReloadData (managedContainers),
+		ReloadData (managedAccounts),
+		ReloadData (managedGroups),
+		ReloadData (managedTotal)
+	)
+	
+	clearAll = NamedAction (
+		Unset selectedManaged, Unset selectedObjectUid
+	)
+	
+	/* Page content */
+	
+	Splitter {
+		size:80%
+		disposition: Horizontal 
+		
+		Group {
+		
+			Grid {
+				columns:  GridColumn { width: grow }, GridColumn { width: 10px }
+				layout: Layout { grab: horizontal True vertical False }
+				
+				GridRow {
+					height: 160px
+					
+					GridCell {
+						Group {
+							title: $adschema_filters.title
+							layout: Layout { grab: horizontal True vertical True }
+							border: True 
+							
+							Tiles {
+								tile-height: 140
+								columns:4
+								
+								
+								Tile{
+									Text { value: $adschema_filters.selectlabels.domains commands: Command { actions: Unset filterByDomain, ExecuteNamedAction clearAll icon: "16/famfamfam_silk_icons_v013/bin_closed.png" tooltip:"Clear all" } styling: simpleSmallLabel }
+									Table {
+										data: allDomains 
+										layout: Layout { grab: horizontal True vertical True}
+										checkboxes: uid to filterByDomain
+										show-count: True
+										hide-header: True
+										
+										Column { column: displayname width: 100% }
+									}
+								}
+								
+								Tile{
+									Text { value: $adschema_filters.selectlabels.types commands: Command { actions: Unset filterByType, ExecuteNamedAction clearAll icon: "16/famfamfam_silk_icons_v013/bin_closed.png" tooltip:"Clear all" } styling: simpleSmallLabel }
+									Table {
+										data: allTypes 
+										layout: Layout { grab: horizontal True vertical True}
+										checkboxes:  type to filterByType
+										show-count: True
+										hide-header: True
+										
+										Column { column: type width: 100%  text: Transform Current type using typeDisplay }
+									}
+								}
+								
+								Tile{
+									Text { value: $adschema_filters.selectlabels.moreoptions commands: Command { actions: Unset filterOnlyManaged, ExecuteNamedAction clearAll icon: "16/famfamfam_silk_icons_v013/bin_closed.png" tooltip:"Clear all" } styling: simpleSmallLabel }
+									
+									Checkbox {
+										variable: filterOnlyManaged
+										text: $adschema_filters.selectlabels.moreoptions.onlymanaged
+									}
+								}
+							}
+						}
+					}
+					GridCell {}
+				}
+			}
+			
+			Tree {
+				data: tree
+				layout: Layout { grab: horizontal True vertical True }
+				expand-level: 2
+				show-filter: True 
+				show-count: True
+				hide-header: True
+				
+				
+				commands: Commands {
+					presentation: Icon
+					orientation: Vertical
+					position: After
+					
+					Command {
+						text: ""
+						actions: Flash ""
+						disabled: True
+					}
+					
+					Command {
+						text: ""
+						actions: Flash ""
+						disabled: True
+					}
+					
+					Command {
+						actions: ExecuteNamedAction refreshAll
+						text: ""
+						icon: "16/famfamfam_silk_icons_v013/arrow_refresh.png"
+						tooltip: $adschema_managed_explorer.tooltips.refresh
+					}
+					Command { 	
+						actions: Dialog objectMetadata_Dialog ( selectedObjectUid to paramPermissionUid, 1 to autoSet ) , ReloadData ( tree )  
+						text: "" 
+						icon: "16/famfamfam_silk_icons_v013/pencil_add.png" 
+						disabled: OrPredicate { StringPredicate( selectedObjectUid) { when IsEmpty then True } BooleanPredicate( selectedManaged ) }
+						tooltip: $adschema_managed_explorer.tooltips.setmanaged
+					}
+					Command { 	
+						actions: Dialog objectMetadata_Dialog ( selectedObjectUid to paramPermissionUid, 0 to autoSet ) , ReloadData ( tree )  
+						text: ""
+						icon: "16/famfamfam_silk_icons_v013/pencil_delete.png"  
+						disabled: OrPredicate { StringPredicate( selectedObjectUid) { when IsEmpty then True } Not BooleanPredicate( selectedManaged ) }
+						tooltip: $adschema_managed_explorer.tooltips.unsetmanaged
+					}
+				}
+				
+				
+				Column {
+					column: displayname
+					width: 100%
+					filterable: True
+					
+					// Icon 
+					image: StringImageSelection ( Current type ) {
+						
+						when "D" then "bw_ad_schema/16/container_16.png" // Domain
+						when "C" then "bw_ad_schema/16/container_16.png" // Container
+						when "O" then "bw_ad_schema/16/ou_16.png" // OU
+						when "G" then "bw_ad_schema/16/group_16.png" // Group
+						when "A" then "bw_ad_schema/16/account_16.png" // Account
+						
+						
+					} 
+					
+					// Text
+					text: Concat ( "  "  , Current displayname )	
+				}
+				
+				// Mark for managed files
+				Column {
+					column: managed
+					width:  90px
+					text: Concat( " " , Transform Current managed using ManagedText)
+					image: TemplateImageSelection( Transform Current managed using BooleanToInt)  using managedIconInt16
+					selection: selectedManaged
+				}
+				
+				Column {
+					column: dn
+					width: 100%
+					filterable: True
+					sortable: True
+					align: Right
+				}
+				
+				Column { column: uid hidden: True selection: selectedObjectUid }
+				
+			}
+		}
+		
+		Group {
+		
+			Spacer {
+				height: 5
+			}
+			
+			Header { value: $adschema_managed_explorer.stats.title styling: mediumLabel }
+			
+			Spacer {
+				height: 5
+			}
+			
+			Combo {
+				label: Label { value: $adschema_explorer.labels.selectdomain styling: normalGrayText }
+				options: Dynamic { data: allDomains text: Current displayname value: Current recorduid }
+				variable: selectedDomainRecorduid
+			}
+		
+			Spacer {
+				height: 20
+			}
+			
+			Grid {
+				columns:  GridColumn { width: grow}, GridColumn { width: 60 }
+				layout: Layout { grab: horizontal True vertical True }
+				
+				GridRow {
+					height: 30
+					GridCell {
+						Text { value: $adschema_managed_explorer.stats.label.containers align: Right styling: smallLabel layout: Layout { indent: horizontal 0 vertical 5}}
+					}
+					GridCell {
+						Text { value:  managedContainers.count styling: smallNumber }
+					}
+				}
+				
+				GridRow {
+					height: 30
+					GridCell {
+						Text { value: $adschema_managed_explorer.stats.label.groups align: Right styling: smallLabel layout: Layout { indent: horizontal 0 vertical 5}}
+					}
+					GridCell {
+						Text { value:  managedGroups.count styling: smallNumber }
+					}
+				}
+				
+				GridRow {
+					height: 30
+					GridCell {
+						 Text { value: $adschema_managed_explorer.stats.label.accounts align: Right styling: smallLabel layout: Layout { indent: horizontal 0 vertical 5}}
+					}
+					GridCell {
+						Text { value:  managedAccounts.count styling: smallNumber }
+					}
+				}
+				
+				GridRow {
+					height: 30
+					GridCell {
+						Text { value: $adschema_managed_explorer.stats.label.total align: Right styling: smallLabel layout: Layout { indent: horizontal 0 vertical 5}}
+					}
+					GridCell {
+						Text { value:  managedTotal.count styling: smallNumber }
+					}
+				}
+				
+				GridRow { height: grow }
+			}
+		}
+	}
+	
+	
+	Spacer {
+		height: 10
+	}
+}

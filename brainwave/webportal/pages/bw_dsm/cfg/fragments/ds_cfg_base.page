@@ -1,0 +1,55 @@
+ import "/webportal/pages/bw_dsm/resources/dsm_nls.page"
+ import "/webportal/pages/bw_dsm/resources/styles.page"
+ 
+deserializeOptions_base = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: "" }
+  options = Input
+ // var1 = Output { }
+ // var2 = Output { }
+}
+
+/*
+ * returns serialized option string
+ */
+serializeOptions_base = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: "" }  
+  secretnames = Input { default: ""}
+  secretdsname = Input { } /* name of the datasource, used for secret key*/
+ // var1 = Input { }
+  //var2 = Input { }
+
+}
+
+patchOptions = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: patchOptions
+  options = Input { mandatory: True}
+  action = Input {}
+}
+
+
+dsm_cfg_base = PageFragment {
+   post-render-event: ExecuteNamedAction doInit
+   mixins: defaultPage
+   options = Variable { type: String  }/* json string for all options key=>value */
+   dsname = Variable 
+   edit = Variable {type: Boolean } /* true if editing , false if creating  */ 
+   outValid = Variable {type: Boolean initial: True }
+   doInit = NamedAction(
+     Call deserializeOptions_base ( options to options )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_base to options
+   )
+   
+   Text {
+     value: $dsm_cfg_options_NLS.msg_no_config
+   }
+   
+}
+

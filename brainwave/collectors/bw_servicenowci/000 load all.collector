@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="000 load all" name="P1537449422534_UQWqfoMEYlAhOTf03z8sug" startingpoint="start" scriptfile="collectors/bw_servicenowci/servicenowci.javascript">
+		<Component name="start" type="library/components/start.component" x="22" y="308" w="300" h="64" title="start"/>
+		<Component name="C1537449422533_1" type="callfilter" x="22" y="400" w="300" h="64" title="010 accounts">
+			<Line provisioningfile="/collectors/bw_servicenowci/010 accounts.collector"/>
+		</Component>
+		<Link name="Ltart" source="start" target="C1537449422533_1" priority="1"/>
+		<Link name="L1537451095434" source="C1537449422533_1" target="C1537449422533_3" priority="1"/>
+		<Component name="C1537449422533_3" type="callfilter" x="22" y="502" w="300" h="64" title="030 roles">
+			<Line provisioningfile="/collectors/bw_servicenowci/030 roles.collector"/>
+		</Component>
+		<Component name="C1537449422533_6" type="callfilter" x="22" y="615" w="300" h="64" title="060 user roles">
+			<Line provisioningfile="/collectors/bw_servicenowci/060 user roles.collector"/>
+		</Component>
+		<Component name="C1704886227930" type="callfilter" x="22" y="714" w="300" h="64" title="100 CIs">
+			<Line provisioningfile="/collectors/bw_servicenowci/100 CIs.collector"/>
+		</Component>
+		<Component name="C1704886238442" type="callfilter" x="22" y="937" w="300" h="64" title="110 CI Links">
+			<Line provisioningfile="/collectors/bw_servicenowci/110 CI Links.collector"/>
+		</Component>
+		<Link name="L1704886253367" source="C1704886227930" target="C1704886227930_1" priority="1"/>
+		<Link name="L1704886262321" source="C1537449422533_6" target="C1704886227930" priority="1"/>
+		<Component name="C1704886238442_1" type="callfilter" x="357" y="1166" w="300" h="64" title="Default mapping">
+			<Line provisioningfile="/collectors/bw_servicenowci/120 CI to Resources Links.collector"/>
+		</Component>
+		<Link name="L1704904296900" source="C1704886238442" target="C1712311070696" priority="1"/>
+		<Component name="C1704886227930_1" type="callfilter" x="22" y="821" w="300" h="64" title="105 CIs managers">
+			<Line provisioningfile="/collectors/bw_servicenowci/105 CIs Managers.collector"/>
+		</Component>
+		<Link name="L1711711482310" source="C1704886227930_1" target="C1704886238442" priority="1"/>
+		<Component name="C1712311070696" type="changefilter" x="21" y="1047" w="300" h="64" title="check if mapping file exists">
+			<Actions function="IsMappingFile">
+				<Action name="U1712311695253" action="add" attribute="mappingExists" type="Boolean" multivalued="false" newvalue="false" errorexist="false"/>
+			</Actions>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1712311745205" source="C1712311070696" target="C1704886238442_1" priority="2" labelcustom="true" label="Default mapping"/>
+		<Component name="C1704886238442_2" type="callfilter" x="23" y="1166" w="300" h="64" title="Custom mapping">
+			<Line provisioningfile="/collectors/bw_servicenowci/130 CI to Resources Link with mappingfile.collector"/>
+		</Component>
+		<Link name="L1712311814096" source="C1712311070696" target="C1704886238442_2" priority="1" expression="dataset.mappingExists.get()" labelcustom="true" label="Custom mapping"/>
+		<Link name="L1715767908427" source="C1537449422533_3" target="C1537449422533_6" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

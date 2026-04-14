@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="security group members" scriptfile="/collectors/bw_activedirectory/AD.javascript" name="P1616442663949_pTsbz1IEBe4KPTb0YmOQ" startingpoint="C1616442667922">
+		<Component name="C1616442667922" type="discoverysource" x="45" y="56" w="224" h="64" title="user_primary_group">
+			<Discovery file="/discovery/bw_activedirectory/user_primary_group.discovery" datafile="{config.siloIteratedFileFullname.replace(&quot;ldifde_&quot;,&quot;&quot;)}"/>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Component name="C1616442680823" type="joinfilter" x="45" y="195" w="224" h="64" title="join with id">
+			<Cache active="true" main="user_primarygroupid" join="group_id"/>
+			<Attributes>
+				<Attribute name="A1616442919991" attribute="group_dn" source="group_dn" type="String" multivalued="false"/>
+			</Attributes>
+			<Join source="C1616442688370"/>
+		</Component>
+		<Component name="C1616442688370" type="discoverysource" x="321" y="194" w="221" h="64" title="groups_id">
+			<Discovery file="/discovery/bw_activedirectory/groups_id.discovery" datafile="{config.siloIteratedFileFullname.replace(&quot;ldifde_&quot;,&quot;&quot;)}"/>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1616442696715" source="C1616442667922" target="C1616442680823" priority="1"/>
+		<Link name="L1616442704281" source="C1616442688370" target="C1616442680823" priority="1"/>
+		<Component name="C1616442710467" type="groupmembers" x="45" y="442" w="224" h="64" title="members (securityGroupID)" description="Find the missing groups members acording to user securityGroupID attribute&#xA;&#xA;This will affect only users objects where the securityGroupId is different from the default value 513 (Domain Users group)">
+			<Media code="_REPOSITORY_CODE_"/>
+			<Group code="group_dn" error="true" event="unknownGroupIdentifier"/>
+			<Content members="user_dn" error="true" event="member not found (securityGroupID)"/>
+			<Domain isuniqueidentifier="true" repositorytype="repoType"/>
+		</Component>
+		<Link name="L1616442715438" source="C1616442680823" target="C1616443009908" priority="1"/>
+		<Component name="C1616443009908" type="changefilter" x="45" y="325" w="224" h="64" title="Add repo type">
+			<Actions>
+				<Action name="U1616443059959" action="add" attribute="repoType" type="String" multivalued="false" newvalue="AD" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Link name="L1616443025876" source="C1616443009908" target="C1616442710467" priority="1"/>
+		<Component name="N1616594949822" type="note" x="325" y="45" w="255" h="89" title="user_primary_group: contains only the few users where the primary group attribute has not the default value 513 (domain users group), those users were edited manually&#xA;&#xA;"/>
+		<Component name="N1616595412053" type="note" x="549" y="160" w="354" h="172" title="group_id: contains the number after the last occurrence of  &apos;-&apos; is group SID attribute&#xA;&#xA;Example: &#xA;SID = S-1-5-21-2304056498-2654044530-3444529173-1105&#xA;the group id is = 1105&#xA;&#xA;This value will be joined with the  user_primarygroupid attribute from user_primary_group source"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+	</Configuration>
+</Provisioning>

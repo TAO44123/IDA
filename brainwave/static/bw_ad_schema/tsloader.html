@@ -1,0 +1,100 @@
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>Group hierarchy</title>
+
+	<style id="css">
+		body {
+			font: 300 12px 'Helvetica Neue', Helvetica;
+			color: #8d8d8d;
+		}
+
+		.line {
+			line-height: 20px;
+			word-wrap: break-word;
+		}
+	</style>
+	<script src="jquery.min.js"></script>
+
+	<script type="text/javascript">
+
+
+		$.urlParam = function (name) {
+			var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+			if (results == null) {
+				return null;
+			}
+			else {
+				return results[1] || 0;
+			}
+		}
+
+		$(window).ready(function () {
+
+			var count = 0;
+			var timer = setInterval(repeatFunction, 1000);
+			var displayed = -1;
+
+			var basicquery = "../../../ws/js/bw_ad_schema/admin/admin_utils/getOutputJSON?packageid=" + $.urlParam('packageid');
+			var queryrepeat = basicquery;
+
+			if ($.urlParam('packageid') == null) {
+				$('#image').remove();
+				return;
+			}
+
+			$("<div class='line'>Waiting for execution...</div>").appendTo('#content');
+
+			console.log(basicquery);
+
+			function repeatFunction() {
+
+				$.getJSON(queryrepeat, function (data) {
+
+					$.each(data['lines'], function (key, value) {
+
+						//console.log ( "key " + key + " " + value);
+
+						if (key > displayed) {
+							$("<div class='line'>" + value + "</div>").appendTo('#content');
+							$('body').animate({ scrollTop: $(document).height() }, 'fast');
+
+							count = 0;
+
+							displayed
+						}
+
+					});
+
+
+					queryrepeat = basicquery + '&greaterthan=' + data['max'];
+
+				});
+
+				count++;
+
+				if (count > 60) {
+					clearInterval(timer);
+					$('#image').remove();
+				}
+
+			};
+
+		});
+	</script>
+</head>
+
+<body>
+	<div id="content"
+		style="position: relative; padding-left:10px; padding-top:10px; padding-bottom:10px; padding-right:10px"></div>
+	<div id="image" style="position: relative; padding-left:10px; padding-bottom:10px; padding-right:10px">
+		<img src="loading.gif" style="width:24px;height:24px"></img>
+	</div>
+
+
+</body>
+
+</html>

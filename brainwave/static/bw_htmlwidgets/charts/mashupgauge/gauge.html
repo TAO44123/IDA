@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="bw_pages.js"></script>
+<script src="d3.min.js"></script>
+<script type="text/javascript" src="indicator-all-gen.js" charset="UTF-8"></script>
+<link rel="stylesheet" type="text/css" href="indicator.css">
+<title>Mashup Gauge Indicator</title>
+</head>
+
+
+<body>
+<div id="gauge" style="width: 100%; height: 100%; overflow: hidden"></div>
+<script>
+    document.documentElement.style.overflow = 'hidden';
+    document.body.scroll = "no";
+
+
+    let gauge;
+    let inds;
+   
+    let dirty = true;
+   
+    let identifier = null;
+
+
+    let incount;
+    let inmaxValue; // The gauge maximum value.
+    let intrendValue; // the gauge trend
+    let title = "";
+    let hasLink = false;
+    let hasThresholds = false;
+    let warningThreshold = 10;
+    let criticalThreshold = 30;
+    let mode = "radial";
+    let gaugeColor = "#1774FF";
+    let warningColor = "#FFE4B3";
+    let criticalColor = "#FFB3B3";
+    let thresholdType = "high"; // low high
+    let highThreshold = true;
+    let animation = true;
+   
+    Pages.listenInit(function(varName, initialValue) {
+        if ( varName == "identifier" ){
+            identifier = initialValue;
+        }
+        if ( varName == "count" ){
+            incount = initialValue;
+        }
+        if ( varName == "trendValue" ){
+            intrendValue = initialValue;
+        }
+        if ( varName == "maxValue" ){
+            inmaxValue = initialValue;
+        }
+        if ( varName == "title" ){
+            title = initialValue;
+        }
+        if ( varName == "hasLink" ){
+            hasLink = initialValue;
+        }
+        if ( varName == "mode" ){
+            mode = initialValue;
+        }
+        if ( varName == "gaugeColor" ){
+            gaugeColor = initialValue;
+        }
+        if ( varName == "hasThresholds" ){
+            hasThresholds = initialValue;
+        }
+        if ( varName == "warningThreshold" ){
+            warningThreshold = initialValue;
+        }
+        if ( varName == "criticalThreshold" ){
+            criticalThreshold = initialValue;
+        }
+        if ( varName == "warningColor" ){
+            warningColor = initialValue;
+        }
+        if ( varName == "criticalColor" ){
+            criticalColor = initialValue;
+        }
+        if ( varName == "thresholdType" ){
+            if(initialValue==="high")
+                highThreshold = true;
+            if(initialValue==="low")
+                highThreshold = false;
+        }
+        if ( varName == "animation" ){
+            animation = initialValue;
+        }
+    });
+   
+    function updateGauge() {
+        if(inds!=null) {
+            if(isNaN(inmaxValue))
+                inds.setData(0,{ value: incount , max: incount, trendValue: intrendValue });
+            else
+                inds.setData(0,{ value: incount , max: inmaxValue, trendValue: intrendValue });
+           
+        }
+        myTimeout=null
+    }
+           
+    function createGauge() {
+        const body = document.body;
+        const html = document.documentElement;
+        const documentwidth = html.clientWidth;
+        const documentheight = html.clientHeight;
+   
+        document.getElementById('gauge').setAttribute("style","display:block;width:"+documentwidth+"px;height:"+documentheight+"px");
+        document.getElementById('gauge').style.width=documentwidth+'px';
+        document.getElementById('gauge').style.height=documentheight+'px';
+
+
+        gauge = document.getElementById("gauge");
+        const config =
+            {
+               mode: mode,
+               imagePath: "img/",
+               multi: false,
+               animation: animation,
+               configs:[
+                   {  title: title, link: hasLink, serieColor: { solid : gaugeColor}
+                   }
+               ]
+            };
+       
+        const thresholds = {
+               high: highThreshold,
+               warning: warningThreshold,
+               critical: criticalThreshold,
+               "warning-color": warningColor,
+               "critical-color": criticalColor
+            };
+           
+        if(hasThresholds)
+            config.configs[0].thresholds = thresholds;
+           
+        inds = new brainwave.IndicatorGroup(gauge,
+                                                config,
+                                                "ind001",
+                                                function(e){
+                                                     if (e.type === "link"){
+                                                        Pages.sendEvent('onclick', {identifier: identifier, maxValue: inmaxValue, trendValue: intrendValue, count: incount});
+                                                     }
+                                                    }
+                                                );
+        const onresize = function(e){
+            const body = document.body;
+            const html = document.documentElement;
+            const documentwidth = html.clientWidth;
+            const documentheight = html.clientHeight;
+       
+            document.getElementById('gauge').setAttribute("style","display:block;width:"+documentwidth+"px;height:"+documentheight+"px");
+            document.getElementById('gauge').style.width=documentwidth+'px';
+            document.getElementById('gauge').style.height=documentheight+'px';
+           
+            inds.resize(gauge.clientWidth, gauge.clientHeight);
+        };
+        window.addEventListener("resize", onresize);
+        onresize();
+        if(isNaN(inmaxValue))
+            inds.setData(0,{ value: incount , max: incount, trendValue: intrendValue });
+        else
+            inds.setData(0,{ value: incount , max: inmaxValue, trendValue: intrendValue });
+    }
+
+
+    let myTimeout=null;
+    Pages.listenInitDone(function() {
+        createGauge();
+       
+        Pages.listenTo("count", function(newValue) {        
+            incount = newValue;
+            dirty = true;
+            if ( myTimeout!=null ){
+                clearTimeout( myTimeout );
+            }
+            myTimeout = setTimeout ( updateGauge, 200 );
+        });
+        Pages.listenTo("trendValue", function(newValue) {      
+            intrendValue = newValue;
+            dirty = true;
+            if ( myTimeout!=null ){
+                clearTimeout( myTimeout );
+            }
+            myTimeout = setTimeout ( updateGauge, 200 );
+        });
+        Pages.listenTo("maxValue", function(newValue) {    
+            inmaxValue = newValue;
+            dirty = true;
+            if ( myTimeout!=null ){
+                clearTimeout( myTimeout );
+            }
+            myTimeout = setTimeout ( updateGauge, 200 );
+        });
+    });
+
+
+</script>
+</body>
+</html>

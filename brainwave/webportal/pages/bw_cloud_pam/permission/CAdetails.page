@@ -1,0 +1,153 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/resources/audittrail.page"
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+
+import "/webportal/pages/bw_fragments/permission/resources.page"
+
+fragmentCAPermissionDetailsNLS = NLS {
+	classification [en "Classification" fr "Classification"]
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	sensitivityreason [en "Sensitivity Reason" fr "Raison de la sensibilité"]
+	nbaccounts [en "Number of active accounts" fr "Nombre de comptes actifs"]
+	nbprofiles [en "Number of profiles" fr "Nombre de profils"]
+	managers [en "Managers" fr "Responsables"]
+	content [en "content" fr "contenu"]
+	description [en "description" fr "description"]
+	updatemetadata [en "Update permission description" fr "Mise à jour de la description de la permission"]
+	addowner [en "Add a new permission owner" fr "Ajout d'un nouveau responsable de permission"]
+	deleteowner [en "Delete selected permission owner" fr "Suppression du responsable de la permission"]
+	auditowner [en "Permission owner updates audit trail" fr "Piste d'audit des changements de reponsable de permission"]
+	nomanagers [en "No manager set" fr "Pas de responsable configuré"]
+	kpis [en "KPIs" fr "KPIs"]
+	applicationDetailsTooltip [en "Shows application details" fr "Afficher le détail de l'application"]
+	accessrights [en "CyberArk access rights details of the selected users and the selected profile" fr "Détails des droits d''accès CyberArk des utilisateurs et du profile sélectionné"]
+	groupaccessrights [en "CyberArk access rights details of the selected groups and the selected profile" fr "Détails des droits d''accès CyberArk des groupes et du profile sélectionné"]
+	rightslist [en "CyberArk Rights List" fr "Liste des Droits CyberArk"]
+	
+	managetags [en "Manage tags" fr "Gérer les labels"]
+}
+
+CAfragmentPermissionRightsDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inuseruids = Variable { multivalued:True type:String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	rightlist = Dataset {
+		view: 	bwf_CApermissionRightsDetail with inuid to uid, inuseruids to useruid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}		
+	}
+		
+	// Standard
+	Header {
+		value: $fragmentCAPermissionDetailsNLS.accessrights	
+		styling:bigTitleStyle
+	}	
+	
+	Group {
+		border: False
+		layout: Layout { grab:horizontal True vertical True }
+		Table {
+			
+			layout:Layout { grab:horizontal True vertical True }
+			hide-lines: True
+			data: rightlist
+			Column {
+				header: $account.login
+				column: userlogin
+				width:	9%
+			}			
+			Column {
+				header: $identity.hrcode
+				column: idhrcode
+				width:	9%
+			}
+			Column {
+				header: $identity.concept
+				column: idfullname
+				width:	12%
+			}
+			Column {
+				header: $fragmentCAPermissionDetailsNLS.rightslist
+				column: rightsaction
+				width:	70%
+			}			
+		}	
+	}
+}
+
+
+CAfragmentGroupPermissionRightsDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	ingroupuids = Variable { multivalued:True type:String }
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+
+	grouprightlist = Dataset {
+		view: 	bwf_CApermissionGroupRightsDetail with inuid to uid, ingroupuids to groupuid
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}		
+	}
+		
+	// Standard
+	Header {
+		value: $fragmentCAPermissionDetailsNLS.groupaccessrights	
+		styling:bigTitleStyle
+	}	
+	
+	Group {
+		border: False
+		layout: Layout { grab:horizontal True vertical True }
+		Table {
+			
+			layout:Layout { grab:horizontal True vertical True }
+			configurable: True
+			hide-lines: True
+			data: grouprightlist
+			Column {
+				header: $group.concept
+				column: groupdisplayname
+				width:	10%
+			}
+			Column {
+				header: $group.repository
+				column: domaindisplayname
+				width:	10%
+			}							
+			Column {
+				header: $group.code
+				column: groupcode
+				width:	10%
+			}			
+			Column {
+				header: $fragmentCAPermissionDetailsNLS.rightslist
+				column: rightsaction
+				width:	70%
+			}			
+		}	
+	}
+}

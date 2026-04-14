@@ -1,0 +1,402 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/application/details/applicationDetails.page"
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/sharedfolder/details/sharedfolderDetails.page"
+import "/webportal/pages/bw_fragments/share/details/shareDetails.page"
+import "/webportal/pages/bw_fragments/permission/details/permissionDetails.page"
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/organisation/details/organisationDetails.page"
+import "/webportal/pages/bw_fragments/cmdbci/details/cmdbciDetails.page"
+
+import "/webportal/pages/bw_portaluar_base/cmdbci/details.page"
+
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentIdentityManagedResourcesNLS = NLS {
+	displayname [en "Resource" fr "Ressource"]
+	type [en "Resource type" fr "Type de ressource"]
+	expertisedomain [en "Expertise domain" fr "Domaine expertise"]
+	category [en "On" fr "Sur"]
+	empty [en "Identity does not manage resources" fr "Cette identité ne gère pas de ressources"]
+	showdetails [en "Show details for selected resource" fr "Afficher les détails pour la ressource sélectionnée"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the identity managed resources in a table
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the identity uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate details</li>
+ * <li><b>injumptodetailpage </b>if activated, instead of displaying the detail as a dialog box, the detail will be displayed as a new page (goto)</li>
+ * <li><b>inincludeorganisations </b>optional, boolean value, true to include managed organisations in the list (true by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outselectedresourceuid </b>selected resource</li>
+ * <li><b>outselectedresourcetype </b>selected resource type</li>
+ * <li><b>outnbresources </b>nb of managed resources</li>
+ * </ul>
+ * </span>
+ */
+fragmentIdentityManagedResources = PageFragment {
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	injumptodetailpage = Variable { multivalued:False type:Boolean initial:False }
+	inincludeorganisations = Variable { multivalued:False type:Boolean initial:False }
+	outselectedresourceuid = Variable
+	outselectedresourcediscr = Variable
+	outselectedresourcetype = Variable
+	outselectedresourcename = Variable
+	outnbresources = Variable
+
+	managedresourcescount = Dataset {
+		view: bwf_identityisresourcemanager with inuid to uid
+		count-variable:outnbresources
+	}
+
+	ownedrepo = Dataset {
+		view: bwf_identitymanagedrepositories with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+	
+	ownedacc = Dataset {
+		view: bwf_identitymanagedaccounts with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}	
+	
+	ownedapp = Dataset {
+		view: bwf_identitymanagedapplications with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+	ownedci = Dataset {
+		view: bwf_identitymanagedcis with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+	
+	ownedshare = Dataset {
+		view: bwf_identitymanagedshare with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+	
+	ownedfolder = Dataset {
+		view: bwf_identitymanagedfolders with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+
+	ownedPermission = Dataset {
+		view: bwf_identitymanagedpermissions with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+
+	ownedGroup = Dataset {
+		view: bwf_identitymanagedgroups with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+	}
+
+	ownedOrganisations = Dataset {
+		view: bwf_identitymanagedorganisations with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled: 
+				Not BooleanPredicate(inincludeorganisations)
+	}
+	
+	ownedCAVaults = Dataset {
+		view: bwf_identitymanagedcavault with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+	}
+	
+	ownedCASafes = Dataset {
+		view: bwf_identitymanagedcasafe with inuid to uid
+		trend: Trend { 
+			join-column: _key
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+	}
+
+	ownedResources = Dataset {
+		union: Union {
+			datasets:	ownedrepo discriminator "repository", 
+						ownedapp discriminator "application",
+						ownedacc discriminator "account",
+						ownedshare discriminator "share",
+						ownedfolder discriminator "folder",
+						ownedPermission discriminator "permission",
+						ownedGroup discriminator "group",
+						ownedOrganisations discriminator "organisation",
+						ownedci discriminator "cmdb",
+						ownedCAVaults discriminator "ca_vault",
+						ownedCASafes discriminator "ca_safe"
+			discriminator-column:discr		
+		}
+		disabled:
+			Not BooleanPredicate(inenabled)
+	}
+
+	goToDetails = NamedAction (
+		BooleanCase(injumptodetailpage) {
+					when True then [
+						StringCase(outselectedresourcediscr) {
+					when "repository" then [
+						GoTo Activity Repository Detail with outselectedresourceuid to paramRepositoryUid save-state
+					]
+					when "application" then [
+						GoTo Activity Application Detail with outselectedresourceuid to paramApplicationUid save-state
+					]
+					when "account" then [
+						GoTo Activity Account Detail with outselectedresourceuid to paramAccountUid save-state
+					]
+					when "share" then [
+					GoTo Activity Application Detail with outselectedresourceuid to paramApplicationUid save-state
+					]
+					when "folder" then [
+						GoTo Activity Permission Detail with outselectedresourceuid to paramPermissionUid save-state
+					]
+					when "permission" then [
+						GoTo Activity Permission Detail with outselectedresourceuid to paramPermissionUid save-state
+					]
+					when "group" then [
+						GoTo Activity Group Detail with outselectedresourceuid to paramGroupUid save-state
+					]
+					when "organisation" then [
+						GoTo Activity Organisation Detail with outselectedresourceuid to paramOrganisationUid save-state
+					]
+					when "ca_vault" then [
+						GoTo Activity CAVault Detail with outselectedresourceuid to paramVaultUid save-state
+					]
+					when "ca_safe" then [
+						GoTo Activity CASafe Detail with outselectedresourceuid to paramSafeUid save-state
+					]
+					when "cmdb" then [
+						GoTo Page cmdbciDetailsPage with outselectedresourceuid to paramCmdbciUid save-state
+					]
+				}
+			]
+			when False then [
+				StringCase(outselectedresourcediscr) {
+					when "repository" then [
+						Dialog bwf_repositoryDetailsDialog ( outselectedresourceuid to inuid )
+					]
+					when "application" then [
+						Dialog bwf_applicationDetailsDialog ( outselectedresourceuid to inuid )
+					]
+					when "account" then [
+						Dialog bwf_accountDetailsDialog ( outselectedresourceuid to inuid )
+					]
+					when "share" then [
+						Dialog bwf_applicationDetailsDialog ( outselectedresourceuid to inuid )
+					]
+					when "folder" then [
+						Dialog bwf_permissionDetailsDialog ( outselectedresourceuid to inuid )
+					]
+					when "permission" then [
+						Dialog bwf_permissionDetailsDialog ( outselectedresourceuid to inuid )
+					]
+					when "group" then [
+						Dialog bwf_groupDetailsDialog ( outselectedresourceuid to inuid )
+					]
+					when "cmdb" then [
+						Dialog bwf_cmdbciDetailsDialog ( outselectedresourceuid to inuid, True to inshowbottomup, True to inshowtopdown)
+					]
+					when "organisation" then [
+						Dialog bwf_organisationDetailsDialog ( outselectedresourceuid to inuid,
+																True to inshowsuborganisationtree
+						)
+					]
+				}
+			]
+		}
+	)
+
+	ConditionalGroup {
+		IntCondition(Count ownedResources) {
+			when =0 then [
+				Header {
+					value:$fragmentIdentityManagedResourcesNLS.empty
+					styling:bigTitleStyle
+				}
+			]		
+			otherwise [
+				Table {
+					data: ownedResources
+					layout: Layout { grab: horizontal True vertical True }
+					label: Label { break: True }
+					configurable: True
+					show-filter: True
+					show-count: True						
+					persist-configuration:True
+					double-click: BooleanCase ( incanshowdetails ) {
+						when True then [ 
+							StringCase ( outselectedresourceuid ) {
+								when Not IsEmpty then [
+									ExecuteNamedAction goToDetails
+								]
+							}
+						 ]
+						when False then [] 
+					}
+					Column {
+						column: resourceuid
+						hidden: True
+						selection: outselectedresourceuid
+					}
+					Column {
+						column: discr
+						hidden: True
+						selection: outselectedresourcediscr
+					}
+					Column {
+						column: expertisedomaindisplayname
+ 						text:Transform Current expertisedomaincode using bwfManagerTypeMapping
+ 						header: $fragmentIdentityManagedResourcesNLS.expertisedomain
+						sortable: True
+						filterable: True
+						width: 20%
+					}									
+					Column {
+						column: resourcetype
+						header: $fragmentIdentityManagedResourcesNLS.type
+						selection:outselectedresourcetype
+						sortable: True
+						filterable: True
+						width: 20%
+						actions-disabled: Not BooleanPredicate ( incanshowdetails )
+						actions: ExecuteNamedAction goToDetails
+						tooltip: $fragmentIdentityManagedResourcesNLS.showdetails
+					}									
+					Column {
+						column: resourcename
+						header: $fragmentIdentityManagedResourcesNLS.displayname
+						selection:outselectedresourcename
+						sortable: True
+						filterable: True
+						width: 100%
+						actions-disabled: Not BooleanPredicate ( incanshowdetails )
+						actions: ExecuteNamedAction goToDetails
+						tooltip: $fragmentIdentityManagedResourcesNLS.showdetails
+					}
+					Column {
+						column: resourcecategory
+						header: $fragmentIdentityManagedResourcesNLS.category
+						sortable: True
+						filterable: True
+						width: 20%
+						actions-disabled: Not BooleanPredicate ( incanshowdetails )
+						actions: ExecuteNamedAction goToDetails
+						tooltip: $fragmentIdentityManagedResourcesNLS.showdetails
+					}									
+					Column {
+						column: trends
+						header: $bw_fragment.trends
+						text:Transform Current trends using bwf_trendStatusColumn 
+						styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+						image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+						tooltip:$bwf_trendStatusColumnNLS.tooltip
+						sortable: True
+						filterable: True
+						width: 10%
+					}												
+				}
+			]
+		}
+	}
+}

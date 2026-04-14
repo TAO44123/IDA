@@ -1,0 +1,158 @@
+bwdsm_listDsCfg = DatasetService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: listDsCfgRest
+   
+   category = Input  
+    // columns 
+    id = Column 
+    name= Column 
+    category = Column
+    type = Column
+    description = Column 
+    enabled = Column { type: Boolean}
+    scheduling = Column    
+}
+
+bwdsm_getDsCfg = DatasetService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: getDsCfgRest
+   pid = Input{ mandatory: True  type: Integer}
+   // cols
+ 	 id = Column 
+ 	 name=Column 
+    category = Column
+    type = Column
+    description = Column 
+    enabled = Column { type: Boolean}
+    config = Column
+    scheduling = Column
+}
+
+/* adds a new datasource and returns recordid */
+bwdsm_createDsCfg = IntService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: createDsCfgRest 
+   type = Input{ mandatory: True }
+   category = Input{ mandatory: True }
+   name=Input {mandatory: True}
+   description = Input
+   enabled = Input { type: Boolean default: True }
+   config = Input {mandatory: True}
+   scheduling = Input {mandatory: True default: ""
+  }     
+}
+
+/* updates existing datasource with the given id
+ * return OK or error string  
+ */
+bwdsm_updateDsCfg = StringService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: updateDsCfgRest 
+   pid = Input{ mandatory: True  type: Integer}  
+   description = Input
+   enabled = Input { type: Boolean }
+   config = Input {mandatory: True}
+   scheduling = Input {}    
+}
+
+bwdsm_updateFullDsCfg = StringService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: updateFullDsCfgRest 
+   pid = Input{ mandatory: True  type: Integer}  
+   type = Input{ mandatory: True }
+   category = Input{ mandatory: True }
+   name=Input {mandatory: True}
+   description = Input
+   enabled = Input { type: Boolean default: True }
+   config = Input {mandatory: True}
+   scheduling = Input {mandatory: True default: ""}    
+}
+
+bwdsm_toggleDsEnabledCfg = StringService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: toggleDsEnabledRest 
+   pid = Input{ mandatory: True  type: Integer}
+   enabled = Input { type: Boolean }
+}
+
+/* updates existing datasource with the given id
+ * returns "OK" or error string  
+ */
+bwdsm_deleteDsCfg = StringService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: deleteDsCfgRest 
+   pid = Input{ mandatory: True  type: Integer}
+}
+
+/* BATCH */
+
+bwdsm_listBatches = DatasetService {
+ 	javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: listBatches
+    id = Column { type: Integer}
+    principal_name = Column 
+    status = Column
+    submit_date = Column { type: Date }
+    start_date = Column { type: Date}
+    completed_date = Column { type: Date}
+    error_message = Column 
+}
+
+bwdsm_getCurrentBatch = DatasetService {
+ 	javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: getCurrentBatch
+    id = Column { type: Integer}
+    principal_name = Column 
+    status = Column
+    submit_date = Column { type: Date }
+    error_message = Column    
+}
+
+bwdsm_getLastCompletedBatch = DatasetService {
+ 	javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: getLastCompletedBatch
+    id = Column { type: Integer}
+    principal_name = Column 
+    status = Column
+    submit_date = Column { type: Date } //ISO 8601 format eg. 2022-09-19T21:55:08.533494Z
+    start_date = Column { type: Date } //ISO format 
+    completed_date = Column { type: Date } //ISO format 
+    error_message = Column    
+}
+
+bwdsm_startBatch = EventService {
+   javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: startBatch
+   principal=Input{ mandatory: True } 
+   id = Output { type: Integer}
+   message = Output { }
+   success = Output { type: Boolean}
+}
+
+bwdsm_listFiles = DatasetService {
+ 	javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+   javascript-method: listFiles 
+    name = Column
+    path = Column 
+    size = Column { type: Integer}
+}
+
+/* upload */ 
+
+bwdsm_zipFile = EventService { 
+  //javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+  //javascript-method: buildZipFile
+  reference: fileutils
+  selection: zipFiles
+  filepath = Input { }
+  localfilepath = Input { }
+  zipfilepath = Output { }
+  error = Output { }
+} 
+
+bwdsm_uploadZipFile = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/services/services.javascript"
+  javascript-method: uploadZipFile 
+  file = Input { mandatory: True}
+  source = Input { mandatory: True}
+}

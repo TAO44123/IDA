@@ -1,0 +1,147 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+import "/webportal/pages/bw_access360/reports/appaccessrights.page"
+
+import "/webportal/pages/bw_fragments/share/resources.page"
+
+/* Nationalized labels here */
+access360r_share_accessrightscs360NLS = NLS {
+	title [en "Access analysis" fr "Analyse des droits d'accès"]
+	dyntitle [en "{0} access analysis" fr "Analyse des droits d''accès pour {0}"]
+	description [
+		en "This report presents the access rights to the content of the share in the form of a pivot table. Only active accounts are taken into account. It is possible to display only the differences with respect to a given date. It is possible to modify the columns or export the results by right-clicking on the table."
+		fr "Ce rapport présente les droits d'accès au contenu du partage sous la forme d'un tableau croisé dynamique. Seuls les comptes actifs sont pris en compte. Il est possible de n'afficher que les différences par rapport à une date donnée. Il est possible de modifier les colonnes ou d'exporter les résultats en faisant un clic droit sur le tableau"
+	]
+}
+
+access360r_share_accessrights360cs = Page {
+	title: $access360r_share_accessrightscs360NLS.title
+	dynamic-title: $access360r_share_accessrightscs360NLS.dyntitle(application.displayname)
+	description: $access360r_share_accessrightscs360NLS.description
+	tags: "share" priority 200, "byuid" , "analytics"
+	icon: "16/details/analytics_16.png" large-icon: "48/details/analytics_48.png"
+	feature:All(unstructureddata_license, bwa_sharesharerightscs)
+	
+	mixins: simpleReport	
+
+	/* Parameters here */
+	uid = Parameter { type: String hidden: True }
+	
+	/* Variables here */
+	
+	/* Datasets and records here */
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+	
+	application = Record {
+		view:bwf_applicationDetail with uid to uid
+	}
+
+	rights = Dataset {
+		view:bwaccess360r_share_rightscs with uid to uid, UserVariable session_comparisonTimeslotTeam360 to dummy, UserVariable session_folderDepth to depth
+		trend: Trend {
+			exclude-new:False
+			exclude-same:False
+			include-removed:True
+			join-column:key
+			value-column:val
+			status-column-name:status		
+			timeslot:UserVariable session_comparisonTimeslotTeam360
+		}
+	
+		excludes:
+		OrPredicate {
+			AndPredicate {
+				StringPredicate(Current status) { when 'Removed' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Invalid' then True }
+				BooleanPredicate(UserVariable session_exclRemoved)
+			}
+			AndPredicate {
+				StringPredicate(Current status) { when 'Identical' then True }
+				BooleanPredicate(UserVariable session_exclSimilar)
+			}
+		}
+	}
+
+	managedapps = Dataset {
+		view:enduser360_managedapplications with uid to uid
+	}
+	
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+				Combo {
+					variable:UserVariable session_folderDepth
+					tooltip:$session_folderDepthNLS.tooltip
+					label:$session_folderDepthNLS.label
+					layout:Layout {grab:horizontal False vertical False hint:width 96}
+					options:Static {
+						Option { text:'<=1' value:'<1' }
+						Option { text:'<=2' value:'<2' }
+						Option { text:'<=3' value:'<3' }
+						Option { text:'=1' value:'=1' }
+						Option { text:'=2' value:'=2' }
+						Option { text:'=3' value:'=3' }
+					}
+				}
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				CrossTable {
+					data:rights
+					cluster-sortable:True
+					multi-selection:True
+					swappable:True
+					user-configurable:True
+					layout:Layout {cell-width:32px  grab: horizontal True vertical True}
+					columns:Dim {value:applicationuid label:applicationdisplayname tooltip:applicationdisplayname header:$application.concept},Dim {value:permissionuid label:permissioncode tooltip:permissioncode header:$fragmentPFolderNLS.code} 
+					rows:	Dim {value:organisationuid label:organisationdisplayname header:$organisation.concept},
+							Dim {value:jobtitledisplayname label:jobtitledisplayname header:$identity.jobtitledisplayname width:160px tooltip:jobtitledisplayname initially-masked:True},
+							Dim {value:identityinternal label:identityinternal header:$identity.internal width:100px initially-masked:True},
+							Dim {value:identityuid label:identityfullname tooltip:identityfullname width:160px header:$identity.fullname},
+							Dim {value:accountuid label:accountlogin tooltip:accountlogin width:160px header:$account.login }
+					cell-content:CellContent {text: Current rights cluster-value:'X' styling:StringStyling(Current status) { when 'New' then aartimeline_highlightnew360 when 'Removed' then aartimeline_highlightremoved360 when 'Modified' then aartimeline_highlightmodified360 }}
+				}
+			}
+		}
+	}
+}

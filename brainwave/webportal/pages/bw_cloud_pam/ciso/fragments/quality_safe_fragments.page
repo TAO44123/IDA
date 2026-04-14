@@ -1,0 +1,477 @@
+/* Import other pages here */
+
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_cloud_base/resources/icons.page"
+import "/webportal/pages/bw_cloud_base/resources/mappings.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/ciso_fragments_quality.page"
+import "/webportal/pages/bw_cloud_pam/resources/nls/controls.page"
+
+/* SAFE */
+
+CTRL_SAFE_GROUP_EMPTY = Constant {value: "CA_SAFE_GROUP01"}
+CTRL_SAFE_GROUP_DISABLED_ACCOUNTS = Constant {value: "CA_SAFE_GROUP02"}
+CTRL_SAFE_GROUP_ONEGROUP = Constant {value: "CA_SAFE_GROUP03"}
+CTRL_SAFE_GROUP_ONEACCOUNT = Constant {value: "CA_SAFE_GROUP04"}
+GROUP_ALL = Constant {value: "GROUP_ALL"}
+
+CTRL_SAFE_ACCOUNT_DORMANT = Constant {value: "CA_SAFE_ACCOUNT11"}
+CTRL_SAFE_ACCOUNT_DISABLED = Constant {value: "CA_SAFE_ACCOUNT12"}
+CTRL_SAFE_ACCOUNT_SERVICE = Constant {value: "CA_SAFE_ACCOUNT13"}
+CTRL_SAFE_ACCOUNT_ANY = Constant {value: "CA_SAFE_ACCOUNT"}
+ACCOUNT_ALL = Constant { value: "ACCOUNTS_ALL"}
+
+/* 
+ * Onglet SAFE de la page ciso quality dashboard 
+ */
+ 
+bwcpam_quality_safe = PageFragment {
+	mixins: dashboardMixin
+	
+	selectedVault = Variable
+	controlName = Variable
+	detailType = Variable 
+	detailTitle = Variable 
+	accountAnyRead = Variable { type: Boolean initial: False }
+	accountAllRead = Variable { type: Boolean initial: False }
+	
+//	groups_nb = Variable  { type: Integer}
+	
+	// datasets
+	vaults = Dataset {
+	  view: vault_list
+	}
+
+	nb_dormant = Record {
+		view: ciso_risk_count_discrepancies with 'CA_SAFE_ACCOUNT11' to control_code, 'false' to isvault, 1 to isquality
+	}
+
+	nb_accounts = Record {
+		view: ciso_risk_count_discrepancies with selectedVault to vault_code unless-empty, 'NB_ACCOUNTS_ACCESSING_SAFE' to control_code, 'false' to isvault, 1 to isquality
+	}
+	
+	// group datasets 
+	_groups_controls_nb = Dataset {
+		view: ciso_risk_count_discrepancies with selectedVault to vault_code unless-empty, 'false' to isvault, 1 to isquality
+		trend: Trend {
+			exclude-new: False
+			exclude-same: False
+			include-removed: True
+			join-column: controlidentifier
+			value-column: nbdiscrepancies
+			difference-column-name: diff
+			timeslot: FromPage(-1)
+		}
+	}
+	
+	_group_controls_titles = Dataset {
+	   values: [  
+	    ( id -> Constant CTRL_SAFE_GROUP_EMPTY , title -> $fragments_commonNLS.title.empty),
+			( id -> Constant CTRL_SAFE_GROUP_DISABLED_ACCOUNTS , title -> $fragments_commonNLS.title.disabled),
+			( id -> Constant CTRL_SAFE_GROUP_ONEGROUP , title -> $fragments_commonNLS.title.onegroupe),
+			( id -> Constant CTRL_SAFE_GROUP_ONEACCOUNT , title -> $fragments_commonNLS.title.oneaccount )   
+	   ]
+	}
+	
+	groups_controls_nb_titles = Dataset {
+	  join: Join { 
+	    primary-dataset: _group_controls_titles 
+	    primary-column: id 
+	    primary-optional: False
+	    primary-prefix: ctrl_
+	    secondary-dataset: _groups_controls_nb 
+	    secondary-column: controlidentifier
+	    secondary-cardinality: optional      
+	  }	  
+	}
+	
+//	groups_access = Dataset {
+//     view: safe_access_groups_all // with selectedSafe to safe , selectedVault to vault	
+//     count-variable: groups_nb       
+//	}
+	
+	_account_controls_nb = Dataset {
+		view: ciso_risk_count_discrepancies with selectedVault to vault_code unless-empty, 'false' to isvault, 1 to isquality
+		trend: Trend {
+			value-column: nbdiscrepancies
+			join-column: controlidentifier
+			difference-column-name: diff
+			timeslot: FromPage(-1)
+			exclude-new: False
+			exclude-same: False
+			include-removed: True
+		}
+	}
+	
+	_account_controls_titles = Dataset {
+	   values: [  
+//	    ( id -> Constant CTRL_SAFE_ACCOUNT_DORMANT , title -> $fragments_commonNLS.title.ctrl.dormant),
+			( id -> Constant CTRL_SAFE_ACCOUNT_DISABLED , title -> $fragments_commonNLS.title.ctrl.disabled),
+			( id -> Constant CTRL_SAFE_ACCOUNT_SERVICE , title -> $fragments_commonNLS.title.ctrl.service)  
+	   ]
+	}
+	
+	account_controls_nb_titles = Dataset {
+	  join: Join { 
+	    primary-dataset: _account_controls_titles 
+	    primary-column: id 
+	    primary-optional: False
+	    primary-prefix: ctrl_
+	    secondary-dataset: _account_controls_nb 
+	    secondary-column: controlidentifier
+	    secondary-cardinality: optional      
+	  }	  
+	}
+	
+	accounts_access = Dataset {
+     view: safe_access_accounts_all with selectedVault to vault	
+     disabled: AndPredicate {
+     	Not BooleanPredicate(accountAllRead)
+		StringPredicate(detailType) { when Constant ACCOUNT_ALL then False otherwise True }
+	 }
+	}
+				
+  // selection combos                 
+   Flow {
+     disposition: Horizontal
+     layout: Layout { grab: horizontal False vertical False hint: height 50 width 600}
+     Group {
+       Combo { 
+         options: Dynamic { data: vaults text: Current displayname value: Current code }
+         variable: selectedVault
+         label: $fragments_commonNLS.label.vault
+         allow-none: True                          
+       }                      
+     }
+   } 
+
+  Grid {
+   layout: Layout { grab:horizontal True vertical False  }
+   columns: GridColumn { width: 100 gap:20 } , GridColumn { width: 100px gap:20  }
+	   GridRow {
+	      height: 300
+	      // account kpis 
+	  		GridCell {
+	 	  		 Group {
+	  		    styling: cssRound		  		    
+	  		    Header { value: $fragments_commonNLS.ca.account}
+
+						Grid {
+						  columns: GridColumn{ width: grow}, GridColumn{ width: 100 },GridColumn{ width: 50}
+						  GridRow {
+						     
+						     GridCell {
+						        Text { value: $fragments_commonNLS.title.ctrl.dormant styling: indLabelStyle lines: 1}
+						     }
+						     GridCell {
+						        Text { value: NonEmpty(nb_dormant.nbdiscrepancies, 0) styling: indCountSmallStyle align: Right}
+						     }
+						     GridCell { }
+						     GridCell {
+						        Button {
+						          image: %cmd_24.next
+						          mixins: linkButtonMixin
+						          actions: Set "CA_SAFE_ACCOUNT11" to controlName, Set True to accountAnyRead, Set Constant CTRL_SAFE_ACCOUNT_DORMANT to detailType, Set $fragments_commonNLS.title.ctrl.dormant to detailTitle
+						          disabled: Eval "nb_dormant.controlidentifier == null || nb_dormant.nbdiscrepancies == 0 "
+								}
+							}						     
+						  }
+
+						  GridRowGroup {
+						    iterate-on: account_controls_nb_titles
+						    GridRow{
+						      GridCell {
+						        Text { value: Current ctrl_title styling: indLabelStyle lines: 1}
+						      }
+						      GridCell {
+						        Text { value: Eval "current.nbdiscrepancies ? current.nbdiscrepancies : 0 " styling: indCountSmallStyle align: Right} //NONLS
+						      }	
+							    GridCell {
+						        Image { image: TemplateImageSelection( Current diff) using bwcdrm_trend_16 
+						        }
+						      }
+						      GridCell {
+						        Button {
+						          image: %cmd_24.next
+						          mixins: linkButtonMixin
+						          actions: Set Current ctrl_id to controlName, Set True to accountAnyRead, Set Constant CTRL_SAFE_ACCOUNT_ANY to detailType, Set Current ctrl_title to detailTitle
+						          disabled: Eval "current.nbdiscrepancies == 0 "
+						        }
+						      }	
+						      							      							      
+						    }
+						  }
+
+						  GridRow {
+						     
+						     GridCell {
+						        Text { value: $fragments_commonNLS.text.safeaccount styling: indLabelStyle lines: 1}
+						     }
+						     GridCell {
+						        Text { value: NonEmpty(nb_accounts.nbdiscrepancies, 0) styling: indCountSmallStyle align: Right}
+						     }
+						     GridCell { }
+						     GridCell {
+						        Button {
+						          image: %cmd_24.next
+						          mixins: linkButtonMixin
+						          actions: Set True to accountAllRead, Set Constant ACCOUNT_ALL to detailType, Set $fragments_commonNLS.button.safeaccount to detailTitle
+						          disabled: Eval "nb_accounts.controlidentifier == null || nb_accounts.nbdiscrepancies == 0 "
+								}
+							}						     
+						  }
+					}		  		    
+				} 		  
+			} 
+	  		 			      
+				// group kpis	
+	  		GridCell {
+	  		  Group {
+	  		    styling: cssRound
+	  		    Header { value: $fragments_safeNLS.ca.gp}
+
+						Grid {
+						  columns: GridColumn{ width: grow}, GridColumn{ width: 100 },GridColumn{ width: 50}
+						  GridRowGroup {
+						    iterate-on: groups_controls_nb_titles
+						    GridRow{
+						      GridCell {
+						        Text { value: Current ctrl_title styling: indLabelStyle lines: 1}
+						      }
+						      GridCell {
+						        Text { value: Eval "current.nbdiscrepancies ? current.nbdiscrepancies : 0 " styling: indCountSmallStyle align: Right}
+						      }	
+							    GridCell {
+						        Image { image: TemplateImageSelection( Current diff) using bwcdrm_trend_16 
+						        }
+						      }
+						      GridCell {
+						        Button {
+						          image: %cmd_24.next
+						          mixins: linkButtonMixin
+						          actions: Set Current ctrl_id to detailType, Set Current ctrl_title to detailTitle
+						          disabled: Eval "current.nbdiscrepancies == 0 "
+						        }
+						      }	
+						      							      							      
+						    }
+						  }
+
+//						  GridRow {
+//						     
+//						     GridCell {
+//						        Text { value: $fragments_commonNLS.text.safegp styling: indLabelStyle lines: 1}
+//						     }
+//						     GridCell {
+//						        Text { value: groups_nb styling: indCountSmallStyle align: Right}
+//						     }
+//						     GridCell {
+//						     }
+//						      GridCell {
+//						        Button {
+//						          image: %cmd_24.next
+//						          mixins: linkButtonMixin
+//						          actions: Set Constant GROUP_ALL to detailType, Set $fragments_safeNLS.ca.gp to detailTitle
+//						           disabled: Eval "groups_nb.get() == 0 "
+//							}
+//						}							     
+//					}
+				}											
+			}  			  			 
+		}	  		     		
+
+	}
+} 
+			
+	 // Detail panel 
+  Group {
+     styling: cssRound	
+     Header {
+       value:  detailTitle 
+     }
+     ConditionalGroup { StringCondition( detailType )	{
+       when Constant CTRL_SAFE_GROUP_EMPTY then [
+         IncludeFragment ( bwcpam_quality_groups_empty_detail with detailType binds-to controlname, selectedVault binds-to vault, value-of True to hideNbAcounts, value-of "ca_safe" to type)
+       ]
+       when Constant CTRL_SAFE_GROUP_DISABLED_ACCOUNTS then [
+         IncludeFragment ( bwcpam_quality_groups_disabled_accounts_detail with detailType binds-to controlname, selectedVault binds-to vault, value-of "ca_safe" to type)
+       ]     
+       when Constant CTRL_SAFE_GROUP_ONEGROUP then [
+         IncludeFragment ( bwcpam_quality_groups_onegroup_detail with detailType binds-to controlname, selectedVault binds-to vault, value-of "ca_safe" to type )
+       ]       
+       when Constant CTRL_SAFE_GROUP_ONEACCOUNT then [
+         IncludeFragment ( bwcpam_quality_groups_oneaccount_detail with detailType binds-to controlname, selectedVault binds-to vault, value-of "ca_safe" to type )
+       ]
+       when Constant CTRL_SAFE_ACCOUNT_DORMANT then [
+        IncludeFragment ( bwcpam_quality_account_detail with value-of controlName to controlname, value-of detailType to detailType, accountAnyRead binds-to accountAnyRead, value-of "ca_safe" to type )
+       ]
+       when Constant CTRL_SAFE_ACCOUNT_ANY then [
+        IncludeFragment ( bwcpam_quality_account_detail with value-of controlName to controlname, selectedVault binds-to vault, accountAnyRead binds-to accountAnyRead, value-of "ca_safe" to type )
+       ]
+       when Constant ACCOUNT_ALL then [
+         Table {
+				  data: accounts_access
+				  show-filter: True	  show-count: True
+				  layout: Layout { grab: horizontal True vertical True }
+				  Column { column: acc_uid  hidden: True }
+				  Column { column: acc_login header: $fragments_commonNLS.header.login width: 250px sortable: True filterable: True
+				  	actions: CloseDialog Cancel, GoTo Activity Account (CAusers) Detail with Current acc_uid to paramAccountUid save-state}
+				  Column { column: repo_code header: $fragments_commonNLS.header.ref width: 180px sortable: True filterable: True} 
+				  Column { column: ca_acc_lastlogindate header: $fragments_commonNLS.header.ca.connexion width: 200px sortable: True}
+				  Column { column: acc_lastlogindate header: $fragments_commonNLS.header.connexion width: 180px sortable: True}
+				}
+       ]
+//       when Constant GROUP_ALL then [
+//         	Table {
+//					  data: groups_access
+//					  	  show-filter: True	  show-count: True
+//					  layout: Layout { grab: horizontal True vertical True }
+//					  Column { column: grp_uid  hidden: True }
+//					  Column { column: grp_displayname header: $fragments_commonNLS.header.gp width: 250px sortable: True filterable: True
+//					  	actions: CloseDialog Cancel, GoTo Activity Group Detail with Current grp_uid to paramGroupUid save-state}
+//					  Column { column: repo_code header: $fragments_commonNLS.header.ref width: 180px sortable: True filterable: True}
+//					}
+//				]
+			}
+		}   
+	}             			
+} 
+
+
+// detail fragments
+
+bwcpam_quality_account_detail = PageFragment {
+   mixins: dashboardMixin 
+  type = Parameter { mandatory: True}
+  controlname = Variable
+  vault = Variable
+	detailType = Variable
+	accountAnyRead = Variable { type: Boolean initial: False }
+   
+  accounts = Dataset {
+    view: vaultsafe_account_controls_detail with controlname to control_name, vault to vault, type to type
+     disabled: AndPredicate {
+     	Not BooleanPredicate(accountAnyRead)
+		StringPredicate(detailType) { when Constant CTRL_SAFE_ACCOUNT_ANY then False otherwise True }
+	 }
+  }
+	Table {
+	  data: accounts
+	  show-filter: True	  show-count: True	  	  
+	  layout: Layout { grab: horizontal True vertical True }
+	  Column { column: acc_uid  hidden: True }
+	  Column { column: acc_login header: $fragments_commonNLS.header.login width: 250px sortable: True filterable: True
+	  	actions: CloseDialog Cancel, GoTo Activity Account (CAusers) Detail with Current acc_uid to paramAccountUid save-state}
+	  Column { column: repo_code header: $fragments_commonNLS.header.ref width: 180px sortable: True filterable: True}	  
+	  Column { column: ca_acc_lastlogindate header: $fragments_commonNLS.header.ca.connexion width: 200px sortable: True}
+	  Column { column: acc_lastlogindate header: $fragments_commonNLS.header.connexion width: 180px sortable: True}
+	}
+}	
+ 
+
+bwcpam_quality_groups_empty_detail = PageFragment {
+ 	mixins: dashboardMixin
+ 	hideNbAcounts = Parameter { type: Boolean default: False }  
+ 	type = Parameter { mandatory: True} 
+  controlname = Variable 
+  vault = Variable
+	safe = Variable
+
+  
+  groups = Dataset {
+    view: safevault_groups_control_detail with controlname to control_name, vault to vault, safe to safe, type to type
+    disabled: Eval "! controlname.get().endsWith('GROUP01')"
+  }
+  
+	Table {
+	  data: groups
+	  show-filter: True	  show-count: True
+	  layout: Layout { grab: horizontal True vertical True }
+	  Column { column: grp_uid  hidden: True }
+	  Column { column: grp_displayname header: $fragments_commonNLS.header.gp width: 250px sortable: True filterable: True
+	  	actions: CloseDialog Cancel, GoTo Activity Group Detail with Current grp_uid to paramGroupUid save-state}
+	  Column { column: repo_code header: $fragments_commonNLS.header.ref width: 180px sortable: True filterable: True}
+	  Column { column: nb_accounts align: Right header: $fragments_safeNLS.nb.account hidden: BooleanPredicate( hideNbAcounts) sortable: True}
+	}
+}	 
+
+bwcpam_quality_groups_disabled_accounts_detail = PageFragment {
+ 	mixins: dashboardMixin
+ 	hideNbAcounts = Parameter { type: Boolean default: False }  
+ 	type = Parameter { mandatory: True} 
+  controlname = Variable 
+  vault = Variable
+	safe = Variable
+
+  
+  groups = Dataset {
+    view: safevault_groups_control_detail with controlname to control_name, vault to vault, safe to safe, type to type
+    disabled: Eval "! controlname.get().endsWith('GROUP02')"
+  }
+  
+	Table {
+	  data: groups
+	  show-filter: True	  show-count: True
+	  layout: Layout { grab: horizontal True vertical True }
+	  Column { column: grp_uid  hidden: True }
+	  Column { column: grp_displayname header: $fragments_commonNLS.header.gp width: 250px sortable: True filterable: True
+	  	actions: CloseDialog Cancel, GoTo Activity Group Detail with Current grp_uid to paramGroupUid save-state}
+	  Column { column: repo_code header: $fragments_commonNLS.header.ref width: 180px sortable: True filterable: True}
+	  Column { column: nb_accounts align: Right header: $fragments_safeNLS.nb.account hidden: BooleanPredicate( hideNbAcounts) sortable: True }
+	}
+}
+			   
+
+bwcpam_quality_groups_onegroup_detail = PageFragment {
+  mixins: dashboardMixin
+  type = Parameter { mandatory: True} 
+  controlname = Variable 
+  vault = Variable
+	safe = Variable 
+  
+  groups = Dataset {
+    view: safevault_groups_control_detail_subgroup with vault to vault, safe to safe, type to type, controlname to control_name
+    disabled: Eval "! controlname.get().endsWith('GROUP03')"
+  }
+  
+	Table {
+	  data: groups
+	  	  show-filter: True	  show-count: True
+	  layout: Layout { grab: horizontal True vertical True }
+	  Column { column: grp_uid  hidden: True }
+	  Column { column: grp_displayname header: $fragments_commonNLS.header.gp width: 250px sortable: True filterable: True
+	  	actions: CloseDialog Cancel, GoTo Activity Group Detail with Current grp_uid to paramGroupUid save-state}
+	  Column { column: repo_code header: $fragments_commonNLS.header.ref width: 180px sortable: True filterable: True}
+	  Column { column: subgrp_displayname align: Right header: $fragments_safeNLS.subgp sortable: True  filterable: True
+	    actions: CloseDialog Cancel, GoTo Activity Group Detail with Current subgrp_uid to paramGroupUid save-state
+	  }
+	}
+}	
+
+bwcpam_quality_groups_oneaccount_detail = PageFragment {
+   mixins: dashboardMixin 
+  type = Parameter { mandatory: True}  
+  controlname = Variable 
+  vault = Variable
+	safe = Variable 
+  
+  groups = Dataset {
+    view: safevault_groups_control_detail_subaccount with vault to vault, safe to safe, type to type, controlname to control_name
+    disabled: Eval "! controlname.get().endsWith('GROUP04')"
+  }
+  
+	Table {
+	  data: groups
+	  show-filter: True	  show-count: True
+	  layout: Layout { grab: horizontal True vertical True }
+	  Column { column: grp_uid  hidden: True }
+	  Column { column: grp_displayname header: $fragments_commonNLS.header.gp width: 250px sortable: True filterable: True
+	  	actions: CloseDialog Cancel, GoTo Activity Group Detail with Current grp_uid to paramGroupUid save-state}
+	  Column { column: repo_code header: $fragments_commonNLS.header.ref width: 180px sortable: True filterable: True}
+	  Column { column: sub_accountlogin align: Right header: $fragments_safeNLS.account  sortable: True filterable: True
+	    actions: CloseDialog Cancel, GoTo Activity Account (CAusers) Detail with Current sub_accountuid to paramAccountUid save-state
+	  }
+	}
+}	
+
+
+

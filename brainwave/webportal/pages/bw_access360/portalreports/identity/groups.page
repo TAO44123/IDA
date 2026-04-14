@@ -1,0 +1,267 @@
+/* Import other pages here */
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/bw_access360/reports/indirectVariables.page"
+
+import "/webportal/pages/bw_fragments/group/details/groupDetails.page"
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+
+/* Nationalized labels here */
+access360r_identity_groupsNLS = NLS {
+	title [en "Groups list" fr "Liste des groupes"]
+	dyntitle [en "{0} Groups" fr "Groupes de {0}"]
+	directgrouponly [en "only direct groups" fr "seulement les groupes directs"]
+	description [
+		en "This report lists the user groups. It is possible to filter the results in order to retrieve only the groups directly associated with the user or all the groups; it is also possible to filter the groups by repository; it is finally possible to identify only the changes made since a given date. The columns displayed are configurable and the data can be exported. To do so, right click on the report."
+		fr "Ce rapport liste les groupes de l'utilisateur\nIl est possible de filtrer les résultats de manière à ne récupérer que les groupes directements associés à l'utilisateur\nou l'ensemble des groupes\nil est aussi possible de filtrer les groupes par référentiel\nil est enfin possible d'identifier uniquement les changements réalisés depuis une date donnée\nles colonnes affichées sont configurables, il est enfin possible d'exporter le résultat en faisant clic droit sur le rapport"
+	]
+}
+
+tgtimeline_highlightnew360 = Style {
+	foreground:white
+	background:Color green
+}
+tgtimeline_highlightremoved360 = Style {
+	foreground:white
+	background:Color red
+}
+
+tgtmapping360 = StringMapping {
+	when 'Invalid' then 'Removed'
+	otherwise current
+}
+
+access360r_identity_groups = Page {
+	title: $access360r_identity_groupsNLS.title
+	description: $access360r_identity_groupsNLS.description
+	dynamic-title: $access360r_identity_groupsNLS.dyntitle(identity.fullname)
+	tags: "identity" priority 200, "byuid" , "browsing"
+	icon: "16/details/browsing_16.png" large-icon: "48/details/browsing_48.png"
+	feature:bwa_identitygroups
+	
+	mixins: simpleReport	
+	/* Parameters here */
+    org = Parameter { type: String hidden: True }
+    uid = Parameter { type: String hidden: True }
+	
+	/* Parameters here */
+	
+	/* Variables here */
+	repositoryfilter = Variable
+	onlydirectgroup = Variable { initial:True type:Boolean }
+	selectedgroup = Variable
+	selectedaccount = Variable
+	
+	/* Datasets and records here */
+	identity = Record {
+		view:br_identityDetail with uid to uid 
+	}
+	repolist = Dataset {
+		view:bwaccess360r_identityrepositorypicker with uid to uid
+	}
+
+	session_comparisontimeslots = Dataset {
+		view:bw360_prevtimeslot with PortalTimeslot.UID to currentuid
+	}
+
+	identitygroups = Dataset {
+		view:bwa360report_groupsbv with uid to uid, UserVariable session_comparisonTimeslotTeam360 to dummy, repositoryfilter to repository unless-empty, onlydirectgroup to directgrouponly, UserVariable session_comparisonTimeslotTeam360 to comparisontimeslot unless-empty, UserVariable session_exclRemoved to excluderemoved, UserVariable session_exclSimilar to excludesimilar
+	}
+	
+	showGroupDetails = NamedAction (
+		Dialog bwf_groupDetailsDialog(selectedgroup to inuid, 
+										True to inshowapplications,
+										True to inshowshares,
+										True to inshowperjob,
+										True to inshowperorg,
+										False to inshowaccounts,
+										False to inshowcontrols,
+										False to inshowdecisionhistory
+										)
+	)
+
+	showAccountDetails = NamedAction (
+		Dialog bwf_accountDetailsDialog(selectedaccount to inuid, 
+										True to inshowapplications,
+										True to inshowcontrols,
+										True to inshowdecisionhistory,
+										True to inshowgroups,
+										True to inshowowner,
+										True to inshowshares,
+										True to inshowusages
+										)
+	)
+
+	/* Page content */
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn
+		layout:Layout { grab:horizontal True vertical True } 
+		GridRow {
+			height:64
+			GridCell {
+				Combo {
+					variable:UserVariable session_comparisonTimeslotTeam360
+					layout:Layout { hint: width 200 }
+					label:$session_comparisonTimeslotTeam360NLS.label
+					tooltip:$session_comparisonTimeslotTeam360NLS.tooltip
+					options:Dynamic {
+						data:session_comparisontimeslots
+						text:Current commitdate
+						value:Current uid
+					}
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:UserVariable session_exclRemoved
+					text:$session_exclRemovedNLS.label
+					tooltip:$session_exclRemovedNLS.tooltip
+				}
+				Checkbox {
+					variable:UserVariable session_exclSimilar
+					text:$session_exclSimilarNLS.label
+					tooltip:$session_exclSimilarNLS.tooltip
+				}
+			}
+			GridCell {
+				Checkbox {
+					variable:onlydirectgroup
+					label:$access360r_identity_groupsNLS.directgrouponly
+				}
+				Combo {
+					variable:repositoryfilter
+					allow-none:True
+					layout:Layout { hint: width 200 }
+					label:$repository.concept
+					options:Dynamic {
+						data:repolist
+						text:Current repositorydisplayname
+						value:Current repositoryuid
+					}
+				}
+			}
+		}
+		GridRow {
+			height:grow
+			GridCell {
+				span:3
+			
+				PaginatedTable {
+					data:identitygroups
+					layout:Layout {grab: horizontal True vertical True }
+					page-size:1000
+					//show-count:True
+					show-filter:True
+					configurable:True
+					persist-configuration:True
+					persist-configuration-key:uid
+					show-count-button: True
+					
+					Column {sortable:True header:'' column:status styling:StringStyling(Current status) { when 'New' then tgtimeline_highlightnew360 when 'Removed' then tgtimeline_highlightremoved360 when 'Invalid' then tgtimeline_highlightremoved360 } text:Transform Current status using tgtmapping360 }
+					Column {
+						sortable:True
+						filterable:True
+						column:hrcode
+						header:$identity.hrcode
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:fullname
+						header:$identity.fullname
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:mail
+						header:$identity.mail
+						width:160px
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:internal
+						header:$identity.internal
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:arrivaldate
+						header:$identity.arrivaldate
+						initially-masked:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:departuredate
+						header:$identity.departuredate
+						initially-masked:True
+					}
+					Column {
+						column:accountuid
+						selection:selectedaccount
+						hidden:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlogin
+						header:$account.login
+						actions:ExecuteNamedAction showAccountDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountusername
+						header:$account.username
+						initially-masked:True
+						actions:ExecuteNamedAction showAccountDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:accountlastlogindate
+						header:$account.lastlogindate
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:repositorydisplayname
+						header:$repository.concept
+					}
+					Column {
+						column:groupuid
+						selection:selectedgroup
+						hidden:True
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:groupcode
+						header:$pgroup.code
+						width:300px
+						initially-masked:True
+						actions:ExecuteNamedAction showGroupDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:groupdisplayname
+						header:$pgroup.displayname
+						width:260px
+						actions:ExecuteNamedAction showGroupDetails
+					}
+					Column {
+						sortable:True
+						filterable:True
+						column:groupcomment
+						header:$pgroup.comment
+						width:200px
+						actions:ExecuteNamedAction showGroupDetails
+					}
+				}
+			}
+		}
+	}
+}

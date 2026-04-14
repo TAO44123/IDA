@@ -1,0 +1,287 @@
+import "/webportal/pages/bw_fragments/application/details.page"
+import "/webportal/pages/bw_fragments/application/businessactivities.page"
+import "/webportal/pages/bw_fragments/application/accounts.page"
+import "/webportal/pages/bw_fragments/application/permissions.page"
+import "/webportal/pages/bw_fragments/application/usages.page"
+import "/webportal/pages/bw_fragments/application/controls.page"
+import "/webportal/pages/bw_fragments/application/decisionhistory.page"
+import "/webportal/pages/bw_fragments/application/perjob.page"
+import "/webportal/pages/bw_fragments/application/perorg.page"
+import "/webportal/pages/bw_fragments/custom/applicationExtendedDetails.page"
+
+
+bwf_applicationDetailsDialogNLS = NLS {
+    title [en 'Detail' fr "Détails"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	applications [en "Applications" fr "Applications"]
+	application [en "Application" fr "Application"]
+	businessactivities [en "Business activities" fr "Activités métier"]
+	accounts [en "Accounts" fr "Comptes"]
+	permissions [en "Permissions" fr "Permissions"]
+	usages [en "Usages" fr "Usages"]
+	controls [en "Controls" fr "Contrôles"]
+	analytics [en "Analytics" fr "Analyses"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	oorigin [en "Organisations origin" fr "Organisations d'origine"]
+	jorigin [en "Jobs origin" fr "Métiers d'origine"]
+}
+
+
+ /* Redirect to the right activity depending on the application family or application type */
+
+/**
+ * <span style="white-space: pre-line">
+ * Application details dialog box
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>application uid</li>
+ * <li><b>inshowbusinessactivities </b>optional boolean, true to show business activities tab, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show application origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show application origin per job tab, false by default</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowaccountsfororganisation </b>optional boolean, true to show accounts tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default</li>
+ * <li><b>inshowacls </b>optional boolean, true to show ACLs at a for data driven applications such as shares (displayed only if ACLs are configured) , false by default</li>
+ * <li><b>inshowpermissions </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update application description (false by default)</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update application owners (false by default). Warning, this function is also restricted through a Feature</li>
+ * <li><b>incanupdatebuowners </b>optional, boolean value, can update application business activities owners (false by default)</li>
+ * <li><b>incanreconcile </b>optional, boolean value, can reconcile application accounts (false by default)</li>
+ * </ul>
+ * </span>
+ */
+bwf_applicationDetailsDialog = Dialog {
+	title:$bwf_applicationDetailsDialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	enter-event:Set NonEmpty(application.applicationfamily, "NOAPPFAMILY") to appfamily
+
+	inuid = Variable
+	inshowbusinessactivities = Variable { type:Boolean initial:False }
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowaccountsfororganisation = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	incanreconcile = Variable { type:Boolean initial:False }
+	inshowpermissions = Variable { type:Boolean initial:False }
+	inshowacls = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+	incanupdatebuowners = Variable { multivalued:False type:Boolean initial:False }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+
+	appfamily = Variable
+
+	application = Record {
+		view: bwf_applicationDetail with inuid to uid
+	}
+	
+	IncludeDynamicFragment{
+		dynamic-name:[
+						Concat("bwf_applicationDetailsFragment",appfamily),
+						Concat("bwf_applicationDetailsFragment",application.applicationtype)
+					]
+						 
+		base-fragment:  bwf_applicationDetailsFragment with inuid binds-to inuid,
+															inshowbusinessactivities binds-to inshowbusinessactivities,
+															inshowaccounts binds-to inshowaccounts,
+															inshowaccountsfororganisation binds-to inshowaccountsfororganisation,
+															inshowperjob binds-to inshowperjob,
+															inshowperorg binds-to inshowperorg,
+															incanreconcile binds-to incanreconcile,
+															inshowacls binds-to inshowacls,
+															inshowpermissions binds-to inshowpermissions,
+															inshowusages binds-to inshowusages,
+															inshowcontrols binds-to inshowcontrols,
+															inshowdecisionhistory binds-to inshowdecisionhistory,
+															incanupdatedescription binds-to incanupdatedescription,
+															incanupdateowners binds-to incanupdateowners,
+															incanupdatebuowners binds-to incanupdatebuowners,
+															inorganisationuid binds-to inorganisationuid,
+															inonlydirectselection binds-to inonlydirectselection
+		
+		layout:Layout { grab:horizontal True vertical True}
+	}
+
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Application details default fragment
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>application uid</li>
+ * <li><b>inshowbusinessactivities </b>optional boolean, true to show business activities tab, false by default</li>
+ * <li><b>inshowperorg </b>optional boolean, true to show application origin per organisation tab, false by default</li>
+ * <li><b>inshowperjob </b>optional boolean, true to show application origin per job tab, false by default</li>
+ * <li><b>inshowaccounts </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowaccountsfororganisation </b>optional boolean, true to show accounts tab filtered for a given organisation, as to be used with inorganisationuid and inonlydirectselection, false by default</li>
+ * <li><b>inshowpermissions </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowusages </b>optional boolean, true to show usages tab, false by default</li>
+ * <li><b>inshowcontrols </b>optional boolean, true to show controls tab, false by default</li>
+ * <li><b>inshowdecisionhistory </b>optional boolean, true to show decision history tab, false by default</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update application description (false by default)</li>
+ * <li><b>incanupdateowners </b>optional, boolean value, can update application owners (false by default). Warning, this function is also restricted through a Feature</li>
+ * <li><b>incanupdatebuowners </b>optional, boolean value, can update application business activities owners (false by default)</li>
+ * <li><b>incanreconcile </b>optional, boolean value, can reconcile application accounts (false by default)</li>
+ * </ul>
+ * </span>
+ */
+bwf_applicationDetailsFragment = PageFragment {
+	enter-event:IntCase(application.bwa_applicationanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+				IntCase(application.bwa_applicationanalytics_nbbusinessactivity)  { when >0 then [ Set True to hasbusinessactivity ] }
+	
+	inuid = Variable
+	inshowbusinessactivities = Variable { type:Boolean initial:False }
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowaccountsfororganisation = Variable { type:Boolean initial:False }
+	inshowperjob = Variable { type:Boolean initial:False }
+	inshowperorg = Variable { type:Boolean initial:False }
+	incanreconcile = Variable { type:Boolean initial:False }
+	inshowpermissions = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	incanupdateowners = Variable { multivalued:False type:Boolean initial:False }
+	incanupdatebuowners = Variable { multivalued:False type:Boolean initial:False }
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inshowacls = Variable { type:Boolean initial:False } // UNUSED ON PURPOSE
+	
+	nbdefects = Variable { private:True }
+	hasbusinessactivity = Variable { private:True initial:False }
+	hasusages = Variable { private:True initial:False }
+
+	showextended = Variable { private:True initial:False }
+	
+	active_details = Variable { initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { initial:False multivalued:False type:Boolean }
+	active_accountsfororganisation = Variable { initial:False multivalued:False type:Boolean }
+	active_businessactivities = Variable { initial:False multivalued:False type:Boolean }
+	active_permissions = Variable { initial:False multivalued:False type:Boolean }
+	active_perorg = Variable { initial:False multivalued:False type:Boolean }
+	active_perjob = Variable { initial:False multivalued:False type:Boolean }
+	active_usages = Variable { initial:False multivalued:False type:Boolean }
+	active_control = Variable { initial:False multivalued:False type:Boolean }
+	active_decision = Variable { initial:False multivalued:False type:Boolean }
+	
+	application = Record {
+		view: bwf_applicationDetail with inuid to uid
+	}
+	
+	TabFolder {
+		border:False
+		TabItem {
+			text:$bwf_applicationDetailsDialogNLS.application
+			activation-event:Set True to active_details
+		
+			IncludeFragment {
+				fragment:fragmentApplicationFullDetails
+				with value-of inuid to inuid, incanupdatedescription binds-to incanupdatedescription, incanupdateowners binds-to incanupdateowners, value-of active_details to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsDialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentApplicationExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem {
+			text:$bwf_applicationDetailsDialogNLS.accounts
+			activation-event:Set True to active_accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+		
+			IncludeFragment {
+				fragment:fragmentApplicationAccounts
+				with value-of inuid to inuid, value-of True to incanshowdetails, incanreconcile binds-to incanreconcile, value-of active_accounts to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsDialogNLS.accounts
+			hidden:Not BooleanPredicate(inshowaccountsfororganisation)
+			activation-event: Set True to active_accountsfororganisation
+			
+			IncludeFragment (fragmentApplicationAccountsForOrg with value-of inuid to inuid,  
+							inorganisationuid binds-to inorganisationuid,
+							inonlydirectselection binds-to inonlydirectselection,
+							value-of True to incanshowdetails,
+							value-of NonEmpty(ConfigurationVariable "ias_permissionroletype", "Role") to inPermissionType,
+							value-of active_accountsfororganisation to inenabled )
+		}
+		TabItem {
+			text:$bwf_applicationDetailsDialogNLS.businessactivities
+			feature:sod_license
+			activation-event:Set True to active_businessactivities
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(hasbusinessactivity)
+					Not BooleanPredicate(inshowbusinessactivities)
+				}
+		
+			IncludeFragment {
+				fragment:fragmentApplicationBusinessActivities
+				with value-of inuid to inuid, value-of True to incanshowdetails, incanupdatebuowners binds-to incanupdateowners, value-of active_businessactivities to inenabled
+			}
+		}
+		TabItem {
+			text:$bwf_applicationDetailsDialogNLS.permissions
+			activation-event:Set True to active_permissions
+			hidden:Not BooleanPredicate(inshowpermissions)
+		
+			IncludeFragment {
+				fragment:fragmentApplicationPermissions
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_permissions to inenabled
+			}
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsDialogNLS.oorigin
+			hidden:Not BooleanPredicate(inshowperorg)
+			activation-event: Set True to active_perorg
+			
+			IncludeFragment (fragmentApplicationPerOrg with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perorg to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsDialogNLS.jorigin
+			hidden:Not BooleanPredicate(inshowperjob)
+			activation-event: Set True to active_perjob
+			
+			IncludeFragment (fragmentApplicationPerJob with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_perjob to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsDialogNLS.usages
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowusages)
+					Not BooleanPredicate(hasusages)
+				}
+			activation-event: Set True to active_usages
+			
+			IncludeFragment (fragmentApplicationUsages with value-of inuid to inuid, value-of inshowusages to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsDialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentApplicationAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of inshowcontrols to inenabled )
+		}
+		TabItem  {
+			text:$bwf_applicationDetailsDialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentApplicationDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}
+}

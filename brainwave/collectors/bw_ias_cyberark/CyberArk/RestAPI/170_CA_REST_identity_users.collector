@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Provisioning version="1.0">
+	<Definition label="CA users" scriptfile="/collectors/bw_ias_cyberark/bw_cloud_pam.javascript" name="P1617039485303_nK3h2t7OMxIKLC8tluTePQ_TAqFT3TquKO1GYyaTlHXHw_1_jmBYTjMgAaI4e1gMQ2nSQ_kCMQVF241xSBN8U1IBkxQ" startingpoint="C1617039877974">
+		<Component name="C1617039877974" type="discoverysource" x="56" y="51" w="300" h="64" title="CA_users">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk/RestAPI/CA_users.discovery" datafile="{config.siloIteratedFileFullname.replace(&apos;_export-mode.csv&apos;,&apos;_users.csv&apos;)}"/>
+		</Component>
+		<Component name="C1617039915793" type="account" x="56" y="527" w="300" h="64" title="CA vault users">
+			<Account key="vaultuser_id" error="true" event="AccountNullOrEmpty">
+				<Attribute name="login" attribute="username"/>
+				<Attribute name="disabled" attribute="disable"/>
+				<Attribute name="locked" attribute="suspended"/>
+				<Attribute name="custom1" attribute="source"/>
+				<Attribute name="custom2" attribute="componentuser"/>
+				<Attribute name="custom3" attribute="location"/>
+				<Attribute name="custom4" attribute="usertype"/>
+				<Attribute name="custom5" attribute="userdn"/>
+				<Attribute name="expiredate" attribute="expirydate"/>
+				<Attribute name="dontexpirepassword" attribute="passwordneverexpires"/>
+				<Attribute name="lastlogindate" attribute="lastsuccessfullogindate"/>
+				<Attribute name="service" attribute="service"/>
+			</Account>
+			<Media code="_REPOSITORY_CODE_" repoerror="true" repoevent="RepoNotFound"/>
+		</Component>
+		<Component name="C1617202559099" type="right" x="56" y="927" w="300" h="64" title="CA users vaultauthorization">
+			<Domain repository="user_repo" repoerror="true" repoevent="RepoNotFound"/>
+			<Right application="_APPLICATION_CODE_" permission="vaultauthorization" error="true" event="accountOrGroupNotFound" permerror="true" permevent="permissionNotFound" apperror="true" appevent="applicationNotFound" account="user_uid">
+				<Attribute name="action" attribute="action"/>
+			</Right>
+		</Component>
+		<Link name="L1617202577098" source="C1617039915793" target="C1617202762591" priority="1" expression="(! dataset.isEmpty(&apos;vaultauthorization&apos;))  &amp;&amp; (! dataset.equals(&apos;source&apos;, &apos;ldap&apos;, false, true))" labelcustom="false"/>
+		<Component name="C1617202762591" type="changefilter" x="56" y="672" w="300" h="64" title="Add action attribute">
+			<Actions>
+				<Action name="U1617202781529" action="add" attribute="action" type="String" multivalued="false" newvalue="hasVaultAuthorization" errorexist="false"/>
+				<Action name="U1618243182042" action="add" attribute="account_repo" type="String" multivalued="false" newvalue="{(! dataset.isEmpty(&apos;userdn&apos;)) ? dataset.repository_code.get() : dataset._REPOSITORY_CODE_}" errorexist="false"/>
+			</Actions>
+		</Component>
+		<Component name="C1731937877449_1" type="discoverysource" x="511" y="294" w="300" h="64" title="CA_Identity_DSUsers">
+			<Discovery file="/discovery/bw_ias_cyberark/CyberArk_Identity/CA_Identity_DSUsers.discovery" datafile="{config.cyberark_folder}{config.identity_repo}_DSUsers.csv"/>
+		</Component>
+		<Component name="C1731937832018_1" type="joinfilter" x="56" y="290" w="300" h="64" title="identity users">
+			<Join source="C1731937877449_1" zeroerror="false"/>
+			<Cache active="true" main="username" join="systemname"/>
+			<Attributes>
+				<Attribute name="A1733137537087" attribute="test_systemname" source="systemname" type="String" multivalued="false"/>
+				<Attribute name="A1733137676063" attribute="user_uid" source="internalname" type="String" multivalued="false"/>
+				<Attribute name="A1733138557298" attribute="user_directoryserviceuuid" source="user_directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A1756819722502" attribute="serviceinstance" source="serviceinstance" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1731937906671_1" source="C1731937877449_1" target="C1731937832018_1" priority="1"/>
+		<Component name="C1732005758848" type="joinfilter" x="56" y="401" w="300" h="64" title="repository name">
+			<Join source="C1732005773967" zeroerror="false"/>
+			<Cache active="true" main="user_directoryserviceuuid" join="directoryserviceuuid"/>
+			<Attributes>
+				<Attribute name="A1732005884399" attribute="user_repo" source="external_reponame" type="String" multivalued="false"/>
+				<Attribute name="A1733138382097" attribute="test_directoryserviceuuid" source="directoryserviceuuid" type="String" multivalued="false"/>
+			</Attributes>
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Component name="C1732005773967" type="csvsource" x="511" y="400" w="300" h="64" title="external_repository.csv">
+			<Source file="{config.cyberark_folder}external_repository.csv" separator=";" encoding="ISO-8859-1" textseparator="&quot;"/>
+			<Attributes hasheader="true">
+				<Attribute name="A5914330959849426857" attribute="directoryserviceuuid" column="directoryserviceuuid" type="String" multivalued="false"/>
+				<Attribute name="A6874397329704528088" attribute="external_reponame" column="external_reponame" type="String" multivalued="false"/>
+				<Attribute name="A6774203450522695855" attribute="servicetype" column="servicetype" type="String" multivalued="false"/>
+			</Attributes>
+		</Component>
+		<Link name="L1732005792624" source="C1732005773967" target="C1732005758848" priority="1"/>
+		<Link name="L1732005828407" source="C1731937832018_1" target="C1732005758848" priority="1"/>
+		<Link name="L1732006495920" source="C1732005758848" target="C1617039915793" priority="1" expression="dataset.isEmpty(&apos;user_uid&apos;)" labelcustom="true" label="Not CyberArk Identity User"/>
+		<Link name="L1732006527530" source="C1732005758848" target="C1733237648801" priority="2" expression="(! dataset.isEmpty(&apos;user_repo&apos;))" labelcustom="true" label="CyberArk Identity User" linecustom="true" style="dash"/>
+		<Component name="N1733217795910" type="note" x="546" y="42" w="300" h="94" title="Try join with Identity&#xA;if the account is not an Identity, create a PCloud account&#xA;else add rights on the Identity account"/>
+		<Component name="C1733237648801" type="routefilter" x="511" y="527" w="300" h="64" title="Cloud">
+			<Alert stoponfirst="true"/>
+		</Component>
+		<Link name="L1756820337946" source="C1733237648801" target="C1617202762591" priority="1"/>
+		<Link name="L1756821659203" source="C1617039877974" target="C1731937832018_1" priority="1"/>
+		<Component name="C1756815953195" type="enumfilter" x="56" y="797" w="300" h="64" title="Enumerate Rights">
+			<Multivalued>
+				<Value name="M1756815978399" attribute="vaultauthorization"/>
+			</Multivalued>
+		</Component>
+		<Link name="L1756810497918" source="C1756815953195" target="C1617202559099" priority="2"/>
+		<Link name="L1733149094803" source="C1617202762591" target="C1756815953195" priority="1"/>
+	</Definition>
+	<Configuration default="noname">
+		<Values name="noname" configuration="noname"/>
+		<Variables>
+			<Variable name="cyberark_folder"/>
+			<Variable name="identity_repo"/>
+			<Variable name="inputfilename"/>
+		</Variables>
+	</Configuration>
+</Provisioning>

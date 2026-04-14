@@ -1,0 +1,199 @@
+ds_sailpointiiq_NLS = NLS {
+  title [ en "Sailpoint Identity IQ" fr "Sailpoint Identity IQ" ]
+  description [ 
+    en "Collects Sailpoint Identity IQ accounts, applications and Entitlements for discovery"
+    fr "Collecte les informations sur les comptes, les applications et les droits Sailpoint Identity IQ"]
+  label_clientid [ 
+  	en "Client ID"
+  	fr "Client ID"]
+  label_clientid_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation." 
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_secret [ 
+  	en "Secret"
+  	fr "Secret"]
+  label_secret_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_baseurl [ 
+  	en "Base SCIM API URL"
+  	fr "URL racine de l'API SCIM"]
+  label_baseurl_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_oauthurl [ 
+  	en "OAuth URL"
+  	fr "URL OAuth"]
+  label_oauthurl_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_pagesize [ 
+  	en "Page size (optionnal)"
+  	fr "Taille des pages (optionnel)"]
+  label_pagesize_TT [ 
+  	en "For more information on how to set up this field, refer to the documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation."]
+  label_accountfilter [ 
+  	en "Account query filter (optional)"
+  	fr "Filtre de requête comptes (optionnel)"]
+  label_accountfilter_TT [ 
+  	en "For more information on how to set up this field, refer to the SailPoint Identity IQ SCIM API documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation SailPoint Identity IQ SCIM API."]
+  label_entitlementfilter [ 
+  	en "Entitlement query filter (optional)"
+  	fr "Filtre de requête permission (optionnel)"]
+  label_entitlementfilter_TT [ 
+  	en "For more information on how to set up this field, refer to the SailPoint Identity IQ SCIM API documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation SailPoint Identity IQ SCIM API."]
+  label_appfilter [ 
+  	en "Application query filter (optional)"
+  	fr "Filtre de requête application (optionnel)"]
+  label_appfilter_TT [ 
+  	en "For more information on how to set up this field, refer to the SailPoint Identity IQ SCIM API documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation SailPoint Identity IQ SCIM API."]
+  label_userfilter [ 
+  	en "User query filter (optional)"
+  	fr "Filtre de requête utilisateur (optionnel)"]
+  label_userfilter_TT [ 
+  	en "For more information on how to set up this field, refer to the SailPoint Identity IQ SCIM API documentation."
+  	fr "Pour plus d'informations sur la configuration de ce champ, consultez la documentation SailPoint Identity IQ SCIM API."]
+}
+
+ds_sailpointiiq = Page {
+	title: $ds_sailpointiiq_NLS.title
+	tags: "bwds_connector" , "live" , "csv", "sailpointiiq"
+	description: $ds_sailpointiiq_NLS.description
+	icon: "bw_sailpointiiq/bw_sailpointiiq_48.png"
+	large-icon: "bw_sailpointiiq/bw_sailpointiiq_96.png"	
+	metadata: (
+	    category -> "infrastructure", 
+	    family -> "API",
+	    collector -> "bw_sailpointiiq",
+	    action ->"sailpointidentityiq",
+	    destPathVar -> "bw_sailpointiiq_sourcefolder",
+	    filePattern -> "*.csv",
+	    hasMapping -> False,
+	    multiFile -> True  
+	 )
+}
+
+/* config dynamic fragment */
+
+sailpointiiq_params = Constant { value: "clientid,secret,oauthurl,pagesize,accountfilter,entitlementfilter,appfilter,userfilter" }
+
+deserializeOptions_adp = EventService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: deserializeOptions
+  varnames = Input { default: Constant sailpointiiq_params }
+  options = Input
+  baseurl = Output { }
+  clientid = Output { }
+  secret = Output { }
+  oauthurl = Output { }
+  pagesize = Output { }
+  accountfilter = Output { }
+  entitlementfilter = Output { }
+  appfilter = Output { }
+  userfilter = Output { }
+}
+
+serializeOptions_adp = StringService {
+  javascript-file: "/webportal/pages/bw_dsm/cfg/ds_cfg.javascript"
+  javascript-method: serializeOptions
+  varnames = Input { default: Constant sailpointiiq_params }
+  secretnames = Input { default: "secret"}
+  secretdsname = Input { mandatory: True } /* name of the datasource, used for secret key*/
+  
+  baseurl = Input { }
+  clientid = Input { }
+  secret = Input { }
+  oauthurl = Input { }
+  pagesize = Input { }
+  accountfilter = Input { }
+  entitlementfilter = Input { }
+  appfilter = Input { }
+  userfilter = Input { }
+}
+
+
+ds_sailpointiiq_cfg = PageFragment {
+  post-render-event: ExecuteNamedAction doInit
+  dsname = Variable  
+  edit = Variable { type: Boolean } 
+  options = Variable { type: String  }/* in/out json string for all options key=>value;  value updated when doCommit is called */
+  // custom
+  baseurl = Variable
+  clientid = Variable {}
+  secret = Variable
+  oauthurl = Variable
+  pagesize = Variable 
+  accountfilter = Variable
+  entitlementfilter = Variable
+  appfilter = Variable
+  userfilter = Variable
+  
+   doInit = NamedAction(
+     Call deserializeOptions_adp ( options to options, baseurl from baseurl,  clientid from clientid, secret from secret , oauthurl from oauthurl , pagesize from pagesize, accountfilter from accountfilter, entitlementfilter from entitlementfilter, appfilter from appfilter, userfilter from userfilter )
+   )
+   
+   doCommit = NamedAction(
+      Set @serializeOptions_adp ( dsname to secretdsname, 
+          baseurl to baseurl, clientid to clientid, secret to secret , oauthurl to oauthurl , pagesize to pagesize , accountfilter to accountfilter, entitlementfilter to entitlementfilter, appfilter to appfilter, userfilter to userfilter ) to options
+   )
+   
+  Edit { 
+     label: $ds_sailpointiiq_NLS.label_baseurl
+     variable: baseurl
+     not-empty:True
+     tooltip: $ds_sailpointiiq_NLS.label_baseurl_TT
+  }
+  Edit { 
+     label: $ds_sailpointiiq_NLS.label_oauthurl
+     variable: oauthurl
+     not-empty:True
+     tooltip: $ds_sailpointiiq_NLS.label_oauthurl_TT
+  } 
+  Edit { 
+     label: $ds_sailpointiiq_NLS.label_clientid
+     variable: clientid
+     not-empty:True
+     tooltip: $ds_sailpointiiq_NLS.label_clientid_TT
+  }
+  Edit { 
+     label: $ds_sailpointiiq_NLS.label_secret
+     variable: secret
+     not-empty:True
+     password-mode: True
+     tooltip: $ds_sailpointiiq_NLS.label_secret_TT
+  }
+  Edit { 
+     label: $ds_sailpointiiq_NLS.label_pagesize
+     variable: pagesize
+     not-empty:False
+     tooltip: $ds_sailpointiiq_NLS.label_pagesize_TT
+  }
+  Edit { 
+     label: $ds_sailpointiiq_NLS.label_accountfilter
+     variable: accountfilter
+     not-empty:False
+     tooltip: $ds_sailpointiiq_NLS.label_accountfilter_TT
+  } 
+    Edit { 
+     label: $ds_sailpointiiq_NLS.label_entitlementfilter
+     variable: entitlementfilter
+     not-empty:False
+     tooltip: $ds_sailpointiiq_NLS.label_entitlementfilter_TT
+  } 
+    Edit { 
+     label: $ds_sailpointiiq_NLS.label_appfilter
+     variable: appfilter
+     not-empty:False
+     tooltip: $ds_sailpointiiq_NLS.label_appfilter_TT
+  } 
+    Edit { 
+     label: $ds_sailpointiiq_NLS.label_userfilter
+     variable: userfilter
+     not-empty:False
+     tooltip: $ds_sailpointiiq_NLS.label_userfilter_TT
+  } 
+}

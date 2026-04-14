@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="ownedsharesfoldersandapplications_businessview" displayname="owned shares folders and applications">
+	<Definition scriptfile="/views/bw_access360/managedressources/ownedsharesfoldersandapplications_businessview.javascript" name="D1550229024243">
+		<Component type="innerview" x="36" y="28" w="300" h="64" name="C1528901735948_1" title="ownedfolders">
+			<InnerView name="enduser360_managedfolders">
+				<Param name="F1528901830543" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+		</Component>
+		<Component name="C1528901911267_1" type="unionview" x="150" y="85" w="300" h="50" title="ownedshares">
+			<InnerView name="enduser360_managedshare">
+				<Param name="F1528902043669" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="Folder" secondary_discriminator="Share" discriminatorcolumn="owned_type"/>
+			<ViewComputedAttribute name="foldername" displayname="folder name" type="String" expression="dataset.isEmpty(&apos;perm_displayname&apos;)?dataset.app_displayname.get():dataset.perm_displayname.get()"/>
+			<ViewComputedAttribute name="code" displayname="code" type="String" expression="dataset.isEmpty(&apos;perm_code&apos;)?dataset.app_code.get():dataset.perm_code.get()"/>
+			<ViewComputedAttribute name="share" displayname="share" type="String" expression="dataset.isEmpty(&apos;app_displayname&apos;)?dataset.appli_displayname.get():dataset.app_displayname.get()"/>
+			<ViewComputedAttribute name="folduid" displayname="folduid" type="String" expression="dataset.isEmpty(&apos;perm_uid&apos;)?dataset.app_uid.get():dataset.perm_uid.get()"/>
+			<ViewComputedAttribute name="sharecode" displayname="sharecode" type="String" expression="dataset.isEmpty(&apos;appli_code&apos;)?dataset.app_code.get():dataset.appli_code.get()"/>
+		</Component>
+		<Component name="C1550229116883" type="unionview" x="69" y="254" w="300" h="50" title="ownedapplications">
+			<InnerView name="enduser360_managedapplications">
+				<Param name="F1550229186082" viewparam="uid" viewparamvalue="{param.uid.get()}"/>
+			</InnerView>
+			<Union primary_discriminator="owned_folders" secondary_discriminator="owned_application" discriminatorcolumn="owned_applications_or_folders"/>
+			<ViewComputedAttribute name="finaluid" displayname="finaluid" type="String" expression="dataset.isEmpty(&apos;folduid&apos;)?dataset.app_uid.get():dataset.folduid.get()"/>
+			<ViewComputedAttribute name="finalname" displayname="finalname" type="String" expression="dataset.isEmpty(&apos;app_displayname&apos;)?dataset.code.get():dataset.app_displayname.get()"/>
+			<ViewComputedAttribute name="finaltype" displayname="finaltype" type="String" expression="dataset.isEmpty(&apos;owned_type&apos;)?&quot;Application&quot;:dataset.owned_type.get()"/>
+		</Component>
+		<Link name="L1550229117649" source="C1528901911267_1" target="C1550229116883" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Link name="L1550246351872" source="C1528901735948_1" target="C1528901911267_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="uid" displayname="uid">
+		<Value name="V1550229756937_2" data="ID0000151_1550155303028_2175"/>
+	</ViewParam>
+</View>

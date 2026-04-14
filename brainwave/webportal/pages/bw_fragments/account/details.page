@@ -1,0 +1,736 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/mappings.page"
+import "/webportal/pages/resources/services.page"
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/account/resources.page"
+import "/webportal/pages/bw_fragments/repository/details/repositoryDetails.page"
+
+import "/webportal/pages/bw_fragments/lib/kpis.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/styles.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+fragmentAccountDetailsNLS = NLS {
+	pwdexpired [en "Expired" fr "Expiré"]
+	pwdstrgauth [en "Strong auth." fr "Auth. forte"]
+	pwdcantchange [en "Cannot modify" fr "Non modifiable"]
+	pwdnotrequired [en "Not needed" fr "Non requis"]
+	pwddonotexpires [en "Never expires" fr "Sans expiration"]
+
+	sensitivitylevel [en "Sensitivity Level" fr "Niveau de sensibilité"]
+	managetags [en "Manage tags" fr "Gérer les labels"]
+	
+	showdetails [en "Show details" fr "Afficher les détails"]
+
+	updatemetadata [en "Update account description" fr "Mise à jour de la description du compte"]
+	repoLogin [en "Repository / Login" fr "Référentiel / Login"]
+}
+
+
+accounts_mawriskinfo_max_nbrisks = UserVariable { type: Integer initial: "notset" }
+accounts_maxriskinfo_max_riskrank = UserVariable { type: Integer initial: "notset" }
+accounts_mawriskinfo_max_risklevel = UserVariable { type: Integer initial: "notset" }
+fragmentAccountMaxRiskInfo = PageFragment {
+	enter-event: IntCase ( UserVariable accounts_mawriskinfo_max_risklevel ) {
+		when InvalidInteger then [
+			Set maxriskinfo.bwa_accountanalytics_nbrisks to UserVariable accounts_mawriskinfo_max_nbrisks,
+			Set maxriskinfo.bwa_accountanalytics_riskrank to UserVariable accounts_maxriskinfo_max_riskrank,
+			Set maxriskinfo.bwa_accountanalytics_maxrisklevel to UserVariable accounts_mawriskinfo_max_risklevel
+		]
+	}
+	maxriskinfo = Record {
+		view: bwf_accountmaxriskinfo
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected account details in compact mode
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the account uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inshowrisks </b>optional, boolean value, true to show risks indicators (false by default)</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	inshowrisks = Variable { multivalued:False type:Boolean initial:False }
+	
+	/* Datasets and records here */
+	detail = Record {
+		view: bwf_accountDetail with
+			inuid to uid unless-empty
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevdetail = Record {
+		view: bwf_accountDetail with
+			inuid to uid unless-empty
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:
+		 	FromPage ( -1 )
+	}
+	
+	/* Page content */
+	// ////////////////////////////////////////////
+	// compact mode
+
+	ConditionalGroup {
+		layout:Layout { grab:horizontal True vertical False }
+		StringCondition(detail.reconciliation_noownercode) {
+			when IsEmpty then [
+				Text {
+					value:detail.login
+					label:$account.login
+					tooltip:detail.identifier
+					compact:True
+				}
+				Text {
+					value:detail.repository_displayname
+					label:$repository.concept
+					compact:True
+				}
+				Text {
+					value:Transform detail.service using booleanDisplayMapping
+					label: $account.service //"Service"
+					hidden:StringPredicate(detail.service) { when IsEmpty then True otherwise False }
+					compact:True
+				}		
+				Text {
+					value:detail.username
+					label:$account.username
+					compact:True
+				}
+				Text {
+					value:detail.mail
+					label:$account.mail
+					compact:True
+					hidden:StringPredicate(detail.mail) { when IsEmpty then True otherwise False }
+				}
+			]
+			otherwise [
+				Text {
+					value:detail.login
+					label:$account.login
+					tooltip:detail.identifier
+					compact:True
+				}
+				Text {
+					value:detail.repository_displayname
+					label:$repository.concept
+					compact:True
+				}
+				Text {
+					value:Transform detail.service using booleanDisplayMapping
+					label: $account.service //"Service"
+					hidden:StringPredicate(detail.service) { when IsEmpty then True otherwise False }
+					compact:True
+				}		
+				Text {
+					value:detail.reconciliation_noownercode
+					label:$reconciliation.noownercode
+					compact:True
+				}
+				Text {
+					value:detail.reconciliation_comment
+					label:$reconciliation.comment
+					compact:True
+					hidden:StringPredicate(detail.reconciliation_comment) { when IsEmpty then True otherwise False }
+				}
+				Text {
+					value:detail.reconciliation_leavedate
+					label:$reconciliation.leavedate
+					hidden:StringPredicate(detail.reconciliation_leavedate) { when IsEmpty then True otherwise False }
+					compact:True
+				}
+			]								
+		}
+	}
+
+	Header {
+		value:$bw_fragment.status
+	}
+	Separator {
+		width:1
+	}
+
+	Text {
+		value:Transform detail.disabled using booleanDisplayMapping
+		label: $account.disabled // "Disabled"
+		compact:True
+		decorator:
+			Decorator {
+				width: 32
+				after:
+					Image {
+						image: TemplateImageSelection ( detail.disabled ) using bw_fragments_reverseBaderBoolImageMapping
+						width: 16
+					}
+				gap: 16
+			}
+	}
+	Text {
+		value: SubString(0,10) detail.creationdate
+		tooltip: detail.creationdate
+		label:$account.creationdate
+		compact:True
+	}
+	Text {
+		value: SubString(0,10) detail.expiredate
+		label:$account.expiredate
+		compact:True
+		styling:DateStyling(detail.expiredate) {
+			when DateBefore Date(PageTimeslot.CommitDate) then bwf_warningNG
+			otherwise default
+		}
+	}
+	Text {
+		value:detail.lastlogindate
+		label: $account.lastlogindate // "Last login"
+		compact:True
+		styling:DateStyling(detail.lastlogindate) {
+			when DateBefore Date(PageTimeslot.CommitDate).offset(-90 days) then bwf_warningNG
+			otherwise default
+		}
+	}
+
+	Header {
+		value:$bw_fragment.password
+	}
+	Separator {
+		width:1
+	}
+	Text {
+		value:Transform detail.passwordexpired using booleanDisplayMapping
+		label: $fragmentAccountDetailsNLS.pwdexpired // "Password expired"
+		compact:True
+		decorator:
+			Decorator {
+				width: 32
+				after:
+					Image {
+						image: TemplateImageSelection ( detail.passwordexpired ) using bw_fragments_reverseBaderBoolImageMapping
+						width: 16
+					}
+				gap: 16
+			}
+	}
+	Text {
+		value:Transform detail.smartcardrequired using booleanDisplayMapping
+		label: $fragmentAccountDetailsNLS.pwdstrgauth // "Smart card required"
+		compact: True
+	}
+	Text {
+		value:Transform detail.passwordcantchange using booleanDisplayMapping
+		label: $fragmentAccountDetailsNLS.pwdcantchange // "Password cannot change"
+		compact: True
+		decorator:
+			Decorator {
+				width: 32
+				after:
+					Image {
+						image: TemplateImageSelection ( detail.passwordcantchange ) using bw_fragments_reverseBaderBoolImageMapping
+						width: 16
+					}
+				gap: 16
+			}
+	}
+	Text {
+		value: Transform detail.passwordnotrequired using booleanDisplayMapping
+		label: $fragmentAccountDetailsNLS.pwdnotrequired // "Password required"
+		compact: True
+		decorator:
+			Decorator {
+				width: 32
+				after:
+					Image {
+						image: TemplateImageSelection ( detail.passwordnotrequired ) using bw_fragments_reverseBaderBoolImageMapping
+						width: 16
+					}
+				gap: 16
+			}
+	}
+	Text {
+		value:Transform detail.dontexpirepassword using booleanDisplayMapping
+		label: $fragmentAccountDetailsNLS.pwddonotexpires // "Password expiration"
+		compact: True
+		decorator:
+			Decorator {
+				width: 32
+				after:
+					Image {
+						image: TemplateImageSelection ( detail.dontexpirepassword ) using bw_fragments_reverseBaderBoolImageMapping
+						width: 16
+			}
+			gap: 16
+		}
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected account details in 1366px wide
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid</b> the account uid</li>
+ * <li><b>inenabled</b> optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inshowrisks </b>optional, boolean value, true to show risks indicators (false by default)</li>
+ * <li><b>incanupdatedescription </b>optional, boolean value, can update account description (false by default). Warning, this function is also restricted through a Feature</li>
+ * <li><b>incanupdatetags </b>optional, boolean value, true to enable tags update (false by default). Warning, this function is also restricted through a Feature</li>
+ * </ul>
+ * </span>
+ */
+fragmentAccountFullDetails = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanupdatedescription = Variable { multivalued:False type:Boolean initial:False }
+	inshowrisks = Variable { multivalued:False type:Boolean initial:False }
+	incanupdatetags = Variable { multivalued: False type: Boolean initial: False }
+	
+	/* Datasets and records here */
+	detail = Record {
+		view: bwf_accountDetail with
+			inuid to uid unless-empty
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	prevdetail = Record {
+		view: bwf_accountDetail with
+			inuid to uid unless-empty
+		disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+		timeslot:
+		 	FromPage ( -1 )
+	}
+	tags = Dataset {
+		view: bwf_accounttags with inuid to uid
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	tagsasString = Record {
+		view: bwa_accounttagsasastring with inuid to uid
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	/* Page content */
+	// ////////////////////////////////////////////
+	// standard mode			
+
+	IncludeFragment { fragment: fragmentAccountMaxRiskInfo inline: True }
+	
+	Flow {
+		disposition: Horizontal
+		layout: Layout { grab: horizontal True vertical False }
+		// Account login & key
+		Group {
+			Text {
+				value: detail.login
+				styling: bigTitleStyle
+				label: Label { break: False value: $account.login }
+				compact: True
+			}
+			Text {
+				value: detail.custom6
+				styling: bigTitleStyle
+				label: Label { break: False value: $account.caidstatus }
+				compact: True
+				hidden: StringPredicate ( detail.repository_repositoryfamily ) { when "CyberArk Identity" then False otherwise True }
+			}			
+			Text {
+				value: detail.identifier
+				tooltip: detail.identifier
+				compact: True
+				hidden: SameValuePredicate ( detail.login, detail.identifier )
+				label: Label { break: False value: $account.identifier }
+			}
+			Text {
+				value: detail.repository_displayname
+				label: Label { break: False value: $repository.concept }
+				compact: True
+				commands: 
+					Commands {
+					position:Before
+					presentation:Icon
+					orientation:Vertical
+					Command {   
+						actions:Dialog bwf_repositoryDetailsDialog (detail.repository_uid to inuid)
+						icon:%browsing_16.zoom
+						tooltip:$fragmentAccountDetailsNLS.showdetails
+					}
+				}
+			}
+			Text {
+				value: Transform detail.sensitivitylevel using bwfAccountSensitivityLevelMapping
+				tooltip: detail.sensitivityreason
+				label: $fragmentAccountDetailsNLS.sensitivitylevel
+				compact: True
+			}
+			Text {
+				value: @srv_truncatestring (tagsasString.tag to string, 200 to maxlength)
+				tooltip: tagsasString.tag
+				label: Label { break: False value: $account.tags }
+				compact: True
+				commands:
+					Commands {
+						position: Before
+						orientation: Horizontal 
+						Command {
+							actions:
+								Dialog fragmentAccountTagsEditor (
+									inuid to uid,
+									incanupdatetags to canupdatetags
+								), 
+								ReloadData (detail),
+								ReloadData (tags),
+								ReloadData (tagsasString)
+							icon: %collection_16.tag
+							feature: accountdetails_updatetags
+							disabled:
+								Not BooleanPredicate ( incanupdatetags )
+							tooltip: $fragmentAccountDetailsNLS.managetags
+						}
+					}
+			}
+			Text {
+				value: @srv_truncatestring ( detail.description to string, 200 to maxlength )
+				tooltip: detail.description
+				label: Label { break: False value: $account.description }
+				compact: True
+				commands:
+					Commands {
+						position: Before
+						orientation: Horizontal 
+						Command {
+							actions:
+								Dialog bwfAccountDetailsMetadata_Dialog (
+									inuid to paramAccountUid,
+									detail.sensitivitylevel to sensitivitylevel,
+									detail.sensitivityreason to sensitivityreason,
+									detail.description to description
+								), 
+								ReloadData (detail)
+							icon: %collection_16.pencil
+							disabled:
+								Not BooleanPredicate ( incanupdatedescription )
+							feature: accountdetails_updatemetadata
+							tooltip: $fragmentAccountDetailsNLS.updatemetadata
+						}
+					}
+			}
+		}
+		// Indicators
+		Group {
+			Grid {
+				columns: GridColumn {}, GridColumn {}, GridColumn {}
+				GridRow {
+					height: 180
+					GridCell {
+						IncludeFragment {
+							fragment: bw_fragments_detailKPI with
+								value-of $bwf_accountNLS.riskrank to title,
+								value-of detail.bwa_accountanalytics_riskrank to count,
+								value-of UserVariable accounts_maxriskinfo_max_riskrank to maxValue,
+								value-of detail.bwa_accountanalytics_riskrank to currentTrend,
+								value-of prevdetail.bwa_accountanalytics_riskrank to previousTrend,
+								value-of inuid to inuid,
+								value-of inshowrisks to inshowrisks
+						}
+					}
+					GridCell {
+						IncludeFragment {
+							fragment: bw_fragments_detailKPI with
+								value-of $bwf_accountNLS.maxrisk_1line to title,
+								value-of detail.bwa_accountanalytics_maxrisklevel to count,
+								value-of UserVariable accounts_mawriskinfo_max_risklevel to maxValue,
+								value-of detail.bwa_accountanalytics_maxrisklevel to currentTrend,
+								value-of prevdetail.bwa_accountanalytics_maxrisklevel to previousTrend,
+								value-of inuid to inuid,
+								value-of inshowrisks to inshowrisks,
+								value-of True to hasThresholds
+						}
+					}
+					GridCell {
+						IncludeFragment {
+							fragment: bw_fragments_detailKPI with
+								value-of $bwf_accountNLS.nbrisk to title,
+								value-of detail.bwa_accountanalytics_nbrisks to count,
+								value-of UserVariable accounts_mawriskinfo_max_nbrisks to maxValue,
+								value-of detail.bwa_accountanalytics_nbrisks to currentTrend,
+								value-of prevdetail.bwa_accountanalytics_nbrisks to previousTrend,
+								value-of inuid to inuid,
+								value-of inshowrisks to inshowrisks
+						}
+					}
+				}
+			}
+		}
+	}
+	Flow {
+		disposition: Horizontal
+		layout:Layout {indent:horizontal 0 vertical 0 }
+		Group {
+			Group {
+				title: $bw_fragment.user
+				Flow {
+					disposition: Horizontal
+					// First column
+					Group {
+						Text {
+							value:detail.employeenumber
+							label:$account.employeenumber
+							compact:True
+						}
+						Text {
+							value:detail.givenname
+							label:$account.givenname
+							compact:True
+						}
+						Text {
+							value:detail.username
+							label:$account.username
+							compact:True
+						}
+					}	
+					// Second column
+					Group {	
+						// Layout
+						Text {
+							value: ''
+							compact: True
+						}
+						Text {
+							value:detail.surname
+							label:$account.surname
+							compact:True
+						}
+						Text {
+							value:detail.mail
+							label:$account.mail
+							compact:True
+						}
+					}
+				}
+			}
+			Flow {
+					disposition: Horizontal
+					// First column
+					Group {
+						title: $bw_fragment.status
+						Text {
+							value:Transform detail.disabled using booleanDisplayMapping
+							label: $account.disabled // "Disabled"
+							compact:True
+							decorator:
+								Decorator {
+									width: 32
+									after:
+										Image {
+											image: TemplateImageSelection ( detail.disabled ) using bw_fragments_reverseBaderBoolImageMapping
+											width: 16
+										}
+									gap: 16
+								}
+						}
+						Text {
+							value:Transform detail.locked using booleanDisplayMapping
+							label: $account.locked // "Locked"
+							compact:True
+							decorator:
+								Decorator {
+									width: 32
+									after:
+										Image {
+											image: TemplateImageSelection ( detail.locked ) using bw_fragments_reverseBaderBoolImageMapping
+											width: 16
+										}
+									gap: 16
+								}
+						}
+						Text {
+							value: SubString(0,10) detail.creationdate
+							tooltip: detail.creationdate
+							label:$account.creationdate
+							compact:True
+						}
+						Text {
+							value: SubString(0,10) detail.expiredate
+							label:$account.expiredate
+							compact:True
+							styling:DateStyling(detail.expiredate) {
+								when DateBefore Date(PageTimeslot.CommitDate) then bwf_warningNG
+								otherwise default
+							}
+						}
+					}
+					// Second column
+					Group {
+						title: $bw_fragment.password
+						Text {
+							value:Transform detail.passwordexpired using booleanDisplayMapping
+							label: $fragmentAccountDetailsNLS.pwdexpired // "Password expired"
+							compact:True
+							decorator:
+								Decorator {
+									width: 32
+									after:
+										Image {
+											image: TemplateImageSelection ( detail.passwordexpired ) using bw_fragments_reverseBaderBoolImageMapping
+											width: 16
+										}
+									gap: 16
+								}
+						}
+						Text {
+							value:Transform detail.smartcardrequired using booleanDisplayMapping
+							label: $fragmentAccountDetailsNLS.pwdstrgauth // "Smart card required"
+							compact: True
+						}
+						Text {
+							value:Transform detail.passwordcantchange using booleanDisplayMapping
+							label: $fragmentAccountDetailsNLS.pwdcantchange // "Password cannot change"
+							compact: True
+							decorator:
+								Decorator {
+									width: 32
+									after:
+										Image {
+											image: TemplateImageSelection ( detail.passwordcantchange ) using bw_fragments_reverseBaderBoolImageMapping
+											width: 16
+										}
+									gap: 16
+								}
+						}
+						Text {
+							value: Transform detail.passwordnotrequired using booleanDisplayMapping
+							label: $fragmentAccountDetailsNLS.pwdnotrequired // "Password required"
+							compact: True
+							decorator:
+								Decorator {
+									width: 32
+									after:
+										Image {
+											image: TemplateImageSelection ( detail.passwordnotrequired ) using bw_fragments_reverseBaderBoolImageMapping
+											width: 16
+										}
+									gap: 16
+								}
+						}
+						Text {
+							value:Transform detail.dontexpirepassword using booleanDisplayMapping
+							label: $fragmentAccountDetailsNLS.pwddonotexpires // "Password expiration"
+							compact: True
+							decorator:
+								Decorator {
+									width: 32
+									after:
+										Image {
+											image: TemplateImageSelection ( detail.dontexpirepassword ) using bw_fragments_reverseBaderBoolImageMapping
+											width: 16
+										}
+									gap: 16
+								}
+						}
+					}
+			}
+		}
+		Group {
+			Group {
+				title: $bw_fragment.type
+				Text {
+					value:Transform detail.service using booleanDisplayMapping
+					label: $account.service //"Service"
+					compact:True
+				}		
+				Text {
+					value: Transform detail.notnormalaccount using inverseBooleanDisplayMapping
+					label: $account.notnormalaccount // "Standard"
+					compact: True
+				}
+				Text {
+					value: detail.profile
+					label: $paccount.profile
+					compact: True
+				}
+			}
+			Group {
+				title: $usage.concept
+				Text {
+					value:detail.lastlogindate
+					label: $account.lastlogindate // "Last login"
+					compact:True
+					styling:DateStyling(detail.lastlogindate) {
+						when DateBefore Date(PageTimeslot.CommitDate).offset(-90 days) then bwf_warningNG
+						otherwise default
+					}
+				}
+				Text {
+					value:detail.passwordlastsetdate
+					label: $account.passwordlastsetdate // "Last password set"
+					compact: True
+				}
+				Text {
+					value: detail.nextpwdchangedate
+					label: $account.nextpwdchangedate // "Next password change"
+					compact: True
+					styling:DateStyling(detail.nextpwdchangedate) {
+						when DateBefore Date then bwf_warningNG
+						otherwise default
+					}
+				}
+				Text {
+					value: detail.logincount
+					label: $account.logincount
+					compact: True
+				}		
+				Text {
+					value: detail.badpasswordcount
+					label: $account.badpasswordcount
+					compact: True
+				}
+			}
+		}
+	}
+}

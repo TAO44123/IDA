@@ -1,0 +1,218 @@
+/* Import other pages here */
+import "/webportal/pages/bw_fragments/identity/details.page"
+import "/webportal/pages/bw_fragments/identity/organisationtree.page"
+import "/webportal/pages/bw_fragments/identity/accounts.page"
+import "/webportal/pages/bw_fragments/identity/cyberarkrights.page"
+import "/webportal/pages/bw_fragments/identity/serverrights.page"
+import "/webportal/pages/bw_fragments/identity/usages.page"
+import "/webportal/pages/bw_fragments/identity/controls.page"
+import "/webportal/pages/bw_fragments/identity/decisionhistory.page"
+import "/webportal/pages/bw_fragments/identity/identitylifecycle.page"
+import "/webportal/pages/bw_fragments/custom/identityExtendedDetails.page"
+
+/* Nationalized labels here */
+bwpam_identityDetails_DialogNLS = NLS {
+	title [en "Identity Details" fr "Détails de l''identité"]
+	owner [en "Owner" fr "Propriétaire"]
+	extended [en "Additional information" fr "Informations complémentaires"]
+	identity [en "Identity" fr "Identité"]
+	position [en "Position" fr "Position"]
+	lifecycle [en "Lifecycle" fr "Cycle de vie"]
+	accounts [en "Users" fr "Comptes utilisateurs"]
+	infrastructure [en "Servers" fr "Serveurs"]
+	usages [en "Usages" fr "Usages"] 
+	controls [en "Controls" fr "Contrôles"]
+	decisionhistory [en "Decision history" fr "Historique des décisions"]
+	cyberark.vault [en "CyberArk Vaults" fr "Vaults CyberArk"]
+	cyberark.safe [en "CyberArk Safes" fr "Safes CyberArk"]
+	cyberark.graph [en "CyberArk Graph" fr "Graphe CyberArk"]
+}
+
+bwpam_identityDetailsDialog = Dialog {
+	title: $bwpam_identityDetails_DialogNLS.title
+	width:1366
+	height:720
+	buttons:OkButton
+	enter-event:
+	IntCase(identity.bwa_identityanalytics_nbusage) { when >0 then [ Set True to hasusages ] },
+	IntCase(identity.bwa_identityanalytics_nbinfrastructure) { when >0 then [ Set True to hasinfrastructurerights ] },
+	IntCase(identity.nb_safe) { when >0 then [ Set True to hassafe ] },
+	IntCase(identity.nb_vault) { when >0 then [ Set True to hasvault ] },
+	Set identity.nb_safe to nbcasafes,
+	Set identity.nb_vault to nbcavaults
+	
+	inuid = Variable
+	incanreconcile = Variable { type:Boolean initial:False }
+	
+	inshowposition = Variable { type:Boolean initial:True }
+	inshowaccounts = Variable { type:Boolean initial:False }
+	inshowcontrols = Variable { type:Boolean initial:False }
+	inshowdecisionhistory = Variable { type:Boolean initial:False }
+	inshowusages = Variable { type:Boolean initial:False }
+	inapplicationuids = Variable {multivalued: True}
+	inshowrisks = Variable { multivalued:False type:Boolean initial:False }
+	
+	nbdefects = Variable { private:True }
+	hasvault = Variable { private:True initial:False }
+	hasinfrastructurerights = Variable { private:True initial:False }
+	hassafe = Variable { private:True initial:False }
+	hasusages = Variable { private:True initial:False }
+	nbcavaults = Variable
+	nbcasafes = Variable
+	nblifecycleevents = Variable
+	
+	showextended = Variable { private:True initial:False }
+
+	active_identity = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_extended = Variable { initial:False multivalued:False type:Boolean }
+	active_position = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_lifecycle = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_accounts = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_businessactivities = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_theoretical = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_overallocated = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_infrastructure = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_applications = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_shares = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_usages = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_control = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_decision = Variable { private:True initial:False multivalued:False type:Boolean }
+	active_cavaults = Variable { initial:False multivalued:False type:Boolean }
+	active_casafes = Variable { initial:False multivalued:False type:Boolean }
+	active_cagraph = Variable { initial:False multivalued:False type:Boolean }
+		
+	identity = Record {
+		view:bwpam_identityDetails with inuid to uid
+	}
+
+	TabFolder {
+		border:False
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.identity
+			activation-event: Set True to active_identity
+			
+			IncludeFragment (fragmentIdentityFullDetails with value-of inuid to inuid,  inshowrisks binds-to inshowrisks, value-of active_identity to inenabled )
+		}
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.extended
+			hidden:Not BooleanPredicate(showextended)
+			activation-event: Set True to active_extended
+			
+			IncludeFragment (fragmentIdentityExtendedDetails with value-of inuid to inuid, value-of active_extended to inenabled, showextended binds-to outdisplay )
+		}
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.position
+			activation-event: Set True to active_position
+			hidden:Not BooleanPredicate(inshowposition)
+			
+			IncludeFragment (fragmentIdentityOrgHierarchy with value-of inuid to inuid, value-of active_position to inenabled )
+		}
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.lifecycle
+			activation-event: Set True to active_lifecycle
+			hidden:
+				OrPredicate {
+					IntPredicate(nblifecycleevents) { when >1 then False otherwise True } // shown only if more than 1 events are available (at least one move)
+					Not BooleanPredicate(inshowposition)
+				}
+			
+			IncludeFragment (fragmentIdentityLifecycle with value-of inuid to inuid,  value-of active_lifecycle to inenabled, nblifecycleevents binds-to outnblifecycleevents )
+		}
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.accounts
+			activation-event: Set True to active_accounts
+			hidden:Not BooleanPredicate(inshowaccounts)
+			
+			IncludeFragment (fragmentIdentityAccounts360 with value-of inuid to inuid, value-of incanreconcile to incanreconcile, value-of True to incanshowdetails, value-of active_accounts to inenabled )
+		}
+		
+		TabItem {
+			text: $bwpam_identityDetails_DialogNLS.cyberark.vault
+			activation-event:Set True to active_cavaults
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:
+			OrPredicate {
+				IntPredicate(nbcavaults) { when >0 then False otherwise True }
+				StringPredicate (nbcavaults) { when IsEmpty then True }
+			}
+			IncludeFragment {
+				fragment:fragmentIdentityCAVaultsRights360
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_cavaults.get()" to inenabled,
+				nbcavaults binds-to nbvaults
+			}
+		}
+		TabItem {
+			text: $bwpam_identityDetails_DialogNLS.cyberark.safe
+			activation-event:Set True to active_casafes
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:
+				OrPredicate {
+					IntPredicate(nbcasafes) { when >0 then False otherwise True }
+					StringPredicate (nbcasafes) { when IsEmpty then True }
+				}
+			IncludeFragment {
+				fragment:fragmentIdentityCASafesRights360
+				with value-of inuid to inuid, value-of True to incanshowdetails, value-of Eval "active_access.get() && active_casafes.get()" to inenabled,
+				nbcasafes binds-to nbsafes
+			}
+			}
+		TabItem {
+			text: $bwpam_identityDetails_DialogNLS.cyberark.graph
+			activation-event:Set True to active_cagraph
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			hidden:
+				AndPredicate {
+					OrPredicate {
+						IntPredicate(nbcavaults) { when >0 then False otherwise True }
+						StringPredicate (nbcavaults) { when IsEmpty then True }
+					}
+					OrPredicate {
+						IntPredicate(nbcasafes) { when >0 then False otherwise True }
+						StringPredicate (nbcasafes) { when IsEmpty then True }
+					}
+				}
+			IncludeFragment {
+				fragment:fragmentIdentityCAGraphRights360
+				with value-of inuid to inuid, value-of nbcasafes to innbsafes, value-of Eval "active_access.get() && active_cagraph.get()" to inenabled
+			}
+		}		
+		
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.infrastructure
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(hasinfrastructurerights)
+				}
+			activation-event: Set True to active_infrastructure
+			feature: All(pam_license, Any(governance_license, compliance_license))
+			
+			IncludeFragment (fragmentIdentityServerRightsList with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_infrastructure to inenabled, inapplicationuids binds-to inapplicationuids )
+		}
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.usages
+			activation-event: Set True to active_usages
+			hidden:
+				OrPredicate {
+					Not BooleanPredicate(inshowusages)
+					Not BooleanPredicate(hasusages)
+				}
+			
+			IncludeFragment (fragmentIdentityUsages with value-of inuid to inuid, value-of True to incanshowdetails, value-of active_usages to inenabled )
+		}
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.controls
+			hidden:Not BooleanPredicate(inshowcontrols)
+			activation-event: Set True to active_control
+			badge: Eval "nbdefects.get()>0?nbdefects.get():''"
+			
+			IncludeFragment (fragmentIdentityAllControlDefectsList with value-of inuid to inuid, nbdefects binds-to outnbdefects, value-of True to inenabled )
+		}
+		TabItem  {
+			text:$bwpam_identityDetails_DialogNLS.decisionhistory
+			hidden:Not BooleanPredicate(inshowdecisionhistory)
+			activation-event: Set True to active_decision
+			
+			IncludeFragment (fragmentIdentityAllDecisionHistory with value-of inuid to inuid,  value-of active_decision to inenabled )
+		}
+	}
+}

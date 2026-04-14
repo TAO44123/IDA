@@ -1,0 +1,1510 @@
+import "/webportal/pages/styles/styles.page"
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/icons.page"
+import "/webportal/pages/bw_fragments/lib/colors.page"
+import "/webportal/pages/bw_ledger_admin/resources/mappings.page"
+import "/webportal/pages/bw_ledger_admin/resources/services.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_changes.page"
+import "/webportal/pages/bw_ledger_admin/manage_timeslot.page"
+import "/webportal/pages/bw_ledger_admin/timeslot_statistics.page"
+import "/webportal/pages/bw_htmlwidgets/indicators.page"
+import "/webportal/pages/bw_htmlwidgets/charts.page"
+import "/webportal/pages/bw_access360/enduser.page"
+import "/webportal/pages/bw_access360/resources/fragments.page"
+import "/webportal/pages/bw_texteditor/texteditors.page"
+import "/webportal/pages/bw_iasreview/dashboard/applicationRightReviewStatus.page"
+import "/webportal/pages/bw_iasreview/dashboard/repositoryAccountReviewStatus.page"
+import "/webportal/pages/bw_iasreview/dashboard/safeRightReviewStatus.page"
+import "/webportal/pages/bw_access360/portalreports/control/allidentitysodmatrix.page"
+import "/webportal/pages/bw_iasreview/accessreviewmanagement.page"
+import "/webportal/pages/bw_iasreview/remediationmanagement.page"
+import "/webportal/pages/bw_iasreview/remediation/remediationstrategymanagement.page"
+import "/webportal/pages/workflow/bw_delegations/delegationsAdminList.page"
+import "/webportal/pages/bw_subscription/reports/subscriptionadmin.page"
+import "/webportal/pages/bw_analytics/computesensitivitylevels.page"
+import "/webportal/pages/workflow/bw_task_manager/workflowAdministration.page"
+import "/webportal/pages/bw_cloud_base/resources/styles.page"
+import "/webportal/pages/bw_portaluar_base/reports/organisationhierarchy.page"
+import "/webportal/pages/bw_controls_browser/control_browser.page"
+import "/webportal/pages/bw_sodanalysis/sodglobaldashboard.page"
+import "/webportal/pages/bw_dashboard/nls.page"
+import "/webportal/pages/bw_dashboard/mappings.page"
+import "/webportal/pages/bw_cloud_pam/home_menu.page"
+
+bw_admin_home_controlcharts = PageFragment {
+	Grid {
+		columns:GridColumn{width:grow group:a},GridColumn{width:grow group:a}
+		layout:Layout { grab: horizontal True vertical False hint:height 400 }
+
+		GridRow {
+			GridCell {
+				IncludeFragment (bw_admin_home_topxaccountcontrolblock)
+			}
+			GridCell {
+				IncludeFragment (bw_admin_home_topxidentitycontrolblock)
+			}
+		}
+	}	
+}
+
+bw_admin_home_riskcharts = PageFragment {
+	Grid {
+		columns:
+			GridColumn { width: grow group: a },
+			GridColumn { width: grow group: a },
+			GridColumn { width: grow group: a }
+		layout: Layout { grab: horizontal True vertical False hint: height 300 }
+		GridRow {
+			GridCell {
+				IncludeFragment (bw_admin_home_nbaccountsperrisklevel)
+			}
+			GridCell {
+				IncludeFragment (bw_admin_home_nbidentitiesperrisklevel)
+			}
+			GridCell {
+				IncludeFragment (bw_admin_home_nbaccountsperriskleveltrend)
+			}
+		}
+	}	
+}
+
+bw_admin_home_nbidentitiesperrisklevel = PageFragment {
+	chart = Dataset {
+		view:bwd_nbidentitypermaxrisklevel
+	}
+
+	Group {
+        styling: cssRound
+        
+		Header {
+			value:$bw_admin_home_nbidentitiesperrisklevelNLS.header
+			icon:%concept_16.identity
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		Spacer {
+			height:32
+		}
+		IncludeHTMLWidget {
+		layout: Layout { grab: horizontal False vertical False hint:width 280 height 165 align: horizontal Center vertical Center }
+			template: doughnutChart
+			datasets: chart ( bwa_identityanalytics_aggmaxrisklevel, bwa_identityanalytics_aggmaxrisklevel, nb ) to chartdata ( label, code , count )
+			bindings: 
+				value-of True to tooltipShowPercent,
+				value-of False to showLegend,
+				value-of True to showHalfOnly,
+				value-of Constant higherTheWorstPalette to customColors
+			widget-events: {
+				when onclick then [
+					GoTo Activity Identity Search with Concat('midentity(*eqActive,eqbwa_identityanalytics_aggmaxrisklevel[valueIntegerParam=^"',Current code,'"])') to identitySearch
+				]
+			}
+		}
+	}
+}
+
+bw_admin_home_topxidentitycontrolblock = PageFragment {
+	data = Dataset {
+		view:bwd_topidentitycontrols
+		limit:10
+	}
+
+	Group {
+		styling:cssRound
+	
+		Header {
+			value:$bw_admin_home_topxidentitycontrolblockNLS.header
+			icon:%concept_16.identity
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		IncludeHTMLWidget {
+			layout: Layout { grab: horizontal False vertical False hint:width 450 height 300 align: horizontal Center vertical Center }
+			template: barChart
+			datasets: data ( controldisplayname, controlname, nb, controldisplayname ) to chartdata ( label, code , count , description)
+			bindings: 
+				value-of False to maintainAspectRatio,
+				value-of True to isHorizontal,
+				value-of True to isLabelInside,
+				value-of False to showxAxesGrid,
+				value-of "#b2d4f5,#93bfeb,#74abe2" to customColors
+			widget-events: {
+				when onclick then [
+					GoTo Activity Identity Search with Concat('midentity(*|controldiscrepancy(*|controllog(*eqControlName[controlNameParam=^"',Current code,'"])))') to identitySearch
+				]
+			}
+		}
+	}
+}
+
+bw_admin_home_topxaccountcontrolblock = PageFragment {
+	data = Dataset {
+		view:bwd_topaccountcontrols
+		limit:10
+	}
+
+	Group {
+		styling:cssRound
+	
+		Header {
+			value:$bw_admin_home_topxaccountcontrolblockNLS.header
+			icon:%concept_16.account
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		IncludeHTMLWidget {
+			layout: Layout { grab: horizontal False vertical False hint:width 450 height 300 align: horizontal Center vertical Center }
+			template: barChart
+			datasets: data ( controldisplayname, controlname, nb, controldisplayname ) to chartdata ( label, code , count , description)
+			bindings: 
+				value-of False to maintainAspectRatio,
+				value-of True to isHorizontal,
+				value-of True to isLabelInside,
+				value-of False to showxAxesGrid,
+				value-of "#b2d4f5,#93bfeb,#74abe2" to customColors
+			widget-events: {
+				when onclick then [
+					GoTo Activity Account Search with Concat('maccount(*|controldiscrepancy(*|controllog(*eqControlName[controlNameParam=^"',Current code,'"])))') to accountSearch
+				]
+			}
+		}
+	}
+}
+
+bw_adminHome_exploreblock = PageFragment {
+	Group {
+        styling: cssRound
+        
+		Header {
+			value:$bw_adminHome_exploreblockNLS.header
+			icon:%collection_16.magnify
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		Link {
+			target:Page browsing_currentorganisationhierarchy
+			value:$bw_adminHome_exploreblockNLS.orgchart
+		}
+		Link {
+			target:Activity Identity Search
+			value:$bw_adminHome_exploreblockNLS.identity
+		}
+		Link {
+			target:Activity Organisation Search
+			value:$bw_adminHome_exploreblockNLS.organisation
+		}
+		Link {
+			target:Activity Account Search
+			value:$bw_adminHome_exploreblockNLS.account
+		}
+		Link {
+			target:Activity Group Search
+			value:$bw_adminHome_exploreblockNLS.group
+		}
+		Link {
+			target:Activity Repository Search
+			value:$bw_adminHome_exploreblockNLS.repository
+		}
+		Link {
+			target:Activity Application Search
+			value:$bw_adminHome_exploreblockNLS.application
+		}
+		Link {
+			target:Activity Permission Search
+			value:$bw_adminHome_exploreblockNLS.permission
+		}
+		Link {
+			target:Activity Application(Filesystem) Search
+			value:$bw_adminHome_exploreblockNLS.share
+			feature:unstructureddata_license
+		}
+		Link {
+			target:Activity Permission(Filesystem) Search
+			value:$bw_adminHome_exploreblockNLS.sharedfolder
+			feature:unstructureddata_license
+		}
+		Link {
+			target:Activity Repository(Server) Search
+			value:$bw_adminHome_exploreblockNLS.server
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}
+		Link {
+			target:Activity CACredential Search
+			value:$bw_adminHome_exploreblockNLS.cacredential
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}
+		Link {
+			target:Activity CASafe Search
+			value:$bw_adminHome_exploreblockNLS.casafe
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}
+		Link {
+			target:Activity Account (CAusers) Search
+			value:$bw_adminHome_exploreblockNLS.causer
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}
+		Link {
+			target:Activity CAVault Search
+			value:$bw_adminHome_exploreblockNLS.cavault
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}
+	}		   
+}
+
+bw_adminHome_shortlinksblock = PageFragment {
+	Group {
+        styling: cssRound
+        
+		Header {
+			value:$bw_adminHome_shortlinksblockNLS.header
+			icon:%browsing_16.link
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		Link {
+			target:Page enduser 
+			value:$bw_adminHome_shortlinksblockNLS.checktasks
+		}
+		Link {
+			target:Page enduser with Constant fragenduser360tab_ANALYTICS to ininitialtab
+			value:$bw_adminHome_shortlinksblockNLS.browseanalytics
+		}
+		Link {
+			target:Page  bwcpam_home_menu
+			value:$bw_adminHome_shortlinksblockNLS.pambooster
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}		
+		Link {
+			target:Dashboard 'faaf1f8a-ddbf-4266-b3a9-b8d6116b4bf6' /* HR Controls */  //with  '<val>' to organisation 
+			value:$bw_adminHome_shortlinksblockNLS.hrcontrols
+		}
+		Link {
+			target:Dashboard '36e86eb2-cf26-488c-ac01-aec2746b1f99' /* Application Controls */  //with  '<val>' to application
+			value:$bw_adminHome_shortlinksblockNLS.applicationcontrols
+		}
+		Link {
+			target:Dashboard 'd73e007a-caaf-4b17-884c-37a875889783' /* Repository Controls */  //with  '<val>' to referentiel 
+			value:$bw_adminHome_shortlinksblockNLS.repositorycontrols
+		}
+		Link {
+			target:Page bwsod_sodglobaldashboard
+			value:$bw_adminHome_shortlinksblockNLS.browsesodcontrols
+			feature:sod_license
+		}
+		Link {
+			target:Page bw_control_browser
+			value:$bw_adminHome_shortlinksblockNLS.browsecontrols
+		}
+		Link {
+			target:Page bwaccess360_accessreviewmanagement 
+			value:$bw_adminHome_shortlinksblockNLS.managecampaign
+			feature:iasreview_license
+		}
+		Link {
+			target:Page bwaccess360_remediationmanagement 
+			value:$bw_adminHome_shortlinksblockNLS.manageremediation
+			feature:iasreview_license						
+		}
+		Link {
+			target:Page bwiasr_remediationstrategymanagement 
+			value:$bw_adminHome_shortlinksblockNLS.configureremediationstrategy
+			feature:iasreview_license						
+		}
+		Link {
+			target:Page adminDelegations
+			value:$bw_adminHome_shortlinksblockNLS.configuredelegation
+			feature:adminmenu
+		}
+		Link {
+			target:Page bw_usersubscriptionadmin 
+			value:$bw_adminHome_shortlinksblockNLS.configuresubscription
+			feature:adminmenu
+		}
+		Link {
+			target:Page bwa_computesensitivitylevels 
+			value:$bw_adminHome_shortlinksblockNLS.computesensitivitylevels
+			feature:adminmenu
+		}
+		Link {
+			target:Page workflowAdministration 
+			value:$bw_adminHome_shortlinksblockNLS.manageworkflow
+			feature:adminmenu
+		}
+		Link {
+			target:Dashboard '8ca21d67-7c36-4ee5-9aa8-85384bfeb8c2' /* Safe Changes */
+			value:$bw_adminHome_shortlinksblockNLS.safechanges
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}
+		Link {
+			target:Dashboard '63a12e11-aeec-410a-bf14-b64490e8f442' /* Safe Controls */
+			value:$bw_adminHome_shortlinksblockNLS.safecontrols
+			hidden: Not BooleanPredicate (  ConfigurationVariable "isPamBoosterActive") 
+			feature: All(pam_license, Any(governance_license, compliance_license))
+		}
+//		Link {
+//			target:Dashboard '32efedf2-dc80-45f1-9288-cc6d01452be8' /* Leavers and Credentials */
+//			value:$bw_adminHome_shortlinksblockNLS.leaversecrets
+//			feature:pam_license
+//		}
+//		Link {
+//			target:Dashboard '6e47f35a-4b1a-43aa-b544-886f03bda752' /* Safe Access Groups */
+//			value:$bw_adminHome_shortlinksblockNLS.safeaccessgroups
+//			feature:pam_license
+//		}
+	}			
+}
+
+bw_adminHome_bookmarkblock = PageFragment {
+	favorites = Dataset {
+		favorites:Favorites {
+			
+		}
+	}
+
+	Group {
+        styling: cssRound
+        
+		Header {
+			value:$bw_adminHome_bookmarkblockNLS.header
+			icon:%collection_16.star
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		Link {
+			iterate-on:favorites
+			target:Position Current position
+			value:Current favoriteTitle
+			tooltip:Current favoriteTitle
+		}
+	}
+}
+
+bw_admin_home_entriescounter = PageFragment {
+
+	identities = Record {
+		view:bwd_nbidentities
+	}
+	organisations = Record {
+		view:bwd_nborganisations
+	}
+	repositories = Record {
+		view:bwd_nbrepositories
+	}
+	accounts = Record {
+		view:bwd_nbaccounts
+	}
+	groups = Record {
+		view:bwd_nbgroups
+	}
+	applications = Record {
+		view:bwd_nbapplications
+	}
+	permissions = Record {
+		view:bwd_nbpermissions
+	}
+	
+	Group {
+		styling:cssRound
+		Text {
+			label: $bw_admin_home_entriescounterNLS.label
+			value: $bw_admin_home_entriescounterNLS.pattern(Eval "identities.nb + organisations.nb + repositories.nb + accounts.nb + groups.nb + applications.nb + permissions.nb")
+			compact:True
+			align:Right
+		}
+	}
+}
+
+bw_admin_home_ledgerinfosblock = PageFragment {
+	reftimeslot = Record {
+		view:br_gettimeslotuid
+		timeslot:FromPage(-1)
+	}
+
+	identities_stat = Dataset {
+		service: srv_identities_statistics with PortalTimeslot.UID to timeslotUid
+		}
+	data_stat = Dataset {
+		service: srv_data_statistics with PortalTimeslot.UID to timeslotUid
+		}
+
+	org_stat = Dataset {
+		service: srv_org_statistics with PortalTimeslot.UID to timeslotUid
+		}
+
+	asset_stat = Dataset {
+		service: srv_asset_statistics with PortalTimeslot.UID to timeslotUid
+		}
+	
+	repositories = Dataset {
+		view:bwd_allrepositoriescount
+	}
+	servers = Dataset {
+		view:bwd_allrepositoriescount with True to server
+	}
+	
+	stats = Dataset {
+		union:Union {
+			datasets:identities_stat projects (identities_ to label, current_ to val), 
+						org_stat projects(organization_ to label, current_ to val), 
+						asset_stat projects (assets_ to label, current_ to val),
+						repositories projects(repositorylabel to label, nb to val),
+						repositories projects(repositoryaccountlabel to label, bwa_repositoryanalytics_nbaccount to val),
+						repositories projects(grouplabel to label, bwa_repositoryanalytics_nbgroup to val),
+						servers projects(serverlabel to label, nb to val),
+						servers projects(repositorylocalaccountlabel to label, bwa_repositoryanalytics_nbaccount to val),
+						servers projects(localgrouplabel to label, bwa_repositoryanalytics_nbgroup to val),
+						data_stat projects (data_ to label, current_ to val)
+			discriminator-column:discr
+		}
+		excludes: StringPredicate(Current label) { 
+			when "unknown_relation_ship_count" then True 
+			when "asset_count" then True 
+			when "derogation_count" then True 
+			when "support_count" then True 
+			otherwise False }
+	}
+	
+
+	prev_identities_stat = Dataset {
+		service: srv_identities_statistics with reftimeslot.timeslotuid to timeslotUid
+	}
+	prev_data_stat = Dataset {
+		service: srv_data_statistics with reftimeslot.timeslotuid to timeslotUid
+	}
+
+	prev_org_stat = Dataset {
+		service: srv_org_statistics with reftimeslot.timeslotuid to timeslotUid
+	}
+
+	prev_asset_stat = Dataset {
+		service: srv_asset_statistics with reftimeslot.timeslotuid to timeslotUid
+	}
+	prev_repositories = Dataset {
+		view:bwd_allrepositoriescount
+		timeslot:reftimeslot.timeslotuid
+	}
+	prev_servers = Dataset {
+		view:bwd_allrepositoriescount with True to server
+		timeslot:reftimeslot.timeslotuid
+	}
+	
+	prev_stats = Dataset {
+		union:Union {
+			datasets:prev_identities_stat projects (identities_ to label, current_ to val), 
+						prev_data_stat projects (data_ to label, current_ to val), 
+						prev_org_stat projects(organization_ to label, current_ to val), 
+						prev_asset_stat projects (assets_ to label, current_ to val),
+						prev_repositories projects(repositorylabel to label, nb to val),
+						prev_repositories projects(repositoryaccountlabel to label, bwa_repositoryanalytics_nbaccount to val),
+						prev_repositories projects(grouplabel to label, bwa_repositoryanalytics_nbgroup to val),
+						prev_servers projects(serverlabel to label, nb to val),
+						prev_servers projects(repositorylocalaccountlabel to label, bwa_repositoryanalytics_nbaccount to val),
+						prev_servers projects(localgrouplabel to label, bwa_repositoryanalytics_nbgroup to val)
+			discriminator-column:discr
+		}
+	}
+
+	all_stats = Dataset {
+		join:Join {
+			primary-dataset:stats
+			secondary-dataset:prev_stats
+			primary-column:label // false positive... igrcAnalytics Pages editor BUG
+			secondary-column:label // false positive... igrcAnalytics Pages editor BUG
+			primary-optional:False
+			secondary-cardinality:optional
+			secondary-prefix:prev_
+		
+		}
+	
+	}
+
+	Group {
+        styling: cssRound
+        
+		Grid {
+			layout:Layout { grab: horizontal True vertical False hint:height 32 }
+			columns:GridColumn { width:grow }, GridColumn {width:48px }
+			GridRow {
+				GridCell {
+					Header {
+						value:$bw_admin_home_ledgerinfosblockNLS.header
+						icon:%logos_16.brainwavegrc_cube
+						styling:bigTitleStyle
+					}
+				}
+				GridCell {
+					ButtonGroup {
+						nb-inline:1
+						Button {
+							actions:Message "nop"
+							text:""
+							presentation:Link
+							disabled:True
+						}
+						Button {
+							actions:GoTo Page timeslot_statistics
+							text:$bw_admin_home_ledgerinfosblockNLS.explorestatistics
+							presentation:Link
+							disabled:Not FeaturePredicate adminmenu
+						}
+						Button {
+							actions:GoTo Page timeslot_changes
+							text:$bw_admin_home_ledgerinfosblockNLS.explorechanges
+							presentation:Link
+							disabled:Not FeaturePredicate adminmenu
+						}
+						Button {
+							actions:GoTo Page manage_timeslot
+							text:$bw_admin_home_ledgerinfosblockNLS.managetimeslot
+							presentation:Link
+							disabled:Not FeaturePredicate adminmenu
+						}
+					}
+				}
+			}
+		}
+		Separator {
+			width:1
+			color:blueNG
+		}
+		Header {
+			value:$bw_adminHomeNLS.commitdate(PageTimeslot.CommitDate)
+		}
+		Table {	   
+			layout:Layout{grab: horizontal True vertical False hint:height 670}
+			data:all_stats								
+			Column {
+				header: $bw_adminHomeNLS.entity
+				column:label
+				tooltip:Transform Current label using statistics												
+				image: Transform Current label using statisticsIcons
+				text: Transform Current label using statistics												
+				width: 100%				
+			}
+			Column {
+				header:$bw_adminHomeNLS.cur
+				column:val
+				text:Transform Current val using bw_adminHomeNumber	
+				align:Right
+				width: 80px																		
+			}
+			Column {
+				column:label
+				header:""
+				text:''
+				tooltip:Difference(Current val, Current prev_val)
+				align:Right
+				width:32px																		
+				fixed-width:True
+				image:TemplateImageSelection(Difference(Current val, Current prev_val)) using bwf_trend
+			}
+			Column {
+				header:$bw_adminHomeNLS.prev
+				column:prev_val
+				text:Transform Current prev_val using bw_adminHomeNumber	
+				align:Right
+				width: 80px																		
+			}
+		}
+	}
+}
+
+bw_admin_home_controlblock = PageFragment {
+
+	count_identitieswsodprb = Variable
+
+	totalactiveaccounts = Record {
+		view:bwd_totalactiveaccounts
+	}
+	totalactiveidentities = Record {
+		view:bwd_totalactiveidentities
+	}
+	unusedaccounts= Record {
+		view:bwd_accountnbcontroldefects with "ACC01" to controlname
+	}
+	orphanaccounts= Record {
+		view:bwd_accountnbcontroldefects with "ACC02" to controlname
+	}
+	leaveraccounts= Record {
+		view:bwd_accountnbcontroldefects with "ACC03" to controlname
+	}
+	newaccount = Record {
+		view:bwd_accountnbnewactiveaccounts
+	}
+	
+	identityoverallocatedrights = Record {
+		view:bwd_identitynbcontroldefects with "ACC17" to controlname
+	}
+	
+	identities = Dataset {
+		view:bwsodd_identities
+		count-variable:count_identitieswsodprb
+	}
+	
+
+	Group {
+		styling:cssRound
+		layout:Layout { grab: horizontal True vertical False hint:height 420 }
+		
+		Grid {
+			columns:GridColumn{width:grow group:a},GridColumn{width:grow group:a},GridColumn{width:grow group:a},GridColumn{width:grow group:a}
+	
+			GridRow {
+				height:32
+				GridCell {
+					span:4
+					Header {
+						value:$bw_admin_home_controlblockNLS.header
+						icon:%concept_16.control
+						styling:bigTitleStyle
+					}
+					Separator {
+						color:blue
+						width:1
+					}
+				}
+			}
+			GridRow {
+				GridCell {
+					// Leaver accounts
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of leaveraccounts.nb to count,
+							value-of totalactiveaccounts.nb to maxValue,
+							value-of '#E96959' to waveTextColor,
+							value-of '#E96959' to textColor,
+							value-of '#CF4544' to circleColor,
+							value-of '#CF4544' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Activity Account Search with 'maccount(*|controldiscrepancy(*|controllog(*eqControlName[controlNameParam=^"ACC03"])))' to accountSearch 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_controlblockNLS.leaver
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					// Orphan accounts
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of True to displayPercent,
+							value-of orphanaccounts.nb to count,
+							value-of totalactiveaccounts.nb to maxValue,
+							value-of '#F99F36' to waveTextColor,
+							value-of '#F99F36' to textColor,
+							value-of '#F1773D' to circleColor,
+							value-of '#F1773D' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Dashboard 'c7e508c7-6d77-452e-96a9-bae7914520ea' // Reconciliation synthesis 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_controlblockNLS.orphan
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					// Unused accounts
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of True to displayPercent,
+							value-of unusedaccounts.nb to count,
+							value-of totalactiveaccounts.nb to maxValue,
+							value-of '#F99F36' to waveTextColor,
+							value-of '#F99F36' to textColor,
+							value-of '#F1773D' to circleColor,
+							value-of '#F1773D' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Activity Account Search with 'maccount(*|controldiscrepancy(*|controllog(*eqControlName[controlNameParam=^"ACC01"])))' to accountSearch 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_controlblockNLS.unused
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					// New accounts
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of newaccount.nb to count,
+							value-of totalactiveaccounts.nb to maxValue,
+							value-of '#65BD70' to waveTextColor,
+							value-of '#65BD70' to textColor,
+							value-of '#46A862' to circleColor,
+							value-of '#46A862' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Activity Account Search with "maccount(*neDisabled,isNew)" to accountSearch 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_controlblockNLS.newaccount
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+			}
+			GridRow {
+				GridCell {
+					// Identities with overallocated rights
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of identityoverallocatedrights.nb to count,
+							value-of totalactiveidentities.nb to maxValue,
+							value-of '#F99F36' to waveTextColor,
+							value-of '#F99F36' to textColor,
+							value-of '#F1773D' to circleColor,
+							value-of '#F1773D' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Activity Identity Search with 'midentity(*|controldiscrepancy(*|controllog(*eqControlName[controlNameParam=^"ACC17"])))' to identitySearch 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_controlblockNLS.overallocated
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					// Identities with SOD problems
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_identitieswsodprb to count,
+							value-of totalactiveidentities.nb to maxValue,
+							value-of '#F99F36' to waveTextColor,
+							value-of '#F99F36' to textColor,
+							value-of '#F1773D' to circleColor,
+							value-of '#F1773D' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwa360_allidentitysodmatrix 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_controlblockNLS.sodidentity
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+			}
+		}
+	}
+}
+
+bw_admin_home_reviewblock = PageFragment {
+	/* Variables here */
+	inerrorThreshold = Variable { initial:365 }
+	inwarningThreshold = Variable { initial:45 }
+	inapplicationSelectedTag = Variable {  }
+	inrepositorySelectedTag = Variable {  }
+	insafeSelectedTag = Variable {  }
+
+	count_applicationsReviewedAll = Variable
+	count_applicationsReviewedCompliant = Variable
+	count_applicationsReviewedWarning = Variable
+	count_applicationsReviewedNotReviewed = Variable
+
+	count_repositoriesReviewedAll = Variable
+	count_repositoriesReviewedCompliant = Variable
+	count_repositoriesReviewedWarning = Variable
+	count_repositoriesReviewedNotReviewed = Variable
+
+	count_safesReviewedAll = Variable
+	count_safesReviewedCompliant = Variable
+	count_safesReviewedWarning = Variable
+	count_safesReviewedNotReviewed = Variable
+
+	count_activereviews = Variable
+	
+	/* Datasets and records here */
+	
+	campaigns = Dataset { // all campaigns
+		view:bwaccess360_accessreviewcampaignsbv with ["ok","update","revoke"] to filterbystatus
+		includes:StringPredicate(Current currentcampaignstatus) {
+			when "init" then True
+			when "active" then True
+			when "pause" then True
+			when "finalizing" then True
+			otherwise False
+		}
+		count-variable:count_activereviews
+	}
+		
+	// review stats
+	applicationsReviewedAll = Dataset {
+		view:bwiasr_applicationRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to tagfilter
+		count-variable:count_applicationsReviewedAll
+	}
+	applicationsReviewedCompliant = Dataset {
+		view:bwiasr_applicationRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "ok" then True otherwise False }
+		count-variable:count_applicationsReviewedCompliant
+	}
+	applicationsReviewedWarning = Dataset {
+		view:bwiasr_applicationRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "warning" then True otherwise False }
+		count-variable:count_applicationsReviewedWarning
+	}
+	applicationsReviewedNotReviewed = Dataset {
+		view:bwiasr_applicationRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "ko" then True otherwise False }
+		count-variable:count_applicationsReviewedNotReviewed
+	}
+	rightremediationinprogress = Record {
+		view:bwd_nbopenremediations with "right" to reviewtype, inapplicationSelectedTag to applicationrightTagfilter
+	}
+
+
+
+	repositoriesReviewedAll = Dataset {
+		view:bwiasr_repositoryAccountReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inrepositorySelectedTag to tagfilter
+		count-variable:count_repositoriesReviewedAll
+	}
+	repositoriesReviewedCompliant = Dataset {
+		view:bwiasr_repositoryAccountReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inrepositorySelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "ok" then True otherwise False }
+		count-variable:count_repositoriesReviewedCompliant
+	}
+	repositoriesReviewedWarning = Dataset {
+		view:bwiasr_repositoryAccountReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inrepositorySelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "warning" then True otherwise False }
+		count-variable:count_repositoriesReviewedWarning
+	}
+	repositoriesReviewedNotReviewed = Dataset {
+		view:bwiasr_repositoryAccountReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inrepositorySelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "ko" then True otherwise False }
+		count-variable:count_repositoriesReviewedNotReviewed
+	}
+	accountremediationinprogress = Record {
+		view:bwd_nbopenremediations with "account" to reviewtype, inrepositorySelectedTag to accountTagfilter
+	}
+
+
+	safesReviewedAll = Dataset {
+		view:bwiasr_safeRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, insafeSelectedTag to tagfilter
+		count-variable:count_safesReviewedAll
+		disabled: Not FeaturePredicate  All(pam_license, Any(governance_license, compliance_license))
+	}
+	safesReviewedCompliant = Dataset {
+		view:bwiasr_safeRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, insafeSelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "ok" then True otherwise False }
+		count-variable:count_safesReviewedCompliant
+		disabled: Not FeaturePredicate  All(pam_license, Any(governance_license, compliance_license))
+	}
+	safesReviewedWarning = Dataset {
+		view:bwiasr_safeRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, insafeSelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "warning" then True otherwise False }
+		count-variable:count_safesReviewedWarning
+		disabled: Not FeaturePredicate  All(pam_license, Any(governance_license, compliance_license))
+	}
+	safesReviewedNotReviewed = Dataset {
+		view:bwiasr_safeRightReviewStatusBV with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, insafeSelectedTag to tagfilter
+		includes:StringPredicate(Current compliancestatus) { when "ko" then True otherwise False }
+		count-variable:count_safesReviewedNotReviewed
+		disabled: Not FeaturePredicate  All(pam_license, Any(governance_license, compliance_license))
+	}
+	saferemediationinprogress = Record {
+		view:bwd_nbopenremediations with "safe" to reviewtype, insafeSelectedTag to applicationrightTagfilter
+		disabled: Not FeaturePredicate  All(pam_license, Any(governance_license, compliance_license))
+	}
+	
+	Group {
+		styling:cssRound
+
+		layout:Layout { grab: horizontal True vertical False hint:height 730 }
+		
+		Grid {
+			columns:GridColumn{width:grow group:a},GridColumn{width:grow group:a},GridColumn{width:grow group:a},GridColumn{width:grow group:a}
+
+			GridRow {
+				height:32
+				GridCell {
+					span:4
+					Header {
+						value:$bw_admin_home_reviewblockNLS.header
+						icon:%report_16.checklist
+						styling:bigTitleStyle
+					}
+					Separator {
+						color:blue
+						width:1
+					}
+				}
+			}
+			GridRow {
+				GridCell {
+					span: 4
+					// nb reviews
+					Spacer {
+						height:32
+					}
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 60 width 120 align: horizontal Center vertical Center }
+						template: mashupGaugeIndicator
+						bindings:
+							value-of "numeric" to mode,
+							value-of True to hasLink,
+							value-of count_activereviews to count
+						widget-events: {
+							when onclick then [
+								GoTo Page bwaccess360_accessreviewmanagement 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.activecampaign
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+			}
+			GridRow {
+				GridCell {
+					// Compliant applications
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_applicationsReviewedCompliant to count,
+							value-of count_applicationsReviewedAll to maxValue,
+							value-of '#65BD70' to waveTextColor,
+							value-of '#65BD70' to textColor,
+							value-of '#46A862' to circleColor,
+							value-of '#46A862' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_applicationRightReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.compliantapp
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_applicationsReviewedWarning to count,
+							value-of count_applicationsReviewedAll to maxValue,
+							value-of '#F99F36' to waveTextColor,
+							value-of '#F99F36' to textColor,
+							value-of '#F1773D' to circleColor,
+							value-of '#F1773D' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_applicationRightReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.asapapp
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_applicationsReviewedNotReviewed to count,
+							value-of count_applicationsReviewedAll to maxValue,
+							value-of '#E96959' to waveTextColor,
+							value-of '#E96959' to textColor,
+							value-of '#CF4544' to circleColor,
+							value-of '#CF4544' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_applicationRightReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.koapp
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of rightremediationinprogress.nb to count,
+							value-of rightremediationinprogress.nb to maxValue
+						widget-events: {
+							when onclick then [
+								GoTo Page bwaccess360_remediationmanagement 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.rightremediation
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+			}
+			//Compliant Repositories
+			GridRow {
+				GridCell {
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_repositoriesReviewedCompliant to count,
+							value-of count_repositoriesReviewedAll to maxValue,
+							value-of '#65BD70' to waveTextColor,
+							value-of '#65BD70' to textColor,
+							value-of '#46A862' to circleColor,
+							value-of '#46A862' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_repositoryAccountReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.compliantrep
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_repositoriesReviewedWarning to count,
+							value-of count_repositoriesReviewedAll to maxValue,
+							value-of '#F99F36' to waveTextColor,
+							value-of '#F99F36' to textColor,
+							value-of '#F1773D' to circleColor,
+							value-of '#F1773D' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_repositoryAccountReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.asaprep
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_repositoriesReviewedNotReviewed to count,
+							value-of count_repositoriesReviewedAll to maxValue,
+							value-of '#E96959' to waveTextColor,
+							value-of '#E96959' to textColor,
+							value-of '#CF4544' to circleColor,
+							value-of '#CF4544' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_repositoryAccountReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, inapplicationSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.korep
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of accountremediationinprogress.nb to count,
+							value-of accountremediationinprogress.nb to maxValue
+						widget-events: {
+							when onclick then [
+								GoTo Page bwaccess360_remediationmanagement 
+							]
+						}
+					}
+					Header {
+						value:$bw_admin_home_reviewblockNLS.accountremediation
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+			}
+			// Compliant Safes
+			GridRow {
+				hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+				GridCell {
+					
+					IncludeHTMLWidget {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license)) 
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_safesReviewedCompliant to count,
+							value-of count_safesReviewedAll to maxValue,
+							value-of '#65BD70' to waveTextColor,
+							value-of '#65BD70' to textColor,
+							value-of '#46A862' to circleColor,
+							value-of '#46A862' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_safeRightReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, insafeSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						value:$bw_admin_home_reviewblockNLS.compliantsafe
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_safesReviewedWarning to count,
+							value-of count_safesReviewedAll to maxValue,
+							value-of '#F99F36' to waveTextColor,
+							value-of '#F99F36' to textColor,
+							value-of '#F1773D' to circleColor,
+							value-of '#F1773D' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_safeRightReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, insafeSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						value:$bw_admin_home_reviewblockNLS.asapsafe
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of count_safesReviewedNotReviewed to count,
+							value-of count_safesReviewedAll to maxValue,
+							value-of '#E96959' to waveTextColor,
+							value-of '#E96959' to textColor,
+							value-of '#CF4544' to circleColor,
+							value-of '#CF4544' to waveColor
+						widget-events: {
+							when onclick then [
+								GoTo Page bwiasr_safeRightReviewStatus with inwarningThreshold to warningThreshold, inerrorThreshold to errorThreshold, insafeSelectedTag to selectedTag 
+							]
+						}
+					}
+					Header {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						value:$bw_admin_home_reviewblockNLS.kosafe
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+				GridCell {
+					IncludeHTMLWidget {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						layout: Layout { hint: height 140 width 120 align: horizontal Center vertical Center }
+						template: liquidGaugeIndicator
+						bindings:
+							value-of False to displayPercent,
+							value-of saferemediationinprogress.nb to count,
+							value-of saferemediationinprogress.nb to maxValue
+						widget-events: {
+							when onclick then [
+								GoTo Page bwaccess360_remediationmanagement 
+							]
+						}
+					}
+					Header {
+						hidden: Not FeaturePredicate All(pam_license, Any(governance_license, compliance_license))
+						value:$bw_admin_home_reviewblockNLS.rightremediation
+						layout: Layout { grab:horizontal True vertical False align:horizontal Center vertical Center }
+					}
+				}
+			}
+		}
+	}
+}
+
+bw_admin_home_nbaccountsperrisklevel = PageFragment {
+	chart = Dataset {
+		view:bwd_nbaccountpermaxrisklevel
+	}
+
+	Group {
+        styling: cssRound
+        
+		Header {
+			value:$bw_admin_home_nbaccountsperrisklevelNLS.header
+			icon:%concept_16.account
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		Spacer {
+			height:32
+		}
+		IncludeHTMLWidget {
+			layout: Layout { grab: horizontal False vertical False hint:width 280 height 165 align: horizontal Center vertical Center }
+			template: doughnutChart
+			datasets: chart ( bwa_accountanalytics_maxrisklevel, bwa_accountanalytics_maxrisklevel, nb ) to chartdata ( label, code , count )
+			bindings: 
+				value-of True to tooltipShowPercent,
+				value-of False to showLegend,
+				value-of True to showHalfOnly,
+				value-of Constant higherTheWorstPalette to customColors
+			widget-events: {
+				when onclick then [
+					GoTo Activity Account Search with Concat('maccount(*neDisabled,eqbwa_accountanalytics_maxrisklevel[valueIntegerParam=^"',Current code,'"])') to accountSearch
+				]
+			}
+		}
+	}
+}
+
+bw_admin_home_nbaccountsperriskleveltrend = PageFragment {
+	chart = Dataset {
+		view: bwd_nbaccountpermaxriskleveltrend
+	}
+	Group {
+        styling: cssRound
+        
+		Header {
+			value:$bw_admin_home_nbaccountsperriskleveltrendNLS.header
+			icon:%concept_16.account
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		Spacer {
+			height:32
+		}
+
+		IncludeHTMLWidget {
+			layout: Layout { grab: horizontal False vertical False hint:width 280 height 165 align: horizontal Center vertical Center }
+			template: multilineChart
+			datasets: chart ( dateldap, date, bwa_accountanalytics_maxrisklevel, bwa_accountanalytics_maxrisklevel, nb ) to chartdata ( code, label, categorycode , category, count )
+			bindings: 
+				value-of False to showLegend,
+				value-of False to fill,
+				value-of Constant higherTheWorstPalette to customColors,
+				value-of True to curvedLine
+		}
+
+	}
+}
+
+bw_admin_home_notesblock = PageFragment {
+	enter-event:Set initialNote.bw_notes_text to val
+	val = Variable
+
+	initialNote = Record {
+		view:bwd_identitynotes with Principal.uid to uid
+	}
+	savenote = TaskRecord(create "bw_saveNote")
+
+	save = NamedAction (
+		Set val to savenote.note,
+		Set Principal.uid to savenote.identity,
+		TaskComplete savenote
+	)
+
+	Group {
+        styling: cssRound
+        
+		Header {
+			value:$bw_admin_home_notesblockNLS.header
+			icon:%collection_16.pencil
+			styling:bigTitleStyle
+		}
+		Separator {
+			color:blue
+			width:1
+		}
+		Spacer {
+			height:16
+		}
+		IncludeHTMLWidget {
+			template:textEditorArea
+			layout:Layout {grab:horizontal True vertical True hint: height 600}
+			bindings:
+			val binds-to content,
+			value-of False to readonly
+		}
+		ButtonGroup {
+			Button {
+				actions:ExecuteNamedAction save, Flash $bw_admin_home_notesblockNLS.save.flash
+				text:$bw_admin_home_notesblockNLS.save
+			}
+		}
+		Spacer {
+			height:Fill
+		}
+	}
+}
+
+bw_admin_home_top10riskblock = PageFragment {
+	Group {
+		styling:cssRound
+		layout:Layout { grab: horizontal True vertical False hint:height 400 }
+	
+		Grid {
+			columns:GridColumn{width:grow group:a},GridColumn{width:grow group:a},GridColumn{width:grow group:a}
+
+			GridRow {
+				height:32
+				GridCell {
+					span:3
+					Header {
+						value:$bw_admin_home_top10riskblockNLS.header
+						icon:%status_16.warning
+						styling:bigTitleStyle
+					}
+					Separator {
+						color:blue
+						width:1
+					}
+				}
+			}
+			GridRow {
+				height:grow
+				GridCell {
+					IncludeFragment (bw_admin_home_top10riskaccount)
+				}
+				GridCell {
+					IncludeFragment (bw_admin_home_top10riskidentity)
+				}
+				GridCell {
+					IncludeFragment (bw_admin_home_top10riskorganisation)
+				}
+			}
+		}	
+	}
+}
+
+bw_admin_home_top10riskorganisation = PageFragment {
+	organisations = Dataset {
+		view:bwd_topxriskorganisations
+		limit:10
+	}
+
+	Header { 
+		value:$bw_admin_home_top10riskNLS.top10organisation
+		styling:bigTitleStyle
+	}
+	
+	Link {
+		iterate-on:organisations
+		value:Current displayname
+		tooltip:Current organisationtypedisplayname
+		target:Activity Organisation Detail with Current uid to paramOrganisationUid
+	}
+}
+
+bw_admin_home_top10riskidentity = PageFragment {
+	identities = Dataset {
+		view:bwd_topxriskidentities
+		limit:10
+	}
+
+	Header { 
+		value:$bw_admin_home_top10riskNLS.top10identity
+		styling:bigTitleStyle
+	}
+	
+	Link {
+		iterate-on:identities
+		value:Concat(Current fullname, ' (', Current hrcode,')') 
+		target:Activity Identity Detail with Current uid to paramIdentityUid
+	}
+}
+
+bw_admin_home_top10riskaccount = PageFragment {
+	accounts = Dataset {
+		view:bwd_topxriskaccounts
+		limit:10
+	}
+
+	Header { 
+		value:$bw_admin_home_top10riskNLS.top10account
+		styling:bigTitleStyle
+	}
+	
+	Link {
+		iterate-on:accounts
+		value:Concat(Current login, ' (', Current repositorydisplayname,')') 
+		target:Activity Account Detail with Current uid to paramAccountUid
+	}
+}
+

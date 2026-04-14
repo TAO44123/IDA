@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<View family="businessview" name="bwa_identitymaxsensitivitylevel" displayname="identitymaxsensitivitylevel">
+	<Definition scriptfile="/views/bw_analytics/sensitivitylevel/identitymaxsensitivitylevel.javascript" name="D1610457484836">
+		<Component type="innerview" x="30" y="10" w="300" h="64" name="C1610457484836" title="all identities">
+			<InnerView name="allidentities"/>
+		</Component>
+		<Component name="C1610457493789" type="joinview" x="227" y="191" w="300" h="50" title="org level" enable="{param.includeorganisations.get()}">
+			<InnerView name="bwa_identitymaxorgsensitivitylevel" prefix="org_"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.org_uid.get()}"/>
+		</Component>
+		<Link name="L1610457493856" source="C1610457484836" target="C1610457493789" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1610457498434" type="joinview" x="277" y="392" w="300" h="50" title="account level">
+			<InnerView prefix="account_" name="bwa_identitymaxaccountsensitivitylevel"/>
+			<Join jointype="left" key1="{dataset.uid.get()}" key2="{dataset.account_uid.get()}"/>
+		</Component>
+		<Link name="L1610457498478" source="C1610457493789" target="C1610457498434" priority="4" errorlink="true" linecustom="true" color="255,0,0"/>
+		<Component name="C1608140103552_1" type="scriptview" x="688" y="557" w="300" h="50" title="max sensitivity level">
+			<Script onscriptread="compute"/>
+			<FilterList>
+				<Filter name="F1608141948517" expression="dataset.isEmpty(&apos;maxsensitivitylevel&apos;)" comment="no max sensitivity level found" type="Exclude"/>
+			</FilterList>
+			<ExcludeList>
+				<Exclude name="account_maxsensitivitylevel"/>
+				<Exclude name="account_uid"/>
+				<Exclude name="org_maxsensitivitylevel"/>
+				<Exclude name="org_uid"/>
+			</ExcludeList>
+		</Component>
+		<Link name="L1610457701965" source="C1610457498434" target="C1608140103552_1" priority="2" errorlink="true" linecustom="true" color="255,0,0"/>
+	</Definition>
+	<ViewParam name="includeorganisations" displayname="includeorganisations" type="Boolean" defaultvalue="true"/>
+</View>

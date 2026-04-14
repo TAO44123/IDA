@@ -1,0 +1,938 @@
+/* Import other pages here */
+import "/webportal/pages/resources/concepts_nls.page"
+import "/webportal/pages/resources/pages_nls.page"
+
+import "/webportal/pages/bw_fragments/lib/templates.page"
+import "/webportal/pages/bw_fragments/lib/mappings.page"
+import "/webportal/pages/bw_fragments/lib/nls.page"
+
+import "/webportal/pages/bw_fragments/account/details/accountDetails.page"
+import "/webportal/pages/bw_fragments/preferences/globalpreferences.page"
+
+fragmentGroupAccountsNLS = NLS {
+	noownercode [en "Technical account" fr "Compte technique"]
+	includedisabled [en "Include disabled accounts" fr "Inclure les comptes désactivés"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected group accounts (direct members only)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inincludedisabled </b>optional, boolean value, true to include disabled accounts (false by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupDirectAccounts = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inincludedisabled = Variable { multivalued:False type:Boolean initial:False }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	accounts = Dataset {
+		view: bwf_groupaccounts with inuid to uid, inincludedisabled to includedisabled
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												True to inshowowner
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Table {
+		data:accounts
+		layout:Layout {grab: horizontal True vertical True}
+		configurable:True
+		show-count:True
+		show-filter:True
+		persist-configuration:True
+		double-click:ExecuteNamedAction goDetails
+		
+		
+		Column {
+			column:uid
+			hidden:True
+			selection:outaccountuid
+		}
+		
+		Column {
+			column:login
+			header:$account.login
+			sortable:True
+			filterable:True
+			selection:outaccountlogin
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:givenname
+			header:$account.givenname
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:surname
+			header:$account.surname
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:username
+			header:$account.username
+			sortable:True
+			filterable:True
+			width:160px
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:disabled
+			header:$account.disabled
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:creationdate
+			header:$account.creationdate
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:lastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:repositoryuid
+			hidden:True
+			selection:outrepositoryuid
+		}
+		Column {
+			column:repositorydisplayname
+			header:$repository.concept
+			sortable:True
+			filterable:True
+			selection:outrepositoryname
+		}
+		Column {
+			column:noownercode
+			sortable:True
+			filterable:True
+			header:$fragmentGroupAccountsNLS.noownercode
+		}
+		Column {
+			column:identityhrcode
+			sortable:True
+			filterable:True
+			header:$pidentity.hrcode
+			initially-masked:True
+		}
+		Column {
+			column:identityfullname
+			sortable:True
+			filterable:True
+			header:$pidentity.fullname
+			width:100%
+		}
+		Column {
+			column:identitymail
+			sortable:True
+			filterable:True
+			header:$pidentity.mail
+			initially-masked:True
+		}
+		Column {
+			column:identityinternal
+			sortable:True
+			filterable:True
+			header:$pidentity.internal
+			initially-masked:True
+		}
+		Column {
+			column:identityactive
+			sortable:True
+			filterable:True
+			header:$pidentity.active
+			initially-masked:True
+		}
+		Column {
+			column:identitybwa_identityanalyticsdata_joborg
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$pidentity.joborg
+			width:160px
+		}
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+	}
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected group accounts (all accounts including indirect ones)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inincludedisabled </b>optional, boolean value, true to include disabled accounts (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupAccounts = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inincludedisabled = Variable { multivalued:False type:Boolean initial:False }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	accounts = Dataset {
+		view: bwf_groupallaccounts with inuid to uid, inincludedisabled to includedisabled
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												True to inshowowner
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Table {
+		data:accounts
+		layout:Layout {grab: horizontal True vertical True}
+		configurable:True
+		show-count:True
+		show-filter:True
+		persist-configuration:True
+		double-click:ExecuteNamedAction goDetails
+		
+		
+		Column {
+			column:uid
+			hidden:True
+			selection:outaccountuid
+		}
+		
+		Column {
+			column:login
+			header:$account.login
+			sortable:True
+			filterable:True
+			selection:outaccountlogin
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:givenname
+			header:$account.givenname
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:surname
+			header:$account.surname
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:username
+			header:$account.username
+			sortable:True
+			filterable:True
+			width:160px
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:disabled
+			header:$account.disabled
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:creationdate
+			header:$account.creationdate
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:lastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:repositoryuid
+			hidden:True
+			selection:outrepositoryuid
+		}
+		Column {
+			column:repositorydisplayname
+			header:$repository.concept
+			sortable:True
+			filterable:True
+			selection:outrepositoryname
+		}
+		Column {
+			column:noownercode
+			sortable:True
+			filterable:True
+			header:$fragmentGroupAccountsNLS.noownercode
+		}
+		Column {
+			column:identityhrcode
+			sortable:True
+			filterable:True
+			header:$pidentity.hrcode
+			initially-masked:True
+		}
+		Column {
+			column:identityfullname
+			sortable:True
+			filterable:True
+			header:$pidentity.fullname
+			width:100%
+		}
+		Column {
+			column:identitymail
+			sortable:True
+			filterable:True
+			header:$pidentity.mail
+			initially-masked:True
+		}
+		Column {
+			column:identityinternal
+			sortable:True
+			filterable:True
+			header:$pidentity.internal
+			initially-masked:True
+		}
+		Column {
+			column:identityactive
+			sortable:True
+			filterable:True
+			header:$pidentity.active
+			initially-masked:True
+		}
+		Column {
+			column:identitybwa_identityanalyticsdata_joborg
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$pidentity.joborg
+			width:160px
+		}
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+	}
+}
+
+fragmentGroupAccountsForOrgNLS = NLS {
+	directfilter [en "Accounts whom owners are direct members of {0}" fr "Comptes dont les membres sont des membres directs de {0}"]
+	subfilter [en "Accounts whom owners are direct or indirect members of {0}" fr "Comptes dont les membres sont des membres directs ou indirects de {0}"]
+}
+
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected group accounts for a given organisation (all accounts including indirect ones)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>inorganisationuid </b>the group uid</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inincludedisabled </b>optional, boolean value, true to include disabled accounts (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupAccountsForOrg = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inorganisationuid = Variable { multivalued:False }
+	inonlydirectselection = Variable { multivalued:False type:Boolean}
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inincludedisabled = Variable { multivalued:False type:Boolean initial:False }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	accounts = Dataset {
+		view: bwf_groupallaccountsfororg with
+			inuid to uid,
+			inorganisationuid to organisationuid,
+			inonlydirectselection to directonly,
+			inincludedisabled to includedisabled
+		trend: Trend { 
+			join-column: uid
+			exclude-new: False
+			include-removed: BooleanPredicate ( UserVariable global_tabletrends_includeremoved )
+			exclude-same: False
+			status-column-name:trends
+			timeslot: FromPage(-1)
+			value-column: val
+		}
+		disabled:
+			OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+	
+	organisation = Record {
+		view: br_organisationDetail with inorganisationuid to uid
+	}
+
+	goDetails = NamedAction (
+		BooleanCase(incanshowdetails) {
+			when True then [
+				Dialog bwf_accountDetailsDialog(outaccountuid to inuid, 
+												True to inshowowner
+												)
+			]
+			when False then [
+			
+			]
+		}
+	)
+
+	Header {
+		value:$fragmentGroupAccountsForOrgNLS.directfilter(organisation.displayname)
+		hidden:Not BooleanPredicate(inonlydirectselection)
+	}
+	Header {
+		value:$fragmentGroupAccountsForOrgNLS.subfilter(organisation.displayname)
+		hidden:BooleanPredicate(inonlydirectselection)
+	}
+	Table {
+		data:accounts
+		layout:Layout {grab: horizontal True vertical True}
+		configurable:True
+		show-count:True
+		show-filter:True
+		persist-configuration:True
+		double-click:ExecuteNamedAction goDetails
+		
+		
+		Column {
+			column:uid
+			hidden:True
+			selection:outaccountuid
+		}
+		
+		Column {
+			column:login
+			header:$account.login
+			sortable:True
+			filterable:True
+			selection:outaccountlogin
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:givenname
+			header:$account.givenname
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:surname
+			header:$account.surname
+			sortable:True
+			filterable:True
+			initially-masked:True
+			actions: ExecuteNamedAction goDetails
+			actions-disabled: Not BooleanPredicate(incanshowdetails)
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:username
+			header:$account.username
+			sortable:True
+			filterable:True
+			width:160px
+			actions: ExecuteNamedAction goDetails
+			tooltip: $search_page.showdetails
+		}
+
+		Column {
+			column:disabled
+			header:$account.disabled
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+
+		Column {
+			column:creationdate
+			header:$account.creationdate
+			sortable:True
+			filterable:True
+			initially-masked:True
+		}
+		Column {
+			column:lastlogindate
+			header:$account.lastlogindate
+			sortable:True
+			filterable:True
+		}
+		Column {
+			column:repositoryuid
+			hidden:True
+			selection:outrepositoryuid
+		}
+		Column {
+			column:repositorydisplayname
+			header:$repository.concept
+			sortable:True
+			filterable:True
+			selection:outrepositoryname
+		}
+		Column {
+			column:noownercode
+			sortable:True
+			filterable:True
+			header:$fragmentGroupAccountsNLS.noownercode
+		}
+		Column {
+			column:identityhrcode
+			sortable:True
+			filterable:True
+			header:$pidentity.hrcode
+			initially-masked:True
+		}
+		Column {
+			column:identityfullname
+			sortable:True
+			filterable:True
+			header:$pidentity.fullname
+			width:100%
+		}
+		Column {
+			column:identitymail
+			sortable:True
+			filterable:True
+			header:$pidentity.mail
+			initially-masked:True
+		}
+		Column {
+			column:identityinternal
+			sortable:True
+			filterable:True
+			header:$pidentity.internal
+			initially-masked:True
+		}
+		Column {
+			column:identityactive
+			sortable:True
+			filterable:True
+			header:$pidentity.active
+			initially-masked:True
+		}
+		Column {
+			column:identitybwa_identityanalyticsdata_joborg
+			initially-masked:True
+			filterable:True
+			sortable:True
+			header:$pidentity.joborg
+			width:160px
+		}
+		Column {
+			column: trends
+			header: $bw_fragment.trends
+			text:Transform Current trends using bwf_trendStatusColumn 
+			styling:StylingTemplateSelection(Current trends) using bwf_trendStatusColumn  
+			image:TemplateImageSelection(Current trends) using bwf_trendStatusColumnWhite
+			tooltip:$bwf_trendStatusColumnNLS.tooltip
+
+			sortable: True
+			filterable: True
+			width: 10%
+		}												
+	}
+}
+
+fragmentGroupAccountsHierarchyNLS = NLS {
+	empty [en "Select a group in the Tree to show its accounts" fr "Sélectionnez un groupe dans l'arbre pour afficher ses comptes"]
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected group accounts with subgroup hierarchy (explorer style)
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>inincludedisabled </b>optional, boolean value, true to include disabled accounts (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupAccountsHierarchy = PageFragment {
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inincludedisabled = Variable { multivalued:False type:Boolean initial:False }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+	
+	selectedGroup = Variable { private:True }
+
+
+	childgroups = HierarchicalData {
+		 roots-view: bwf_groupminigroup with inuid to uid
+		 attribute: uid
+		 children-view: bwf_groupdirectsubgroups
+		 parameter: parentuid
+		 max-level: 5
+		 disabled:
+		 	OrPredicate {
+				Not BooleanPredicate ( inenabled )
+				StringPredicate ( inuid ) {
+					when IsEmpty then True
+				}
+			}
+	}
+
+	Splitter {
+		disposition:Horizontal
+		Group {
+			Tree {
+				data:childgroups
+				configurable:True
+				expand-level:2
+				layout:Layout {grab:horizontal True vertical True}
+				
+				Column {
+					column:uid
+					hidden:True
+					selection:selectedGroup
+				}
+				Column {
+					column:displayname
+					header:$group.displayname
+					width:33%
+				}
+				Column {
+					column:comment
+					header:$group.comment
+					width:66%
+				}
+				Column {
+					column:code
+					header:$group.code
+					initially-masked:True
+				}
+				Column {
+					column:repositorydisplayname
+					header:$repository.concept
+					initially-masked:True
+					width:160px
+				}
+			}
+		}
+		ConditionalGroup {
+			StringCondition(selectedGroup) {
+				when IsEmpty then [
+					Header {
+						value:$fragmentGroupAccountsHierarchyNLS.empty
+					}
+				]
+				otherwise [
+					IncludeFragment (fragmentGroupDirectAccounts with 	selectedGroup binds-to inuid, 
+																		incanshowdetails binds-to incanshowdetails,
+																		inincludedisabled binds-to inincludedisabled,
+																		outaccountlogin binds-to outaccountlogin, 
+																		outaccountuid binds-to outaccountuid, 
+																		outrepositoryname binds-to outrepositoryname,
+																		outrepositoryuid binds-to outrepositoryuid,
+																		inenabled binds-to inenabled
+																		) 
+				]
+			}
+		}
+	}
+}
+
+fragmentGroupAccountsExplorerNLS =NLS {
+	direct [en "direct accounts" fr "comptes directs"]
+	_all [en "all accounts" fr "tous les comptes"]
+	hierarchy [en "subgroups hierarchy" fr "hiérarchie des sous-groupes"]
+}
+/**
+ * <span style="white-space: pre-line">
+ * Display the selected group accounts through different forms: direct accounts, all accounts, group hierarchy
+ * 
+ * <u>Parameters:</u><ul>
+ * <li><b>inuid </b>the group uid</li>
+ * <li><b>inenabled </b>optional, boolean value, true to enable fragment (true by default)</li>
+ * <li><b>incanshowdetails </b>activate/deactivate accounts details list through GUI</li>
+ * <li><b>inincludedisabled </b>optional, boolean value, true to include disabled accounts (false by default)</li>
+ * </ul>
+ * <u>Returns:</u><ul>
+ * <li><b>outaccountuid </b>the selected account uid</li>
+ * <li><b>outaccountlogin </b>the selected account login</li>
+ * <li><b>outrepositoryuid </b>the selected account repository uid</li>
+ * <li><b>outrepositoryname </b>the selected account repository name</li>
+ * </ul>
+ * </span>
+ */
+fragmentGroupAccountsSelection = PageFragment {
+	enter-event:ExecuteNamedAction updateActiveFlags
+
+	/* Parameters here */
+		
+	/* Variables here */
+	inuid = Variable
+	inenabled = Variable { multivalued:False type:Boolean initial:True }
+	incanshowdetails = Variable { multivalued:False type:Boolean initial:False }
+	inincludedisabled = Variable { multivalued:False type:Boolean initial:False }
+	outaccountuid = Variable
+	outaccountlogin = Variable
+	outrepositoryuid = Variable
+	outrepositoryname = Variable
+
+	selection = Variable { private:True initial:'all' }
+
+	active_direct = Variable { initial:False multivalued:False type:Boolean }
+	active_all = Variable { initial:True multivalued:False type:Boolean }
+	active_hierarchy = Variable { initial:False multivalued:False type:Boolean }
+
+	updateActiveFlags = NamedAction (
+		StringCase(selection) {
+			when "direct" then [
+				Set True to active_direct
+			]		
+			when "all" then [
+				Set True to active_all
+			]
+			when "hierarchy" then [
+				Set True to active_hierarchy
+			]		
+		}
+	)
+
+	Grid {
+		columns:GridColumn, GridColumn, GridColumn { width:grow }
+		layout:Layout { grab:horizontal True vertical False hint:height 32 }
+		GridRow {
+			GridCell {
+			Combo {
+				variable:selection
+				layout: Layout { hint: width 300 }
+				modify-event:ExecuteNamedAction updateActiveFlags
+				options:Static {
+					Option { value:"all" text:$fragmentGroupAccountsExplorerNLS._all }
+					Option { value:"direct" text:$fragmentGroupAccountsExplorerNLS.direct }
+					Option { value:"hierarchy" text:$fragmentGroupAccountsExplorerNLS.hierarchy }
+				}
+			}
+			}
+			GridCell {
+				Checkbox {
+					variable:inincludedisabled
+					text:$fragmentGroupAccountsNLS.includedisabled
+				}
+			}
+			GridCell {
+			
+			}
+		}
+	}
+
+	ConditionalGroup {
+		StringCondition(selection) {
+			when "direct" then [
+				IncludeFragment (fragmentGroupDirectAccounts with 	value-of inuid to inuid, 
+																	value-of incanshowdetails to incanshowdetails,
+																	value-of inincludedisabled to inincludedisabled,
+																	outaccountlogin binds-to outaccountlogin, 
+																	outaccountuid binds-to outaccountuid, 
+																	outrepositoryname binds-to outrepositoryname,
+																	outrepositoryuid binds-to outrepositoryuid,
+																	value-of Eval "inenabled.get()&&active_direct.get()" to inenabled
+																	) 
+			]	
+			when "all" then [
+				IncludeFragment (fragmentGroupAccounts with 	value-of inuid to inuid, 
+																	value-of incanshowdetails to incanshowdetails,
+																	value-of inincludedisabled to inincludedisabled,
+																	outaccountlogin binds-to outaccountlogin, 
+																	outaccountuid binds-to outaccountuid, 
+																	outrepositoryname binds-to outrepositoryname,
+																	outrepositoryuid binds-to outrepositoryuid,
+																	value-of Eval "inenabled.get()&&active_all.get()" to inenabled
+																	) 
+			]	
+			when "hierarchy" then [
+				IncludeFragment (fragmentGroupAccountsHierarchy with value-of inuid to inuid, 
+																	value-of incanshowdetails to incanshowdetails,
+																	value-of inincludedisabled to inincludedisabled,
+																	outaccountlogin binds-to outaccountlogin, 
+																	outaccountuid binds-to outaccountuid, 
+																	outrepositoryname binds-to outrepositoryname,
+																	outrepositoryuid binds-to outrepositoryuid,
+																	value-of Eval "inenabled.get()&&active_hierarchy.get()" to inenabled
+																	) 
+			]	
+		}
+	}	
+}
